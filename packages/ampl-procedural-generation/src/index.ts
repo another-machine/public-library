@@ -5,36 +5,38 @@ interface RandomEngineParams {
 }
 
 export class RandomEngine {
-  size: number;
-  memory: number;
-  seed: string;
-  cores: RandomEngineCore[];
+  core: RandomEngineCore;
   generation = 0;
   history: number[][];
+  memory: number;
+  seed: string;
+  size: number;
 
   constructor({ seed, size, memory }: RandomEngineParams) {
-    this.size = size;
+    this.history = [];
     this.memory = memory;
     this.seed = seed;
-    this.history = [];
-    this.cores = [];
-    this.resetCores();
+    this.size = size;
+    this.core = this.freshCore();
   }
 
-  resetCores() {
-    this.cores.length = 0;
-    for (let i = 0; i < this.size; i++) {
-      this.cores.push(new RandomEngineCore(this.seed + i));
-    }
+  freshCore() {
+    return new RandomEngineCore(`${this.seed}-${this.generation}`);
   }
 
   generate() {
-    while (this.history.length >= this.memory) {
-      this.history.shift();
+    const result: number[] = [];
+    for (let i = 0; i < this.size; i++) {
+      result.push(this.core.random());
     }
-    const generation = this.cores.map((core) => core.random());
-    this.history.push(generation);
+    if (this.memory) {
+      while (this.history.length >= this.memory) {
+        this.history.shift();
+      }
+      this.history.push(result);
+    }
     this.generation++;
+    this.core = this.freshCore();
   }
 
   values() {
@@ -42,22 +44,18 @@ export class RandomEngine {
   }
 
   to(generation = 0) {
-    if (this.generation > generation) {
-      this.generation = 0;
-      this.history = [];
-      this.resetCores();
-    }
-    while (this.generation < generation) {
-      this.generate();
-    }
+    this.generation = generation;
+    this.core = this.freshCore();
   }
 }
 
 // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
 export class RandomEngineCore {
   random: () => number;
+  seed: string;
 
   constructor(seed = "") {
+    this.seed = seed;
     const seedingFunction = this.xmur3(seed);
     this.random = this.sfc32(
       seedingFunction(),
