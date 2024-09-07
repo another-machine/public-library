@@ -7,7 +7,6 @@ const directories = [
   "ampl-midi",
   // "ampl-music-detection",
   "ampl-music-theory",
-  // "ampl-physical-sync",
   "ampl-procedural-generation",
   // "ampl-sound-synthesis",
   "ampl-steganography",

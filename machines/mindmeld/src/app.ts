@@ -34,11 +34,11 @@ const seed = searchParams.get("s") || "your-seed-here";
 interface State {
   level: number;
   seed: string;
-  engine?: RandomEngine | null;
+  engine: RandomEngine;
   side?: "a" | "b";
 }
 
-const state = {
+const state: State = {
   level: 1,
   seed,
   engine: new RandomEngine({ seed: "", size, memory }),
