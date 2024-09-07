@@ -1,0 +1,14 @@
+{
+  "name": "mindmeld",
+  "version": "1.0.0",
+  "license": "MIT",
+  "source": "src/index.html",
+  "scripts": {
+    "start": "parcel",
+    "build": "parcel build"
+  },
+  "dependencies": {
+    "@ampl/lexicon": "file:../../dist/ampl-lexicon-0.0.0.tgz",
+    "@ampl/procedural-generation": "file:../../dist/ampl-procedural-generation-0.0.0.tgz"
+  }
+}
