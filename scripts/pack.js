@@ -1,14 +1,12 @@
 import { execSync } from "child_process";
-import fs from "fs";
 
 const directories = [
-  // "ampl-command-bar",
   "ampl-lexicon",
   "ampl-midi",
-  // "ampl-music-detection",
+  "ampl-music-detection",
   "ampl-music-theory",
   "ampl-procedural-generation",
-  // "ampl-sound-synthesis",
+  "ampl-sound-synthesis",
   "ampl-steganography",
 ];
 

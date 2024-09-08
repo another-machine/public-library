@@ -1,0 +1,29 @@
+{
+  "name": "@ampl/music-detection",
+  "description": "Real time detection of chromatic notes and combinations of notes from a device microphone.",
+  "version": "0.0.0",
+  "main": "dist/index.js",
+  "private": "false",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/another-machine/public-library.git"
+  },
+  "tsup": {
+    "entry": [
+      "src/index.ts"
+    ],
+    "clean": true,
+    "dts": true,
+    "format": "esm",
+    "minify": false,
+    "sourcemap": true,
+    "splitting": false
+  },
+  "scripts": {
+    "build": "tsup",
+    "watch": "tsup --watch"
+  },
+  "author": "Another Machine",
+  "license": "MIT",
+  "type": "module"
+}
