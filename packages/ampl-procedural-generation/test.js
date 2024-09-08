@@ -3,7 +3,7 @@ import { RandomEngine } from "./dist/index.js";
 const engine = new RandomEngine({
   size: 100,
   memory: 20,
-  seed: "HELLO",
+  seed: "test",
 });
 
 const generations = 20000;
@@ -23,9 +23,22 @@ for (let i = 0; i < generations; i++) {
 }
 const time = performance.now() - start;
 if (compare !== result.join("-")) {
-  console.error("Not deterministic");
+  console.error({
+    test: "generate",
+    success: false,
+    message: "determinism",
+    time,
+  });
 } else if (engine.history.length !== 20) {
-  console.error("History corrupted");
+  console.error({ test: "generate", success: false, message: "history", time });
 } else {
-  console.log("Success!");
+  console.log({ test: "generate", success: true, time });
 }
+
+const generator = RandomEngine.timecodeGenerator({
+  seed: "test",
+  size: 4,
+  seconds: 30,
+});
+const results = [generator(), generator(), generator()];
+console.log({ test: "timecodeGenerator", results });

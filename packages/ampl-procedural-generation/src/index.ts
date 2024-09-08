@@ -17,11 +17,7 @@ export class RandomEngine {
     this.memory = memory;
     this.seed = seed;
     this.size = size;
-    this.core = this.freshCore();
-  }
-
-  freshCore() {
-    return new RandomEngineCore(`${this.seed}-${this.generation}`);
+    this.core = this.updatedCore();
   }
 
   generate() {
@@ -36,7 +32,7 @@ export class RandomEngine {
       this.history.push(result);
     }
     this.generation++;
-    this.core = this.freshCore();
+    this.core = this.updatedCore();
   }
 
   values() {
@@ -45,7 +41,47 @@ export class RandomEngine {
 
   to(generation = 0) {
     this.generation = generation;
-    this.core = this.freshCore();
+    this.core = this.updatedCore();
+  }
+
+  static timecodeGenerator({
+    seed,
+    size,
+    seconds,
+  }: {
+    seed: string;
+    size: number;
+    seconds: number;
+  }) {
+    const engine = new RandomEngine({ seed, size, memory: 1 });
+    const milliseconds = seconds * 1000;
+    const memo: { [position: string]: string } = {};
+    // https://www.crockford.com/base32.html
+    const chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+
+    return function generator() {
+      const currentTime = Date.now();
+      const position = Math.floor(currentTime / milliseconds) * milliseconds;
+      if (memo[position]) {
+        return {
+          code: memo[position],
+          expiry: position + milliseconds - currentTime,
+        };
+      }
+      engine.to(position);
+      engine.generate();
+      const code = engine
+        .values()
+        .map((a) => chars.charAt(Math.floor(a * chars.length)))
+        .join("");
+      memo[position] = code;
+      const expiry = position + milliseconds - currentTime;
+      return { code, expiry };
+    };
+  }
+
+  private updatedCore() {
+    return new RandomEngineCore(`${this.seed}-${this.generation}`);
   }
 }
 
