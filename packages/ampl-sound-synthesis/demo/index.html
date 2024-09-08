@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sound Synthesis</title>
+  </head>
+  <body>
+    <pre></pre>
+    <script type="module">
+      import { Scale } from "../../ampl-music-theory/dist/index.js";
+      import { ChromaticWall } from "../dist/index.js";
+
+      const scale = new Scale({ mode: "locrian", root: "F#" });
+
+      let initialized = false;
+
+      document.addEventListener("click", async () => {
+        if (initialized) {
+          return;
+        }
+        initialized = true;
+
+        let mouseX = null;
+        let mouseY = null;
+
+        document.addEventListener("mousemove", onMouseUpdate, false);
+        document.addEventListener("mouseenter", onMouseUpdate, false);
+
+        function onMouseUpdate(e) {
+          mouseX = e.pageX;
+          mouseY = e.pageY;
+        }
+
+        const wall = new ChromaticWall({
+          audioContext: new AudioContext(),
+          volume: 0.05,
+          mainChance: 0.6,
+          twinkleChance: 0.7,
+        });
+        wall.start();
+
+        loop();
+
+        function loop() {
+          requestAnimationFrame(loop);
+          const positionY = mouseY / window.innerHeight;
+          const highpassFactor = 1 - Math.min(1, positionY / 0.5);
+          const lowpassFactor = 1 - Math.max(0, (positionY - 0.5) / 0.5);
+          const stepFactor = mouseX / window.innerWidth;
+
+          document.body.style.background = `linear-gradient(
+            45deg,
+            lch(${Math.round(100 - positionY * 100)} ${
+            Math.round(positionY * 100) + 60
+          } ${Math.round(stepFactor * 330)}),
+            lch(${Math.round(100 - positionY * 100)} ${
+            Math.round(positionY * 100) + 80
+          } ${Math.round(stepFactor * 330 + 30)})
+          )`;
+
+          wall.tick({
+            scale,
+            stepFactor,
+            highpassFactor,
+            lowpassFactor,
+            mainEnvelopeModifer: { release: Math.random() },
+          });
+        }
+      });
+    </script>
+  </body>
+</html>
