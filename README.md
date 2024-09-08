@@ -1,3 +1,3 @@
 # Another Machine: Public Library
 
-Some apps and packages made for the web. Please return after using.
+Some machines and packages made for the web. Please rewind before you return.
