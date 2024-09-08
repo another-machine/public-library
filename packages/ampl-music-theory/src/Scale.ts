@@ -16,7 +16,7 @@ export interface ScaleParams {
   mode: ModeParams["type"];
 }
 
-export default class Scale {
+export class Scale {
   /**
    * Array of 7 intervals in the scale
    */

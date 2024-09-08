@@ -56,15 +56,12 @@ export class Chord {
   initializeFromNotes(notes: IntervalNote[]) {
     this.label = notes[0].notation + this.typeLabel;
     this.notation = notes[0].notation;
-    this.key = Chord.keyFromNotes(notes);
+    this.key = Chord.keyFromNotations(notes.map(({ notation }) => notation));
     this.notes = notes;
   }
 
-  static keyFromNotes(notes: IntervalNote[]) {
-    return notes
-      .map(({ notation }) => notation)
-      .sort()
-      .join("-");
+  static keyFromNotations(notations: Notation[]) {
+    return notations.sort().join("-");
   }
 
   static labelFromType(type: ChordType): ChordTypeLabel {

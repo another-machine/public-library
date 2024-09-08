@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Detection</title>
+  </head>
+  <body>
+    <pre></pre>
+    <script type="module">
+      import { UserMediaStream, Detector } from "../dist/index.js";
+
+      const userMediaStream = new UserMediaStream();
+
+      document.addEventListener("click", async () => {
+        const stream1 = await userMediaStream.start({
+          audio: true,
+        });
+        console.log(userMediaStream.audioInputDevices);
+        const stream2 = await userMediaStream.start({
+          audio: userMediaStream.audioInputDevices[0],
+        });
+        console.log(stream2);
+
+        const audioContext = new AudioContext();
+        const detector = new Detector(audioContext);
+
+        await detector.start(stream2);
+        detectLoop();
+
+        function detectLoop() {
+          requestAnimationFrame(detectLoop);
+          document.querySelector("pre").innerHTML = JSON.stringify(
+            detector.tick(),
+            null,
+            2
+          );
+        }
+      });
+    </script>
+  </body>
+</html>
