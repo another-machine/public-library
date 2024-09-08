@@ -5,13 +5,19 @@ import {
   type Notation,
 } from "../../ampl-music-theory/dist/index";
 
-interface DetectorTracking {
+interface DetectorChordTracking {
   value: number;
   octaves: number;
   prominence: number;
   notation: Notation;
   index: number;
   ratio: number;
+}
+
+interface DetectorNoteTracking {
+  value: number;
+  max: number;
+  octaves: number;
 }
 
 export class UserMediaStream {
@@ -82,10 +88,10 @@ export class Detector {
     }
   }
 
-  tick() {
+  tickChord() {
     this.analyser.getByteFrequencyData(this.frequencyData);
     const tracking: {
-      [notation in Notation]?: Partial<DetectorTracking>;
+      [notation in Notation]?: Partial<DetectorChordTracking>;
     } = {};
     this.notes.forEach(({ notation }, i) => {
       // const items = [1, 2, 13, 14, 25, 26, -1, -2, -13, -14, -25, -26];
@@ -120,13 +126,16 @@ export class Detector {
       this.frequencyValues[i] = valueEased;
     });
 
-    const entries = Object.entries(tracking) as [Notation, DetectorTracking][];
+    const entries = Object.entries(tracking) as [
+      Notation,
+      DetectorChordTracking
+    ][];
     const total = entries.reduce((a, b) => a + b[1].value, 0);
     const noteData = entries.map(([notation, { octaves, value }]) => {
       const prominence = value ? value / total : 0;
       const index = Note.notations.indexOf(notation);
       const ratio = value / octaves;
-      const result: DetectorTracking = {
+      const result: DetectorChordTracking = {
         octaves,
         value,
         notation,
@@ -142,7 +151,7 @@ export class Detector {
       (a, b) => b.prominence - a.prominence
     );
     // combinations of prominent notes to check for chords
-    const combos: DetectorTracking[][] = [
+    const combos: DetectorChordTracking[][] = [
       [sorted[0], sorted[1], sorted[2], sorted[3]],
       [sorted[0], sorted[1], sorted[2]],
       [sorted[0], sorted[1], sorted[3]],
@@ -175,6 +184,55 @@ export class Detector {
       label: option.chord ? option.chord.label : option.key,
       option,
       notes: noteData,
+    };
+  }
+
+  tickNotes() {
+    this.analyser.getByteFrequencyData(this.frequencyData);
+    const notationDataMap: {
+      [K in Notation]?: DetectorNoteTracking;
+    } = {};
+    this.notes.forEach(({ notation }, i) => {
+      const rawFrequency = this.frequencyData[this.frequencyIndices[i]];
+      const valuePrevious = this.frequencyValues[i];
+      const valueCurrent = Math.pow(Math.min(1, rawFrequency / 128), 50);
+      const valueEasingFactor =
+        valueCurrent < valuePrevious ? 0.0625 : 0.015625;
+      const valueEased =
+        valuePrevious + (valueCurrent - valuePrevious) * valueEasingFactor;
+      const notationData: DetectorNoteTracking = notationDataMap[notation] || {
+        value: 0,
+        max: 0,
+        octaves: 0,
+      };
+      notationData.octaves++;
+      notationData.value += valueEased;
+      notationData.max = Math.max(notationData.max, valueEased);
+      notationDataMap[notation] = notationData;
+      this.frequencyValues[i] = valueEased;
+    });
+
+    const notationDataMapAsEntries = Object.entries(notationDataMap);
+    const totalAllValues = notationDataMapAsEntries.reduce(
+      (a, b) => a + b[1].value,
+      0
+    );
+    const noteData = notationDataMapAsEntries.map(
+      ([notationRaw, { octaves, value, max }]) => {
+        const notation = notationRaw as Notation;
+        const prominence = value / totalAllValues;
+        const index = Note.notations.indexOf(notation);
+        const ratio = value / octaves;
+        return { notation, value, index, max, prominence, ratio };
+      }
+    );
+    // array of notes sorted by prominence
+    const notes = Array.from(noteData).sort(
+      (a, b) => b.prominence - a.prominence
+    );
+
+    return {
+      notes,
     };
   }
 }
