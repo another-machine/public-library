@@ -187,6 +187,7 @@ export class Detector {
     };
   }
 
+  // TODO: This is older code.
   tickNotes() {
     this.analyser.getByteFrequencyData(this.frequencyData);
     const notationDataMap: {
