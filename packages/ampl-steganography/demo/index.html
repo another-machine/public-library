@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Steganography</title>
+    <style>
+      canvas {
+        image-rendering: pixelated;
+        height: max(600px, min(80vh, 80vw));
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: max(600px, min(80vh, 80vw));
+      }
+    </style>
+  </head>
+  <body>
+    <script type="module">
+      import { encode, decode, loadImageFromImageUrl } from "../dist/index.js";
+
+      run();
+
+      async function run() {
+        const source = await loadImageFromImageUrl("./crash.jpg");
+        const messages = ["hello world = what is up?", "my name is jake"];
+        const result = encode({
+          source,
+          messages,
+          minWidth: 0,
+          minHeight: 0,
+        });
+        document.body.appendChild(result);
+        console.log(decode({ source: result }));
+      }
+    </script>
+  </body>
+</html>
