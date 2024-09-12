@@ -5,34 +5,98 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Steganography</title>
     <style>
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        background-color: black;
+        background-image: url("./crash.jpg");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        backdrop-filter: blur(10px);
+        margin: 0;
+      }
+      img,
       canvas {
         image-rendering: pixelated;
-        height: max(600px, min(80vh, 80vw));
+        height: auto;
+        width: min(80vh, 80vw);
+        object-fit: contain;
+        object-position: center;
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        width: max(600px, min(80vh, 80vw));
+      }
+      audio {
+        display: none;
       }
     </style>
   </head>
   <body>
+    <audio id="audio" src="./crash.mp3"></audio>
+    <img id="input" src="./lion.png" />
+    <img id="output" style="display: none" />
+
     <script type="module">
-      import { encode, decode, loadImageFromImageUrl } from "../dist/index.js";
+      import {
+        loadAudioBufferFromAudioUrl,
+        loadImageFromImageUrl,
+        playDecodedAudio,
+        Stega64,
+        StegaCassette,
+      } from "../dist/index.js";
 
-      run();
+      // runStega64();
+      runStegaCassette();
 
-      async function run() {
-        const source = await loadImageFromImageUrl("./crash.jpg");
+      async function runStega64() {
+        const source = await loadImageFromImageUrl("./lion.png");
         const messages = ["hello world = what is up?", "my name is jake"];
-        const result = encode({
+        const result = Stega64.encode({
           source,
           messages,
           minWidth: 0,
           minHeight: 0,
         });
         document.body.appendChild(result);
-        console.log(decode({ source: result }));
+        console.log(Stega64.decode({ source: result }));
+      }
+
+      async function runStegaCassette() {
+        const audio = document.getElementById("audio");
+        const input = document.getElementById("input");
+        const output = document.getElementById("output");
+        let initialized = false;
+
+        input.addEventListener("click", async () => {
+          const audioContext = new AudioContext();
+          // const sampleRate = 41000;
+          const sampleRate = 30000;
+          // Resize image and encode audio into pixels
+          const audioBuffer = await loadAudioBufferFromAudioUrl({
+            url: audio.getAttribute("src"),
+            audioContext,
+            sampleRate,
+          });
+          output.src = StegaCassette.encode({
+            source: input,
+            audioBuffer,
+          }).toDataURL();
+
+          input.style.display = "none";
+          output.style.display = "block";
+
+          if (!initialized) {
+            initialized = true;
+            output.addEventListener("click", () => {
+              const decodedAudio = StegaCassette.decode({ source: output });
+              playDecodedAudio({ decodedAudio, audioContext, sampleRate });
+            });
+          }
+        });
       }
     </script>
   </body>

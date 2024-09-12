@@ -96,7 +96,7 @@ export class Stega64Square {
     const message: string[] = [];
 
     // A function to get us info from an index
-    const indexData = Stega64Square.indicesAndSkippedFromIndexGenerator(
+    const indexData = Stega64Square.skippedAndIndicesFromIndexGenerator(
       canvas,
       Stega64Square.getCenterPixelIndices(canvas.width, canvas.height),
       pattern
@@ -176,7 +176,7 @@ export class Stega64Square {
     );
 
     // A function to get us info from an index
-    const indexData = Stega64Square.indicesAndSkippedFromIndexGenerator(
+    const indexData = Stega64Square.skippedAndIndicesFromIndexGenerator(
       canvas,
       centerIndices,
       pattern
@@ -327,7 +327,7 @@ export class Stega64Square {
     ];
   }
 
-  private static indicesAndSkippedFromIndexGenerator(
+  private static skippedAndIndicesFromIndexGenerator(
     canvas: HTMLCanvasElement,
     centerIndices: number[],
     pattern: Stega64SquarePattern
