@@ -1,8 +1,8 @@
 import { execSync } from "child_process";
 
 const directories = [
+  "ampl-devices",
   "ampl-lexicon",
-  "ampl-midi",
   "ampl-music-detection",
   "ampl-music-theory",
   "ampl-procedural-generation",

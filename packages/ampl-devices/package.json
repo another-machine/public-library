@@ -1,6 +1,6 @@
 {
-  "name": "@ampl/midi",
-  "description": "A simplified interface for engaging with common MIDI devices and mapping actions to specific messages.",
+  "name": "@ampl/devices",
+  "description": "A simplified interface for engaging with common MIDI devices and mapping actions to specific messages, user media, and device orientation.",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",

@@ -19,7 +19,7 @@ import {
 } from "./Sequencer";
 import { Steps } from "./Steps";
 import { Synths } from "./Synths";
-import { MIDI, MIDIEvent } from "../../../packages/ampl-midi/src";
+import { MIDI, type MIDIEvent } from "../../../packages/ampl-devices/src";
 import {
   Stega64,
   createImageDropReader,
