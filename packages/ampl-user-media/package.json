@@ -1,6 +1,6 @@
 {
   "name": "@ampl/user-media",
-  "description": "A simplified interface for getting user media.",
+  "description": "A simplified interface for media devices.",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",
