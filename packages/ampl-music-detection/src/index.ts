@@ -1,9 +1,4 @@
-import {
-  Chord,
-  Scale,
-  Note,
-  type Notation,
-} from "../../ampl-music-theory/dist/index";
+import { Chord, Scale, Note, type Notation } from "../../ampl-music-theory/src";
 
 interface DetectorChordTracking {
   value: number;
@@ -18,31 +13,6 @@ interface DetectorNoteTracking {
   value: number;
   max: number;
   octaves: number;
-}
-
-export class UserMediaStream {
-  stream?: MediaStream;
-  devices: MediaDeviceInfo[] = [];
-
-  constructor() {}
-
-  async start(constraints: MediaStreamConstraints) {
-    this.stream = await navigator.mediaDevices.getUserMedia(constraints);
-    await this.refreshDevices();
-    return this.stream;
-  }
-
-  async refreshDevices() {
-    this.devices = await navigator.mediaDevices.enumerateDevices();
-  }
-
-  get audioInputDevices() {
-    return this.devices.filter((device) => device.kind === "audioinput");
-  }
-
-  get videoInputDevices() {
-    return this.devices.filter((device) => device.kind === "videoinput");
-  }
 }
 
 export class Detector {
