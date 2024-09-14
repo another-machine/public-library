@@ -31,10 +31,16 @@
           </div>
           Group
         </label>
-        <label class="text" for="level">
-          <input id="level" type="number" value="1" min="1" required />
-          Level
-        </label>
+        <div class="group">
+          <label class="text" for="level">
+            <input id="level" type="number" value="1" min="1" required />
+            Level
+          </label>
+          <label class="text" for="generation">
+            <input id="generation" type="number" value="1" min="1" required />
+            Cursor
+          </label>
+        </div>
       </div>
       <div class="group">
         <label class="text" for="seed">
@@ -47,9 +53,9 @@
           />
           Seed
         </label>
-        <label class="text" for="generation">
-          <input id="generation" type="number" value="1" min="1" required />
-          Seed Cursor #
+        <label class="text quarter" for="sync">
+          <button id="sync" class="alternate" type="button">Sync</button>
+          <span id="sync-text">&nbsp;</span>
         </label>
       </div>
       <div class="group">

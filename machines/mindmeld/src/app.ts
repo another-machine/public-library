@@ -15,11 +15,16 @@ interface MindmeldStage {
 class Mindmeld {
   $buttonGroupA = document.getElementById("group-a") as HTMLButtonElement;
   $buttonGroupB = document.getElementById("group-b") as HTMLButtonElement;
+  $buttonSubmit = document.querySelector(
+    'button[type="submit"]'
+  ) as HTMLButtonElement;
   $buttonLevelDisplay = document.getElementById(
     "level-display"
   ) as HTMLButtonElement;
   $buttonLostAction = document.getElementById("lost") as HTMLButtonElement;
   $buttonWonAction = document.getElementById("won") as HTMLButtonElement;
+  $buttonSync = document.getElementById("sync") as HTMLButtonElement;
+  $elementSyncText = document.getElementById("sync-text") as HTMLSpanElement;
   $elementMain = document.querySelector("main") as HTMLElement;
   $formConstants = document.getElementById("settings") as HTMLFormElement;
   $inputGeneration = document.getElementById("generation") as HTMLInputElement;
@@ -38,6 +43,7 @@ class Mindmeld {
     { guesses: 2, start: 4, end: 7 },
     { guesses: 3, start: 5, end: 8 },
   ]);
+  sync = false;
   timecodeGenerator: () => TimecodeSeedResponse;
   topics: string[][] = [];
 
@@ -82,7 +88,15 @@ class Mindmeld {
 
   private animationLoop() {
     requestAnimationFrame(this.animationLoop.bind(this));
-    this.timecodeGenerator();
+    this.$inputGeneration.disabled = this.sync;
+    this.$inputSeed.disabled = this.sync;
+    if (this.sync) {
+      const result = this.timecodeGenerator();
+      this.$inputSeed.value = result.code;
+      this.$elementSyncText.innerHTML = (result.expiry / 1000).toFixed(1);
+    } else {
+      this.$elementSyncText.innerHTML = "&nbsp;";
+    }
   }
 
   private generateEngine() {
@@ -180,6 +194,14 @@ class Mindmeld {
 
   private initializeUI() {
     this.$inputSeed.value = this.currentSeed;
+    this.$buttonSync.addEventListener("click", () => {
+      this.sync = !this.sync;
+      if (this.sync) {
+        this.$buttonSync.classList.remove("alternate");
+      } else {
+        this.$buttonSync.classList.add("alternate");
+      }
+    });
     this.$buttonGroupA.addEventListener("click", () =>
       this.handleGroupChange("a")
     );
@@ -191,6 +213,7 @@ class Mindmeld {
     );
     this.$formConstants.addEventListener("submit", (e) => {
       e.preventDefault();
+      this.sync = false;
       const level = parseInt(this.$inputLevel.value);
       const generation = parseInt(this.$inputGeneration.value);
       if (this.$inputSeed.value !== this.currentSeed) {

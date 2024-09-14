@@ -29,11 +29,8 @@ aside,
 
 #settings {
   background: var(--bg);
-  bottom: 0;
-  left: 0;
+  inset: 0;
   position: fixed;
-  right: 0;
-  top: 0;
 }
 
 #settings.hide {
@@ -73,7 +70,12 @@ body.group-b.odd main .view-1 {
 
 button,
 label {
+  flex: 1;
   user-select: none;
+}
+
+.quarter {
+  flex: 0.25;
 }
 
 button,
@@ -84,24 +86,38 @@ input {
   display: block;
   font-weight: bold;
   line-height: 1;
+  height: 2rem;
   padding: 0.5rem 1rem;
   position: relative;
   text-align: center;
   width: 100%;
+
+  &:disabled {
+    opacity: 0.5;
+  }
 }
 
 label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   max-width: 100%;
   text-align: center;
 }
 
-button:not(.unselected) {
+button:not(.unselected):not(.alternate) {
   background: var(--color);
   color: var(--bg);
 }
 
+button.alternate {
+  background: var(--off-bg);
+  color: var(--color);
+}
+
 div.group {
   display: flex;
+  flex: 1;
   justify-content: center;
 }
 div.group > * + * {
