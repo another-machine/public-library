@@ -4,19 +4,16 @@ body {
   --off-bg: #f0f0f0;
   background: var(--bg);
   color: var(--color);
+  display: flex;
+  flex-direction: column;
   margin: 0;
 }
 
 html,
-body,
-section {
+body {
   height: 100%;
 }
 
-section {
-  display: flex;
-  flex-direction: column;
-}
 main {
   display: flex;
   flex: 1;
@@ -26,11 +23,11 @@ main {
 
 main,
 aside,
-#constants {
+#settings {
   padding: 1rem;
 }
 
-#constants {
+#settings {
   background: var(--bg);
   bottom: 0;
   left: 0;
@@ -39,7 +36,7 @@ aside,
   top: 0;
 }
 
-#constants.hide {
+#settings.hide {
   display: none;
 }
 

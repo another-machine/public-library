@@ -10,54 +10,52 @@
     </style>
   </head>
   <body>
-    <section>
-      <main></main>
+    <main></main>
 
-      <aside>
-        <div class="group">
-          <button id="lost">Lost</button>
-          <button id="won">Won</button>
-        </div>
-        <div class="group">
-          <button id="level-display"></button>
-        </div>
-      </aside>
+    <aside>
+      <div class="group">
+        <button id="lost">Lost</button>
+        <button id="won">Won</button>
+      </div>
+      <div class="group">
+        <button id="level-display"></button>
+      </div>
+    </aside>
 
-      <form id="constants">
-        <div class="group">
-          <label style="width: 76%" class="text">
-            <div class="group">
-              <button id="group-a" class="unselected" type="button">A</button>
-              <button id="group-b" class="unselected" type="button">B</button>
-            </div>
-            Group
-          </label>
-          <label style="width: 24%" class="text" for="level">
-            <input id="level" type="number" value="1" min="1" required />
-            Level
-          </label>
-        </div>
-        <div class="group">
-          <label style="width: 50%" class="text" for="seed">
-            <input
-              autocapitalize="false"
-              autocomplete="false"
-              id="seed"
-              type="text"
-              required
-            />
-            Seed
-          </label>
-          <label style="width: 50%" class="text" for="generation">
-            <input id="generation" type="number" value="1" min="1" required />
-            Seed Cursor #
-          </label>
-        </div>
-        <div class="group">
-          <button type="submit">Go</button>
-        </div>
-      </form>
-    </section>
+    <form id="settings">
+      <div class="group">
+        <label class="text">
+          <div class="group">
+            <button id="group-a" class="unselected" type="button">A</button>
+            <button id="group-b" class="unselected" type="button">B</button>
+          </div>
+          Group
+        </label>
+        <label class="text" for="level">
+          <input id="level" type="number" value="1" min="1" required />
+          Level
+        </label>
+      </div>
+      <div class="group">
+        <label class="text" for="seed">
+          <input
+            autocapitalize="false"
+            autocomplete="false"
+            id="seed"
+            type="text"
+            required
+          />
+          Seed
+        </label>
+        <label class="text" for="generation">
+          <input id="generation" type="number" value="1" min="1" required />
+          Seed Cursor #
+        </label>
+      </div>
+      <div class="group">
+        <button type="submit">Go</button>
+      </div>
+    </form>
 
     <script type="module">
       import "./app.ts";
