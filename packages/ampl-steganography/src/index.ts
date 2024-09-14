@@ -1,8 +1,8 @@
 export {
-  loadImageFromImageUrl,
+  createImageDropReader,
   loadAudioBufferFromAudioUrl,
+  loadImageFromImageUrl,
   playDecodedAudio,
 } from "./utilities";
 export * as Stega64 from "./Stega64";
-export * as StegaSquare from "./Stega64Square";
 export * as StegaCassette from "./StegaCassette";

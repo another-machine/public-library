@@ -98,6 +98,10 @@ export class Note {
     return ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
   }
 
+  static get notationsUnique(): (Notation | NotationAlternate)[] {
+    return Array.from(new Set([...Note.notations, ...Note.notationsAlternate]));
+  }
+
   // prettier-ignore
   static get octaveStepFrequencies(): {
     [K in number]: { [K in number]: number }
@@ -113,5 +117,14 @@ export class Note {
       7: { 0: 2093.005, 1: 2217.461, 2: 2349.318, 3: 2489.016, 4: 2637.02, 5: 2793.826, 6: 2959.955, 7: 3135.963, 8: 3322.438, 9: 3520, 10: 3729.31, 11: 3951.066, },
       8: { 0: 4186.01, 1: 4434.92, 2: 4698.63, 3: 4978.03, 4: 5274.04, 5: 5587.65, 6: 5919.91, 7: 6271.93, 8: 6644.88, 9: 7040, 10: 7458.62, 11: 7902.13, },
     };
+  }
+
+  static stringIsNotation(
+    string: string
+  ): string is Notation | NotationAlternate {
+    return (
+      Note.notations.includes(string as Notation) ||
+      Note.notationsAlternate.includes(string as NotationAlternate)
+    );
   }
 }

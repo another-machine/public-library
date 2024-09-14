@@ -2,7 +2,6 @@ import {
   createCanvasAndContext,
   createCanvasAndContextForImageWithMinimums,
   fillCanvasWithImage,
-  imageOrCanvasIsImage,
   skippedAndIndicesFromIndexGenerator,
 } from "./utilities";
 

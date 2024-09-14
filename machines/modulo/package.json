@@ -1,10 +1,13 @@
 {
-  "name": "mindmeld",
+  "name": "modulo",
   "version": "1.0.0",
   "license": "MIT",
   "source": "src/index.html",
   "scripts": {
     "start": "parcel",
     "build": "parcel build"
+  },
+  "devDependencies": {
+    "tone": "^15.0.4"
   }
 }

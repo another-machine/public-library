@@ -20,11 +20,29 @@ export class Mode {
   intervals: IntervalType[];
   name: string;
   steps: number[];
+  type: ModeType | ModeTypeVanity;
 
   constructor({ type }: ModeParams) {
+    this.type = type;
     this.name = Mode.nameFromType(type);
     this.steps = Mode.stepsFromType(type);
     this.intervals = Mode.intervalsFromType(type);
+  }
+
+  static get types(): (ModeType | ModeTypeVanity)[] {
+    return [
+      "ionian",
+      "dorian",
+      "phrygian",
+      "lydian",
+      "mixolydian",
+      "aeolian",
+      "locrian",
+      "melodic",
+      "harmonic",
+      "major",
+      "minor",
+    ];
   }
 
   static intervalsFromType(type: ModeType | ModeTypeVanity) {
@@ -110,5 +128,9 @@ export class Mode {
       steps.push(step);
     }
     return steps;
+  }
+
+  static stringIsModeType(string: string): string is ModeType | ModeTypeVanity {
+    return Mode.types.includes(string as ModeType | ModeTypeVanity);
   }
 }

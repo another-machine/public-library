@@ -104,6 +104,76 @@ function canvasWidthAndHeight({
   };
 }
 
+export function createImageDropReader({
+  element,
+  onSuccess,
+  onFailure,
+  onDragEnter,
+  onDragLeave,
+  onDrop,
+}: {
+  element: HTMLElement;
+  onSuccess: (image: HTMLImageElement) => void;
+  onFailure?: (message: string) => void;
+  onDragEnter?: () => void;
+  onDragLeave?: () => void;
+  onDrop?: () => void;
+}) {
+  element.addEventListener("dragover", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+  });
+  element.addEventListener("dragenter", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onDragEnter) onDragEnter();
+  });
+  element.addEventListener("dragleave", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (onDragLeave) onDragLeave();
+  });
+
+  element.addEventListener("drop", (event) => {
+    event.preventDefault();
+
+    if (onDrop) onDrop();
+
+    const fileInput = document.createElement("input");
+    fileInput.accept = "image/png";
+    fileInput.type = "file";
+
+    const files = event.dataTransfer?.files;
+    if (files?.length) {
+      fileInput.files = files;
+    }
+    const file = fileInput.files?.item(0);
+
+    if (file && file.type === "image/png") {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onloadend = (e) => {
+        const preview = document.createElement("img");
+        if (e.target?.result) {
+          preview.onload = () => onSuccess(preview);
+          if (onFailure)
+            preview.onerror = () =>
+              onFailure(`Could not load image for ${file.name}`);
+          preview.src = e.target.result.toString();
+        }
+      };
+      if (onFailure)
+        reader.onerror = () => onFailure(`Could not load file ${file.name}`);
+    } else if (onFailure) {
+      onFailure(
+        file
+          ? `File ${file.name} (${file.type}) is wrong type`
+          : "Could not find a file"
+      );
+    }
+  });
+}
+
 /**
  * Draw an image on a canvas with "center" position and "cover" fit.
  */
