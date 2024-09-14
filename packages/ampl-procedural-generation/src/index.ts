@@ -4,6 +4,11 @@ interface RandomEngineParams {
   size: number;
 }
 
+export interface TimecodeSeedResponse {
+  code: string;
+  expiry: number;
+}
+
 export class RandomEngine {
   core: RandomEngineCore;
   generation = 0;
@@ -42,6 +47,7 @@ export class RandomEngine {
   to(generation = 0) {
     this.generation = generation;
     this.core = this.updatedCore();
+    this.generate();
   }
 
   static timecodeGenerator({
@@ -59,7 +65,7 @@ export class RandomEngine {
     // https://www.crockford.com/base32.html
     const chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-    return function generator() {
+    return function generator(): TimecodeSeedResponse {
       const currentTime = Date.now();
       const position = Math.floor(currentTime / milliseconds) * milliseconds;
       if (memo[position]) {
