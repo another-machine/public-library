@@ -32,7 +32,7 @@
         function detectLoop() {
           requestAnimationFrame(detectLoop);
           document.querySelector("pre").innerHTML = JSON.stringify(
-            detector.tickChord(),
+            detector.tick(),
             null,
             2
           );

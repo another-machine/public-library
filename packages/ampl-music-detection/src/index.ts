@@ -1,4 +1,9 @@
-import { Chord, Scale, Note, type Notation } from "../../ampl-music-theory/src";
+import {
+  Chord,
+  Scale,
+  Note,
+  type Notation,
+} from "../../ampl-music-theory/src/index";
 
 interface DetectorChordTracking {
   value: number;
@@ -58,7 +63,7 @@ export class Detector {
     }
   }
 
-  tickChord() {
+  tick() {
     this.analyser.getByteFrequencyData(this.frequencyData);
     const tracking: {
       [notation in Notation]?: Partial<DetectorChordTracking>;
@@ -149,16 +154,20 @@ export class Detector {
     const chordChange = newChordKey !== this.previousChordKey;
     this.previousChordKey = newChordKey;
 
+    const notes = Array.from(noteData).sort(
+      (a, b) => b.prominence - a.prominence
+    );
+
     return {
       chordChange,
       label: option.chord ? option.chord.label : option.key,
       option,
-      notes: noteData,
+      notes,
     };
   }
 
   // TODO: This is older code.
-  tickNotes() {
+  private _tickOld() {
     this.analyser.getByteFrequencyData(this.frequencyData);
     const notationDataMap: {
       [K in Notation]?: DetectorNoteTracking;
