@@ -37,7 +37,7 @@
   </head>
   <body>
     <audio id="audio" src="./crash.mp3"></audio>
-    <img id="input" src="./lion.png" />
+    <img id="input" src="./crash.jpg" />
     <img id="output" style="display: none" />
 
     <script type="module">
@@ -45,15 +45,28 @@
         loadAudioBufferFromAudioUrl,
         loadImageFromImageUrl,
         playDecodedAudio,
+        StegaAnimator,
         Stega64,
         StegaCassette,
       } from "../dist/index.js";
 
       // runStega64();
-      runStegaCassette();
+      // runStegaCassette();
+      runStegaAnimator();
 
       async function runStega64() {
-        const source = await loadImageFromImageUrl("./lion.png");
+        // const source = await loadImageFromImageUrl("./lion.png");
+        const source = await loadImageFromImageUrl("./crash.jpg");
+        // const source = document.createElement("canvas");
+        // source.width = 1000;
+        // source.height = 300;
+        // const context = source.getContext("2d");
+        // context.fillStyle = "white";
+        // context.font = "bold 100px Helvetica";
+        // context.textAlign = "center";
+        // context.textBaseline = "center";
+        // context.fillText("MINDMELD", source.width / 2, source.height / 2);
+
         const messages = ["hello world = what is up?", "my name is jake"];
         const result = Stega64.encode({
           source,
@@ -97,6 +110,65 @@
             });
           }
         });
+      }
+
+      async function runStegaAnimator() {
+        const image = document.querySelector("#input");
+        image.style.display = "none";
+        const animator = new StegaAnimator({
+          source: image,
+          resolution: 100,
+        });
+        document.body.appendChild(animator.canvas);
+        await animator.animate({
+          from: {
+            rotation: Math.PI,
+            scale: 0.0,
+            x: 0.5,
+            y: 0.5,
+          },
+          to: {
+            rotation: Math.PI * 4,
+            scale: 0.5,
+            x: 0.5,
+            y: 0.5,
+          },
+          rate: 0.005,
+          // easing: (x) => 1 - Math.sqrt(1 - Math.pow(x, 2)),
+        });
+
+        const killLoop = animator.animationLoop([
+          {
+            from: {
+              rotation: 0,
+              scale: 0.5,
+              x: 0.5,
+              y: 0.5,
+            },
+            to: {
+              rotation: Math.PI * 1,
+              scale: 0.6,
+              x: 0.5,
+              y: 0.5,
+            },
+            rate: 0.01,
+          },
+          {
+            from: {
+              rotation: Math.PI * 1,
+              scale: 0.6,
+              x: 0.5,
+              y: 0.5,
+            },
+            to: {
+              rotation: Math.PI * 2,
+              scale: 0.5,
+              x: 0.5,
+              y: 0.5,
+            },
+            rate: 0.01,
+          },
+        ]);
       }
     </script>
   </body>
