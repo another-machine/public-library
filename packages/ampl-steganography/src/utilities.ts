@@ -40,36 +40,41 @@ export function createCanvasAndContextForImageWithMinimums({
     ? source.naturalHeight
     : source.height;
   const sourceAspectRatio = sourceHeight / sourceWidth;
-  const { canvas: sourceCanvas, context: sourceContext } =
-    createCanvasAndContext(sourceWidth, sourceHeight);
-  fillCanvasWithImage(sourceCanvas, sourceContext, source);
-  const sourceImageData = sourceContext.getImageData(
-    0,
-    0,
+  const sourceTransparency = getTransparencyRatio({
+    source,
     sourceWidth,
-    sourceHeight
-  );
-  let transparent = 0;
-  for (let i = 0; i < sourceImageData.data.length; i += 4) {
-    if (sourceImageData.data[i + 3] !== 255) {
-      transparent++;
-    }
-  }
-  const percentageTransparent = transparent / (sourceWidth * sourceHeight);
+    sourceHeight,
+  });
 
-  const dimensions = canvasWidthAndHeight({
+  const sourceDimensions = canvasWidthAndHeight({
     minWidth,
     minHeight,
     minPixelCount:
-      2 * Math.ceil(messageLength / 3) * (1 / (1 - percentageTransparent)),
+      2 * Math.ceil(messageLength / 3) * (1 / (1 - sourceTransparency)),
     aspectRatio: aspectRatio || sourceAspectRatio,
   });
 
   const { canvas, context } = createCanvasAndContext(
-    dimensions.width,
-    dimensions.height
+    sourceDimensions.width,
+    sourceDimensions.height
   );
   context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  const preciseTransparency = getTransparencyRatio({
+    source: canvas,
+    sourceHeight: canvas.height,
+    sourceWidth: canvas.width,
+  });
+  const preciseDimensions = canvasWidthAndHeight({
+    minWidth,
+    minHeight,
+    minPixelCount:
+      2 * Math.ceil(messageLength / 3) * (1 / (1 - preciseTransparency)),
+    aspectRatio: aspectRatio || sourceAspectRatio,
+  });
+  canvas.height = preciseDimensions.height;
+  canvas.width = preciseDimensions.width;
+  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+  console.log(sourceTransparency, preciseTransparency);
   return { canvas, context };
 }
 
@@ -102,6 +107,42 @@ function canvasWidthAndHeight({
     width: Math.ceil(width),
     height: Math.ceil(height),
   };
+}
+
+/**
+ * Calculate what percentage of an image is transparent
+ */
+function getTransparencyRatio({
+  source,
+  sourceHeight,
+  sourceWidth,
+}: {
+  source: HTMLImageElement | HTMLCanvasElement;
+  sourceWidth: number;
+  sourceHeight: number;
+}) {
+  const { canvas: sourceCanvas, context: sourceContext } =
+    createCanvasAndContext(sourceWidth, sourceHeight);
+  fillCanvasWithImage(sourceCanvas, sourceContext, source);
+  const sourceImageData = sourceContext.getImageData(
+    0,
+    0,
+    sourceWidth,
+    sourceHeight
+  );
+
+  let transparent = 0;
+  // Since we only use every other pixel, we need to be accurate here.
+  // transparent pixels / total pixels can be highly inaccurate
+  for (let i = 0; i < sourceImageData.data.length; i += 8) {
+    const pxIndex = Math.floor(i / 4);
+    const isOpaque = sourceImageData.data[pxIndex * 4 + 3] === 255;
+    const isOpaqueNext = sourceImageData.data[pxIndex * 4 + 7] === 255;
+    if (!isOpaque || !isOpaqueNext) {
+      transparent += 2;
+    }
+  }
+  return transparent / (sourceWidth * sourceHeight);
 }
 
 export function createImageDropReader({
@@ -230,11 +271,13 @@ export function skippedAndIndicesFromIndexGenerator(width: number) {
     const evenRowCheck = widthIsOdd || row % 2 === 0;
     const nextI = i + 4;
     const isOpaque = data[pxIndex * 4 + 3] === 255;
+    const isOpaqueNext = data[pxIndex * 4 + 7] === 255;
     // Skipped pixels contain the saved data, and are set in a prior loop.
     const sourceIndex = evenRowCheck ? nextI : i;
     const encodedIndex = evenRowCheck ? i : nextI;
     // Skipping pixels set in prior loop or last col for odd width images
-    const isSkipped = !isOpaque || pxIndex % 2 !== 0 || (i + 1) % 4 === 0;
+    const isSkipped =
+      !isOpaque || !isOpaqueNext || pxIndex % 2 !== 0 || (i + 1) % 4 === 0;
 
     return {
       isSkipped,

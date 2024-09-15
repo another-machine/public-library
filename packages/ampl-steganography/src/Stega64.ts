@@ -150,8 +150,9 @@ export function decode({
         );
         const value = convertIntToBase64Char(decodedValue);
         if (value === STEGA64_MESSAGE_BREAK_CHARACTER) {
-          if (message.length) {
-            messages.push(message.join("").trim());
+          const string = message.join("").trim();
+          if (string.length) {
+            messages.push(string);
             message = [];
           }
         } else if (value !== null) {
@@ -160,10 +161,11 @@ export function decode({
       }
     }
   }
-  if (message.length) {
-    messages.push(message.join("").trim());
+  const string = message.join("").trim();
+  if (string.length) {
+    messages.push(string);
   }
-
+  console.log(messages);
   return messages.map(convertBase64ToString);
 }
 
@@ -178,7 +180,11 @@ function convertStringToBase64(string: string) {
  * Convert a save base64 encoded string to a string.
  */
 function convertBase64ToString(base64: string) {
-  return decodeURIComponent(atob(base64.replace(/=+$/, "")));
+  try {
+    return decodeURIComponent(atob(base64.replace(/=+$/, "")));
+  } catch (e) {
+    console.log({ base64 });
+  }
 }
 
 /**
