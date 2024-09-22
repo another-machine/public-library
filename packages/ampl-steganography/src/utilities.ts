@@ -145,6 +145,8 @@ function getTransparencyRatio({
   return transparent / (sourceWidth * sourceHeight);
 }
 
+type ImageType = "image/png" | "image/jpg";
+
 export function createImageDropReader({
   element,
   onSuccess,
@@ -152,6 +154,7 @@ export function createImageDropReader({
   onDragEnter,
   onDragLeave,
   onDrop,
+  types = ["image/png"],
 }: {
   element: HTMLElement;
   onSuccess: (image: HTMLImageElement) => void;
@@ -159,6 +162,7 @@ export function createImageDropReader({
   onDragEnter?: () => void;
   onDragLeave?: () => void;
   onDrop?: () => void;
+  types?: ImageType[];
 }) {
   element.addEventListener("dragover", (event) => {
     event.preventDefault();
@@ -181,7 +185,7 @@ export function createImageDropReader({
     if (onDrop) onDrop();
 
     const fileInput = document.createElement("input");
-    fileInput.accept = "image/png";
+    fileInput.accept = types.join(", ");
     fileInput.type = "file";
 
     const files = event.dataTransfer?.files;
@@ -189,30 +193,53 @@ export function createImageDropReader({
       fileInput.files = files;
     }
     const file = fileInput.files?.item(0);
-
-    if (file && file.type === "image/png") {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onloadend = (e) => {
-        const preview = document.createElement("img");
-        if (e.target?.result) {
-          preview.onload = () => onSuccess(preview);
-          if (onFailure)
-            preview.onerror = () =>
-              onFailure(`Could not load image for ${file.name}`);
-          preview.src = e.target.result.toString();
-        }
-      };
-      if (onFailure)
-        reader.onerror = () => onFailure(`Could not load file ${file.name}`);
-    } else if (onFailure) {
-      onFailure(
-        file
-          ? `File ${file.name} (${file.type}) is wrong type`
-          : "Could not find a file"
-      );
-    }
+    handleImageFile({ file, onSuccess, onFailure, types });
   });
+}
+
+export function createImageFileReader({
+  element,
+  onSuccess,
+  onFailure,
+  types = ["image/png"],
+}: {
+  element: HTMLInputElement;
+  onSuccess: (image: HTMLImageElement) => void;
+  onFailure?: (message: string) => void;
+  types?: ImageType[];
+}) {
+  element.accept = types.join(", ");
+  element.type = "file";
+  element.addEventListener("change", (event) => {
+    event.preventDefault();
+    const file = element.files?.item(0);
+    handleImageFile({ file, onSuccess, onFailure, types });
+  });
+}
+
+function handleImageFile({ file, onSuccess, onFailure, types }) {
+  if (file && types.includes(file.type as ImageType)) {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onloadend = (e) => {
+      const preview = document.createElement("img");
+      if (e.target?.result) {
+        preview.onload = () => onSuccess(preview);
+        if (onFailure)
+          preview.onerror = () =>
+            onFailure(`Could not load image for ${file.name}`);
+        preview.src = e.target.result.toString();
+      }
+    };
+    if (onFailure)
+      reader.onerror = () => onFailure(`Could not load file ${file.name}`);
+  } else if (onFailure) {
+    onFailure(
+      file
+        ? `File ${file.name} (${file.type}) is wrong type`
+        : "Could not find a file"
+    );
+  }
 }
 
 /**

@@ -11,11 +11,6 @@
       }
       body {
         background-color: black;
-        /* background-image: url("./crash.jpg"); */
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        backdrop-filter: blur(10px);
         margin: 0;
       }
       img,
@@ -36,6 +31,7 @@
     </style>
   </head>
   <body>
+    <input id="upload" type="file" />
     <audio id="audio" src="./crash.mp3"></audio>
     <!-- <img id="input" src="./crash.jpg" />
     <img id="output" style="display: none" /> -->
@@ -43,6 +39,7 @@
     <script type="module">
       import {
         createImageDropReader,
+        createImageFileReader,
         loadAudioBufferFromAudioUrl,
         loadImageFromImageUrl,
         playDecodedAudio,
@@ -116,9 +113,12 @@
       function runStegaAnimator() {
         createImageDropReader({
           element: document.body,
-          onSuccess: (image) => {
-            start(image);
-          },
+          onSuccess: (image) => start(image),
+          types: ["image/png", "image/jpg"],
+        });
+        createImageFileReader({
+          element: document.getElementById("upload"),
+          onSuccess: (image) => start(image),
         });
 
         async function start(image) {
