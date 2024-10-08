@@ -7,6 +7,7 @@ interface RandomEngineParams {
 export interface TimecodeSeedResponse {
   code: string;
   expiry: number;
+  position: number;
 }
 
 export class RandomEngine {
@@ -72,6 +73,7 @@ export class RandomEngine {
         return {
           code: memo[position],
           expiry: position + milliseconds - currentTime,
+          position
         };
       }
       engine.to(position);
@@ -82,7 +84,7 @@ export class RandomEngine {
         .join("");
       memo[position] = code;
       const expiry = position + milliseconds - currentTime;
-      return { code, expiry };
+      return { code, expiry, position };
     };
   }
 
