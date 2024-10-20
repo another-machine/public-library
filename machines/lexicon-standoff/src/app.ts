@@ -1,11 +1,11 @@
 import {
   constraints as lexiconConstraints,
   topics as lexiconTopics,
-} from "../../../packages/ampl-lexicon/src";
+} from "../../../packages/amplib-lexicon/src";
 import {
   RandomEngine,
   type TimecodeSeedResponse,
-} from "../../../packages/ampl-procedural-generation/src";
+} from "../../../packages/amplib-procedural-generation/src";
 
 type LexiconPlayerOptionKey =
   | "bear"

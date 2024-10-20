@@ -1,6 +1,6 @@
 {
-  "name": "@ampl/sound-synthesis",
-  "description": "Making sound with the Web Audio API.",
+  "name": "@amplib/steganography",
+  "description": ".",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",

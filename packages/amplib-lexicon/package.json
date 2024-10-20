@@ -1,6 +1,6 @@
 {
-  "name": "@ampl/music-theory",
-  "description": "Chromatic musical scale generator.",
+  "name": "@amplib/lexicon",
+  "description": "Categories of topics and constraints for word games.",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",

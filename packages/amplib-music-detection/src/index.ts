@@ -3,7 +3,7 @@ import {
   Scale,
   Note,
   type Notation,
-} from "../../ampl-music-theory/src/index";
+} from "../../amplib-music-theory/src/index";
 
 interface DetectorChordTracking {
   value: number;

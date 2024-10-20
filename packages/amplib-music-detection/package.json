@@ -1,6 +1,6 @@
 {
-  "name": "@ampl/lexicon",
-  "description": "Categories of topics and constraints for word games.",
+  "name": "@amplib/music-detection",
+  "description": "Real time detection of chromatic notes and combinations of notes from a device microphone.",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",

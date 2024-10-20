@@ -1,6 +1,6 @@
 {
-  "name": "@ampl/music-detection",
-  "description": "Real time detection of chromatic notes and combinations of notes from a device microphone.",
+  "name": "@amplib/sound-synthesis",
+  "description": "Making sound with the Web Audio API.",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",

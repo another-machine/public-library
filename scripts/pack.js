@@ -1,13 +1,13 @@
 import { execSync } from "child_process";
 
 const directories = [
-  "ampl-devices",
-  "ampl-lexicon",
-  "ampl-music-detection",
-  "ampl-music-theory",
-  "ampl-procedural-generation",
-  "ampl-sound-synthesis",
-  "ampl-steganography",
+  "amplib-devices",
+  "amplib-lexicon",
+  "amplib-music-detection",
+  "amplib-music-theory",
+  "amplib-procedural-generation",
+  "amplib-sound-synthesis",
+  "amplib-steganography",
 ];
 
 process.chdir("./packages");

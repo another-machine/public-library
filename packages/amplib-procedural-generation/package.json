@@ -1,6 +1,6 @@
 {
-  "name": "@ampl/devices",
-  "description": "A simplified interface for engaging with common MIDI devices and mapping actions to specific messages, user media, and device orientation.",
+  "name": "@amplib/procedural-generation",
+  "description": "Seeded RNG engine for shared procedural experiences between disconnected devices.",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",
@@ -21,7 +21,8 @@
   },
   "scripts": {
     "build": "tsup",
-    "watch": "tsup --watch"
+    "watch": "tsup --watch",
+    "test": "node test.js"
   },
   "author": "Another Machine",
   "license": "MIT",
