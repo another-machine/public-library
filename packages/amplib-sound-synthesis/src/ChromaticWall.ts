@@ -1,4 +1,4 @@
-import { Note, Scale } from "../../ampl-music-theory/src/index";
+import { Note, Scale } from "../../amplib-music-theory/src/index";
 
 interface Envelope {
   attack: number;
