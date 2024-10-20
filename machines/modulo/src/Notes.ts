@@ -4,7 +4,7 @@ import {
   Mode,
   Note,
   Interval,
-} from "../../../packages/ampl-music-theory/src";
+} from "../../../packages/amplib-music-theory/src";
 import { StepsSlot } from "./Steps";
 
 export const MODES = Mode.types;

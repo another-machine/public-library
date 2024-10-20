@@ -1,4 +1,4 @@
-# @ampl/lexicon
+# @amplib/lexicon
 
 Categories of topics and constraints for word games.
 

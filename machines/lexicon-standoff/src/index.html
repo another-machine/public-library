@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lexicon Standoff</title>
+    <style>
+      @import "app.css";
+    </style>
+  </head>
+  <body>
+    <main></main>
+
+    <form id="lobby">
+      <div class="group">
+        <label class="text" for="player-count">
+          <input
+            class="unselected"
+            id="player-count"
+            max="16"
+            min="3"
+            name="player-count"
+            type="number"
+            value="3"
+          />
+          Player count
+        </label>
+      </div>
+      <div class="group" id="player"></div>
+      <div class="group">
+        <label class="text">You</label>
+      </div>
+      <div class="group">
+        <label class="text" for="seed">
+          <input
+            autocapitalize="false"
+            autocomplete="false"
+            id="seed"
+            name="seed"
+            type="text"
+            required
+          />
+          Seed
+        </label>
+        <label class="text quarter" for="sync">
+          <button id="sync" class="alternate" type="button">Override</button>
+          <span id="sync-text">&nbsp;</span>
+        </label>
+      </div>
+      <div class="group">
+        <button type="submit">Go</button>
+      </div>
+    </form>
+
+    <script type="module">
+      import "./app.ts";
+    </script>
+  </body>
+</html>

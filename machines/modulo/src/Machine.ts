@@ -19,11 +19,11 @@ import {
 } from "./Sequencer";
 import { Steps } from "./Steps";
 import { Synths } from "./Synths";
-import { MIDI, type MIDIEvent } from "../../../packages/ampl-devices/src";
+import { MIDI, type MIDIEvent } from "../../../packages/amplib-devices/src";
 import {
   Stega64,
   createImageDropReader,
-} from "../../../packages/ampl-steganography/src";
+} from "../../../packages/amplib-steganography/src";
 
 export interface MachineParams {
   clock: ClockParams;

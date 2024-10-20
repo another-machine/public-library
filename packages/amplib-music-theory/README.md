@@ -1,4 +1,4 @@
-# @ampl/music-theory
+# @amplib/music-theory
 
 Chromatic musical scale generator.
 

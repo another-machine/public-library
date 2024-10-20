@@ -1,4 +1,4 @@
-# @ampl/procedural-generation
+# @amplib/procedural-generation
 
 Seeded RNG engine for shared procedural experiences between disconnected devices.
 

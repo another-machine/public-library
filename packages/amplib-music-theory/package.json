@@ -1,6 +1,6 @@
 {
-  "name": "@ampl/steganography",
-  "description": ".",
+  "name": "@amplib/music-theory",
+  "description": "Chromatic musical scale generator.",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",
