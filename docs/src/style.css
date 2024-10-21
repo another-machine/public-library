@@ -1,6 +1,16 @@
 :root {
   --font-monospace: monospace;
+  --font-size: 1rem;
+  --gap: 0.5rem;
 }
+
+@media (min-width: 1024px) {
+  :root {
+    --font-size: 2rem;
+    --gap: 1rem;
+  }
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -18,12 +28,18 @@ body {
   margin: 0;
 }
 
+body,
+input,
+select,
+button {
+  font-size: var(--font-size);
+}
+
 code {
   font-family: var(--font-monospace);
 }
 
 section {
-  --gap: 0.5rem;
   align-items: start;
   display: flex;
   flex-wrap: wrap;
@@ -40,19 +56,14 @@ section {
 
   form {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: column;
     gap: var(--gap);
     min-width: 10rem;
     width: 25%;
 
-    label {
-      width: 33%;
-    }
-
     input {
       break-after: always;
       font-family: var(--font-monospace);
-      width: calc(67% - var(--gap));
     }
   }
 
@@ -61,7 +72,6 @@ section {
     background: #121212;
     border: 1px solid;
     color: white;
-    font-size: 1rem;
     padding: calc(var(--gap) * 2);
   }
 

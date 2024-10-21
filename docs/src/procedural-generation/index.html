@@ -20,11 +20,11 @@
           size.
         </p>
         <form>
-          <label for="seed">Seed</label>
           <input id="seed" type="text" value="Seed Here" />
+          <label for="seed">Seed</label>
 
-          <label for="size">Size</label>
           <input id="size" type="number" min="1" max="10" value="5" />
+          <label for="size">Size</label>
         </form>
         <pre><code>const engine = new RandomEngine({ 
   seed: "<span data-value="seed"></span>", 
@@ -40,8 +40,8 @@ engine.values = <span data-output="0-1"></span></code></pre>
           forward 1, but any positive or negative integer can be passed in.
         </p>
         <form>
-          <label for="step">Step</label>
           <input id="step" type="number" min="-10" max="10" value="10" />
+          <label for="step">Step</label>
         </form>
         <pre><code>engine.generation = <span data-output="1-0"></span>
 engine.step(<span data-value="step"></span>); 
@@ -52,8 +52,8 @@ engine.values = <span data-output="1-2"></span></code></pre>
         <h3><code>engine.to(generation: number)</code></h3>
         <p>Instantiating the RandomEngine by providing a seed and size.</p>
         <form>
-          <label for="to">To</label>
           <input id="to" type="number" min="0" max="1000" value="100" />
+          <label for="to">To</label>
         </form>
         <pre><code>engine.to(<span data-value="to"></span>);
 engine.generation = <span data-output="2-0"></span>
@@ -69,8 +69,8 @@ engine.values = <span data-output="2-1"></span></code></pre>
         </h3>
         <p>Time-based generator.</p>
         <form>
-          <label for="seconds">Seconds</label>
           <input id="seconds" type="number" min="1" max="60" value="5" />
+          <label for="seconds">Seconds</label>
         </form>
         <pre><code>const generator = RandomEngine.timecodeGenerator({ 
   seed: "<span data-value="seed"></span>", 
