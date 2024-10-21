@@ -1,5 +1,4 @@
 interface RandomEngineParams {
-  memory: number;
   seed: string;
   size: number;
 }
@@ -13,42 +12,30 @@ export interface TimecodeSeedResponse {
 export class RandomEngine {
   core: RandomEngineCore;
   generation = 0;
-  history: number[][];
-  memory: number;
+  values: number[] = [];
   seed: string;
   size: number;
 
-  constructor({ seed, size, memory }: RandomEngineParams) {
-    this.history = [];
-    this.memory = memory;
+  constructor({ seed, size }: RandomEngineParams) {
     this.seed = seed;
     this.size = size;
     this.core = this.updatedCore();
+    this.step(0);
   }
 
-  generate() {
-    const result: number[] = [];
-    for (let i = 0; i < this.size; i++) {
-      result.push(this.core.random());
-    }
-    if (this.memory) {
-      while (this.history.length >= this.memory) {
-        this.history.shift();
-      }
-      this.history.push(result);
-    }
-    this.generation++;
+  step(direction = 1) {
+    this.generation += direction;
     this.core = this.updatedCore();
-  }
-
-  values() {
-    return this.history[this.history.length - 1];
+    this.values.splice(0, this.values.length);
+    for (let i = 0; i < this.size; i++) {
+      this.values.push(this.core.random());
+    }
   }
 
   to(generation = 0) {
     this.generation = generation;
-    this.core = this.updatedCore();
-    this.generate();
+    // Do not increment generation
+    this.step(0);
   }
 
   static timecodeGenerator({
@@ -60,7 +47,7 @@ export class RandomEngine {
     size: number;
     seconds: number;
   }) {
-    const engine = new RandomEngine({ seed, size, memory: 1 });
+    const engine = new RandomEngine({ seed, size });
     const milliseconds = seconds * 1000;
     const memo: { [position: string]: string } = {};
     // https://www.crockford.com/base32.html
@@ -73,13 +60,11 @@ export class RandomEngine {
         return {
           code: memo[position],
           expiry: position + milliseconds - currentTime,
-          position
+          position,
         };
       }
       engine.to(position);
-      engine.generate();
-      const code = engine
-        .values()
+      const code = engine.values
         .map((a) => chars.charAt(Math.floor(a * chars.length)))
         .join("");
       memo[position] = code;
@@ -94,7 +79,7 @@ export class RandomEngine {
 }
 
 // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript
-export class RandomEngineCore {
+class RandomEngineCore {
   random: () => number;
   seed: string;
 

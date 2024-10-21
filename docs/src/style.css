@@ -1,0 +1,82 @@
+:root {
+  --font-monospace: monospace;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: black;
+  color: white;
+  font-family: "Times New Roman", Times, serif;
+  margin: 0;
+}
+
+code {
+  font-family: var(--font-monospace);
+}
+
+section {
+  --gap: 0.5rem;
+  align-items: start;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gap);
+  padding: calc(var(--gap) * 2);
+  + section {
+    margin-top: calc(var(--gap) * 4);
+  }
+
+  h3,
+  p {
+    width: 100%;
+  }
+
+  form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--gap);
+    min-width: 10rem;
+    width: 25%;
+
+    label {
+      width: 33%;
+    }
+
+    input {
+      break-after: always;
+      font-family: var(--font-monospace);
+      width: calc(67% - var(--gap));
+    }
+  }
+
+  pre,
+  input {
+    background: #121212;
+    border: 1px solid;
+    color: white;
+    font-size: 1rem;
+    padding: calc(var(--gap) * 2);
+  }
+
+  pre {
+    flex: 1;
+    overflow-x: auto;
+
+    [data-value] {
+      background: lime;
+      color: black;
+      font-weight: bold;
+    }
+    [data-output] {
+      color: lime;
+      font-weight: bold;
+    }
+  }
+}

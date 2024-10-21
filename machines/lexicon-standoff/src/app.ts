@@ -183,8 +183,7 @@ class Lexicon {
       memory: 1,
       seed,
     });
-    this.engine.generate();
-    const randoms = this.engine.values();
+    const randoms = this.engine.values;
     const topics: string[] = [];
     const tempTopics = [...lexiconTopics];
     let randomIndex = 0;

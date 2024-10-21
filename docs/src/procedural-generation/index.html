@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@amplib/procedural-generation</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <h1>@amplib/procedural-generation</h1>
+    <h2>Exports: <code>RandomEngine</code></h2>
+
+    <main>
+      <section>
+        <h3><code>new RandomEngine({ seed: string; size: number })</code></h3>
+        <p>
+          Instantiating the <code>RandomEngine</code> by providing a seed and
+          size.
+        </p>
+        <form>
+          <label for="seed">Seed</label>
+          <input id="seed" type="text" value="Seed Here" />
+
+          <label for="size">Size</label>
+          <input id="size" type="number" min="1" max="10" value="5" />
+        </form>
+        <pre><code>const engine = new RandomEngine({ 
+  seed: "<span data-value="seed"></span>", 
+  size: <span data-value="size"></span>
+});
+engine.generation = <span data-output="0-0"></span>
+engine.values = <span data-output="0-1"></span></code></pre>
+      </section>
+      <section>
+        <h3><code>engine.step(amount?: number) (default: 1)</code></h3>
+        <p>
+          <code>step()</code> progresses the engine values. By default, this is
+          forward 1, but any positive or negative integer can be passed in.
+        </p>
+        <form>
+          <label for="step">Step</label>
+          <input id="step" type="number" min="-10" max="10" value="10" />
+        </form>
+        <pre><code>engine.generation = <span data-output="1-0"></span>
+engine.step(<span data-value="step"></span>); 
+engine.generation = <span data-output="1-1"></span>
+engine.values = <span data-output="1-2"></span></code></pre>
+      </section>
+      <section>
+        <h3><code>engine.to(generation: number)</code></h3>
+        <p>Instantiating the RandomEngine by providing a seed and size.</p>
+        <form>
+          <label for="to">To</label>
+          <input id="to" type="number" min="0" max="1000" value="100" />
+        </form>
+        <pre><code>engine.to(<span data-value="to"></span>);
+engine.generation = <span data-output="2-0"></span>
+engine.values = <span data-output="2-1"></span></code></pre>
+      </section>
+      <section>
+        <h3>
+          <code
+            >RandomEngine.timecodeGenerator({ seed: string; size: number;
+            seconds: number; })<br />() => { code: string; expiry: number;
+            position: number }</code
+          >
+        </h3>
+        <p>Time-based generator.</p>
+        <form>
+          <label for="seconds">Seconds</label>
+          <input id="seconds" type="number" min="1" max="60" value="5" />
+        </form>
+        <pre><code>const generator = RandomEngine.timecodeGenerator({ 
+  seed: "<span data-value="seed"></span>", 
+  size: <span data-value="size"></span>,
+  seconds: <span data-value="seconds"></span>,
+});
+generator() = <span data-output="3-0"></span></code></pre>
+      </section>
+    </main>
+
+    <script type="module">
+      import { RandomEngine } from "../../../packages/amplib-procedural-generation/src";
+
+      const $seed = document.getElementById("seed");
+      const $size = document.getElementById("size");
+      const $step = document.getElementById("step");
+      const $seconds = document.getElementById("seconds");
+      const $to = document.getElementById("to");
+
+      let seed = $seed.value || null;
+      let size = $size.value ? parseInt($size.value) : null;
+      let step = $step.value ? parseInt($step.value) : null;
+      let seconds = $seconds.value ? parseInt($seconds.value) : null;
+      let to = $to.value ? parseInt($to.value) : null;
+
+      generateResults();
+
+      function generateResults() {
+        requestAnimationFrame(generateResults);
+        const newSeed = $seed.value || null;
+        const newSize = $size.value ? parseInt($size.value) : null;
+        const newStep = $step.value ? parseInt($step.value) : null;
+        const newSeconds = $seconds.value ? parseInt($seconds.value) : null;
+        const newTo = $to.value ? parseInt($to.value) : null;
+
+        const seedChanged = newSeed === seed;
+        const sizeChanged = newSize === size;
+        const stepChanged = newStep === step;
+        const secondsChanged = newSeconds === seconds;
+        const toChanged = newTo === to;
+
+        seed = newSeed;
+        size = newSize;
+        step = newStep;
+        seconds = newSeconds;
+        to = newTo;
+
+        if (
+          seed === null ||
+          size === null ||
+          step === null ||
+          seconds === null ||
+          to === null
+        ) {
+          return;
+        }
+
+        if (seedChanged)
+          document
+            .querySelectorAll(`[data-value="seed"]`)
+            .forEach((a) => (a.innerText = seed));
+        if (sizeChanged)
+          document
+            .querySelectorAll(`[data-value="size"]`)
+            .forEach((a) => (a.innerText = size));
+        if (stepChanged)
+          document
+            .querySelectorAll(`[data-value="step"]`)
+            .forEach((a) => (a.innerText = step));
+        if (secondsChanged)
+          document
+            .querySelectorAll(`[data-value="seconds"]`)
+            .forEach((a) => (a.innerText = seconds));
+        if (toChanged)
+          document
+            .querySelectorAll(`[data-value="to"]`)
+            .forEach((a) => (a.innerText = to));
+
+        const values = [];
+        if (seedChanged || sizeChanged || stepChanged || toChanged) {
+          const engine = new RandomEngine({ seed, size });
+
+          engine.step();
+          values[0] = [
+            engine.generation,
+            JSON.stringify(engine.values, null, 2),
+          ];
+          values[1] = [engine.generation];
+          engine.step(step);
+          values[1].push(
+            engine.generation,
+            JSON.stringify(engine.values, null, 2)
+          );
+          engine.to(to);
+          values[2] = [
+            engine.generation,
+            JSON.stringify(engine.values, null, 2),
+          ];
+        }
+
+        const generator = RandomEngine.timecodeGenerator({
+          seed,
+          size,
+          seconds,
+        });
+        values[3] = [JSON.stringify(generator(), null, 2)];
+
+        values.forEach((group, i) => {
+          (group || []).forEach((value, j) => {
+            document
+              .querySelectorAll(`[data-output="${i}-${j}"]`)
+              .forEach((a) => (a.innerText = value));
+          });
+        });
+      }
+    </script>
+  </body>
+</html>

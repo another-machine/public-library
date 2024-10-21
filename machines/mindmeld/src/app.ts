@@ -102,10 +102,8 @@ class Mindmeld {
   private generateEngine() {
     this.engine = new RandomEngine({
       size: this.rangeItems + this.maxGuesses,
-      memory: 10,
       seed: this.currentSeed,
     });
-    this.engine.generate();
   }
 
   private handleSeedChange(seed) {
@@ -141,7 +139,7 @@ class Mindmeld {
   }
 
   private generateAndUpdateLevel(level: number) {
-    this.engine.generate();
+    this.engine.step();
     this.$inputGeneration.value = this.engine.generation.toString();
     this.updateLevel(level);
   }
@@ -238,7 +236,7 @@ class Mindmeld {
   }
 
   private extractConstraints() {
-    const values = this.engine.values();
+    const values = this.engine.values;
     const possible = this.constraints;
     const results: string[] = [];
     for (let i = 0; i < this.maxGuesses; i++) {
@@ -250,7 +248,7 @@ class Mindmeld {
   }
 
   private extractTerms() {
-    const values = this.engine.values();
+    const values = this.engine.values;
     const terms: string[] = [];
     const topicsTmp: string[][] = [];
     this.topics.forEach((group) => topicsTmp.push([...group]));
