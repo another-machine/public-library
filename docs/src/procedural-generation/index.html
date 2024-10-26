@@ -10,63 +10,113 @@
   </head>
   <body>
     <header>
-      <h1>@amplib/procedural-generation</h1>
+      <h1>
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-procedural-generation"
+          >@amplib/procedural-generation</a
+        >
+      </h1>
     </header>
 
     <main>
       <section>
-        <h2><code>RandomEngine</code></h2>
-      </section>
-      <section>
-        <h3><code>new RandomEngine({ seed: string; size: number })</code></h3>
-        <p>Instantiating a RandomEngine with a seed and size.</p>
-        <form>
-          <label for="seed"
-            >Seed <input id="seed" type="text" value="Seed Here" />
-          </label>
-
-          <label for="size"
-            >Size <input id="size" type="number" min="1" max="10" value="5" />
-          </label>
-        </form>
+        <h2>Instantiate a RandomEngine.</h2>
+        <p><code>new RandomEngine({ seed: string; size: number })</code></p>
         <pre><code>const engine = new RandomEngine({ 
   seed: "<span data-value="seed"></span>", 
   size: <span data-value="size"></span>
-});
-engine.generation = <span data-output="0-0"></span>
-engine.values = <span data-output="0-1"></span></code></pre>
+});</code></pre>
+
+        <aside>
+          <label for="seed">
+            <input id="seed" type="text" value="Seed Here" /> seed
+          </label>
+
+          <label for="size">
+            <input id="size" type="number" min="1" max="10" value="5" /> size
+          </label>
+        </aside>
       </section>
+
       <section>
-        <h3><code>engine.step(amount?: number) (default: 1)</code></h3>
+        <h2>Progress engine and get random values.</h2>
+        <p><code>random(direction?: number): number[]</code></p>
+        <pre><code>engine.position = <span data-output="1-0"></span>
+engine.random(<span data-value="random"></span>);
+<span data-output="1-1"></span>
+engine.position = <span data-output="1-2"></span></code></pre>
+
+        <aside>
+          <label for="random">
+            <input id="random" type="number" min="-100" max="100" value="10" />
+            direction
+          </label>
+        </aside>
+      </section>
+
+      <section>
+        <h2>Move engine to a specific point.</h2>
+        <p><code>move(position: number): number[]</code></p>
+        <pre><code>engine.position = <span data-output="2-0"></span>
+engine.move(<span data-value="move"></span>);
+<span data-output="2-1"></span>
+engine.position = <span data-output="2-2"></span></code></pre>
+
+        <aside>
+          <label for="move">
+            <input id="move" type="number" min="0" max="1000" value="100" />
+            position
+          </label>
+        </aside>
+      </section>
+
+      <section>
+        <h2>Generate Perlin noise.</h2>
         <p>
-          Progresses the engine values. By default, this is forward 1, but any
-          positive or negative integer can be passed in.
+          <code>perlin(x?: number; y?: number; z?: number;): number[]</code>
         </p>
-        <form>
-          <label for="step"
-            >Step
-            <input id="step" type="number" min="-10" max="10" value="10" />
+        <pre><code>engine.perlin(<span data-value="perlinX"></span>, <span data-value="perlinY"></span>, <span data-value="perlinZ"></span>)
+<span data-output="3-0"></span></code></pre>
+        <aside>
+          <label for="perlinX">
+            <input
+              id="perlinX"
+              type="number"
+              step="0.001"
+              min="0.001"
+              max="10"
+              value="0.01"
+            />
+            x
           </label>
-        </form>
-        <pre><code>engine.generation = <span data-output="1-0"></span>
-engine.step(<span data-value="step"></span>); 
-engine.generation = <span data-output="1-1"></span>
-engine.values = <span data-output="1-2"></span></code></pre>
-      </section>
-      <section>
-        <h3><code>engine.to(generation: number)</code></h3>
-        <p>Moves engine to specific point.</p>
-        <form>
-          <label for="to"
-            >To <input id="to" type="number" min="0" max="1000" value="100" />
+          <label for="perlinY">
+            <input
+              id="perlinY"
+              type="number"
+              step="0.001"
+              min="0"
+              max="10"
+              value="0"
+            />
+            y
           </label>
-        </form>
-        <pre><code>engine.to(<span data-value="to"></span>);
-engine.generation = <span data-output="2-0"></span>
-engine.values = <span data-output="2-1"></span></code></pre>
+          <label for="perlinZ">
+            <input
+              id="perlinZ"
+              type="number"
+              step="0.001"
+              min="0"
+              max="10"
+              value="0"
+            />
+            z
+          </label>
+        </aside>
       </section>
+
       <section>
-        <h3>
+        <h2>Create time-based seeds.</h2>
+        <p>
           <code
             >RandomEngine.timecodeGenerator(settings: Settings): () =>
             Timecode</code
@@ -78,51 +128,72 @@ engine.values = <span data-output="2-1"></span></code></pre>
             >Timecode = { code: string; expiry: number; position: number;
             }</code
           >
-        </h3>
-        <p>Timecode generator.</p>
-        <form>
-          <label for="length"
-            >Length
-            <input id="length" type="number" min="1" max="10" value="5" />
-          </label>
+        </p>
 
-          <label for="seconds"
-            >Seconds
-            <input id="seconds" type="number" min="1" max="60" value="5" />
-          </label>
-        </form>
         <pre><code>const generator = RandomEngine.timecodeGenerator({ 
   length: <span data-value="length"></span>,
   seconds: <span data-value="seconds"></span>,
   seed: "<span data-value="seed"></span>", 
 });
-generator() = <span data-output="3-0"></span></code></pre>
+generator() = <span data-output="4-0"></span></code></pre>
+        <aside>
+          <label for="length">
+            <input id="length" type="number" min="1" max="10" value="5" />
+            length
+          </label>
+
+          <label for="seconds">
+            <input id="seconds" type="number" min="1" max="60" value="5" />
+            seconds
+          </label>
+        </aside>
       </section>
     </main>
 
     <script type="module">
       import { RandomEngine } from "../../../packages/amplib-procedural-generation/src";
 
+      const perlin = { x: 0, y: 0, z: 0 };
+
       run(
-        ["length", "seed", "size", "step", "seconds", "to"],
-        ({ length, seed, size, step, seconds, to }) => {
+        [
+          "perlinX",
+          "perlinY",
+          "perlinZ",
+          "length",
+          "seed",
+          "size",
+          "random",
+          "seconds",
+          "move",
+        ],
+        ({
+          perlinX,
+          perlinY,
+          perlinZ,
+          length,
+          seed,
+          size,
+          random,
+          seconds,
+          move,
+        }) => {
           const values = [];
           const engine = new RandomEngine({ seed, size });
-          engine.step();
-          values[0] = [
-            engine.generation,
-            JSON.stringify(engine.values, null, 2),
-          ];
-          values[1] = [engine.generation];
-          engine.step(step);
+          values[0] = [engine.position];
+          values[1] = [engine.position];
           values[1].push(
-            engine.generation,
-            JSON.stringify(engine.values, null, 2)
+            JSON.stringify(engine.random(random), null, 2),
+            engine.position
           );
-          engine.to(to);
           values[2] = [
-            engine.generation,
-            JSON.stringify(engine.values, null, 2),
+            engine.position,
+            JSON.stringify(engine.move(move), null, 2),
+            engine.position,
+          ];
+
+          values[3] = [
+            JSON.stringify(engine.perlin(perlinX, perlinY, perlinZ), null, 2),
           ];
 
           const generator = RandomEngine.timecodeGenerator({
@@ -130,7 +201,7 @@ generator() = <span data-output="3-0"></span></code></pre>
             seconds,
             seed,
           });
-          values[3] = [JSON.stringify(generator(), null, 2)];
+          values[4] = [JSON.stringify(generator(), null, 2)];
 
           values.forEach((group, i) => {
             (group || []).forEach((value, j) => {
@@ -154,7 +225,7 @@ generator() = <span data-output="3-0"></span></code></pre>
 
         function valueFromElement(element) {
           if (element.type === "number") {
-            return element.value ? parseInt(element.value) : null;
+            return element.value ? parseFloat(element.value) : null;
           } else {
             return element.value || null;
           }

@@ -182,7 +182,7 @@ class Lexicon {
       size: imposterCount + topicCount + constraintCount,
       seed,
     });
-    const randoms = this.engine.values;
+    const randoms = this.engine.random(0);
     const topics: string[] = [];
     const tempTopics = [...lexiconTopics];
     let randomIndex = 0;
