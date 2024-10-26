@@ -91,9 +91,9 @@ class Lexicon {
     this.constraints = [...constraints];
     this.topics = [...topics];
     this.timecodeGenerator = RandomEngine.timecodeGenerator({
+      length: 5,
       seconds: 30,
       seed: "lexicon",
-      size: 5,
     });
   }
 
@@ -180,7 +180,6 @@ class Lexicon {
     const constraintCount = 1;
     this.engine = new RandomEngine({
       size: imposterCount + topicCount + constraintCount,
-      memory: 1,
       seed,
     });
     const randoms = this.engine.values;

@@ -9,22 +9,25 @@
     </style>
   </head>
   <body>
-    <h1>@amplib/procedural-generation</h1>
-    <h2>Exports: <code>RandomEngine</code></h2>
+    <header>
+      <h1>@amplib/procedural-generation</h1>
+    </header>
 
     <main>
       <section>
+        <h2><code>RandomEngine</code></h2>
+      </section>
+      <section>
         <h3><code>new RandomEngine({ seed: string; size: number })</code></h3>
-        <p>
-          Instantiating the <code>RandomEngine</code> by providing a seed and
-          size.
-        </p>
+        <p>Instantiating a RandomEngine with a seed and size.</p>
         <form>
-          <input id="seed" type="text" value="Seed Here" />
-          <label for="seed">Seed</label>
+          <label for="seed"
+            >Seed <input id="seed" type="text" value="Seed Here" />
+          </label>
 
-          <input id="size" type="number" min="1" max="10" value="5" />
-          <label for="size">Size</label>
+          <label for="size"
+            >Size <input id="size" type="number" min="1" max="10" value="5" />
+          </label>
         </form>
         <pre><code>const engine = new RandomEngine({ 
   seed: "<span data-value="seed"></span>", 
@@ -36,12 +39,14 @@ engine.values = <span data-output="0-1"></span></code></pre>
       <section>
         <h3><code>engine.step(amount?: number) (default: 1)</code></h3>
         <p>
-          <code>step()</code> progresses the engine values. By default, this is
-          forward 1, but any positive or negative integer can be passed in.
+          Progresses the engine values. By default, this is forward 1, but any
+          positive or negative integer can be passed in.
         </p>
         <form>
-          <input id="step" type="number" min="-10" max="10" value="10" />
-          <label for="step">Step</label>
+          <label for="step"
+            >Step
+            <input id="step" type="number" min="-10" max="10" value="10" />
+          </label>
         </form>
         <pre><code>engine.generation = <span data-output="1-0"></span>
 engine.step(<span data-value="step"></span>); 
@@ -50,10 +55,11 @@ engine.values = <span data-output="1-2"></span></code></pre>
       </section>
       <section>
         <h3><code>engine.to(generation: number)</code></h3>
-        <p>Instantiating the RandomEngine by providing a seed and size.</p>
+        <p>Moves engine to specific point.</p>
         <form>
-          <input id="to" type="number" min="0" max="1000" value="100" />
-          <label for="to">To</label>
+          <label for="to"
+            >To <input id="to" type="number" min="0" max="1000" value="100" />
+          </label>
         </form>
         <pre><code>engine.to(<span data-value="to"></span>);
 engine.generation = <span data-output="2-0"></span>
@@ -62,20 +68,33 @@ engine.values = <span data-output="2-1"></span></code></pre>
       <section>
         <h3>
           <code
-            >RandomEngine.timecodeGenerator({ seed: string; size: number;
-            seconds: number; })<br />() => { code: string; expiry: number;
-            position: number }</code
+            >RandomEngine.timecodeGenerator(settings: Settings): () =>
+            Timecode</code
+          ><br />
+          <code
+            >Settings = { length: number; seed: string; seconds: number; }</code
+          ><br />
+          <code
+            >Timecode = { code: string; expiry: number; position: number;
+            }</code
           >
         </h3>
-        <p>Time-based generator.</p>
+        <p>Timecode generator.</p>
         <form>
-          <input id="seconds" type="number" min="1" max="60" value="5" />
-          <label for="seconds">Seconds</label>
+          <label for="length"
+            >Length
+            <input id="length" type="number" min="1" max="10" value="5" />
+          </label>
+
+          <label for="seconds"
+            >Seconds
+            <input id="seconds" type="number" min="1" max="60" value="5" />
+          </label>
         </form>
         <pre><code>const generator = RandomEngine.timecodeGenerator({ 
-  seed: "<span data-value="seed"></span>", 
-  size: <span data-value="size"></span>,
+  length: <span data-value="length"></span>,
   seconds: <span data-value="seconds"></span>,
+  seed: "<span data-value="seed"></span>", 
 });
 generator() = <span data-output="3-0"></span></code></pre>
       </section>
@@ -84,75 +103,11 @@ generator() = <span data-output="3-0"></span></code></pre>
     <script type="module">
       import { RandomEngine } from "../../../packages/amplib-procedural-generation/src";
 
-      const $seed = document.getElementById("seed");
-      const $size = document.getElementById("size");
-      const $step = document.getElementById("step");
-      const $seconds = document.getElementById("seconds");
-      const $to = document.getElementById("to");
-
-      let seed = $seed.value || null;
-      let size = $size.value ? parseInt($size.value) : null;
-      let step = $step.value ? parseInt($step.value) : null;
-      let seconds = $seconds.value ? parseInt($seconds.value) : null;
-      let to = $to.value ? parseInt($to.value) : null;
-
-      generateResults();
-
-      function generateResults() {
-        requestAnimationFrame(generateResults);
-        const newSeed = $seed.value || null;
-        const newSize = $size.value ? parseInt($size.value) : null;
-        const newStep = $step.value ? parseInt($step.value) : null;
-        const newSeconds = $seconds.value ? parseInt($seconds.value) : null;
-        const newTo = $to.value ? parseInt($to.value) : null;
-
-        const seedChanged = newSeed === seed;
-        const sizeChanged = newSize === size;
-        const stepChanged = newStep === step;
-        const secondsChanged = newSeconds === seconds;
-        const toChanged = newTo === to;
-
-        seed = newSeed;
-        size = newSize;
-        step = newStep;
-        seconds = newSeconds;
-        to = newTo;
-
-        if (
-          seed === null ||
-          size === null ||
-          step === null ||
-          seconds === null ||
-          to === null
-        ) {
-          return;
-        }
-
-        if (seedChanged)
-          document
-            .querySelectorAll(`[data-value="seed"]`)
-            .forEach((a) => (a.innerText = seed));
-        if (sizeChanged)
-          document
-            .querySelectorAll(`[data-value="size"]`)
-            .forEach((a) => (a.innerText = size));
-        if (stepChanged)
-          document
-            .querySelectorAll(`[data-value="step"]`)
-            .forEach((a) => (a.innerText = step));
-        if (secondsChanged)
-          document
-            .querySelectorAll(`[data-value="seconds"]`)
-            .forEach((a) => (a.innerText = seconds));
-        if (toChanged)
-          document
-            .querySelectorAll(`[data-value="to"]`)
-            .forEach((a) => (a.innerText = to));
-
-        const values = [];
-        if (seedChanged || sizeChanged || stepChanged || toChanged) {
+      run(
+        ["length", "seed", "size", "step", "seconds", "to"],
+        ({ length, seed, size, step, seconds, to }) => {
+          const values = [];
           const engine = new RandomEngine({ seed, size });
-
           engine.step();
           values[0] = [
             engine.generation,
@@ -169,22 +124,57 @@ generator() = <span data-output="3-0"></span></code></pre>
             engine.generation,
             JSON.stringify(engine.values, null, 2),
           ];
+
+          const generator = RandomEngine.timecodeGenerator({
+            length,
+            seconds,
+            seed,
+          });
+          values[3] = [JSON.stringify(generator(), null, 2)];
+
+          values.forEach((group, i) => {
+            (group || []).forEach((value, j) => {
+              document
+                .querySelectorAll(`[data-output="${i}-${j}"]`)
+                .forEach((a) => (a.innerText = value));
+            });
+          });
+        }
+      );
+
+      function run(ids, onChange) {
+        const values = {};
+        const elements = {};
+
+        ids.forEach((id) => {
+          elements[id] = document.getElementById(id);
+        });
+
+        loop();
+
+        function valueFromElement(element) {
+          if (element.type === "number") {
+            return element.value ? parseInt(element.value) : null;
+          } else {
+            return element.value || null;
+          }
         }
 
-        const generator = RandomEngine.timecodeGenerator({
-          seed,
-          size,
-          seconds,
-        });
-        values[3] = [JSON.stringify(generator(), null, 2)];
+        function loop() {
+          requestAnimationFrame(loop);
 
-        values.forEach((group, i) => {
-          (group || []).forEach((value, j) => {
-            document
-              .querySelectorAll(`[data-output="${i}-${j}"]`)
-              .forEach((a) => (a.innerText = value));
+          ids.forEach((id) => {
+            const value = valueFromElement(elements[id]);
+            if (value !== values[id]) {
+              values[id] = value;
+              document
+                .querySelectorAll(`[data-value="${id}"]`)
+                .forEach((a) => (a.innerText = value));
+            }
           });
-        });
+
+          onChange(values);
+        }
       }
     </script>
   </body>

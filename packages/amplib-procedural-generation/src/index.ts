@@ -39,15 +39,15 @@ export class RandomEngine {
   }
 
   static timecodeGenerator({
-    seed,
-    size,
+    length,
     seconds,
+    seed,
   }: {
+    length: number;
     seed: string;
-    size: number;
     seconds: number;
   }) {
-    const engine = new RandomEngine({ seed, size });
+    const engine = new RandomEngine({ seed, size: length });
     const milliseconds = seconds * 1000;
     const memo: { [position: string]: string } = {};
     // https://www.crockford.com/base32.html

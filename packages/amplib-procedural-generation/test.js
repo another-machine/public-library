@@ -66,8 +66,8 @@ function testStepDirection() {
 
 function testTimecodeGenerator() {
   const generator = RandomEngine.timecodeGenerator({
+    length: 4,
     seed: "test",
-    size: 4,
     seconds: 30,
   });
   const results = [generator(), generator(), generator()];

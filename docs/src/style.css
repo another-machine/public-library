@@ -6,8 +6,8 @@
 
 @media (min-width: 1024px) {
   :root {
-    --font-size: 2rem;
-    --gap: 1rem;
+    --font-size: 1.2rem;
+    --gap: 0.75rem;
   }
 }
 
@@ -39,12 +39,43 @@ code {
   font-family: var(--font-monospace);
 }
 
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-size: var(--font-size);
+  font-weight: normal;
+}
+
+h1 {
+  font-style: italic;
+}
+
+header {
+  background: black;
+  border-bottom: 1px solid;
+  left: 0;
+  margin-left: auto;
+  padding: var(--gap);
+  position: sticky;
+  top: 0;
+  width: 100%;
+}
+
+main {
+  margin: 0 auto;
+  max-width: 60rem;
+  padding: calc(var(--gap) * 4) 0;
+  width: calc(100% - var(--gap) * 2);
+}
+
 section {
   align-items: start;
   display: flex;
   flex-wrap: wrap;
   gap: var(--gap);
-  padding: calc(var(--gap) * 2);
+
   + section {
     margin-top: calc(var(--gap) * 4);
   }
@@ -54,29 +85,54 @@ section {
     width: 100%;
   }
 
+  p {
+    font-style: italic;
+
+    code {
+      font-style: normal;
+    }
+  }
+
   form {
     display: flex;
     flex-direction: column;
     gap: var(--gap);
     min-width: 10rem;
     width: 25%;
+  }
+
+  label {
+    align-items: center;
+    display: flex;
+    font-size: 0.8em;
+    gap: var(--gap);
+
+    &,
+    & input {
+      font-family: var(--font-monospace);
+    }
 
     input {
-      break-after: always;
-      font-family: var(--font-monospace);
+      border: 1px solid white;
+      font-size: 1em;
+      margin-left: auto;
+      padding: 0.5rem;
+      width: 50%;
     }
   }
 
-  pre,
   input {
-    background: #121212;
-    border: 1px solid;
-    color: white;
-    padding: calc(var(--gap) * 2);
+    background: transparent;
+    border: none;
+    color: lime;
   }
 
   pre {
+    background: #000;
+    border: 1px solid;
+    color: white;
     flex: 1;
+    padding: calc(var(--gap) * 2);
     overflow-x: auto;
 
     [data-value] {

@@ -80,9 +80,9 @@ class Mindmeld {
     this.topics = [...topics];
     this.generateEngine();
     this.timecodeGenerator = RandomEngine.timecodeGenerator({
+      length: 5,
       seconds: 30,
       seed: this.currentSeed,
-      size: 5,
     });
   }
 
