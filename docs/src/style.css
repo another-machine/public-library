@@ -55,7 +55,10 @@ h1 {
   display: flex;
   font-style: italic;
   justify-content: space-between;
+}
 
+h1,
+h2 {
   a {
     color: inherit;
     text-decoration: none;
