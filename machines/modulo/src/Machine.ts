@@ -195,7 +195,7 @@ export class Machine {
       onSuccess: (source) => {
         const [decoded] = Stega64.decode({ source });
         try {
-          const settings = JSON.parse(decoded) as MachineParams;
+          const settings = JSON.parse(decoded || "") as MachineParams;
           this.update(settings);
         } catch (e) {
           console.log(e);
