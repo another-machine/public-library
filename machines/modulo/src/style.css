@@ -481,6 +481,25 @@ main[stepping="true"] .sequencer {
       font-style: italic;
       color: var(--color-2);
     }
+
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+      > div {
+        display: flex;
+        gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+
+        input {
+        }
+        select {
+        }
+        button {
+        }
+      }
+      > button {
+      }
+    }
   }
 
   .breadcrumbs {
@@ -490,7 +509,6 @@ main[stepping="true"] .sequencer {
     display: flex;
     flex-direction: column;
     justify-content: center;
-    margin-top: var(--gap);
     padding: calc(var(--prompt-padding-y-factor) * var(--size-unit))
       calc(var(--prompt-padding-x-factor) * var(--size-unit));
 

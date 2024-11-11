@@ -44,7 +44,7 @@ new Machine({
     },
     prompt: {
       corner: 0.2,
-      gapColumn: 0.6,
+      gapColumn: 0.4,
       gapRow: 0.4,
       paddingX: 0.5,
       paddingY: 0.5,
@@ -53,8 +53,8 @@ new Machine({
     },
     interface: {
       corner: 0.2,
-      gapColumn: 0.2,
-      gapRow: 0.2,
+      gapColumn: 0.4,
+      gapRow: 0.4,
       sizeBorder: 0.1,
     },
   },

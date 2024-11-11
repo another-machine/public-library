@@ -5,6 +5,7 @@ import { MODES, Notes, ROOTS } from "./Notes";
 import { DrumSequencer, Sequencer, SynthSequencer } from "./Sequencer";
 import { Keyboard } from "./Keyboard";
 import { Signal } from "tone";
+import { Time } from "tone/build/esm/core/type/Units";
 
 export type DestinationInfo = { content: () => string[]; label?: string };
 
@@ -12,9 +13,26 @@ export type DestinationCommandArgs = {
   description: string;
   onCommand(command: string, args: string[], prompt: Prompt): PromptOutput;
 };
+export type DestinationPropertyInput =
+  | {
+      type: "number";
+      initialValue: () => string;
+      min: number;
+      max: number;
+      label?: string;
+    }
+  | {
+      type: "select";
+      initialValue: () => string;
+      options: string[];
+      label?: string;
+    };
+
+export type DestinationPropertyInputFormatter = (values: string[]) => any;
 
 export type DestinationPropertyArgs = {
-  description: string;
+  inputs: DestinationPropertyInput[];
+  inputsFormatter?: DestinationPropertyInputFormatter;
   onGet(command: string, args: string[], prompt: Prompt): PromptOutput;
   onSet(command: string, args: string[], prompt: Prompt): PromptOutput;
 };
@@ -41,7 +59,7 @@ const validators = {
   chance: validateNumber(0, 1),
   detune: validateNumber(-100, 100),
   feedback: validateNumber(0, 1),
-  gain: validateNumber(0, 1),
+  volume: validateNumber(0, 1),
   mode: validateOptions(MODES),
   octave: validateNumber(0, 7),
   oscillator: (string: string) =>
@@ -60,6 +78,15 @@ const validators = {
   wet: validateNumber(0, 1),
 };
 
+const numericAsString = (time: Time | number): string => {
+  if (typeof time === "number") {
+    return time.toFixed(3);
+  } else if (typeof time === "string") {
+    return time;
+  }
+  return time.valueOf().toString();
+};
+
 class DestinationCommand {
   description: string;
   onCommand: (command: string, args: string[], prompt: Prompt) => PromptOutput;
@@ -71,12 +98,19 @@ class DestinationCommand {
 }
 
 class DestinationProperty {
-  description: string;
+  inputs: DestinationPropertyInput[];
+  inputsFormatter: DestinationPropertyInputFormatter;
   onGet: (command: string, args: string[], prompt: Prompt) => PromptOutput;
   onSet: (command: string, args: string[], prompt: Prompt) => PromptOutput;
 
-  constructor({ description, onGet, onSet }: DestinationPropertyArgs) {
-    this.description = description;
+  constructor({
+    inputs,
+    inputsFormatter = (values) => values.join(" "),
+    onGet,
+    onSet,
+  }: DestinationPropertyArgs) {
+    this.inputs = inputs;
+    this.inputsFormatter = inputsFormatter;
     this.onGet = onGet;
     this.onSet = onSet;
   }
@@ -124,10 +158,16 @@ export class Destination {
       return into;
     }, {});
     const properties = Object.keys(this.properties);
-    const propertyDescriptions = properties.reduce<{
-      [k: string]: string;
+    const propertyInputs = properties.reduce<{
+      [k: string]: DestinationPropertyInput[];
     }>((into, key) => {
-      into[key] = this.properties[key].description;
+      into[key] = this.properties[key].inputs;
+      return into;
+    }, {});
+    const propertyInputsFormatters = properties.reduce<{
+      [k: string]: DestinationPropertyInputFormatter;
+    }>((into, key) => {
+      into[key] = this.properties[key].inputsFormatter;
       return into;
     }, {});
     const commands = Object.keys(this.commands);
@@ -143,7 +183,8 @@ export class Destination {
       destinationKeys,
       destinationInfos,
       properties,
-      propertyDescriptions,
+      propertyInputs,
+      propertyInputsFormatters,
       commands,
       commandDescriptions,
     };
@@ -152,7 +193,27 @@ export class Destination {
 
 const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
   type: new DestinationProperty({
-    description: "Oscillator type",
+    inputs: [
+      {
+        type: "select",
+        options: oscillatorTypes,
+        initialValue: () =>
+          (a ? synths.voices[0].nodeA : synths.voices[0].nodeB).oscillator.type
+            .replace(/(\d+)/, " $1")
+            .split(" ")[0],
+        label: "Type",
+      },
+      {
+        type: "select",
+        options: ["", "4", "8", "12", "16", "24", "32", "48", "64"],
+        initialValue: () =>
+          (a ? synths.voices[0].nodeA : synths.voices[0].nodeB).oscillator.type
+            .replace(/(\d+)/, " $1")
+            .split(" ")[1] || "",
+        label: "Partials",
+      },
+    ],
+    inputsFormatter: (values: string[]) => values.join(""),
     onSet: (_command, [value], _prompt) => {
       const valid = validators.oscillator(value);
       if (valid) {
@@ -180,7 +241,39 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
     },
   }),
   adsr: new DestinationProperty({
-    description: "ADSR each from 0 to 1 (x4)",
+    inputs: [
+      {
+        type: "number",
+        min: 0.001,
+        max: 1,
+        initialValue: () =>
+          numericAsString(synths.voices[0].nodeA.envelope.attack),
+        label: "Attack",
+      },
+      {
+        type: "number",
+        min: 0.001,
+        max: 1,
+        initialValue: () =>
+          numericAsString(synths.voices[0].nodeA.envelope.decay),
+        label: "Decay",
+      },
+      {
+        type: "number",
+        min: 0.001,
+        max: 1,
+        initialValue: () => synths.voices[0].nodeA.envelope.sustain.toFixed(3),
+        label: "Sustain",
+      },
+      {
+        type: "number",
+        min: 0.001,
+        max: 1,
+        initialValue: () =>
+          numericAsString(synths.voices[0].nodeA.envelope.release),
+        label: "Release",
+      },
+    ],
     onSet: (_command, args, _prompt) => {
       const valid = validators.adsr(args);
       if (valid) {
@@ -236,7 +329,14 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
     },
   }),
   portamento: new DestinationProperty({
-    description: "Portamento value from 0 and 1",
+    inputs: [
+      {
+        type: "number",
+        min: 0,
+        max: 1,
+        initialValue: () => numericAsString(synths.voices[0].nodeA.portamento),
+      },
+    ],
     onSet: (_command, [value], _prompt) => {
       const valid = validators.portamento(value);
       if (valid) {
@@ -261,7 +361,15 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
     },
   }),
   detune: new DestinationProperty({
-    description: "Detune cents from -100 through 100",
+    inputs: [
+      {
+        type: "number",
+        min: -100,
+        max: 100,
+        initialValue: () =>
+          numericAsString(synths.voices[0].nodeA.detune.value),
+      },
+    ],
     onSet: (_command, [value], _prompt) => {
       const valid = validators.detune(value);
       if (valid) {
@@ -286,7 +394,15 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
     },
   }),
   pan: new DestinationProperty({
-    description: 'Panning value where "-1" is left and "1" is right',
+    inputs: [
+      {
+        type: "number",
+        min: -1,
+        max: 1,
+        initialValue: () =>
+          numericAsString(synths.voices[0].nodeA.detune.value),
+      },
+    ],
     onSet: (_command, [value], _prompt) => {
       const valid = validators.pan(value);
       if (valid) {
@@ -587,7 +703,14 @@ export class Destinations {
             },
             properties: {
               tempo: new DestinationProperty({
-                description: "Clock tempo expressed as beats per minute",
+                inputs: [
+                  {
+                    type: "number",
+                    min: 45,
+                    max: 300,
+                    initialValue: () => numericAsString(clock.getRate()),
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.bpm(value);
                   if (valid) {
@@ -609,7 +732,14 @@ export class Destinations {
                 }),
               }),
               swing: new DestinationProperty({
-                description: "Clock swing expressed as float from 0 through 1",
+                inputs: [
+                  {
+                    type: "number",
+                    min: 0,
+                    max: 1,
+                    initialValue: () => numericAsString(clock.getSwing()),
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.swing(value);
                   if (valid) {
@@ -636,7 +766,13 @@ export class Destinations {
             },
             properties: {
               mode: new DestinationProperty({
-                description: "The mode for the current key.",
+                inputs: [
+                  {
+                    type: "select",
+                    initialValue: () => notes.getMode().name,
+                    options: MODES,
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.mode(value);
                   if (valid) {
@@ -659,7 +795,13 @@ export class Destinations {
                 }),
               }),
               root: new DestinationProperty({
-                description: "The root for the current key.",
+                inputs: [
+                  {
+                    type: "select",
+                    initialValue: () => notes.getRoot(),
+                    options: ROOTS,
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.root(value);
                   if (valid) {
@@ -722,15 +864,22 @@ export class Destinations {
           content: () => [Destinations.formatJSON(sequencer.exportParams())],
         },
         properties: {
-          gain: new DestinationProperty({
-            description: "Set gain from 0 through 1",
+          volume: new DestinationProperty({
+            inputs: [
+              {
+                type: "number",
+                min: 0,
+                max: 1,
+                initialValue: () => numericAsString(drum.getGain()),
+              },
+            ],
             onSet: (_command, [value]) => {
-              const valid = validators.gain(value);
+              const valid = validators.volume(value);
               drum.updateGain(parseFloat(value));
               if (valid) {
-                return { valid, output: [`Set gain to ${value}`] };
+                return { valid, output: [`Set volume to ${value}`] };
               } else {
-                return { valid, output: [`Could not set gain to ${value}`] };
+                return { valid, output: [`Could not set volume to ${value}`] };
               }
             },
             onGet: () => ({
@@ -780,7 +929,14 @@ export class Destinations {
             },
             properties: {
               size: new DestinationProperty({
-                description: "Step count from 1 to 16",
+                inputs: [
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 64,
+                    initialValue: () => sequencer.steps.size.toString(),
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.step(value);
                   if (valid) sequencer.steps.set(parseInt(value));
@@ -835,7 +991,14 @@ export class Destinations {
       },
       properties: {
         octave: new DestinationProperty({
-          description: "Set base octave from 0 through 7",
+          inputs: [
+            {
+              type: "number",
+              min: 0,
+              max: 7,
+              initialValue: () => keyboard.octave.toString(),
+            },
+          ],
           onSet: (_command, [value]) => {
             const valid = validators.octave(value);
             if (valid) {
@@ -875,15 +1038,22 @@ export class Destinations {
           content: () => [Destinations.formatJSON(sequencer.exportParams())],
         },
         properties: {
-          gain: new DestinationProperty({
-            description: "Set gain from 0 through 1",
+          volume: new DestinationProperty({
+            inputs: [
+              {
+                type: "number",
+                min: 0,
+                max: 1,
+                initialValue: () => numericAsString(synth.getGain()),
+              },
+            ],
             onSet: (_command, [value]) => {
-              const valid = validators.gain(value);
+              const valid = validators.volume(value);
               synth.updateGain(parseFloat(value));
               if (valid) {
-                return { valid, output: [`Set gain to ${value}`] };
+                return { valid, output: [`Set volume to ${value}`] };
               } else {
-                return { valid, output: [`Could not set gain to ${value}`] };
+                return { valid, output: [`Could not set volume to ${value}`] };
               }
             },
             onGet: () => ({
@@ -892,7 +1062,14 @@ export class Destinations {
             }),
           }),
           octave: new DestinationProperty({
-            description: "Set base octave from 0 through 7",
+            inputs: [
+              {
+                type: "number",
+                min: 0,
+                max: 7,
+                initialValue: () => sequencer.octave.toString(),
+              },
+            ],
             onSet: (_command, [value]) => {
               const valid = validators.octave(value);
               if (valid) {
@@ -943,7 +1120,14 @@ export class Destinations {
             },
             properties: {
               size: new DestinationProperty({
-                description: "Step count from 1 to 16",
+                inputs: [
+                  {
+                    type: "number",
+                    min: 1,
+                    max: 64,
+                    initialValue: () => sequencer.steps.size.toString(),
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.step(value);
                   if (valid) sequencer.steps.set(parseInt(value));
@@ -998,7 +1182,15 @@ export class Destinations {
             },
             properties: {
               feedback: new DestinationProperty({
-                description: "Delay feedback from 0 through 1",
+                inputs: [
+                  {
+                    type: "number",
+                    min: 0,
+                    max: 1,
+                    initialValue: () =>
+                      numericAsString(synth.voices[0].delay.feedback.value),
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.feedback(value);
                   synth.updateDelay({ feedback: parseFloat(value) });
@@ -1022,7 +1214,15 @@ export class Destinations {
                 }),
               }),
               time: new DestinationProperty({
-                description: "Time for delay",
+                inputs: [
+                  {
+                    type: "number",
+                    min: 0,
+                    max: 3,
+                    initialValue: () =>
+                      numericAsString(synth.voices[0].delay.delayTime.value),
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.time(value);
                   synth.updateDelay({ delayTime: value });
@@ -1043,7 +1243,15 @@ export class Destinations {
                 }),
               }),
               wet: new DestinationProperty({
-                description: "Delay wet from 0 through 1",
+                inputs: [
+                  {
+                    type: "number",
+                    min: 0,
+                    max: 1,
+                    initialValue: () =>
+                      numericAsString(synth.voices[0].delay.wet.value),
+                  },
+                ],
                 onSet: (_command, [value]) => {
                   const valid = validators.wet(value);
                   synth.updateDelay({ wet: parseFloat(value) });

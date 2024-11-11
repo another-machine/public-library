@@ -1,4 +1,9 @@
-import { Destination, DestinationInfo } from "./Destinations";
+import {
+  Destination,
+  DestinationInfo,
+  DestinationPropertyInput,
+  DestinationPropertyInputFormatter,
+} from "./Destinations";
 
 const escapedStringForRegex = (string: string) =>
   string.replace(/([^a-zA-Z\d])/g, "\\$1");
@@ -14,7 +19,8 @@ export type PromptOutput = {
     destinationKeys: (string | undefined)[];
     destinationInfos: DestinationInfo[];
     destinations: string[];
-    propertyDescriptions: string[];
+    propertyInputs: DestinationPropertyInput[][];
+    propertyInputsFormatters: ((values: string[]) => string)[];
     properties: string[];
     commandDescriptions: string[];
     commands: string[];
@@ -68,7 +74,8 @@ export class Prompt {
       commands,
       commandDescriptions,
       properties,
-      propertyDescriptions,
+      propertyInputs,
+      propertyInputsFormatters,
     } = currentDestination.suggestions;
 
     if (this.destinationKeys.length === 0 || key !== undefined) {
@@ -93,8 +100,11 @@ export class Prompt {
     const filteredProperties = properties.filter((a) =>
       Boolean(a.match(matchableCommand))
     );
-    const filteredPropertyDescriptions = filteredProperties.map(
-      (key) => propertyDescriptions[key]
+    const filteredPropertyInputs = filteredProperties.map(
+      (key) => propertyInputs[key]
+    );
+    const filteredPropertyInputFormatters = filteredProperties.map(
+      (key) => propertyInputsFormatters[key]
     );
 
     const info = [currentDestination.info];
@@ -107,7 +117,8 @@ export class Prompt {
         destinations: filteredDestinations,
         commandDescriptions: filteredCommandDescriptions,
         commands: filteredCommands,
-        propertyDescriptions: filteredPropertyDescriptions,
+        propertyInputs: filteredPropertyInputs,
+        propertyInputsFormatters: filteredPropertyInputFormatters,
         properties: filteredProperties,
       },
     };
@@ -383,11 +394,88 @@ export class PromptInterface {
       output.suggestions.properties.forEach((a, i) => {
         makeToken(a, "property");
         if (totalCount === 1) {
-          this.$description.innerHTML =
-            output.suggestions!.propertyDescriptions[i];
+          this.renderInputs(
+            output.suggestions!.propertyInputs[i],
+            output.suggestions!.propertyInputsFormatters[i]
+          );
         }
       });
     }
+  }
+
+  public renderInputs(
+    inputs: DestinationPropertyInput[],
+    formatter: DestinationPropertyInputFormatter
+  ) {
+    this.$description.innerHTML = "<form></form>";
+    const $form = this.$description.querySelector("form") as HTMLFormElement;
+    const $inputs = inputs.map((input) => {
+      const $field = document.createElement("div");
+      $form.appendChild($field);
+      if (input.type === "select") {
+        const $select = document.createElement("select");
+        $select.innerHTML = input.options
+          .map(
+            (option) => `<option value="${option}">${option || "None"}</option>`
+          )
+          .join("\n");
+        $select.value = input.initialValue();
+        $field.appendChild($select);
+        return $select;
+      } else {
+        const $control = document.createElement("div");
+        const $input = document.createElement("input");
+        const diff = input.max - input.min;
+        const steps = [diff < 3 ? 0.001 : 1];
+        if (diff < 3) {
+          steps.push(0.01, 0.1);
+        }
+        if (diff > 10) {
+          steps.push(5);
+        }
+        if (diff > 50) {
+          steps.push(10);
+        }
+        if (diff > 100) {
+          steps.push(25);
+        }
+        $input.setAttribute("type", "number");
+        $input.setAttribute("step", steps[0].toString());
+        $input.setAttribute("min", input.min.toString());
+        $input.setAttribute("max", input.max.toString());
+        $input.value = input.initialValue();
+        $field.appendChild($input);
+        $field.appendChild($control);
+        steps.forEach((step) => {
+          const $buttonMinus = document.createElement("button");
+          $buttonMinus.setAttribute("type", "button");
+          $control.appendChild($buttonMinus);
+          $buttonMinus.innerText = `-${step}`;
+          $buttonMinus.addEventListener("click", () => {
+            const val = parseFloat($input.value);
+            $input.value = Math.max(input.min, val - step).toString();
+          });
+          const $buttonAdd = document.createElement("button");
+          $buttonAdd.setAttribute("type", "button");
+          $control.appendChild($buttonAdd);
+          $buttonAdd.innerText = `+${step}`;
+          $buttonAdd.addEventListener("click", () => {
+            const val = parseFloat($input.value);
+            $input.value = Math.min(input.max, val + step).toString();
+          });
+        });
+        return $input;
+      }
+    });
+    const $buttonSubmit = document.createElement("button");
+    $buttonSubmit.setAttribute("type", "submit");
+    $buttonSubmit.innerText = "Update";
+    $form.appendChild($buttonSubmit);
+    $form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const value = formatter($inputs.map(($input) => $input.value));
+      console.log(value);
+    });
   }
 
   public renderDestinationInfo() {
