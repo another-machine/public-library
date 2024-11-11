@@ -200,7 +200,7 @@ export class PromptInterface {
     this.$description = this.$div.querySelector(
       ".description"
     ) as HTMLDivElement;
-    this.$breadcrumbs.innerHTML = "$";
+    this.$breadcrumbs.innerHTML = "";
     this.$input.addEventListener("blur", this.handleBlur.bind(this));
     this.$input.addEventListener("focus", this.handleFocus.bind(this));
     this.$input.addEventListener("keydown", this.handleKeydown.bind(this));
@@ -299,8 +299,8 @@ export class PromptInterface {
 
     this.$input.value = "";
     const { destinationKeys } = this.prompt;
-    this.$breadcrumbs.innerHTML = destinationKeys.join("/") || "$";
-    this.$info.innerHTML = this.formatInfo(this.prompt.currentDestination.info);
+    this.$breadcrumbs.innerHTML = destinationKeys.join("/") || "";
+    this.renderDestinationInfo();
   }
 
   handleSuggestionSelection(value: string, type: string) {
@@ -388,6 +388,10 @@ export class PromptInterface {
         }
       });
     }
+  }
+
+  public renderDestinationInfo() {
+    this.$info.innerHTML = this.formatInfo(this.prompt.currentDestination.info);
   }
 
   private formatInfo(info: DestinationInfo | string) {

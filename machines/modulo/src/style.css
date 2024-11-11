@@ -354,6 +354,7 @@ main[stepping="true"] .sequencer {
   flex: 1;
   flex-direction: column;
   justify-content: start;
+  order: -1;
   padding: calc(var(--prompt-gap-column-factor) * var(--size-unit));
 
   &.open {
@@ -492,6 +493,10 @@ main[stepping="true"] .sequencer {
     margin-top: var(--gap);
     padding: calc(var(--prompt-padding-y-factor) * var(--size-unit))
       calc(var(--prompt-padding-x-factor) * var(--size-unit));
+
+    &:empty {
+      display: none;
+    }
   }
 
   .info {

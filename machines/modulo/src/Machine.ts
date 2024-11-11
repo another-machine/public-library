@@ -412,5 +412,6 @@ export class Machine {
     } else {
       console.log(type, location, valueA, valueB);
     }
+    this.promptInterface.renderDestinationInfo();
   }
 }

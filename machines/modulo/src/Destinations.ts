@@ -334,7 +334,7 @@ const synthsCommands = (synths: Synths, a: boolean, b: boolean) => ({
 });
 
 export class Destinations {
-  static formatJSON(object: { [k: string]: any }, level = 2): string {
+  static formatJSON(object: { [k: string]: any }, level = 3): string {
     return serializeJSON(object, level);
 
     function needsQuotes(s: string): boolean {
@@ -399,9 +399,37 @@ export class Destinations {
               serializeJSON(item, maxDepth, currentDepth + 1, nextIndent)
             );
 
-            return items.length <= 3
-              ? `[${items.join(", ")}]`
-              : `[\n${nextIndent}${items.join(",\n" + nextIndent)}\n${indent}]`;
+            const singleLine = items.join(", ");
+            if (singleLine.length <= 40) {
+              return `[${singleLine}]`;
+            }
+            // Splitting these into groups if values are short.
+            // Primarily anticipating the case of single digit arrays for steps.
+            if (singleLine.length < items.length * 3) {
+              const groups: string[] = [];
+              let length = 0;
+              let nextGroup: string[] = [];
+              items.forEach((item) => {
+                if (length + item.length + 2 <= 36) {
+                  length += item.length + 2;
+                  nextGroup.push(item);
+                } else {
+                  groups.push(nextGroup.join(", "));
+                  nextGroup = [item];
+                  length = item.length + 2;
+                }
+              });
+              if (nextGroup.length) {
+                groups.push(nextGroup.join(", "));
+              }
+
+              return `[\n${nextIndent}${groups.join(
+                ",\n" + nextIndent
+              )}\n${indent}]`;
+            }
+            return `[\n${nextIndent}${items.join(
+              ",\n" + nextIndent
+            )}\n${indent}]`;
           }
 
           if (Object.keys(obj).length === 0) return "{}";
@@ -417,7 +445,7 @@ export class Destinations {
             return `${keyStr}: ${valueStr}`;
           });
 
-          return pairs.length <= 1
+          return pairs.join(",").length <= 40
             ? `{ ${pairs.join(", ")} }`
             : `{\n${nextIndent}${pairs.join(",\n" + nextIndent)}\n${indent}}`;
         }
@@ -693,49 +721,7 @@ export class Destinations {
         info: {
           content: () => [Destinations.formatJSON(sequencer.exportParams())],
         },
-        commands: {
-          random: new DestinationCommand({
-            description: 'Randomize steps. Argument "chance" from 0 through 1.',
-            onCommand: (_command, args, _prompt) => {
-              if (
-                args.length <= 1 &&
-                (!args[0] || validators.chance(args[0]))
-              ) {
-                sequencer.steps.randomize(
-                  args[0] ? parseFloat(args[0]) : undefined
-                );
-                onStepChange();
-                return { valid: true, output: ["Randomized steps"] };
-              }
-              return {
-                valid: false,
-                output: ["Could not randomize steps. Invalid arguments."],
-              };
-            },
-          }),
-          double: new DestinationCommand({
-            description: 'Double steps. Argument "chance" from 0 through 1.',
-            onCommand: (_command, _args, _prompt) => {
-              sequencer.steps.double();
-              onStepChange();
-              return { valid: true, output: ["Randomized steps"] };
-            },
-          }),
-        },
         properties: {
-          steps: new DestinationProperty({
-            description: "Step count from 1 to 16",
-            onSet: (_command, [value]) => {
-              const valid = validators.step(value);
-              if (valid) sequencer.steps.set(parseInt(value));
-              onStepChange();
-              return { valid, output: [`Set steps to ${value}`] };
-            },
-            onGet: () => ({
-              valid: true,
-              output: [`Step count is ${sequencer.steps.size}`],
-            }),
-          }),
           gain: new DestinationProperty({
             description: "Set gain from 0 through 1",
             onSet: (_command, [value]) => {
@@ -754,7 +740,61 @@ export class Destinations {
           }),
         },
 
-        destinations: {},
+        destinations: {
+          steps: new Destination({
+            info: {
+              content: () => [
+                Destinations.formatJSON(sequencer.steps.exportParams()),
+              ],
+            },
+            commands: {
+              random: new DestinationCommand({
+                description:
+                  'Randomize steps. Argument "chance" from 0 through 1.',
+                onCommand: (_command, args, _prompt) => {
+                  if (
+                    args.length <= 1 &&
+                    (!args[0] || validators.chance(args[0]))
+                  ) {
+                    sequencer.steps.randomize(
+                      args[0] ? parseFloat(args[0]) : undefined
+                    );
+                    onStepChange();
+                    return { valid: true, output: ["Randomized steps"] };
+                  }
+                  return {
+                    valid: false,
+                    output: ["Could not randomize steps. Invalid arguments."],
+                  };
+                },
+              }),
+              double: new DestinationCommand({
+                description:
+                  'Double steps. Argument "chance" from 0 through 1.',
+                onCommand: (_command, _args, _prompt) => {
+                  sequencer.steps.double();
+                  onStepChange();
+                  return { valid: true, output: ["Randomized steps"] };
+                },
+              }),
+            },
+            properties: {
+              size: new DestinationProperty({
+                description: "Step count from 1 to 16",
+                onSet: (_command, [value]) => {
+                  const valid = validators.step(value);
+                  if (valid) sequencer.steps.set(parseInt(value));
+                  onStepChange();
+                  return { valid, output: [`Set steps to ${value}`] };
+                },
+                onGet: () => ({
+                  valid: true,
+                  output: [`Step count is ${sequencer.steps.size}`],
+                }),
+              }),
+            },
+          }),
+        },
       });
     });
     return destinations;
@@ -834,41 +874,7 @@ export class Destinations {
         info: {
           content: () => [Destinations.formatJSON(sequencer.exportParams())],
         },
-        commands: {
-          random: new DestinationCommand({
-            description: 'Randomize steps. Argument "chance" from 0 through 1.',
-            onCommand: (_command, args, _prompt) => {
-              if (
-                args.length <= 1 &&
-                (!args[0] || validators.chance(args[0]))
-              ) {
-                sequencer.steps.randomize(
-                  args[0] ? parseFloat(args[0]) : undefined
-                );
-                onStepChange();
-                return { valid: true, output: ["Randomized steps"] };
-              }
-              return {
-                valid: false,
-                output: ["Could not randomize steps. Invalid arguments."],
-              };
-            },
-          }),
-        },
         properties: {
-          steps: new DestinationProperty({
-            description: "Step count from 1 to 16",
-            onSet: (_command, [value]) => {
-              const valid = validators.step(value);
-              if (valid) sequencer.steps.set(parseInt(value));
-              onStepChange();
-              return { valid, output: [`Set steps to ${value}`] };
-            },
-            onGet: () => ({
-              valid: true,
-              output: [`Step count is ${sequencer.steps.size}`],
-            }),
-          }),
           gain: new DestinationProperty({
             description: "Set gain from 0 through 1",
             onSet: (_command, [value]) => {
@@ -907,13 +913,57 @@ export class Destinations {
         },
 
         destinations: {
-          synth: new Destination({
+          steps: new Destination({
+            info: {
+              content: () => [
+                Destinations.formatJSON(sequencer.steps.exportParams()),
+              ],
+            },
+            commands: {
+              random: new DestinationCommand({
+                description:
+                  'Randomize steps. Argument "chance" from 0 through 1.',
+                onCommand: (_command, args, _prompt) => {
+                  if (
+                    args.length <= 1 &&
+                    (!args[0] || validators.chance(args[0]))
+                  ) {
+                    sequencer.steps.randomize(
+                      args[0] ? parseFloat(args[0]) : undefined
+                    );
+                    onStepChange();
+                    return { valid: true, output: ["Randomized steps"] };
+                  }
+                  return {
+                    valid: false,
+                    output: ["Could not randomize steps. Invalid arguments."],
+                  };
+                },
+              }),
+            },
+            properties: {
+              size: new DestinationProperty({
+                description: "Step count from 1 to 16",
+                onSet: (_command, [value]) => {
+                  const valid = validators.step(value);
+                  if (valid) sequencer.steps.set(parseInt(value));
+                  onStepChange();
+                  return { valid, output: [`Set steps to ${value}`] };
+                },
+                onGet: () => ({
+                  valid: true,
+                  output: [`Step count is ${sequencer.steps.size}`],
+                }),
+              }),
+            },
+          }),
+          synths: new Destination({
             info: {
               content: () => {
                 const settings = synth.exportParams();
                 return [
-                  Destinations.formatJSON(settings.settings.synthA),
-                  Destinations.formatJSON(settings.settings.synthB),
+                  Destinations.formatJSON(settings.settings.a),
+                  Destinations.formatJSON(settings.settings.b),
                 ];
               },
             },
@@ -923,10 +973,7 @@ export class Destinations {
               a: new Destination({
                 info: {
                   content: () => [
-                    Destinations.formatJSON(
-                      synth.exportParams().settings.synthA,
-                      3
-                    ),
+                    Destinations.formatJSON(synth.exportParams().settings.a),
                   ],
                 },
                 commands: synthsCommands(synth, true, false),
@@ -935,10 +982,7 @@ export class Destinations {
               b: new Destination({
                 info: {
                   content: () => [
-                    Destinations.formatJSON(
-                      synth.exportParams().settings.synthB,
-                      3
-                    ),
+                    Destinations.formatJSON(synth.exportParams().settings.b),
                   ],
                 },
                 commands: synthsCommands(synth, false, true),

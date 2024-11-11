@@ -28,8 +28,8 @@ const INITIAL_OPTIONS: SynthSettingsOptions = {
 };
 
 const INITIAL_SETTINGS: ConfigurableSynthParams = {
-  synthA: { pan: -0.5, options: INITIAL_OPTIONS },
-  synthB: { pan: 0.75, options: INITIAL_OPTIONS },
+  a: { pan: -0.5, options: INITIAL_OPTIONS },
+  b: { pan: 0.75, options: INITIAL_OPTIONS },
   delay: { wet: 0, feedback: 0.5, delayTime: "16n" },
   reverb: { wet: 0, roomSize: 0.5 },
 };
@@ -116,8 +116,8 @@ interface SynthSettingsDelay {
 }
 
 export interface ConfigurableSynthParams {
-  synthA: SynthSettingsSynth;
-  synthB: SynthSettingsSynth;
+  a: SynthSettingsSynth;
+  b: SynthSettingsSynth;
   reverb: SynthSettingsReverb;
   delay: SynthSettingsDelay;
 }
@@ -218,11 +218,11 @@ export class ConfigurableSynth {
 
   exportParams(): ConfigurableSynthParams {
     return {
-      synthA: {
+      a: {
         pan: this.panA.pan.value,
         options: this.optionsFromNode(this.nodeA),
       },
-      synthB: {
+      b: {
         pan: this.panB.pan.value,
         options: this.optionsFromNode(this.nodeB),
       },
@@ -239,10 +239,10 @@ export class ConfigurableSynth {
   }
 
   updateSettings(settings: ConfigurableSynthParams) {
-    this.nodeA.set(settings.synthA.options);
-    this.nodeB.set(settings.synthB.options);
-    this.panA.pan.value = settings.synthA.pan;
-    this.panB.pan.value = settings.synthB.pan;
+    this.nodeA.set(settings.a.options);
+    this.nodeB.set(settings.b.options);
+    this.panA.pan.value = settings.a.pan;
+    this.panB.pan.value = settings.b.pan;
     this.reverb.set(settings.reverb);
     this.delay.set(settings.delay);
   }
@@ -269,19 +269,19 @@ export class Synths {
   ): ConfigurableSynthParams {
     return {
       ...Synths.initialSettings,
-      synthA: {
-        ...Synths.initialSettings.synthA,
+      a: {
+        ...Synths.initialSettings.a,
         options: {
-          ...Synths.initialSettings.synthA.options,
+          ...Synths.initialSettings.a.options,
           oscillator: {
             type: (type + (partials || "")) as SynthSettingsOscillatorType,
           },
         },
       },
-      synthB: {
-        ...Synths.initialSettings.synthB,
+      b: {
+        ...Synths.initialSettings.b,
         options: {
-          ...Synths.initialSettings.synthB.options,
+          ...Synths.initialSettings.b.options,
           oscillator: {
             type: (type + (partials || "")) as SynthSettingsOscillatorType,
           },
