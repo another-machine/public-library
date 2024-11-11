@@ -1,4 +1,4 @@
-import { Destination } from "./Destinations";
+import { Destination, DestinationInfo } from "./Destinations";
 
 const escapedStringForRegex = (string: string) =>
   string.replace(/([^a-zA-Z\d])/g, "\\$1");
@@ -12,14 +12,14 @@ export type PromptOutput = {
   valid: boolean;
   suggestions?: {
     destinationKeys: (string | undefined)[];
-    destinationDescriptions: string[];
+    destinationInfos: DestinationInfo[];
     destinations: string[];
     propertyDescriptions: string[];
     properties: string[];
     commandDescriptions: string[];
     commands: string[];
   };
-  info?: string[];
+  info?: DestinationInfo[];
   output?: string[];
 };
 
@@ -64,7 +64,7 @@ export class Prompt {
       key,
       destinations,
       destinationKeys,
-      destinationDescriptions,
+      destinationInfos,
       commands,
       commandDescriptions,
       properties,
@@ -81,8 +81,8 @@ export class Prompt {
     const filteredDestinationKeys = filteredDestinations.map(
       (key) => destinationKeys[key]
     );
-    const filteredDestinationDescriptions = filteredDestinations.map(
-      (key) => destinationDescriptions[key]
+    const filteredDestinationInfos = filteredDestinations.map(
+      (key) => destinationInfos[key]
     );
     const filteredCommands = commands.filter((a) =>
       Boolean(a.match(matchableCommand))
@@ -97,13 +97,13 @@ export class Prompt {
       (key) => propertyDescriptions[key]
     );
 
-    const info = [currentDestination.description];
+    const info = [currentDestination.info];
     return {
       valid: true,
       info,
       suggestions: {
         destinationKeys: filteredDestinationKeys,
-        destinationDescriptions: filteredDestinationDescriptions,
+        destinationInfos: filteredDestinationInfos,
         destinations: filteredDestinations,
         commandDescriptions: filteredCommandDescriptions,
         commands: filteredCommands,
@@ -172,9 +172,10 @@ export class Prompt {
 export class PromptInterface {
   $div: HTMLDivElement;
   $input: HTMLInputElement;
-  $span: HTMLSpanElement;
   $actions: HTMLDivElement;
+  $breadcrumbs: HTMLSpanElement;
   $info: HTMLDivElement;
+  $description: HTMLDivElement;
   keydownBackspacing = false;
   prompt: Prompt;
 
@@ -183,20 +184,23 @@ export class PromptInterface {
     this.$div = document.createElement("div");
     this.$div.id = "prompt";
     this.$div.innerHTML = `
-    <div class="input">
-    <span></span>
-    <input type="text" />
-    </div>
-    <div class="actions">
-    </div>
+    <span class="breadcrumbs"></span>
     <div class="info"></div>
+    <div class="description"></div>
+    <div class="actions"></div>
+    <div class="input"><input type="text" /></div>
     `;
     parent.appendChild(this.$div);
     this.$input = this.$div.querySelector("input") as HTMLInputElement;
-    this.$span = this.$div.querySelector("span") as HTMLSpanElement;
+    this.$breadcrumbs = this.$div.querySelector(
+      ".breadcrumbs"
+    ) as HTMLSpanElement;
     this.$actions = this.$div.querySelector(".actions") as HTMLDivElement;
     this.$info = this.$div.querySelector(".info") as HTMLDivElement;
-    this.$span.innerHTML = "$";
+    this.$description = this.$div.querySelector(
+      ".description"
+    ) as HTMLDivElement;
+    this.$breadcrumbs.innerHTML = "$";
     this.$input.addEventListener("blur", this.handleBlur.bind(this));
     this.$input.addEventListener("focus", this.handleFocus.bind(this));
     this.$input.addEventListener("keydown", this.handleKeydown.bind(this));
@@ -266,7 +270,7 @@ export class PromptInterface {
   }
 
   handleKeyup(event: KeyboardEvent) {
-    this.$info.classList.remove("invalid");
+    this.$description.classList.remove("invalid");
     if (event.code === "Enter") {
       event.preventDefault();
       this.handleSubmit();
@@ -290,16 +294,17 @@ export class PromptInterface {
       this.prompt.result = result.output;
     }
     if (!result.valid) {
-      this.$info.classList.add("invalid");
+      this.$description.classList.add("invalid");
     }
 
     this.$input.value = "";
     const { destinationKeys } = this.prompt;
-    this.$span.innerHTML = destinationKeys.join("/") || "$";
+    this.$breadcrumbs.innerHTML = destinationKeys.join("/") || "$";
+    this.$info.innerHTML = this.formatInfo(this.prompt.currentDestination.info);
   }
 
   handleSuggestionSelection(value: string, type: string) {
-    this.$info.classList.remove("invalid");
+    this.$description.classList.remove("invalid");
     const string = this.$input.value;
     const currentValue = string.split(" ");
     currentValue.pop();
@@ -323,11 +328,7 @@ export class PromptInterface {
     if (key !== undefined) {
       this.$div.classList.add(`theme-key-${key}`);
     }
-    this.$info.innerHTML = (
-      this.prompt.result.length ? this.prompt.result : output.info || []
-    )
-      .map((a) => `<span>${a}</span>`)
-      .join("");
+    this.$description.innerHTML = this.prompt.result.join("");
 
     this.$actions.innerHTML = "";
     const makeToken = (
@@ -358,7 +359,7 @@ export class PromptInterface {
         output.suggestions.commands.length +
         output.suggestions.properties.length;
       if (totalCount === 0) {
-        this.$info.innerHTML = "Nothing.";
+        this.$description.innerHTML = "Nothing.";
       }
       output.suggestions.destinations.forEach((a, i) => {
         const button = makeToken(a, "destination", "", "/");
@@ -366,22 +367,39 @@ export class PromptInterface {
         if (key !== undefined) {
           button.classList.add(`theme-key-${key}`);
         }
-        if (totalCount === 1) {
-          this.$info.innerHTML = output.suggestions!.destinationDescriptions[i];
-        }
+        // This eagerly shows destination info. not sure if thats necessary
+        // if (totalCount === 1) {
+        //   const info = output.suggestions!.destinationInfos[i];
+        //   this.$info.innerHTML = this.formatInfo(info);
+        // }
       });
       output.suggestions.commands.forEach((a, i) => {
         makeToken(a, "command");
         if (totalCount === 1) {
-          this.$info.innerHTML = output.suggestions!.commandDescriptions[i];
+          this.$description.innerHTML =
+            output.suggestions!.commandDescriptions[i];
         }
       });
       output.suggestions.properties.forEach((a, i) => {
         makeToken(a, "property");
         if (totalCount === 1) {
-          this.$info.innerHTML = output.suggestions!.propertyDescriptions[i];
+          this.$description.innerHTML =
+            output.suggestions!.propertyDescriptions[i];
         }
       });
     }
+  }
+
+  private formatInfo(info: DestinationInfo | string) {
+    if (typeof info === "string") {
+      return `<span>${info}</span>`;
+    }
+
+    const label = info.label || "";
+    const content = info.content();
+
+    return `${label ? `<span>${label}</span>` : ""}${content
+      .map((c) => `<pre>${c}</pre>`)
+      .join("\n")}`;
   }
 }

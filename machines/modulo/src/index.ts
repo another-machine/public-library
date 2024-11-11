@@ -3,10 +3,8 @@ import { Synths } from "./Synths";
 
 console.clear();
 
-const main = document.querySelector("main") as HTMLElement;
-
 new Machine({
-  element: main,
+  element: document.body,
   theme: {
     color: {
       core: {
@@ -48,10 +46,10 @@ new Machine({
       corner: 0.2,
       gapColumn: 0.6,
       gapRow: 0.4,
-      paddingX: 1,
-      paddingY: 1,
+      paddingX: 0.5,
+      paddingY: 0.5,
       sizeBorder: 0.1,
-      sizeFont: 1.5,
+      sizeFont: 1,
     },
     interface: {
       corner: 0.2,

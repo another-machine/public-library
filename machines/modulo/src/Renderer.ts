@@ -52,7 +52,8 @@ export class Renderer {
   cursorY: number | null = null;
   baseHue = 0;
   hueRotate = false;
-  elementMain: HTMLElement;
+  elementMain = document.createElement("main");
+  elementRoot: HTMLElement;
   sequencerElements: { [key: string]: HTMLDivElement } = {};
   sequencers: Sequencer[] = [];
   keyboard: Keyboard;
@@ -74,8 +75,9 @@ export class Renderer {
     keyboard: Keyboard;
     rendererEventHandler: RendererEventHandler;
   }) {
-    this.elementMain = element;
-    this.elementMain.appendChild(this.style);
+    this.elementRoot = element;
+    this.elementRoot.appendChild(this.elementMain);
+    this.elementRoot.appendChild(this.style);
     this.sequencers = sequencers;
     this.keyboard = keyboard;
     this.setTheme(theme);
@@ -115,7 +117,7 @@ export class Renderer {
     this.sequencers = sequencers;
     this.keyboard = keyboard;
     this.elementMain.innerHTML = "";
-    this.elementMain.appendChild(this.style);
+    this.elementRoot.appendChild(this.style);
     this.setTheme(theme);
     this.initializeSequencers();
     this.elementMain.appendChild(this.elementPads);

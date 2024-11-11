@@ -6,6 +6,8 @@ import { DrumSequencer, Sequencer, SynthSequencer } from "./Sequencer";
 import { Keyboard } from "./Keyboard";
 import { Signal } from "tone";
 
+export type DestinationInfo = { content: () => string[]; label?: string };
+
 export type DestinationCommandArgs = {
   description: string;
   onCommand(command: string, args: string[], prompt: Prompt): PromptOutput;
@@ -82,26 +84,26 @@ class DestinationProperty {
 
 export class Destination {
   key?: string;
-  description: string;
+  info: DestinationInfo;
   destinations: { [destination: string]: Destination };
   properties: { [property: string]: DestinationProperty };
   commands: { [command: string]: DestinationCommand };
 
   constructor({
     key,
-    description,
+    info,
     destinations,
     properties,
     commands,
   }: {
     key?: string;
-    description: string;
+    info: DestinationInfo;
     destinations?: { [destination: string]: Destination };
     properties?: { [property: string]: DestinationProperty };
     commands?: { [command: string]: DestinationCommand };
   }) {
     this.key = key;
-    this.description = description;
+    this.info = info;
     this.destinations = destinations || {};
     this.properties = properties || {};
     this.commands = commands || {};
@@ -115,10 +117,10 @@ export class Destination {
       into[key] = this.destinations[key].key;
       return into;
     }, {});
-    const destinationDescriptions = destinations.reduce<{
-      [k: string]: string;
+    const destinationInfos = destinations.reduce<{
+      [k: string]: DestinationInfo;
     }>((into, key) => {
-      into[key] = this.destinations[key].description;
+      into[key] = this.destinations[key].info;
       return into;
     }, {});
     const properties = Object.keys(this.properties);
@@ -139,7 +141,7 @@ export class Destination {
       key: this.key,
       destinations,
       destinationKeys,
-      destinationDescriptions,
+      destinationInfos,
       properties,
       propertyDescriptions,
       commands,
@@ -332,6 +334,100 @@ const synthsCommands = (synths: Synths, a: boolean, b: boolean) => ({
 });
 
 export class Destinations {
+  static formatJSON(object: { [k: string]: any }, level = 2): string {
+    return serializeJSON(object, level);
+
+    function needsQuotes(s: string): boolean {
+      const isValidIdentifier = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(s);
+      if (!isValidIdentifier && !/^\d+$/.test(s)) {
+        return true;
+      }
+
+      const reserved = new Set([
+        "true",
+        "false",
+        "null",
+        "if",
+        "else",
+        "for",
+        "while",
+        "break",
+        "continue",
+        "return",
+        "typeof",
+        "delete",
+        "class",
+        "const",
+        "let",
+        "var",
+        "void",
+        "yield",
+      ]);
+
+      return reserved.has(s.toLowerCase());
+    }
+
+    function serializeJSON(
+      obj: any,
+      maxDepth: number = Infinity,
+      currentDepth: number = 0,
+      indent: string = ""
+    ): string {
+      if (typeof obj === "object" && currentDepth > maxDepth) {
+        return Array.isArray(obj) ? `Array(${obj.length})` : "Object";
+      }
+
+      if (obj === null) {
+        return "null";
+      }
+
+      switch (typeof obj) {
+        case "number":
+        case "boolean":
+          return String(obj);
+
+        case "string":
+          return `"${obj.replace(/"/g, '\\"')}"`;
+
+        case "object": {
+          const nextIndent = indent + "  ";
+
+          if (Array.isArray(obj)) {
+            if (obj.length === 0) return "[]";
+
+            const items = obj.map((item) =>
+              serializeJSON(item, maxDepth, currentDepth + 1, nextIndent)
+            );
+
+            return items.length <= 3
+              ? `[${items.join(", ")}]`
+              : `[\n${nextIndent}${items.join(",\n" + nextIndent)}\n${indent}]`;
+          }
+
+          if (Object.keys(obj).length === 0) return "{}";
+
+          const pairs = Object.entries(obj).map(([key, value]) => {
+            const keyStr = needsQuotes(key) ? `"${key}"` : key;
+            const valueStr = serializeJSON(
+              value,
+              maxDepth,
+              currentDepth + 1,
+              nextIndent
+            );
+            return `${keyStr}: ${valueStr}`;
+          });
+
+          return pairs.length <= 1
+            ? `{ ${pairs.join(", ")} }`
+            : `{\n${nextIndent}${pairs.join(",\n" + nextIndent)}\n${indent}}`;
+        }
+
+        default:
+          throw new Error(`Unsupported type: ${typeof obj}`);
+      }
+    }
+  }
+
   static generateDestinations({
     clock,
     notes,
@@ -384,7 +480,7 @@ export class Destinations {
     };
 
     return new Destination({
-      description: "Modulo",
+      info: { content: () => [], label: "Modulo" },
       destinations,
       properties: {},
       commands: {},
@@ -438,12 +534,18 @@ export class Destinations {
     return {
       core: new Destination({
         key: "core",
-        description: "Core configurations for the machine",
+        info: {
+          label: "Core configurations for the machine",
+          content: () => [],
+        },
         commands,
         properties: {},
         destinations: {
           clock: new Destination({
-            description: "Clock timing and state",
+            info: {
+              label: "Clock timing and state",
+              content: () => [Destinations.formatJSON(clock.exportParams())],
+            },
             commands: {
               toggle: new DestinationCommand({
                 description: "Toggle the clock state on or off",
@@ -500,7 +602,10 @@ export class Destinations {
             },
           }),
           key: new Destination({
-            description: "Musical key for the machine",
+            info: {
+              label: "Musical key for the machine",
+              content: () => [Destinations.formatJSON(notes.exportParams())],
+            },
             properties: {
               mode: new DestinationProperty({
                 description: "The mode for the current key.",
@@ -551,7 +656,10 @@ export class Destinations {
             },
           }),
           color: new Destination({
-            description: "Color settings for the machine",
+            info: {
+              label: "Color settings for the machine",
+              content: () => [],
+            },
             commands: {
               rainbow: new DestinationCommand({
                 description: "Toggle the rainbow mode",
@@ -582,9 +690,9 @@ export class Destinations {
       const key = sequencer.key;
       destinations[key] = new Destination({
         key,
-        description: `Settings for ${key.charAt(0).toUpperCase()}${key.slice(
-          1
-        )}`,
+        info: {
+          content: () => [Destinations.formatJSON(sequencer.exportParams())],
+        },
         commands: {
           random: new DestinationCommand({
             description: 'Randomize steps. Argument "chance" from 0 through 1.',
@@ -662,15 +770,25 @@ export class Destinations {
     const destinations: { [destination: string]: Destination } = {};
     destinations.keyboard = new Destination({
       key: "keyboard",
-      description: "The Keyboard",
+      info: {
+        content: () => [Destinations.formatJSON(keyboard.exportParams())],
+      },
       destinations: {
         main: new Destination({
-          description: "The selected note synth",
+          info: {
+            content: () => [
+              Destinations.formatJSON(keyboard.main.exportParams()),
+            ],
+          },
           commands: synthsCommands(keyboard.main, true, true),
           properties: synthProperties(keyboard.main, true, true),
         }),
         ghosts: new Destination({
-          description: "The ghost note synths",
+          info: {
+            content: () => [
+              Destinations.formatJSON(keyboard.ghosts.exportParams()),
+            ],
+          },
           commands: synthsCommands(keyboard.ghosts, true, true),
           properties: synthProperties(keyboard.ghosts, true, true),
         }),
@@ -713,9 +831,9 @@ export class Destinations {
       const key = sequencer.key;
       destinations[key] = new Destination({
         key,
-        description: `Settings for ${key.charAt(0).toUpperCase()}${key.slice(
-          1
-        )} Sequencer`,
+        info: {
+          content: () => [Destinations.formatJSON(sequencer.exportParams())],
+        },
         commands: {
           random: new DestinationCommand({
             description: 'Randomize steps. Argument "chance" from 0 through 1.',
@@ -790,24 +908,50 @@ export class Destinations {
 
         destinations: {
           synth: new Destination({
-            description: "Settings for both synth voices",
+            info: {
+              content: () => {
+                const settings = synth.exportParams();
+                return [
+                  Destinations.formatJSON(settings.settings.synthA),
+                  Destinations.formatJSON(settings.settings.synthB),
+                ];
+              },
+            },
             commands: synthsCommands(synth, true, true),
             properties: synthProperties(synth, true, true),
             destinations: {
               a: new Destination({
-                description: "Settings for synth voice A",
+                info: {
+                  content: () => [
+                    Destinations.formatJSON(
+                      synth.exportParams().settings.synthA,
+                      3
+                    ),
+                  ],
+                },
                 commands: synthsCommands(synth, true, false),
                 properties: synthProperties(synth, true, false),
               }),
               b: new Destination({
-                description: "Settings for synth voice B",
+                info: {
+                  content: () => [
+                    Destinations.formatJSON(
+                      synth.exportParams().settings.synthB,
+                      3
+                    ),
+                  ],
+                },
                 commands: synthsCommands(synth, false, true),
                 properties: synthProperties(synth, false, true),
               }),
             },
           }),
           delay: new Destination({
-            description: "Delay effect",
+            info: {
+              content: () => [
+                Destinations.formatJSON(synth.exportParams().settings.delay),
+              ],
+            },
             properties: {
               feedback: new DestinationProperty({
                 description: "Delay feedback from 0 through 1",
