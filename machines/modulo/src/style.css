@@ -11,7 +11,7 @@
   --interface-gap-row-factor: 0.4;
 
   --color-hue-base: 0;
-  --color-on-lit: 180;
+  --color-on-lit: 1;
   --color-on-chr: 0;
   --color-on-hue: 0;
   --color-off-lit: 0;
@@ -24,15 +24,15 @@
   --color-background-lit: 0;
   --color-background-chr: 0;
   --color-background-hue: 0;
-  --color-text-lit: 180;
+  --color-text-lit: 1;
   --color-text-chr: 0;
   --color-text-hue: 0;
 
-  --color-background: lch(
+  --color-background: oklch(
     var(--color-background-lit) var(--color-background-chr)
       calc(var(--color-hue-base) + var(--color-background-hue)) / 1
   );
-  --color-text: lch(
+  --color-text: oklch(
     var(--color-text-lit) var(--color-text-chr)
       calc(var(--color-hue-base) + var(--color-text-hue)) / 1
   );
@@ -108,19 +108,19 @@ main[stepping="true"] .sequencer {
   --button-chr: var(--color-disabled-chr);
   --button-hue: var(--color-disabled-hue);
 
-  --background-color: lch(
+  --background-color: oklch(
     var(--button-lit) var(--button-chr)
       calc(var(--color-hue-base) + var(--button-hue)) / 1
   );
   --border-radius: calc(var(--interface-corner-factor) * var(--size-unit));
   --box-shadow: 0 0 var(--shadow-spread, 0)
-    lch(
-      min(180, calc(var(--button-lit) + 30)) var(--button-chr)
+    oklch(
+      min(1, calc(var(--button-lit) + 0.2)) var(--button-chr)
         calc(var(--color-hue-base) + var(--button-hue)) / 1
     );
   --background-gradient: radial-gradient(
-    lch(
-        min(180, calc(var(--button-lit) + var(--illumination-lit-offset, 0)))
+    oklch(
+        min(1, calc(var(--button-lit) + var(--illumination-lit-offset, 0)))
           var(--button-chr) calc(var(--color-hue-base) + var(--button-hue)) / 1
       )
       20%,
@@ -174,32 +174,32 @@ main[stepping="true"] .sequencer {
   &[step="scale"],
   &[state="1/4"] {
     --color-on-amount: 0.25;
-    --illumination-lit-offset: 10;
+    --illumination-lit-offset: 0.05;
   }
   &[step="interval"],
   &[step="root"],
   &[state="1/2"],
   &[state="2/4"] {
     --color-on-amount: 0.5;
-    --illumination-lit-offset: 10;
+    --illumination-lit-offset: 0.05;
   }
   &[active="ghost"],
   &[state="3/4"] {
     --color-on-amount: 0.75;
-    --illumination-lit-offset: 10;
+    --illumination-lit-offset: 0.05;
   }
   &[active="main"],
   &[state="2/2"],
   &[state="4/4"] {
     --color-on-amount: 1;
-    --illumination-lit-offset: 10;
+    --illumination-lit-offset: 0.05;
   }
   &[active] {
     &:not([state="0"]) {
       --shadow-spread: calc(
         var(--interface-size-border-factor) * var(--size-unit)
       );
-      --illumination-lit-offset: 30;
+      --illumination-lit-offset: 0.16;
     }
   }
 }
@@ -390,7 +390,7 @@ main[stepping="true"] .sequencer {
   .input span,
   .input input,
   .actions button {
-    --color-1: lch(
+    --color-1: oklch(
       calc(
           var(--color-off-lit) + (var(--color-on-lit) - var(--color-off-lit)) *
             0.25
@@ -408,7 +408,7 @@ main[stepping="true"] .sequencer {
         ) / 1
     );
 
-    --color-2: lch(
+    --color-2: oklch(
       calc(
           var(--color-off-lit) + (var(--color-on-lit) - var(--color-off-lit)) *
             1

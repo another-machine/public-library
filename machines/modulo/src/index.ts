@@ -10,39 +10,39 @@ new Machine({
   theme: {
     color: {
       core: {
-        on: { l: 60, c: 130, h: 180 },
-        off: { l: 1, c: 10, h: 180 },
-        disabled: { l: 1, c: 0, h: 0 },
+        on: { l: 0.4, c: 0.43, h: 180 },
+        off: { l: 0.05, c: 0.03, h: 180 },
+        disabled: { l: 0.05, c: 0, h: 0 },
       },
       sequencers: {
         lead: {
-          on: { l: 60, c: 130, h: 30 },
-          off: { l: 5, c: 10, h: 30 },
-          disabled: { l: 1, c: 0, h: 0 },
+          on: { l: 0.4, c: 0.43, h: 10 },
+          off: { l: 0.2, c: 0.03, h: 10 },
+          disabled: { l: 0.05, c: 0, h: 0 },
         },
         arp: {
-          on: { l: 60, c: 130, h: 90 },
-          off: { l: 5, c: 10, h: 90 },
-          disabled: { l: 1, c: 0, h: 0 },
+          on: { l: 0.41, c: 0.5, h: 105 },
+          off: { l: 0.21, c: 0.03, h: 105 },
+          disabled: { l: 0.05, c: 0, h: 0 },
         },
         bass: {
-          on: { l: 60, c: 130, h: 120 },
-          off: { l: 5, c: 10, h: 120 },
-          disabled: { l: 1, c: 0, h: 0 },
+          on: { l: 0.4, c: 0.43, h: 120 },
+          off: { l: 0.2, c: 0.03, h: 120 },
+          disabled: { l: 0.05, c: 0, h: 0 },
         },
         kit: {
-          on: { l: 60, c: 130, h: 317 },
-          off: { l: 5, c: 10, h: 317 },
-          disabled: { l: 1, c: 0, h: 0 },
+          on: { l: 0.4, c: 0.43, h: 317 },
+          off: { l: 0.2, c: 0.03, h: 317 },
+          disabled: { l: 0.05, c: 0, h: 0 },
         },
       },
       keyboard: {
-        on: { l: 60, c: 130, h: 210 },
-        off: { l: 5, c: 10, h: 210 },
-        disabled: { l: 5, c: 10, h: 210 },
+        on: { l: 0.4, c: 0.43, h: 210 },
+        off: { l: 0.2, c: 0.03, h: 210 },
+        disabled: { l: 0.2, c: 0.03, h: 210 },
       },
       background: { l: 0, c: 0, h: 0 },
-      text: { l: 180, c: 0, h: 0 },
+      text: { l: 1, c: 0, h: 0 },
     },
     prompt: {
       corner: 0.2,
