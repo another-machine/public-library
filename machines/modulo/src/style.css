@@ -234,7 +234,6 @@ main[stepping="true"] .sequencer {
   flex: 2;
   position: relative;
   width: 100%;
-  z-index: -1;
 
   > button {
     --border-radius: calc(

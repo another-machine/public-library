@@ -207,9 +207,9 @@ export class Renderer {
     this.addTheme("theme-key-keyboard", "keyboard");
     for (let i = 0; i < 24; i++) {
       const key = document.createElement("button");
-      key.addEventListener("click", () =>
-        this.rendererEventHandler("TAP", "KEYS", i)
-      );
+      key.addEventListener("click", () => {
+        this.rendererEventHandler("TAP", "KEYS", i);
+      });
       // key.addEventListener("touchstart", () =>
       //   this.rendererEventHandler("PRESS", "KEYS", i)
       // );

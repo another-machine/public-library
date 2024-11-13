@@ -252,9 +252,14 @@ export class Machine {
       source: this.renderer.snapshot(),
       messages: [JSON.stringify(this.exportParams())],
     });
+    const a = document.createElement("a");
+    a.href = canvas.toDataURL();
+    a.className = "export";
+    a.target = "blank";
     canvas.className = "export";
-    canvas.addEventListener("click", () => canvas.remove());
-    document.body.appendChild(canvas);
+    a.addEventListener("click", (e) => a.remove());
+    a.appendChild(canvas);
+    document.body.appendChild(a);
   }
 
   onRandomize() {
