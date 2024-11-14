@@ -446,22 +446,28 @@ export class PromptInterface {
         $input.value = input.initialValue();
         $field.appendChild($input);
         $field.appendChild($control);
-        steps.forEach((step) => {
+        steps.reverse().forEach((step) => {
           const $buttonMinus = document.createElement("button");
           $buttonMinus.setAttribute("type", "button");
           $control.appendChild($buttonMinus);
           $buttonMinus.innerText = `-${step}`;
           $buttonMinus.addEventListener("click", () => {
             const val = parseFloat($input.value);
-            $input.value = Math.max(input.min, val - step).toString();
+            $input.value = (
+              Math.round(Math.max(input.min, val - step) * 10000) / 10000
+            ).toString();
           });
+        });
+        steps.reverse().forEach((step) => {
           const $buttonAdd = document.createElement("button");
           $buttonAdd.setAttribute("type", "button");
           $control.appendChild($buttonAdd);
           $buttonAdd.innerText = `+${step}`;
           $buttonAdd.addEventListener("click", () => {
             const val = parseFloat($input.value);
-            $input.value = Math.min(input.max, val + step).toString();
+            $input.value = (
+              Math.round(Math.min(input.max, val + step) * 10000) / 10000
+            ).toString();
           });
         });
         return $input;
