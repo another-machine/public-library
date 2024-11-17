@@ -150,12 +150,7 @@ export class Prompt {
       return { valid: true };
     } else if (currentDestination.properties[command]) {
       const property = currentDestination.properties[command];
-      const [value] = args;
-      if (value) {
-        return property.onSet(command, args, this);
-      } else {
-        return property.onGet(command, args, this);
-      }
+      return property.onSet(command, args, this);
     } else if (currentDestination.commands[command]) {
       return currentDestination.commands[command].onCommand(
         command,
@@ -184,9 +179,10 @@ export class PromptInterface {
   $div: HTMLDivElement;
   $input: HTMLInputElement;
   $actions: HTMLDivElement;
+  $back: HTMLButtonElement;
   $breadcrumbs: HTMLSpanElement;
   $info: HTMLDivElement;
-  $description: HTMLDivElement;
+  $result: HTMLDivElement;
   keydownBackspacing = false;
   prompt: Prompt;
 
@@ -197,25 +193,32 @@ export class PromptInterface {
     this.$div.innerHTML = `
     <span class="breadcrumbs"></span>
     <div class="info"></div>
-    <div class="description"></div>
+    <div class="result"></div>
     <div class="actions"></div>
-    <div class="input"><input type="text" /></div>
+    <div class="input"><button>&lt;</button><input type="text" /></div>
     `;
     parent.appendChild(this.$div);
     this.$input = this.$div.querySelector("input") as HTMLInputElement;
+    this.$back = this.$div.querySelector(".input button") as HTMLButtonElement;
     this.$breadcrumbs = this.$div.querySelector(
       ".breadcrumbs"
     ) as HTMLSpanElement;
     this.$actions = this.$div.querySelector(".actions") as HTMLDivElement;
     this.$info = this.$div.querySelector(".info") as HTMLDivElement;
-    this.$description = this.$div.querySelector(
-      ".description"
-    ) as HTMLDivElement;
+    this.$result = this.$div.querySelector(".result") as HTMLDivElement;
     this.$breadcrumbs.innerHTML = "";
     this.$input.addEventListener("blur", this.handleBlur.bind(this));
     this.$input.addEventListener("focus", this.handleFocus.bind(this));
     this.$input.addEventListener("keydown", this.handleKeydown.bind(this));
     this.$input.addEventListener("keyup", this.handleKeyup.bind(this));
+    this.$back.addEventListener("click", () => {
+      if (this.$input.value === "") {
+        this.handleSuggestionSelection(COMMANDS.BACK[0], "command");
+      } else {
+        this.$input.value = "";
+        this.updateSuggestions();
+      }
+    });
     document.body.addEventListener("keyup", (e) => {
       if (e.key === "Escape") {
         this.$div.classList.toggle("open");
@@ -281,7 +284,7 @@ export class PromptInterface {
   }
 
   handleKeyup(event: KeyboardEvent) {
-    this.$description.classList.remove("invalid");
+    this.$result.classList.remove("invalid");
     if (event.code === "Enter") {
       event.preventDefault();
       this.handleSubmit();
@@ -305,7 +308,7 @@ export class PromptInterface {
       this.prompt.result = result.output;
     }
     if (!result.valid) {
-      this.$description.classList.add("invalid");
+      this.$result.classList.add("invalid");
     }
 
     this.$input.value = "";
@@ -314,8 +317,16 @@ export class PromptInterface {
     this.renderDestinationInfo();
   }
 
+  handleSoftSubmit() {
+    const result = this.prompt.handleCommandString(this.$input.value);
+    if (result.output) {
+      this.prompt.result = result.output;
+    }
+    this.renderDestinationInfo();
+  }
+
   handleSuggestionSelection(value: string, type: string) {
-    this.$description.classList.remove("invalid");
+    this.$result.classList.remove("invalid");
     const string = this.$input.value;
     const currentValue = string.split(" ");
     currentValue.pop();
@@ -339,7 +350,7 @@ export class PromptInterface {
     if (key !== undefined) {
       this.$div.classList.add(`theme-key-${key}`);
     }
-    this.$description.innerHTML = this.prompt.result.join("");
+    this.$result.innerHTML = this.prompt.result.join("");
 
     this.$actions.innerHTML = "";
     const makeToken = (
@@ -370,7 +381,7 @@ export class PromptInterface {
         output.suggestions.commands.length +
         output.suggestions.properties.length;
       if (totalCount === 0) {
-        this.$description.innerHTML = "Nothing.";
+        this.$result.innerHTML = "Nothing.";
       }
       output.suggestions.destinations.forEach((a, i) => {
         const button = makeToken(a, "destination", "", "/");
@@ -387,14 +398,14 @@ export class PromptInterface {
       output.suggestions.commands.forEach((a, i) => {
         makeToken(a, "command");
         if (totalCount === 1) {
-          this.$description.innerHTML =
-            output.suggestions!.commandDescriptions[i];
+          this.$result.innerHTML = output.suggestions!.commandDescriptions[i];
         }
       });
       output.suggestions.properties.forEach((a, i) => {
         makeToken(a, "property");
         if (totalCount === 1) {
           this.renderInputs(
+            a,
             output.suggestions!.propertyInputs[i],
             output.suggestions!.propertyInputsFormatters[i]
           );
@@ -404,83 +415,91 @@ export class PromptInterface {
   }
 
   public renderInputs(
+    property: string,
     inputs: DestinationPropertyInput[],
     formatter: DestinationPropertyInputFormatter
   ) {
-    this.$description.innerHTML = "<form></form>";
-    const $form = this.$description.querySelector("form") as HTMLFormElement;
-    const $inputs = inputs.map((input) => {
+    this.$result.innerHTML = "<form></form>";
+    const $form = this.$result.querySelector("form") as HTMLFormElement;
+    const $inputs: (HTMLInputElement | HTMLSelectElement)[] = [];
+    inputs.forEach((input) => {
       const $field = document.createElement("div");
+      $field.className = "field";
       $form.appendChild($field);
       if (input.type === "select") {
         const $select = document.createElement("select");
+        $inputs.push($select);
         $select.innerHTML = input.options
           .map(
             (option) => `<option value="${option}">${option || "None"}</option>`
           )
           .join("\n");
         $select.value = input.initialValue();
+        $select.addEventListener("change", () => {
+          this.$input.value = [
+            property,
+            formatter($inputs.map((a) => a.value)),
+          ].join(" ");
+          this.prompt.handleCommandString(this.$input.value);
+          this.handleSoftSubmit();
+        });
         $field.appendChild($select);
-        return $select;
       } else {
+        const stepsOptions = {
+          sm: [0.001, 0.01, 0.05],
+          md: [1],
+          lg: [1, 10, 25],
+        };
         const $control = document.createElement("div");
         const $input = document.createElement("input");
+        $inputs.push($input);
         const diff = input.max - input.min;
-        const steps = [diff < 3 ? 0.001 : 1];
-        if (diff < 3) {
-          steps.push(0.01, 0.1);
-        }
-        if (diff > 10) {
-          steps.push(5);
-        }
-        if (diff > 50) {
-          steps.push(10);
-        }
-        if (diff > 100) {
-          steps.push(25);
-        }
+        const steps =
+          diff < 3
+            ? stepsOptions.sm
+            : diff < 10
+            ? stepsOptions.md
+            : stepsOptions.lg;
         $input.setAttribute("type", "number");
         $input.setAttribute("step", steps[0].toString());
         $input.setAttribute("min", input.min.toString());
         $input.setAttribute("max", input.max.toString());
         $input.value = input.initialValue();
+        $input.addEventListener("change", () => {
+          this.$input.value = [
+            property,
+            formatter($inputs.map((a) => a.value)),
+          ].join(" ");
+          this.prompt.handleCommandString(this.$input.value);
+          this.handleSoftSubmit();
+        });
         $field.appendChild($input);
         $field.appendChild($control);
-        steps.reverse().forEach((step) => {
-          const $buttonMinus = document.createElement("button");
-          $buttonMinus.setAttribute("type", "button");
-          $control.appendChild($buttonMinus);
-          $buttonMinus.innerText = `-${step}`;
-          $buttonMinus.addEventListener("click", () => {
+
+        const createButton = (step: number) => {
+          const $button = document.createElement("button");
+          $button.setAttribute("type", "button");
+          $control.appendChild($button);
+          $button.innerText = step.toString();
+          $button.addEventListener("click", () => {
             const val = parseFloat($input.value);
             $input.value = (
-              Math.round(Math.max(input.min, val - step) * 10000) / 10000
+              Math.round(
+                Math.min(input.max, Math.max(input.min, val + step)) * 10000
+              ) / 10000
             ).toString();
+            this.$input.value = [
+              property,
+              formatter($inputs.map((a) => a.value)),
+            ].join(" ");
+            this.prompt.handleCommandString(this.$input.value);
+            this.handleSoftSubmit();
           });
-        });
-        steps.reverse().forEach((step) => {
-          const $buttonAdd = document.createElement("button");
-          $buttonAdd.setAttribute("type", "button");
-          $control.appendChild($buttonAdd);
-          $buttonAdd.innerText = `+${step}`;
-          $buttonAdd.addEventListener("click", () => {
-            const val = parseFloat($input.value);
-            $input.value = (
-              Math.round(Math.min(input.max, val + step) * 10000) / 10000
-            ).toString();
-          });
-        });
-        return $input;
+        };
+
+        steps.reverse().forEach((step) => createButton(step * -1));
+        steps.reverse().forEach((step) => createButton(step));
       }
-    });
-    const $buttonSubmit = document.createElement("button");
-    $buttonSubmit.setAttribute("type", "submit");
-    $buttonSubmit.innerText = "Update";
-    $form.appendChild($buttonSubmit);
-    $form.addEventListener("submit", (e) => {
-      e.preventDefault();
-      const value = formatter($inputs.map(($input) => $input.value));
-      console.log(value);
     });
   }
 

@@ -33,7 +33,6 @@ export type DestinationPropertyInputFormatter = (values: string[]) => any;
 export type DestinationPropertyArgs = {
   inputs: DestinationPropertyInput[];
   inputsFormatter?: DestinationPropertyInputFormatter;
-  onGet(command: string, args: string[], prompt: Prompt): PromptOutput;
   onSet(command: string, args: string[], prompt: Prompt): PromptOutput;
 };
 
@@ -100,18 +99,15 @@ class DestinationCommand {
 class DestinationProperty {
   inputs: DestinationPropertyInput[];
   inputsFormatter: DestinationPropertyInputFormatter;
-  onGet: (command: string, args: string[], prompt: Prompt) => PromptOutput;
   onSet: (command: string, args: string[], prompt: Prompt) => PromptOutput;
 
   constructor({
     inputs,
     inputsFormatter = (values) => values.join(" "),
-    onGet,
     onSet,
   }: DestinationPropertyArgs) {
     this.inputs = inputs;
     this.inputsFormatter = inputsFormatter;
-    this.onGet = onGet;
     this.onSet = onSet;
   }
 }
@@ -222,22 +218,8 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
           a,
           b
         );
-        return { valid, output: [`Set type to ${value}`] };
-      } else {
-        return { valid, output: [`Could not set type to ${value}`] };
       }
-    },
-    onGet: (_command, _args, _prompt) => {
-      const output: string[] = [];
-      if (a) {
-        output.push(synths.voices[0].nodeA.oscillator.type);
-      }
-      if (b) {
-        output.push(synths.voices[0].nodeB.oscillator.type);
-      }
-      output.push(oscillatorTypes.join(", "));
-      output.push('Optionally add partial suffix from 0 to 64 eg. "sine8"');
-      return { valid: true, output };
+      return { valid };
     },
   }),
   adsr: new DestinationProperty({
@@ -289,43 +271,8 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
           a,
           b
         );
-        return { valid, output: [`Set adsr to ${args.join(" / ")}`] };
-      } else {
-        return {
-          valid,
-          output: [
-            `Could not set adsr to ${args.join(" / ")}`,
-            "Must be 4 space-separated values from 0 through 1",
-          ],
-        };
       }
-    },
-    onGet: (_command, _args, _prompt) => {
-      const output: string[] = [];
-      if (a) {
-        const { envelope } = synths.voices[0].nodeA;
-        output.push(
-          [
-            envelope.attack,
-            envelope.decay,
-            envelope.sustain,
-            envelope.release,
-          ].join(" / ")
-        );
-      }
-      if (b) {
-        const { envelope } = synths.voices[0].nodeB;
-        output.push(
-          [
-            envelope.attack,
-            envelope.decay,
-            envelope.sustain,
-            envelope.release,
-          ].join(" / ")
-        );
-      }
-      output.push("Attack / Decay / Sustain / Release", "All from 0 through 1");
-      return { valid: true, output };
+      return { valid };
     },
   }),
   portamento: new DestinationProperty({
@@ -341,23 +288,8 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
       const valid = validators.portamento(value);
       if (valid) {
         synths.updateSynth({ portamento: parseFloat(value) }, a, b);
-        return { valid, output: [`Set portamento to ${value}`] };
-      } else {
-        return {
-          valid,
-          output: [`Could not set portamento to ${value}. Must be 0 - 1`],
-        };
       }
-    },
-    onGet: (_command, _args, _prompt) => {
-      const output: number[] = [];
-      if (a) {
-        output.push(synths.voices[0].nodeA.portamento);
-      }
-      if (b) {
-        output.push(synths.voices[0].nodeB.portamento);
-      }
-      return { valid: true, output: [output.join(" & ")] };
+      return { valid };
     },
   }),
   detune: new DestinationProperty({
@@ -374,23 +306,8 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
       const valid = validators.detune(value);
       if (valid) {
         synths.updateSynth({ detune: parseInt(value) }, a, b);
-        return { valid, output: [`Set detune to ${value}`] };
-      } else {
-        return {
-          valid,
-          output: [`Could not set detune to ${value}. Must be 0 - 1`],
-        };
       }
-    },
-    onGet: (_command, _args, _prompt) => {
-      const output: Signal<"cents">[] = [];
-      if (a) {
-        output.push(synths.voices[0].nodeA.detune);
-      }
-      if (b) {
-        output.push(synths.voices[0].nodeB.detune);
-      }
-      return { valid: true, output: [output.join(" & ")] };
+      return { valid };
     },
   }),
   pan: new DestinationProperty({
@@ -407,23 +324,8 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
       const valid = validators.pan(value);
       if (valid) {
         synths.updatePan(parseFloat(value), a, b);
-        return { valid, output: [`Set pan to ${value}`] };
-      } else {
-        return {
-          valid,
-          output: [`Could not set pan to ${value}. Must be from -1 through 1`],
-        };
       }
-    },
-    onGet: (_command, _args, _prompt) => {
-      const output: Signal<"cents">[] = [];
-      if (a) {
-        output.push(synths.voices[0].nodeA.detune);
-      }
-      if (b) {
-        output.push(synths.voices[0].nodeB.detune);
-      }
-      return { valid: true, output: [output.join(" & ")] };
+      return { valid };
     },
   }),
 });
@@ -715,21 +617,9 @@ export class Destinations {
                   const valid = validators.bpm(value);
                   if (valid) {
                     clock.setRate(parseInt(value));
-                    return {
-                      valid,
-                      output: [`Set clock tempo to ${value}bpm`],
-                    };
-                  } else {
-                    return {
-                      valid,
-                      output: [`Could not set clock tempo to ${value}bpm`],
-                    };
                   }
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [`Clock tempo is ${clock.getRate()}bpm`],
-                }),
               }),
               swing: new DestinationProperty({
                 inputs: [
@@ -744,18 +634,9 @@ export class Destinations {
                   const valid = validators.swing(value);
                   if (valid) {
                     clock.setSwing(parseFloat(value));
-                    return { valid, output: [`Set clock swing to ${value}`] };
-                  } else {
-                    return {
-                      valid,
-                      output: [`Could not set clock swing to ${value}`],
-                    };
                   }
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [`Clock swing is ${clock.getSwing()}`],
-                }),
               }),
             },
           }),
@@ -778,21 +659,9 @@ export class Destinations {
                   if (valid) {
                     notes.setMode(value);
                     onModeChange();
-                    return { valid, output: [`Set mode to ${value}`] };
-                  } else {
-                    return {
-                      valid,
-                      output: [`Could not set mode to ${value}`],
-                    };
                   }
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [
-                    `Current mode is "${notes.getMode()}".`,
-                    MODES.join(", "),
-                  ],
-                }),
               }),
               root: new DestinationProperty({
                 inputs: [
@@ -807,21 +676,9 @@ export class Destinations {
                   if (valid) {
                     notes.setRoot(value);
                     onModeChange();
-                    return { valid, output: [`Set root to ${value}`] };
-                  } else {
-                    return {
-                      valid,
-                      output: [`Could not set root to ${value}`],
-                    };
                   }
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [
-                    `Root is "${notes.getRoot()}"`,
-                    `${ROOTS.join(", ")}`,
-                  ],
-                }),
               }),
             },
           }),
@@ -876,16 +733,8 @@ export class Destinations {
             onSet: (_command, [value]) => {
               const valid = validators.volume(value);
               drum.updateGain(parseFloat(value));
-              if (valid) {
-                return { valid, output: [`Set volume to ${value}`] };
-              } else {
-                return { valid, output: [`Could not set volume to ${value}`] };
-              }
+              return { valid };
             },
-            onGet: () => ({
-              valid: true,
-              output: [`Gain is ${drum.getGain()}`],
-            }),
           }),
         },
 
@@ -941,12 +790,8 @@ export class Destinations {
                   const valid = validators.step(value);
                   if (valid) sequencer.steps.set(parseInt(value));
                   onStepChange();
-                  return { valid, output: [`Set steps to ${value}`] };
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [`Step count is ${sequencer.steps.size}`],
-                }),
               }),
             },
           }),
@@ -1003,18 +848,9 @@ export class Destinations {
             const valid = validators.octave(value);
             if (valid) {
               keyboard.octave = parseInt(value);
-              return { valid, output: [`Set base octave to ${value}`] };
-            } else {
-              return {
-                valid,
-                output: [`Could not set base octave to ${value}`],
-              };
             }
+            return { valid };
           },
-          onGet: () => ({
-            valid: true,
-            output: [`Base octave is ${keyboard.octave}`],
-          }),
         }),
       },
     });
@@ -1050,16 +886,8 @@ export class Destinations {
             onSet: (_command, [value]) => {
               const valid = validators.volume(value);
               synth.updateGain(parseFloat(value));
-              if (valid) {
-                return { valid, output: [`Set volume to ${value}`] };
-              } else {
-                return { valid, output: [`Could not set volume to ${value}`] };
-              }
+              return { valid };
             },
-            onGet: () => ({
-              valid: true,
-              output: [`Gain is ${synth.getGain()}`],
-            }),
           }),
           octave: new DestinationProperty({
             inputs: [
@@ -1074,18 +902,9 @@ export class Destinations {
               const valid = validators.octave(value);
               if (valid) {
                 sequencer.octave = parseInt(value);
-                return { valid, output: [`Set base octave to ${value}`] };
-              } else {
-                return {
-                  valid,
-                  output: [`Could not set base octave to ${value}`],
-                };
               }
+              return { valid };
             },
-            onGet: () => ({
-              valid: true,
-              output: [`Base octave is ${sequencer.octave}`],
-            }),
           }),
         },
 
@@ -1132,12 +951,8 @@ export class Destinations {
                   const valid = validators.step(value);
                   if (valid) sequencer.steps.set(parseInt(value));
                   onStepChange();
-                  return { valid, output: [`Set steps to ${value}`] };
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [`Step count is ${sequencer.steps.size}`],
-                }),
               }),
             },
           }),
@@ -1194,24 +1009,8 @@ export class Destinations {
                 onSet: (_command, [value]) => {
                   const valid = validators.feedback(value);
                   synth.updateDelay({ feedback: parseFloat(value) });
-                  if (valid) {
-                    return {
-                      valid,
-                      output: [`Set delay feedback to ${value}`],
-                    };
-                  } else {
-                    return {
-                      valid,
-                      output: [`Could not set delay feedback to ${value}`],
-                    };
-                  }
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [
-                    `Delay feedback is ${synth.voices[0].delay.feedback.value}`,
-                  ],
-                }),
               }),
               time: new DestinationProperty({
                 inputs: [
@@ -1226,21 +1025,8 @@ export class Destinations {
                 onSet: (_command, [value]) => {
                   const valid = validators.time(value);
                   synth.updateDelay({ delayTime: value });
-                  if (valid) {
-                    return { valid, output: [`Set delay time to ${value}`] };
-                  } else {
-                    return {
-                      valid,
-                      output: [`Could not set delay time to ${value}`],
-                    };
-                  }
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [
-                    `Delay time is ${synth.voices[0].delay.delayTime.value}`,
-                  ],
-                }),
               }),
               wet: new DestinationProperty({
                 inputs: [
@@ -1255,19 +1041,8 @@ export class Destinations {
                 onSet: (_command, [value]) => {
                   const valid = validators.wet(value);
                   synth.updateDelay({ wet: parseFloat(value) });
-                  if (valid) {
-                    return { valid, output: [`Set delay wet to ${value}`] };
-                  } else {
-                    return {
-                      valid,
-                      output: [`Could not set delay wet to ${value}`],
-                    };
-                  }
+                  return { valid };
                 },
-                onGet: () => ({
-                  valid: true,
-                  output: [`Delay wet is ${synth.voices[0].delay.wet.value}`],
-                }),
               }),
             },
           }),

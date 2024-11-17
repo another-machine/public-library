@@ -73,7 +73,7 @@ canvas.export {
 main {
   display: flex;
   flex-direction: column;
-  flex: 2;
+  flex: 3;
   gap: calc(var(--interface-gap-column-factor) * var(--size-unit));
   height: 100%;
   overflow: visible;
@@ -350,7 +350,7 @@ main[stepping="true"] .sequencer {
 
   align-items: start;
   display: none;
-  flex: 1;
+  flex: 2;
   flex-direction: column;
   justify-content: start;
   order: -1;
@@ -412,18 +412,27 @@ main[stepping="true"] .sequencer {
   .input {
     align-items: center;
     display: flex;
-    flex-direction: column;
+    gap: var(--gap);
     margin-top: var(--gap);
 
-    input {
-      background: var(--color-2);
+    input,
+    button {
       border: none;
       border-radius: var(--border-radius);
-      color: var(--color-1);
-      flex-grow: 1;
       font-size: calc(var(--prompt-size-font) * var(--size-unit));
       padding: calc(var(--prompt-padding-y-factor) * var(--size-unit))
         calc(var(--prompt-padding-x-factor) * var(--size-unit));
+    }
+
+    button {
+      background: var(--color-1);
+      color: var(--color-2);
+    }
+
+    input {
+      background: var(--color-2);
+      color: var(--color-1);
+      flex-grow: 1;
       width: 100%;
 
       &:focus {
@@ -473,7 +482,7 @@ main[stepping="true"] .sequencer {
     }
   }
 
-  .description {
+  .result {
     color: var(--color-text);
     margin-top: var(--gap);
 
@@ -482,9 +491,14 @@ main[stepping="true"] .sequencer {
       color: var(--color-2);
     }
 
+    &:has(form) + .actions {
+      display: none;
+    }
+
     form {
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
+      flex-wrap: wrap;
       gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
 
       button {
@@ -497,9 +511,14 @@ main[stepping="true"] .sequencer {
         text-align: center;
       }
 
-      > div {
+      .field {
         display: flex;
+        flex: 1;
         gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+
+        &:has(input) {
+          width: 100%;
+        }
 
         select,
         input {
