@@ -400,20 +400,20 @@ export class Machine {
         );
       }
     } else if (location === "KEYS") {
-      // if (type === "PRESS") {
-      //   this.keyboard.handlePress({
-      //     time: this.clock.time,
-      //     step: valueA % 12,
-      //     octave: Math.floor(valueA / 12),
-      //   });
-      // } else if (type === "RELEASE") {
-      //   this.keyboard.handleRelease({
-      //     time: this.clock.time,
-      //     step: valueA % 12,
-      //     octave: Math.floor(valueA / 12),
-      //   });
-      // }
-      // this.renderer.updateKeyboard();
+      if (type === "PRESS") {
+        this.keyboard.handlePress({
+          time: this.clock.time,
+          step: valueA % 12,
+          octave: Math.floor(valueA / 12),
+        });
+      } else if (type === "RELEASE") {
+        this.keyboard.handleRelease({
+          time: this.clock.time,
+          step: valueA % 12,
+          octave: Math.floor(valueA / 12),
+        });
+      }
+      this.renderer.updateKeyboard();
     } else {
       console.log(type, location, valueA, valueB);
     }

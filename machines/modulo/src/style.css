@@ -192,6 +192,13 @@ main[stepping="true"] .sequencer {
   }
 }
 
+.sequencer button.cursor,
+#pads button.cursor {
+  &::after {
+    z-index: 99999;
+  }
+}
+
 .sequencer {
   display: flex;
   flex-direction: column;
@@ -318,7 +325,7 @@ main[stepping="true"] .sequencer {
   }
 }
 
-@media (orientation: portrait) {
+/* @media (orientation: portrait) {
   main {
     flex-direction: row;
     flex-wrap: wrap;
@@ -341,7 +348,7 @@ main[stepping="true"] .sequencer {
       flex-direction: column-reverse;
     }
   }
-}
+} */
 
 #prompt {
   --font-size: calc(var(--size-unit) * var(--prompt-size-font-factor));

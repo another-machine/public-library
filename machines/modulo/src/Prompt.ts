@@ -194,8 +194,8 @@ export class PromptInterface {
     <span class="breadcrumbs"></span>
     <div class="info"></div>
     <div class="result"></div>
+    <div class="input"><input type="text" /><button>&lt;</button></div>
     <div class="actions"></div>
-    <div class="input"><button>&lt;</button><input type="text" /></div>
     `;
     parent.appendChild(this.$div);
     this.$input = this.$div.querySelector("input") as HTMLInputElement;

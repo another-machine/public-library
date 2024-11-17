@@ -269,12 +269,7 @@ export class Renderer {
     const button =
       this.elementMain.querySelector<HTMLButtonElement>("button.cursor");
     if (button) {
-      // TODO: gross, but works. Keyboard is mousedown/mouseup, everything else is currently click.
-      if (button.parentElement?.id === "keys") {
-        button.dispatchEvent(new Event("mousedown"));
-      } else {
-        button.click();
-      }
+      button.click();
     }
   }
 
