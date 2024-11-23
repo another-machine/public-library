@@ -448,7 +448,7 @@ main[stepping="true"] .sequencer {
     }
   }
 
-  .actions {
+  prompt-suggestions {
     align-items: center;
     display: flex;
     flex-wrap: wrap;
@@ -582,7 +582,7 @@ main[stepping="true"] .sequencer {
     }
   }
 
-  .info {
+  prompt-info {
     color: var(--color-text);
     display: flex;
     flex: 1;

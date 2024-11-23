@@ -175,339 +175,224 @@ export class Prompt {
   }
 }
 
-export class PromptInterface {
-  $div: HTMLDivElement;
-  $input: HTMLInputElement;
-  $actions: HTMLDivElement;
-  $back: HTMLButtonElement;
-  $breadcrumbs: HTMLSpanElement;
-  $info: HTMLDivElement;
-  $result: HTMLDivElement;
-  keydownBackspacing = false;
-  prompt: Prompt;
+class PromptInterfaceState {
+  private subscribers: Map<string, Function[]> = new Map();
 
-  constructor(parent: HTMLElement, prompt: Prompt) {
-    this.prompt = prompt;
-    this.$div = document.createElement("div");
-    this.$div.id = "prompt";
-    this.$div.innerHTML = `
-    <span class="breadcrumbs"></span>
-    <div class="info"></div>
-    <div class="result"></div>
-    <div class="input"><input type="text" /><button>&lt;</button></div>
-    <div class="actions"></div>
+  subscribe(event: string, callback: Function) {
+    if (!this.subscribers.has(event)) {
+      this.subscribers.set(event, []);
+    }
+    this.subscribers.get(event)?.push(callback);
+    return () => this.unsubscribe(event, callback);
+  }
+
+  unsubscribe(event: string, callback: Function) {
+    const callbacks = this.subscribers.get(event) || [];
+    const index = callbacks.indexOf(callback);
+    if (index > -1) {
+      callbacks.splice(index, 1);
+    }
+  }
+
+  publish(event: string, data: any) {
+    const callbacks = this.subscribers.get(event) || [];
+    callbacks.forEach((callback) => callback(data));
+  }
+}
+
+class PromptInput extends HTMLElement {
+  private input: HTMLInputElement | null = null;
+  private backButton: HTMLButtonElement | null = null;
+  private keydownBackspacing = false;
+  private pendingConfig: {
+    onSubmit: () => void;
+    onBack: () => void;
+    onKeydown: (event: KeyboardEvent) => void;
+    onKeyup: (event: KeyboardEvent) => void;
+    onFocus: () => void;
+    onBlur: () => void;
+    onInputClear: () => void;
+  } | null = null;
+
+  connectedCallback() {
+    this.render();
+    if (this.pendingConfig) {
+      this.setupEventListeners(this.pendingConfig);
+      this.pendingConfig = null;
+    }
+  }
+
+  private render() {
+    this.innerHTML = `
+      <div class="input">
+        <input type="text" />
+        <button>&lt;</button>
+      </div>
     `;
-    parent.appendChild(this.$div);
-    this.$input = this.$div.querySelector("input") as HTMLInputElement;
-    this.$back = this.$div.querySelector(".input button") as HTMLButtonElement;
-    this.$breadcrumbs = this.$div.querySelector(
-      ".breadcrumbs"
-    ) as HTMLSpanElement;
-    this.$actions = this.$div.querySelector(".actions") as HTMLDivElement;
-    this.$info = this.$div.querySelector(".info") as HTMLDivElement;
-    this.$result = this.$div.querySelector(".result") as HTMLDivElement;
-    this.$breadcrumbs.innerHTML = "";
-    this.$input.addEventListener("blur", this.handleBlur.bind(this));
-    this.$input.addEventListener("focus", this.handleFocus.bind(this));
-    this.$input.addEventListener("keydown", this.handleKeydown.bind(this));
-    this.$input.addEventListener("keyup", this.handleKeyup.bind(this));
-    this.$back.addEventListener("click", () => {
-      if (this.$input.value === "") {
-        this.handleSuggestionSelection(COMMANDS.BACK[0], "command");
-      } else {
-        this.$input.value = "";
-        this.updateSuggestions();
+    this.input = this.querySelector("input");
+    this.backButton = this.querySelector("button");
+  }
+
+  configure(config: {
+    onSubmit: () => void;
+    onBack: () => void;
+    onKeydown: (event: KeyboardEvent) => void;
+    onKeyup: (event: KeyboardEvent) => void;
+    onFocus: () => void;
+    onBlur: () => void;
+    onInputClear: () => void;
+  }) {
+    if (!this.isConnected) {
+      this.pendingConfig = config;
+      return;
+    }
+    this.setupEventListeners(config);
+  }
+
+  private setupEventListeners(config: {
+    onSubmit: () => void;
+    onBack: () => void;
+    onKeydown: (event: KeyboardEvent) => void;
+    onKeyup: (event: KeyboardEvent) => void;
+    onFocus: () => void;
+    onBlur: () => void;
+    onInputClear: () => void;
+  }) {
+    if (!this.input || !this.backButton) {
+      console.error("PromptInput: Elements not found");
+      return;
+    }
+
+    const {
+      onSubmit,
+      onBack,
+      onKeydown,
+      onKeyup,
+      onFocus,
+      onBlur,
+      onInputClear,
+    } = config;
+
+    this.input.addEventListener("keydown", (e) => {
+      if (e.code === "Backspace" && !this.input?.value) {
+        this.keydownBackspacing = true;
       }
+      onKeydown(e);
     });
-    document.body.addEventListener("keyup", (e) => {
-      if (e.key === "Escape") {
-        this.$div.classList.toggle("open");
-        if (this.$div.classList.contains("open")) {
-          this.$input.focus();
-        }
+
+    this.input.addEventListener("keyup", (e) => {
+      if (e.code === "Enter") {
+        e.preventDefault();
+        onSubmit();
+      } else if (this.keydownBackspacing) {
+        onBack();
+      }
+      this.keydownBackspacing = false;
+      onKeyup(e);
+    });
+
+    this.input.addEventListener("focus", () => onFocus());
+    this.input.addEventListener("blur", () => onBlur());
+
+    this.backButton.addEventListener("click", () => {
+      if (this.input?.value === "") {
+        onBack();
+      } else if (this.input) {
+        this.input.value = "";
+        onInputClear();
       }
     });
   }
 
   focus() {
-    this.$input.focus();
+    this.input?.focus();
   }
 
-  reset(parent: HTMLElement) {
-    parent.appendChild(this.$div);
-    this.updateSuggestions();
+  get value() {
+    return this.input?.value ?? "";
   }
 
-  handleAutoComplete() {
-    const string = this.$input.value;
-    const output = this.prompt.getNextSuggestions(string);
-    if (output.valid && output.suggestions) {
-      const { destinations, properties, commands } = output.suggestions;
-      const values = [...destinations, ...commands, ...properties];
-      const currentValue = string.split(" ");
-      if (values[0]) {
-        currentValue.pop();
-        currentValue.push(values[0]);
-        this.$input.value = currentValue.join(" ");
-        this.updateSuggestions();
+  set value(val: string) {
+    if (this.input) {
+      this.input.value = val;
+    }
+  }
+}
+
+// Suggestions/actions section
+class PromptSuggestions extends HTMLElement {
+  private lastMatch: RegExp | null = null;
+  private onSelect?: (token: string, type: string) => void;
+
+  configure({ onSelect }: { onSelect: (token: string, type: string) => void }) {
+    this.onSelect = onSelect;
+  }
+
+  update({
+    suggestions,
+    lastMatch,
+    currentKey,
+  }: {
+    suggestions: PromptOutput["suggestions"];
+    lastMatch: RegExp;
+    currentKey?: string;
+  }) {
+    this.lastMatch = lastMatch;
+    this.innerHTML = "";
+
+    if (!suggestions) return;
+
+    const totalCount =
+      suggestions.destinations.length +
+      suggestions.commands.length +
+      suggestions.properties.length;
+
+    if (totalCount === 0) {
+      this.innerHTML = "Nothing.";
+      return;
+    }
+
+    suggestions.destinations.forEach((dest, i) => {
+      const button = this.makeToken(dest, "destination", "", "/");
+      const key = suggestions.destinationKeys[i];
+      if (key !== undefined) {
+        button.classList.add(`theme-key-${key}`);
       }
-    } else {
-      console.log("nada");
-    }
-  }
+      this.appendChild(button);
+    });
 
-  handleBlur(_event: FocusEvent) {
-    // this is too quick, kills before buttons can be clicked
-    // this.$actions.innerHTML = "";
-  }
+    suggestions.commands.forEach((cmd) => {
+      this.appendChild(this.makeToken(cmd, "command"));
+    });
 
-  handleFocus(_event: FocusEvent) {
-    this.updateSuggestions();
-  }
-
-  handleKeydown(event: KeyboardEvent) {
-    this.prompt.result = [];
-    if (event.code === "ArrowUp") {
-      event.preventDefault();
-      const history = this.prompt.handleHistory(-1);
-      this.$input.value = history;
-    } else if (event.code === "ArrowDown") {
-      event.preventDefault();
-      const history = this.prompt.handleHistory(1);
-      this.$input.value = history;
-    } else if (event.code === "Tab") {
-      event.preventDefault();
-      this.handleAutoComplete();
-    } else if (event.code === "Backspace" && !this.$input.value) {
-      this.keydownBackspacing = true;
-    }
-  }
-
-  handleKeyup(event: KeyboardEvent) {
-    this.$result.classList.remove("invalid");
-    if (event.code === "Enter") {
-      event.preventDefault();
-      this.handleSubmit();
-    } else if (event.code === "Slash") {
-      event.preventDefault();
-      const value = this.$input.value.split("/").join("");
-      if (this.prompt.currentDestination.destinations[value]) {
-        this.$input.value = this.$input.value.split("/").join("");
-        this.handleSubmit();
-      }
-    } else if (this.keydownBackspacing) {
-      this.handleSuggestionSelection(COMMANDS.BACK[0], "command");
-    }
-    this.keydownBackspacing = false;
-    this.updateSuggestions();
-  }
-
-  handleSubmit() {
-    const result = this.prompt.handleCommandString(this.$input.value);
-    if (result.output) {
-      this.prompt.result = result.output;
-    }
-    if (!result.valid) {
-      this.$result.classList.add("invalid");
-    }
-
-    this.$input.value = "";
-    const { destinationKeys } = this.prompt;
-    this.$breadcrumbs.innerHTML = destinationKeys.join("/") || "";
-    this.renderDestinationInfo();
-  }
-
-  handleSoftSubmit() {
-    const result = this.prompt.handleCommandString(this.$input.value);
-    if (result.output) {
-      this.prompt.result = result.output;
-    }
-    this.renderDestinationInfo();
-  }
-
-  handleSuggestionSelection(value: string, type: string) {
-    this.$result.classList.remove("invalid");
-    const string = this.$input.value;
-    const currentValue = string.split(" ");
-    currentValue.pop();
-    currentValue.push(value);
-    this.$input.value = currentValue.join(" ");
-    if (type === "command" || type === "destination") {
-      this.handleSubmit();
-    } else {
-      this.updateSuggestions();
-    }
-    this.focus();
-  }
-
-  updateSuggestions() {
-    const lastMatch = this.prompt.getMatchableRegexForLastToken(
-      this.$input.value
-    );
-    this.$div.className = this.$div.className.replace(/theme-key-[^ ]+/, "");
-    const output = this.prompt.getNextSuggestions(this.$input.value);
-    const key = this.prompt.lastDestinationKey;
-    if (key !== undefined) {
-      this.$div.classList.add(`theme-key-${key}`);
-    }
-    this.$result.innerHTML = this.prompt.result.join("");
-
-    this.$actions.innerHTML = "";
-    const makeToken = (
-      token: string,
-      type: string,
-      prefix = "",
-      suffix = ""
-    ) => {
-      const button = document.createElement("button");
-      button.innerHTML = [
-        prefix,
-        token.replace(lastMatch, "<strong>$1</strong>"),
-        suffix,
-      ].join("");
-      button.setAttribute("prompt-token", token);
-      button.setAttribute("prompt-type", type);
-      this.$actions.appendChild(button);
-      button.addEventListener("click", (_e) => {
-        const token = button.getAttribute("prompt-token") || "";
-        const type = button.getAttribute("prompt-type") || "";
-        this.handleSuggestionSelection(token, type);
-      });
-      return button;
-    };
-    if (output.suggestions) {
-      const totalCount =
-        output.suggestions.destinations.length +
-        output.suggestions.commands.length +
-        output.suggestions.properties.length;
-      if (totalCount === 0) {
-        this.$result.innerHTML = "Nothing.";
-      }
-      output.suggestions.destinations.forEach((a, i) => {
-        const button = makeToken(a, "destination", "", "/");
-        const key = output.suggestions!.destinationKeys[i];
-        if (key !== undefined) {
-          button.classList.add(`theme-key-${key}`);
-        }
-        // This eagerly shows destination info. not sure if thats necessary
-        // if (totalCount === 1) {
-        //   const info = output.suggestions!.destinationInfos[i];
-        //   this.$info.innerHTML = this.formatInfo(info);
-        // }
-      });
-      output.suggestions.commands.forEach((a, i) => {
-        makeToken(a, "command");
-        if (totalCount === 1) {
-          this.$result.innerHTML = output.suggestions!.commandDescriptions[i];
-        }
-      });
-      output.suggestions.properties.forEach((a, i) => {
-        makeToken(a, "property");
-        if (totalCount === 1) {
-          this.renderInputs(
-            a,
-            output.suggestions!.propertyInputs[i],
-            output.suggestions!.propertyInputsFormatters[i]
-          );
-        }
-      });
-    }
-  }
-
-  public renderInputs(
-    property: string,
-    inputs: DestinationPropertyInput[],
-    formatter: DestinationPropertyInputFormatter
-  ) {
-    this.$result.innerHTML = "<form></form>";
-    const $form = this.$result.querySelector("form") as HTMLFormElement;
-    const $inputs: (HTMLInputElement | HTMLSelectElement)[] = [];
-    inputs.forEach((input) => {
-      const $field = document.createElement("div");
-      $field.className = "field";
-      $form.appendChild($field);
-      if (input.type === "select") {
-        const $select = document.createElement("select");
-        $inputs.push($select);
-        $select.innerHTML = input.options
-          .map(
-            (option) => `<option value="${option}">${option || "None"}</option>`
-          )
-          .join("\n");
-        $select.value = input.initialValue();
-        $select.addEventListener("change", () => {
-          this.$input.value = [
-            property,
-            formatter($inputs.map((a) => a.value)),
-          ].join(" ");
-          this.prompt.handleCommandString(this.$input.value);
-          this.handleSoftSubmit();
-        });
-        $field.appendChild($select);
-      } else {
-        const stepsOptions = {
-          sm: [0.001, 0.01, 0.05],
-          md: [1],
-          lg: [1, 10, 25],
-        };
-        const $control = document.createElement("div");
-        const $input = document.createElement("input");
-        $inputs.push($input);
-        const diff = input.max - input.min;
-        const steps =
-          diff < 3
-            ? stepsOptions.sm
-            : diff < 10
-            ? stepsOptions.md
-            : stepsOptions.lg;
-        $input.setAttribute("type", "number");
-        $input.setAttribute("step", steps[0].toString());
-        $input.setAttribute("min", input.min.toString());
-        $input.setAttribute("max", input.max.toString());
-        $input.value = input.initialValue();
-        $input.addEventListener("change", () => {
-          this.$input.value = [
-            property,
-            formatter($inputs.map((a) => a.value)),
-          ].join(" ");
-          this.prompt.handleCommandString(this.$input.value);
-          this.handleSoftSubmit();
-        });
-        $field.appendChild($input);
-        $field.appendChild($control);
-
-        const createButton = (step: number) => {
-          const $button = document.createElement("button");
-          $button.setAttribute("type", "button");
-          $control.appendChild($button);
-          $button.innerText = step.toString();
-          $button.addEventListener("click", () => {
-            const val = parseFloat($input.value);
-            $input.value = (
-              Math.round(
-                Math.min(input.max, Math.max(input.min, val + step)) * 10000
-              ) / 10000
-            ).toString();
-            this.$input.value = [
-              property,
-              formatter($inputs.map((a) => a.value)),
-            ].join(" ");
-            this.prompt.handleCommandString(this.$input.value);
-            this.handleSoftSubmit();
-          });
-        };
-
-        steps.reverse().forEach((step) => createButton(step * -1));
-        steps.reverse().forEach((step) => createButton(step));
-      }
+    suggestions.properties.forEach((prop) => {
+      this.appendChild(this.makeToken(prop, "property"));
     });
   }
 
-  public renderDestinationInfo() {
-    this.$info.innerHTML = this.formatInfo(this.prompt.currentDestination.info);
+  private makeToken(token: string, type: string, prefix = "", suffix = "") {
+    const button = document.createElement("button");
+    button.innerHTML = [
+      prefix,
+      token.replace(this.lastMatch!, "<strong>$1</strong>"),
+      suffix,
+    ].join("");
+    button.setAttribute("prompt-token", token);
+    button.setAttribute("prompt-type", type);
+    button.addEventListener("click", () => {
+      this.onSelect?.(token, type);
+    });
+    return button;
+  }
+}
+
+// Info display section
+class PromptInfo extends HTMLElement {
+  update(info: DestinationInfo | string) {
+    this.innerHTML = this.formatInfo(info);
   }
 
-  private formatInfo(info: DestinationInfo | string) {
+  private formatInfo(info: DestinationInfo | string): string {
     if (typeof info === "string") {
       return `<span>${info}</span>`;
     }
@@ -518,5 +403,507 @@ export class PromptInterface {
     return `${label ? `<span>${label}</span>` : ""}${content
       .map((c) => `<pre>${c}</pre>`)
       .join("\n")}`;
+  }
+}
+
+export class PromptInterface extends HTMLElement {
+  private state: PromptInterfaceState;
+  private prompt: Prompt;
+  private input: PromptInput;
+  private suggestions: PromptSuggestions;
+  private info: PromptInfo;
+  private breadcrumbs: HTMLSpanElement;
+  private result: HTMLDivElement;
+
+  constructor() {
+    super();
+    this.state = new PromptInterfaceState();
+  }
+
+  static register() {
+    if (!customElements.get("prompt-input")) {
+      customElements.define("prompt-input", PromptInput);
+    }
+    if (!customElements.get("prompt-suggestions")) {
+      customElements.define("prompt-suggestions", PromptSuggestions);
+    }
+    if (!customElements.get("prompt-info")) {
+      customElements.define("prompt-info", PromptInfo);
+    }
+    if (!customElements.get("step-number-input")) {
+      customElements.define("step-number-input", StepNumberInput);
+    }
+    if (!customElements.get("select-input")) {
+      customElements.define("select-input", SelectInput);
+    }
+    if (!customElements.get("prompt-property-form")) {
+      customElements.define("prompt-property-form", PromptPropertyForm);
+    }
+    if (!customElements.get("prompt-interface")) {
+      customElements.define("prompt-interface", this);
+    }
+  }
+
+  initialize(parent: HTMLElement, prompt: Prompt) {
+    this.prompt = prompt;
+    this.render();
+    this.setupComponents();
+    parent.appendChild(this);
+    return this;
+  }
+
+  private render() {
+    this.id = "prompt";
+    this.innerHTML = `
+      <span class="breadcrumbs"></span>
+      <prompt-info></prompt-info>
+      <div class="result"></div>
+      <prompt-input></prompt-input>
+      <prompt-suggestions></prompt-suggestions>
+    `;
+
+    this.breadcrumbs = this.querySelector(".breadcrumbs")!;
+    this.result = this.querySelector(".result")!;
+    this.input = this.querySelector("prompt-input")!;
+    this.suggestions = this.querySelector("prompt-suggestions")!;
+    this.info = this.querySelector("prompt-info")!;
+  }
+
+  private setupComponents() {
+    // Configure input handling
+    this.input.configure({
+      onSubmit: () => this.handleSubmit(),
+      onBack: () => this.handleSuggestionSelection(COMMANDS.BACK[0], "command"),
+      onKeydown: (event) => {
+        this.prompt.result = [];
+        if (event.code === "ArrowUp") {
+          event.preventDefault();
+          this.input.value = this.prompt.handleHistory(-1);
+        } else if (event.code === "ArrowDown") {
+          event.preventDefault();
+          this.input.value = this.prompt.handleHistory(1);
+        } else if (event.code === "Tab") {
+          event.preventDefault();
+          this.handleAutoComplete();
+        }
+      },
+      onKeyup: (event) => {
+        this.result.classList.remove("invalid");
+        if (event.code === "Slash") {
+          event.preventDefault();
+          const value = this.input.value.split("/").join("");
+          if (this.prompt.currentDestination.destinations[value]) {
+            this.input.value = value;
+            this.handleSubmit();
+          }
+        }
+        this.updateSuggestions();
+      },
+      onFocus: () => this.updateSuggestions(),
+      onBlur: () => {},
+      onInputClear: () => this.updateSuggestions(),
+    });
+
+    // Configure suggestions handling
+    this.suggestions.configure({
+      onSelect: (token, type) => this.handleSuggestionSelection(token, type),
+    });
+
+    // Setup escape key handler
+    document.body.addEventListener("keyup", (e) => {
+      if (e.key === "Escape") {
+        this.toggle();
+      }
+    });
+  }
+
+  toggle() {
+    this.classList.toggle("open");
+    if (this.classList.contains("open")) {
+      this.input.focus();
+    }
+  }
+
+  focus() {
+    this.input.focus();
+  }
+
+  reset(parent: HTMLElement) {
+    parent.appendChild(this);
+    this.updateSuggestions();
+  }
+
+  private handleAutoComplete() {
+    const output = this.prompt.getNextSuggestions(this.input.value);
+    if (output.valid && output.suggestions) {
+      const { destinations, properties, commands } = output.suggestions;
+      const values = [...destinations, ...commands, ...properties];
+      const currentValue = this.input.value.split(" ");
+      if (values[0]) {
+        currentValue.pop();
+        currentValue.push(values[0]);
+        this.input.value = currentValue.join(" ");
+        this.updateSuggestions();
+      }
+    }
+  }
+
+  private handleSubmit() {
+    const result = this.prompt.handleCommandString(this.input.value);
+    if (result.output) {
+      this.prompt.result = result.output;
+    }
+    if (!result.valid) {
+      this.result.classList.add("invalid");
+    }
+
+    this.input.value = "";
+    this.breadcrumbs.innerHTML = this.prompt.destinationKeys.join("/") || "";
+    this.renderDestinationInfo();
+  }
+
+  private handleSoftSubmit() {
+    const result = this.prompt.handleCommandString(this.input.value);
+    if (result.output) {
+      this.prompt.result = result.output;
+    }
+    this.renderDestinationInfo();
+  }
+
+  private handleSuggestionSelection(value: string, type: string) {
+    this.result.classList.remove("invalid");
+    const currentValue = this.input.value.split(" ");
+    currentValue.pop();
+    currentValue.push(value);
+    this.input.value = currentValue.join(" ");
+
+    if (type === "command" || type === "destination") {
+      this.handleSubmit();
+    } else {
+      this.updateSuggestions();
+    }
+    this.focus();
+  }
+
+  private updateSuggestions() {
+    const lastMatch = this.prompt.getMatchableRegexForLastToken(
+      this.input.value
+    );
+    this.className = this.className.replace(/theme-key-[^ ]+/, "");
+
+    const output = this.prompt.getNextSuggestions(this.input.value);
+    const key = this.prompt.lastDestinationKey;
+
+    if (key !== undefined) {
+      this.classList.add(`theme-key-${key}`);
+    }
+
+    this.result.innerHTML = this.prompt.result.join("");
+
+    this.suggestions.update({
+      suggestions: output.suggestions,
+      lastMatch,
+      currentKey: key,
+    });
+
+    if (output.suggestions) {
+      const totalCount =
+        output.suggestions.destinations.length +
+        output.suggestions.commands.length +
+        output.suggestions.properties.length;
+
+      if (totalCount === 1) {
+        if (output.suggestions.commands.length === 1) {
+          this.result.innerHTML = output.suggestions.commandDescriptions[0];
+        } else if (output.suggestions.properties.length === 1) {
+          this.renderPropertyForm(
+            output.suggestions.properties[0],
+            output.suggestions.propertyInputs[0],
+            output.suggestions.propertyInputsFormatters[0]
+          );
+        }
+      }
+    }
+  }
+
+  private renderPropertyForm(
+    property: string,
+    inputs: DestinationPropertyInput[],
+    formatter: DestinationPropertyInputFormatter
+  ) {
+    const form = document.createElement(
+      "prompt-property-form"
+    ) as PromptPropertyForm;
+    form.configure(inputs, formatter, (value) => {
+      this.input.value = `${property} ${value}`;
+      this.handleSoftSubmit();
+    });
+
+    this.result.innerHTML = "";
+    this.result.appendChild(form);
+  }
+
+  public renderDestinationInfo() {
+    this.info.update(this.prompt.currentDestination.info);
+  }
+}
+
+class PromptPropertyFormState {
+  private subscribers: Map<string, Function[]> = new Map();
+  private values: Map<string, any> = new Map();
+
+  subscribe(key: string, callback: Function) {
+    if (!this.subscribers.has(key)) {
+      this.subscribers.set(key, []);
+    }
+    this.subscribers.get(key)?.push(callback);
+
+    if (this.values.has(key)) {
+      callback(this.values.get(key));
+    }
+
+    return () => this.unsubscribe(key, callback);
+  }
+
+  unsubscribe(key: string, callback: Function) {
+    const callbacks = this.subscribers.get(key) || [];
+    const index = callbacks.indexOf(callback);
+    if (index > -1) {
+      callbacks.splice(index, 1);
+    }
+  }
+
+  publish(key: string, value: any) {
+    this.values.set(key, value);
+    const subscribers = this.subscribers.get(key) || [];
+    subscribers.forEach((callback) => callback(value));
+  }
+
+  getAllValues() {
+    return Object.fromEntries(this.values);
+  }
+}
+
+abstract class BaseFormInput extends HTMLElement {
+  protected formState?: PromptPropertyFormState;
+  protected key: string = "";
+
+  connectedCallback() {
+    this.key = this.getAttribute("key") || "";
+    this.setupPromptPropertyFormState();
+    this.render();
+  }
+
+  setPromptPropertyFormState(formState: PromptPropertyFormState) {
+    this.formState = formState;
+    this.setupPromptPropertyFormState();
+  }
+
+  protected abstract render(): void;
+  protected abstract setupPromptPropertyFormState(): void;
+}
+
+class StepNumberInput extends BaseFormInput {
+  protected setupPromptPropertyFormState() {
+    if (!this.formState || !this.key) return;
+
+    this.formState.subscribe(this.key, (value: number) => {
+      const input = this.querySelector("input");
+      if (input) {
+        (input as HTMLInputElement).value = value?.toString() || "";
+      }
+    });
+  }
+
+  protected render() {
+    const min = this.getAttribute("min") || "0";
+    const max = this.getAttribute("max") || "100";
+    const step = this.getAttribute("step") || "1";
+    const steps = (this.getAttribute("steps") || step)
+      .split(",")
+      .map((s) => parseFloat(s));
+    const value = this.getAttribute("value") || "";
+
+    this.innerHTML = `
+      <div class="field">
+        <input type="number" 
+          min="${min}" 
+          max="${max}" 
+          step="${step}"
+          value="${value}"
+        />
+        <div class="control">
+          ${steps
+            .reverse()
+            .map(
+              (s) => `<button type="button" data-step="-${s}">-${s}</button>`
+            )
+            .join("")}
+          ${steps
+            .reverse()
+            .map((s) => `<button type="button" data-step="${s}">${s}</button>`)
+            .join("")}
+        </div>
+      </div>
+    `;
+
+    this.setupEventListeners();
+  }
+
+  private setupEventListeners() {
+    const input = this.querySelector("input");
+    const buttons = this.querySelectorAll("button");
+
+    input?.addEventListener("change", (e) => {
+      const value = parseFloat((e.target as HTMLInputElement).value);
+      this.formState?.publish(this.key, value);
+    });
+
+    buttons?.forEach((button) => {
+      button.addEventListener("click", () => {
+        if (!input) return;
+
+        const step = parseFloat(button.dataset.step || "0");
+        const currentValue = parseFloat(input.value || "0");
+        const newValue = Math.round((currentValue + step) * 1000) / 1000;
+
+        const min = parseFloat(input.min);
+        const max = parseFloat(input.max);
+
+        input.value = Math.min(max, Math.max(min, newValue)).toString();
+        input.dispatchEvent(new Event("change"));
+      });
+    });
+  }
+}
+
+class SelectInput extends BaseFormInput {
+  protected setupPromptPropertyFormState() {
+    if (!this.formState || !this.key) return;
+
+    this.formState.subscribe(this.key, (value: string) => {
+      const select = this.querySelector("select");
+      if (select) {
+        (select as HTMLSelectElement).value = value || "";
+      }
+    });
+  }
+
+  protected render() {
+    const options = this.getAttribute("options")?.split(",") || [];
+    const value = this.getAttribute("value") || "";
+
+    this.innerHTML = `
+      <div class="field">
+        <select>
+          ${options
+            .map(
+              (opt) => `
+            <option value="${opt}" ${opt === value ? "selected" : ""}>
+              ${opt || "None"}
+            </option>
+          `
+            )
+            .join("")}
+        </select>
+      </div>
+    `;
+
+    const select = this.querySelector("select");
+    select?.addEventListener("change", (e) => {
+      const value = (e.target as HTMLSelectElement).value;
+      this.formState?.publish(this.key, value);
+    });
+  }
+}
+
+class PromptPropertyForm extends HTMLElement {
+  private formState: PromptPropertyFormState;
+  private inputs: DestinationPropertyInput[] = [];
+  private formatter: DestinationPropertyInputFormatter;
+  private onChangeCallback?: (formattedValue: string) => void;
+
+  constructor() {
+    super();
+    this.formState = new PromptPropertyFormState();
+    this.formatter = (values: string[]) => values.join(",");
+  }
+
+  configure(
+    inputs: DestinationPropertyInput[],
+    formatter: DestinationPropertyInputFormatter,
+    onChange?: (formattedValue: string) => void
+  ) {
+    this.inputs = inputs;
+    this.formatter = formatter;
+    this.onChangeCallback = onChange;
+    this.setupPromptPropertyFormState();
+    this.render();
+  }
+
+  private setupPromptPropertyFormState() {
+    this.inputs.forEach((_, index) => {
+      this.formState.subscribe(`input-${index}`, () => {
+        this.handleFormChange();
+      });
+    });
+  }
+
+  private handleFormChange() {
+    const values = this.inputs.map(
+      (_, index) =>
+        this.formState.getAllValues()[`input-${index}`]?.toString() || ""
+    );
+
+    const formatted = this.formatter(values);
+    this.onChangeCallback?.(formatted);
+  }
+
+  private createInputElement(
+    input: DestinationPropertyInput,
+    index: number
+  ): HTMLElement {
+    if (input.type === "select") {
+      const element = document.createElement("select-input");
+      element.setAttribute("key", `input-${index}`);
+      element.setAttribute("options", input.options.join(","));
+      element.setAttribute("value", input.initialValue());
+      (element as any).setPromptPropertyFormState(this.formState);
+      return element;
+    } else {
+      const element = document.createElement("step-number-input");
+      element.setAttribute("key", `input-${index}`);
+      element.setAttribute("min", input.min.toString());
+      element.setAttribute("max", input.max.toString());
+
+      const diff = input.max - input.min;
+      let steps: number[];
+      if (diff < 3) {
+        steps = [0.001, 0.01, 0.05];
+      } else if (diff < 25) {
+        steps = [1];
+      } else {
+        steps = [1, 10, 25];
+      }
+
+      element.setAttribute("step", steps[0].toString());
+      element.setAttribute("steps", steps.join(","));
+      element.setAttribute("value", input.initialValue());
+      (element as any).setPromptPropertyFormState(this.formState);
+      return element;
+    }
+  }
+
+  private render() {
+    this.innerHTML = `<form></form>`;
+    const form = this.querySelector("form");
+    if (!form) return;
+
+    form.addEventListener("submit", (e) => e.preventDefault());
+
+    this.inputs.forEach((input, index) => {
+      const inputElement = this.createInputElement(input, index);
+      form.appendChild(inputElement);
+    });
   }
 }

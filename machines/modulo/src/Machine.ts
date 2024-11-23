@@ -50,6 +50,7 @@ export class Machine {
   sequencers!: Sequencer[];
 
   constructor(initialParams: MachineParams & { element: HTMLElement }) {
+    PromptInterface.register();
     this.theme = initialParams.theme;
     this.element = initialParams.element;
     this.mixer = new Mixer();
@@ -162,7 +163,11 @@ export class Machine {
 
     if (firstPass) {
       this.prompt = new Prompt({ destination: this.destination });
-      this.promptInterface = new PromptInterface(this.element, this.prompt);
+      const promptElement = document.createElement(
+        "prompt-interface"
+      ) as PromptInterface;
+      promptElement.initialize(this.element, this.prompt);
+      this.promptInterface = promptElement;
     } else {
       this.prompt.update({ destination: this.destination });
       this.promptInterface.reset(this.element);
@@ -248,18 +253,19 @@ export class Machine {
   }
 
   onExport() {
+    this.promptInterface.toggle();
     const canvas = Stega64.encode({
       source: this.renderer.snapshot(),
       messages: [JSON.stringify(this.exportParams())],
     });
-    const a = document.createElement("a");
-    a.href = canvas.toDataURL();
-    a.className = "export";
-    a.target = "blank";
+    // const a = document.createElement("a");
+    // a.href = canvas.toDataURL();
+    // a.className = "export";
+    // a.target = "blank";
     canvas.className = "export";
-    a.addEventListener("click", (e) => a.remove());
-    a.appendChild(canvas);
-    document.body.appendChild(a);
+    canvas.addEventListener("click", (e) => canvas.remove());
+    // a.appendChild(canvas);
+    document.body.appendChild(canvas);
   }
 
   onRandomize() {
