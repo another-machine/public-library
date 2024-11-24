@@ -6,7 +6,7 @@ import { DrumSequencer, Sequencer, SynthSequencer } from "./Sequencer";
 import { Keyboard } from "./Keyboard";
 import { Time } from "tone/build/esm/core/type/Units";
 
-export type DestinationInfo = { content: () => string[]; label?: string };
+export type DestinationInfo = { content: () => string; label?: string };
 
 export type DestinationCommandArgs = {
   description: string;
@@ -189,11 +189,10 @@ export class Destination {
 const synthDestinations = (synths: Synths, a: boolean, b: boolean) => ({
   envelope: new Destination({
     info: {
-      content: () => [
+      content: () =>
         Destinations.formatJSON(
           synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope
         ),
-      ],
     },
     properties: {
       attack: new DestinationProperty({
@@ -615,7 +614,7 @@ export class Destinations {
     };
 
     return new Destination({
-      info: { content: () => [], label: "Modulo" },
+      info: { content: () => "", label: "Modulo" },
       destinations,
       properties: {},
       commands: {},
@@ -656,14 +655,6 @@ export class Destinations {
           return { valid: true, output };
         },
       }),
-      // load: new DestinationCommand({
-      //   description: "Load machine configuration",
-      //   onCommand,
-      // }),
-      // save: new DestinationCommand({
-      //   description: "Save machine configuration",
-      //   onCommand,
-      // }),
     };
 
     return {
@@ -671,7 +662,7 @@ export class Destinations {
         key: "core",
         info: {
           label: "Core configurations for the machine",
-          content: () => [],
+          content: () => "",
         },
         commands,
         properties: {},
@@ -679,7 +670,7 @@ export class Destinations {
           clock: new Destination({
             info: {
               label: "Clock timing and state",
-              content: () => [Destinations.formatJSON(clock.exportParams())],
+              content: () => Destinations.formatJSON(clock.exportParams()),
             },
             commands: {
               toggle: new DestinationCommand({
@@ -732,7 +723,7 @@ export class Destinations {
           key: new Destination({
             info: {
               label: "Musical key for the machine",
-              content: () => [Destinations.formatJSON(notes.exportParams())],
+              content: () => Destinations.formatJSON(notes.exportParams()),
             },
             properties: {
               mode: new DestinationProperty({
@@ -774,7 +765,7 @@ export class Destinations {
           color: new Destination({
             info: {
               label: "Color settings for the machine",
-              content: () => [],
+              content: () => "",
             },
             commands: {
               rainbow: new DestinationCommand({
@@ -807,7 +798,7 @@ export class Destinations {
       destinations[key] = new Destination({
         key,
         info: {
-          content: () => [Destinations.formatJSON(sequencer.exportParams())],
+          content: () => Destinations.formatJSON(sequencer.exportParams()),
         },
         properties: {
           volume: new DestinationProperty({
@@ -830,9 +821,8 @@ export class Destinations {
         destinations: {
           steps: new Destination({
             info: {
-              content: () => [
+              content: () =>
                 Destinations.formatJSON(sequencer.steps.exportParams()),
-              ],
             },
             commands: {
               random: new DestinationCommand({
@@ -901,24 +891,22 @@ export class Destinations {
     destinations.keyboard = new Destination({
       key: "keyboard",
       info: {
-        content: () => [Destinations.formatJSON(keyboard.exportParams())],
+        content: () => Destinations.formatJSON(keyboard.exportParams()),
       },
       destinations: {
         main: new Destination({
           info: {
-            content: () => [
+            content: () =>
               Destinations.formatJSON(keyboard.main.exportParams()),
-            ],
           },
           properties: { ...synthVolumeProperty(keyboard.main) },
           destinations: {
             a: new Destination({
               info: {
-                content: () => [
+                content: () =>
                   Destinations.formatJSON(
                     keyboard.main.exportParams().settings.a
                   ),
-                ],
               },
               commands: synthsCommands(keyboard.main, true, false),
               properties: synthProperties(keyboard.main, true, false),
@@ -926,11 +914,10 @@ export class Destinations {
             }),
             b: new Destination({
               info: {
-                content: () => [
+                content: () =>
                   Destinations.formatJSON(
                     keyboard.main.exportParams().settings.b
                   ),
-                ],
               },
               commands: synthsCommands(keyboard.main, false, true),
               properties: synthProperties(keyboard.main, false, true),
@@ -940,19 +927,17 @@ export class Destinations {
         }),
         ghosts: new Destination({
           info: {
-            content: () => [
+            content: () =>
               Destinations.formatJSON(keyboard.ghosts.exportParams()),
-            ],
           },
           properties: { ...synthVolumeProperty(keyboard.ghosts) },
           destinations: {
             a: new Destination({
               info: {
-                content: () => [
+                content: () =>
                   Destinations.formatJSON(
                     keyboard.ghosts.exportParams().settings.a
                   ),
-                ],
               },
               commands: synthsCommands(keyboard.ghosts, true, false),
               properties: synthProperties(keyboard.ghosts, true, false),
@@ -960,11 +945,10 @@ export class Destinations {
             }),
             b: new Destination({
               info: {
-                content: () => [
+                content: () =>
                   Destinations.formatJSON(
                     keyboard.ghosts.exportParams().settings.b
                   ),
-                ],
               },
               commands: synthsCommands(keyboard.ghosts, false, true),
               properties: synthProperties(keyboard.ghosts, false, true),
@@ -1010,7 +994,7 @@ export class Destinations {
       destinations[key] = new Destination({
         key,
         info: {
-          content: () => [Destinations.formatJSON(sequencer.exportParams())],
+          content: () => Destinations.formatJSON(sequencer.exportParams()),
         },
         properties: {
           octave: new DestinationProperty({
@@ -1035,9 +1019,8 @@ export class Destinations {
         destinations: {
           steps: new Destination({
             info: {
-              content: () => [
+              content: () =>
                 Destinations.formatJSON(sequencer.steps.exportParams()),
-              ],
             },
             commands: {
               random: new DestinationCommand({
@@ -1084,16 +1067,15 @@ export class Destinations {
             info: {
               content: () => {
                 const settings = synth.exportParams();
-                return [Destinations.formatJSON(settings)];
+                return Destinations.formatJSON(settings);
               },
             },
             properties: { ...synthVolumeProperty(synth) },
             destinations: {
               a: new Destination({
                 info: {
-                  content: () => [
+                  content: () =>
                     Destinations.formatJSON(synth.exportParams().settings.a),
-                  ],
                 },
                 commands: synthsCommands(synth, true, false),
                 properties: synthProperties(synth, true, false),
@@ -1101,9 +1083,8 @@ export class Destinations {
               }),
               b: new Destination({
                 info: {
-                  content: () => [
+                  content: () =>
                     Destinations.formatJSON(synth.exportParams().settings.b),
-                  ],
                 },
                 commands: synthsCommands(synth, false, true),
                 properties: synthProperties(synth, false, true),
@@ -1113,9 +1094,8 @@ export class Destinations {
           }),
           delay: new Destination({
             info: {
-              content: () => [
+              content: () =>
                 Destinations.formatJSON(synth.exportParams().settings.delay),
-              ],
             },
             properties: {
               feedback: new DestinationProperty({

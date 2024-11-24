@@ -13,8 +13,6 @@ export class PromptInfo extends HTMLElement {
     const label = info.label || "";
     const content = info.content();
 
-    return `${label ? `<span>${label}</span>` : ""}${content
-      .map((c) => `<pre>${c}</pre>`)
-      .join("\n")}`;
+    return `${label ? `<span>${label}</span>` : ""}<pre>${content}</pre>`;
   }
 }
