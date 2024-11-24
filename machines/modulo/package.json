@@ -9,5 +9,8 @@
   },
   "devDependencies": {
     "tone": "^15.0.4"
+  },
+  "dependencies": {
+    "npm": "^10.9.1"
   }
 }

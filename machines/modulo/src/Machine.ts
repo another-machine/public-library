@@ -4,7 +4,8 @@ import { Drums } from "./Drums";
 import { Keyboard, KeyboardParams } from "./Keyboard";
 import { Mixer } from "./Mixer";
 import { Notes, NotesParams } from "./Notes";
-import { Prompt, PromptInterface } from "./Prompt";
+import { Prompt } from "./prompt/Prompt";
+import { PromptInterface } from "./prompt/PromptInterface";
 import {
   Renderer,
   RendererEventLocation,
@@ -24,6 +25,7 @@ import {
   Stega64,
   createImageDropReader,
 } from "../../../packages/amplib-steganography/src";
+import register from "./prompt/register";
 
 export interface MachineParams {
   clock: ClockParams;
@@ -50,7 +52,7 @@ export class Machine {
   sequencers!: Sequencer[];
 
   constructor(initialParams: MachineParams & { element: HTMLElement }) {
-    PromptInterface.register();
+    register();
     this.theme = initialParams.theme;
     this.element = initialParams.element;
     this.mixer = new Mixer();

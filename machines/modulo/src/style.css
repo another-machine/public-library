@@ -78,7 +78,7 @@ main {
   height: 100%;
   overflow: visible;
   padding: calc(var(--interface-gap-row-factor) * var(--size-unit));
-  position: fixed;
+  position: relative;
   width: 100%;
 }
 

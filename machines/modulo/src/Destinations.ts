@@ -1,5 +1,5 @@
 import { Clock } from "./Clock";
-import { Prompt, PromptOutput } from "./Prompt";
+import { Prompt, PromptOutput } from "./prompt/Prompt";
 import { SynthSettingsOscillatorType, Synths, oscillatorTypes } from "./Synths";
 import { MODES, Notes, ROOTS } from "./Notes";
 import { DrumSequencer, Sequencer, SynthSequencer } from "./Sequencer";

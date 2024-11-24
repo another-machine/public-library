@@ -320,7 +320,7 @@ export class Renderer {
     let maxX = -Infinity;
     let maxY = -Infinity;
     this.elementMain
-      .querySelectorAll<HTMLButtonElement>("button:not(#prompt button)")
+      .querySelectorAll<HTMLButtonElement>("button")
       .forEach((button) => {
         const { top, right, bottom, left } = button.getBoundingClientRect();
         minX = Math.min(minX, left);
