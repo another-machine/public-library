@@ -33,12 +33,22 @@ export class PromptFormInputStepNumber extends PromptFormInputBase {
           ${steps
             .reverse()
             .map(
-              (s) => `<button type="button" data-step="-${s}">-${s}</button>`
+              (s, i) =>
+                `<button type="button" data-step="-${s}">${"".padStart(
+                  steps.length - i,
+                  "-"
+                )}</button>`
             )
             .join("")}
           ${steps
             .reverse()
-            .map((s) => `<button type="button" data-step="${s}">${s}</button>`)
+            .map(
+              (s, i) =>
+                `<button type="button" data-step="${s}">${"".padStart(
+                  i + 1,
+                  "+"
+                )}</button>`
+            )
             .join("")}
         </div>
       </div>

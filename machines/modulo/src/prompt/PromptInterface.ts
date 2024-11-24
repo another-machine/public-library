@@ -4,11 +4,9 @@ import {
 } from "../Destinations";
 import { COMMANDS, Prompt } from "./Prompt";
 import { PromptSuggestions } from "./PromptSuggestions";
-import { PromptFormInputSelect } from "./PromptFormInputSelect";
 import { PromptInfo } from "./PromptInfo";
 import { PromptInput } from "./PromptInput";
 import { PromptPropertyForm } from "./PromptPropertyForm";
-import { PromptFormInputStepNumber } from "./PromptFormInputStepNumber";
 
 class PromptInterfaceState {
   private subscribers: Map<string, Function[]> = new Map();
@@ -41,7 +39,6 @@ export class PromptInterface extends HTMLElement {
   private input: PromptInput;
   private suggestions: PromptSuggestions;
   private info: PromptInfo;
-  private breadcrumbs: HTMLSpanElement;
   private propertyForm?: PromptPropertyForm;
 
   constructor() {
@@ -60,13 +57,11 @@ export class PromptInterface extends HTMLElement {
   private render() {
     this.id = "prompt";
     this.innerHTML = `
-      <prompt-input></prompt-input>
-      <prompt-suggestions></prompt-suggestions>
-      <span class="breadcrumbs"></span>
-      <prompt-info></prompt-info>
-    `;
+        <prompt-input></prompt-input>
+        <prompt-suggestions></prompt-suggestions>
+        <prompt-info></prompt-info>
+      `;
 
-    this.breadcrumbs = this.querySelector(".breadcrumbs")!;
     this.input = this.querySelector("prompt-input")!;
     this.suggestions = this.querySelector("prompt-suggestions")!;
     this.info = this.querySelector("prompt-info")!;
@@ -76,7 +71,10 @@ export class PromptInterface extends HTMLElement {
     // Configure input handling
     this.input.configure({
       onSubmit: () => this.handleSubmit(),
-      onBack: () => this.handleSuggestionSelection(COMMANDS.BACK[0], "command"),
+      onBack: () => {
+        this.handleSuggestionSelection(COMMANDS.BACK[0], "command");
+        this.clearPropertyForm();
+      },
       onKeydown: (event) => {
         if (event.code === "ArrowUp") {
           event.preventDefault();
@@ -102,7 +100,10 @@ export class PromptInterface extends HTMLElement {
       },
       onFocus: () => this.updateSuggestions(),
       onBlur: () => {},
-      onInputClear: () => this.updateSuggestions(),
+      onInputClear: () => {
+        this.updateSuggestions();
+        this.clearPropertyForm();
+      },
     });
 
     // Configure suggestions handling
@@ -159,7 +160,7 @@ export class PromptInterface extends HTMLElement {
     }
 
     this.input.value = "";
-    this.breadcrumbs.innerHTML = this.prompt.destinationKeys.join("/") || "";
+    this.info.updateBreadcrumbs(this.prompt.destinationKeys.join("/") || "");
     this.renderDestinationInfo();
     if (this.propertyForm) {
       this.propertyForm.remove();
@@ -230,6 +231,12 @@ export class PromptInterface extends HTMLElement {
     }
   }
 
+  private clearPropertyForm() {
+    if (this.propertyForm) {
+      this.propertyForm.remove();
+    }
+  }
+
   private renderPropertyForm(
     property: string,
     inputs: DestinationPropertyInput[],
@@ -243,10 +250,8 @@ export class PromptInterface extends HTMLElement {
       this.handleSoftSubmit();
     });
 
-    if (this.propertyForm) {
-      this.propertyForm.remove();
-    }
-    this.insertBefore(form, this.breadcrumbs);
+    this.clearPropertyForm();
+    this.insertBefore(form, this.info);
     this.propertyForm = form;
   }
 

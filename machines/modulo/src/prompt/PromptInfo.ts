@@ -1,18 +1,24 @@
 import { DestinationInfo } from "../Destinations";
 
 export class PromptInfo extends HTMLElement {
-  update(info: DestinationInfo | string) {
-    this.innerHTML = this.formatInfo(info);
+  private breadcrumbs: HTMLSpanElement;
+  private pre: HTMLPreElement;
+
+  constructor() {
+    super();
+    this.innerHTML = `
+      <span></span>
+      <pre></pre>
+    `;
+    this.breadcrumbs = this.querySelector("span")!;
+    this.pre = this.querySelector("pre")!;
   }
 
-  private formatInfo(info: DestinationInfo | string): string {
-    if (typeof info === "string") {
-      return `<span>${info}</span>`;
-    }
+  updateBreadcrumbs(path: string) {
+    this.breadcrumbs.innerHTML = path;
+  }
 
-    const label = info.label || "";
-    const content = info.content();
-
-    return `${label ? `<span>${label}</span>` : ""}<pre>${content}</pre>`;
+  update(info: DestinationInfo) {
+    this.pre.innerHTML = info.content();
   }
 }
