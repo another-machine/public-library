@@ -35,7 +35,6 @@ export class Prompt {
   history: string[] = [];
   historyIndex = 0;
   lastDestinationKey?: string = undefined;
-  result: string[] = [];
 
   constructor({ destination }: { destination: Destination }) {
     this.destination = destination;
@@ -158,7 +157,7 @@ export class Prompt {
         this
       );
     } else {
-      console.log("else", command, args);
+      console.log("Command not found:", command, args);
       return { valid: true };
     }
   }
@@ -225,8 +224,8 @@ class PromptInput extends HTMLElement {
   private render() {
     this.innerHTML = `
       <div class="input">
-        <input type="text" />
         <button>&lt;</button>
+        <input type="text" />
       </div>
     `;
     this.input = this.querySelector("input");
@@ -413,7 +412,7 @@ export class PromptInterface extends HTMLElement {
   private suggestions: PromptSuggestions;
   private info: PromptInfo;
   private breadcrumbs: HTMLSpanElement;
-  private result: HTMLDivElement;
+  private propertyForm?: PromptPropertyForm;
 
   constructor() {
     super();
@@ -455,15 +454,13 @@ export class PromptInterface extends HTMLElement {
   private render() {
     this.id = "prompt";
     this.innerHTML = `
-      <span class="breadcrumbs"></span>
-      <prompt-info></prompt-info>
-      <div class="result"></div>
       <prompt-input></prompt-input>
       <prompt-suggestions></prompt-suggestions>
+      <span class="breadcrumbs"></span>
+      <prompt-info></prompt-info>
     `;
 
     this.breadcrumbs = this.querySelector(".breadcrumbs")!;
-    this.result = this.querySelector(".result")!;
     this.input = this.querySelector("prompt-input")!;
     this.suggestions = this.querySelector("prompt-suggestions")!;
     this.info = this.querySelector("prompt-info")!;
@@ -475,7 +472,6 @@ export class PromptInterface extends HTMLElement {
       onSubmit: () => this.handleSubmit(),
       onBack: () => this.handleSuggestionSelection(COMMANDS.BACK[0], "command"),
       onKeydown: (event) => {
-        this.prompt.result = [];
         if (event.code === "ArrowUp") {
           event.preventDefault();
           this.input.value = this.prompt.handleHistory(-1);
@@ -488,7 +484,6 @@ export class PromptInterface extends HTMLElement {
         }
       },
       onKeyup: (event) => {
-        this.result.classList.remove("invalid");
         if (event.code === "Slash") {
           event.preventDefault();
           const value = this.input.value.split("/").join("");
@@ -551,27 +546,29 @@ export class PromptInterface extends HTMLElement {
   private handleSubmit() {
     const result = this.prompt.handleCommandString(this.input.value);
     if (result.output) {
-      this.prompt.result = result.output;
+      console.log("Command output:", result.output);
     }
     if (!result.valid) {
-      this.result.classList.add("invalid");
+      console.log("Invalid command");
     }
 
     this.input.value = "";
     this.breadcrumbs.innerHTML = this.prompt.destinationKeys.join("/") || "";
     this.renderDestinationInfo();
+    if (this.propertyForm) {
+      this.propertyForm.remove();
+    }
   }
 
   private handleSoftSubmit() {
     const result = this.prompt.handleCommandString(this.input.value);
     if (result.output) {
-      this.prompt.result = result.output;
+      console.log("Command output:", result.output);
     }
     this.renderDestinationInfo();
   }
 
   private handleSuggestionSelection(value: string, type: string) {
-    this.result.classList.remove("invalid");
     const currentValue = this.input.value.split(" ");
     currentValue.pop();
     currentValue.push(value);
@@ -598,8 +595,6 @@ export class PromptInterface extends HTMLElement {
       this.classList.add(`theme-key-${key}`);
     }
 
-    this.result.innerHTML = this.prompt.result.join("");
-
     this.suggestions.update({
       suggestions: output.suggestions,
       lastMatch,
@@ -614,7 +609,10 @@ export class PromptInterface extends HTMLElement {
 
       if (totalCount === 1) {
         if (output.suggestions.commands.length === 1) {
-          this.result.innerHTML = output.suggestions.commandDescriptions[0];
+          console.log(
+            "Command description:",
+            output.suggestions.commandDescriptions[0]
+          );
         } else if (output.suggestions.properties.length === 1) {
           this.renderPropertyForm(
             output.suggestions.properties[0],
@@ -639,8 +637,11 @@ export class PromptInterface extends HTMLElement {
       this.handleSoftSubmit();
     });
 
-    this.result.innerHTML = "";
-    this.result.appendChild(form);
+    if (this.propertyForm) {
+      this.propertyForm.remove();
+    }
+    this.insertBefore(form, this.breadcrumbs);
+    this.propertyForm = form;
   }
 
   public renderDestinationInfo() {
