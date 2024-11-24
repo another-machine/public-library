@@ -604,8 +604,36 @@ prompt-interface {
       }
 
       strong {
-        font-weight: bold;
+        font-weight: normal;
+      }
+
+      [data-highlight] {
+        position: relative;
+
+        &::before {
+          content: attr(data-highlight);
+          animation: zoomOutwards 300ms ease-in-out forwards;
+          height: 100%;
+          left: 0;
+          position: absolute;
+          top: 0;
+          transform-style: preserve-3d;
+          width: 100%;
+        }
       }
     }
+  }
+}
+
+@keyframes zoomOutwards {
+  0% {
+    filter: blur(0);
+    transform: translateZ(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    filter: blur(3px);
+    transform: translateZ(0px) scale(5);
+    opacity: 0;
   }
 }

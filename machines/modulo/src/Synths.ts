@@ -185,18 +185,19 @@ export class ConfigurableSynth {
   }
 
   static randomOptions() {
+    const round = (number: number) => Math.round(number * 1000) / 1000;
     const type =
       oscillatorTypes[Math.floor(Math.random() * oscillatorTypes.length)];
     const partials = Math.ceil(Math.random() * 64);
     const object: Partial<SynthSettingsOptions> = {
       envelope: {
-        attack: Math.random() * 0.2,
-        decay: Math.random() * 0.4 + 0.2,
-        sustain: Math.random(),
-        release: Math.random() * 0.5 + 0.5,
+        attack: round(Math.random() * 0.2),
+        decay: round(Math.random() * 0.4 + 0.2),
+        sustain: round(Math.random()),
+        release: round(Math.random() * 0.5 + 0.5),
       },
       detune: Math.round(Math.pow(Math.random(), 3) * 200 - 100),
-      portamento: Math.pow(Math.random(), 3),
+      portamento: round(Math.pow(Math.random(), 3)),
       oscillator: { type: `${type}${partials}` as SynthSettingsOscillatorType },
     };
     return object;

@@ -406,7 +406,7 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
         min: -1,
         max: 1,
         initialValue: () =>
-          numericAsString(synths.voices[0].nodeA.detune.value),
+          numericAsString(synths.voices[0][a ? "panA" : "panB"].pan.value),
       },
     ],
     onSet: (_command, [value], _prompt) => {
@@ -589,14 +589,6 @@ export class Destinations {
     );
     const drumSequencers = sequencers.filter((sequencer) => sequencer.isDrum());
     const destinations = {
-      ...Destinations.generateSynthsDestinations({
-        sequencers: synthSequencers,
-        onStepChange,
-      }),
-      ...Destinations.generateDrumsDestinations({
-        sequencers: drumSequencers,
-        onStepChange,
-      }),
       ...Destinations.generateCoreDestination({
         machine,
         onExport,
@@ -604,6 +596,14 @@ export class Destinations {
         onToggleRainbow,
         onModeChange,
         onRandomize,
+      }),
+      ...Destinations.generateSynthsDestinations({
+        sequencers: synthSequencers,
+        onStepChange,
+      }),
+      ...Destinations.generateDrumsDestinations({
+        sequencers: drumSequencers,
+        onStepChange,
       }),
       ...Destinations.generateKeyboardDestinations({
         keyboard,
@@ -822,7 +822,7 @@ export class Destinations {
                 Destinations.formatJSON(sequencer.steps.exportParams()),
             },
             commands: {
-              random: new DestinationCommand({
+              rsparse: new DestinationCommand({
                 description:
                   'Randomize steps. Argument "chance" from 0 through 1.',
                 onCommand: (_command, args, _prompt) => {
@@ -840,6 +840,14 @@ export class Destinations {
                     valid: false,
                     output: ["Could not randomize steps. Invalid arguments."],
                   };
+                },
+              }),
+              rdense: new DestinationCommand({
+                description: "Randomize steps.",
+                onCommand: (_command, _args, _prompt) => {
+                  sequencer.steps.randomize(0.8);
+                  onStepChange();
+                  return { valid: true, output: ["Randomized steps"] };
                 },
               }),
               double: new DestinationCommand({
@@ -1020,7 +1028,7 @@ export class Destinations {
                 Destinations.formatJSON(sequencer.steps.exportParams()),
             },
             commands: {
-              random: new DestinationCommand({
+              rsparse: new DestinationCommand({
                 description:
                   'Randomize steps. Argument "chance" from 0 through 1.',
                 onCommand: (_command, args, _prompt) => {
@@ -1038,6 +1046,14 @@ export class Destinations {
                     valid: false,
                     output: ["Could not randomize steps. Invalid arguments."],
                   };
+                },
+              }),
+              rdense: new DestinationCommand({
+                description: "Randomize steps.",
+                onCommand: (_command, _args, _prompt) => {
+                  sequencer.steps.randomize(0.8);
+                  onStepChange();
+                  return { valid: true, output: ["Randomized steps"] };
                 },
               }),
             },

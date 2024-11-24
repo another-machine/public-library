@@ -68,7 +68,6 @@ export class PromptInterface extends HTMLElement {
   }
 
   private setupComponents() {
-    // Configure input handling
     this.input.configure({
       onSubmit: () => this.handleSubmit(),
       onBack: () => {
