@@ -4,10 +4,24 @@ export class PromptPropertyFormInputStepNumber extends PromptPropertyFormInputBa
   protected setupPromptPropertyFormState() {
     if (!this.formState || !this.key) return;
 
+    // First render the element
+    this.render();
+
+    // Then publish initial value and set up subscription
+    const initialValue = parseFloat(this.getAttribute("value") || "0");
+    this.formState.publish(this.key, initialValue);
+
     this.formState.subscribe(this.key, (value: number) => {
-      const input = this.querySelector("input")!;
-      input.value = value?.toString() || "";
+      const input = this.querySelector("input");
+      if (input) {
+        input.value = value?.toString() || "";
+      }
     });
+  }
+
+  public connectedCallback() {
+    super.connectedCallback();
+    this.setupPromptPropertyFormState();
   }
 
   protected render() {
@@ -18,15 +32,18 @@ export class PromptPropertyFormInputStepNumber extends PromptPropertyFormInputBa
       .split(",")
       .map((s) => parseFloat(s));
     const value = this.getAttribute("value") || "";
+
     const renderStepButton = (step: number, count: number, string: string) =>
       `<button type="button" data-step="${step}">${"".padStart(
         count,
         string
       )}</button>`;
+
     const buttonsMinus = steps
       .reverse()
       .map((s, i) => renderStepButton(-s, steps.length - i, "-"))
       .join("");
+
     const buttonsAdd = steps
       .reverse()
       .map((s, i) => renderStepButton(s, i + 1, "+"))
@@ -36,9 +53,9 @@ export class PromptPropertyFormInputStepNumber extends PromptPropertyFormInputBa
       <div class="control">
         ${buttonsMinus}
       </div>
-      <input type="number" 
-        min="${min}" 
-        max="${max}" 
+      <input type="number"
+        min="${min}"
+        max="${max}"
         step="${step}"
         value="${value}"
       />
@@ -64,10 +81,8 @@ export class PromptPropertyFormInputStepNumber extends PromptPropertyFormInputBa
         const step = parseFloat(button.dataset.step || "0");
         const currentValue = parseFloat(input.value || "0");
         const newValue = Math.round((currentValue + step) * 1000) / 1000;
-
         const min = parseFloat(input.min);
         const max = parseFloat(input.max);
-
         input.value = Math.min(max, Math.max(min, newValue)).toString();
         input.dispatchEvent(new Event("change"));
       });

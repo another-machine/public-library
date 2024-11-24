@@ -2,6 +2,8 @@ import {
   DestinationPropertyInput,
   DestinationPropertyInputFormatter,
 } from "../Destinations";
+import { PromptPropertyFormInputSelect } from "./PromptPropertyFormInputSelect.ts";
+import { PromptPropertyFormInputStepNumber } from "./PromptPropertyFormInputStepNumber.ts";
 import { PromptPropertyFormState } from "./PromptPropertyFormState.ts";
 
 export class PromptPropertyForm extends HTMLElement {
@@ -26,10 +28,15 @@ export class PromptPropertyForm extends HTMLElement {
     this.onChangeCallback = onChange;
     this.setupPromptPropertyFormState();
     this.render();
+
+    // Trigger initial form change after rendering
+    requestAnimationFrame(() => {
+      this.handleFormChange();
+    });
   }
 
   private setupPromptPropertyFormState() {
-    this.inputs.forEach((_, index) => {
+    this.inputs.forEach((input, index) => {
       this.formState.subscribe(`input-${index}`, () => {
         this.handleFormChange();
       });
@@ -41,7 +48,6 @@ export class PromptPropertyForm extends HTMLElement {
       (_, index) =>
         this.formState.getAllValues()[`input-${index}`]?.toString() || ""
     );
-
     const formatted = this.formatter(values);
     this.onChangeCallback?.(formatted);
   }
@@ -51,18 +57,22 @@ export class PromptPropertyForm extends HTMLElement {
     index: number
   ): HTMLElement {
     if (input.type === "select") {
-      const element = document.createElement("prompt-form-input-select");
+      const element = document.createElement(
+        "prompt-form-input-select"
+      ) as PromptPropertyFormInputSelect;
       element.setAttribute("key", `input-${index}`);
       element.setAttribute("options", input.options.join(","));
       element.setAttribute("value", input.initialValue());
-      (element as any).setPromptPropertyFormState(this.formState);
+      element.setPromptPropertyFormState(this.formState);
       return element;
     } else {
-      const element = document.createElement("prompt-form-input-step-number");
+      // Similar changes would be needed for PromptPropertyFormInputStepNumber
+      const element = document.createElement(
+        "prompt-form-input-step-number"
+      ) as PromptPropertyFormInputStepNumber;
       element.setAttribute("key", `input-${index}`);
       element.setAttribute("min", input.min.toString());
       element.setAttribute("max", input.max.toString());
-
       const diff = input.max - input.min;
       let steps: number[];
       if (diff < 3) {
@@ -72,11 +82,10 @@ export class PromptPropertyForm extends HTMLElement {
       } else {
         steps = [1, 10, 25];
       }
-
       element.setAttribute("step", steps[0].toString());
       element.setAttribute("steps", steps.join(","));
       element.setAttribute("value", input.initialValue());
-      (element as any).setPromptPropertyFormState(this.formState);
+      element.setPromptPropertyFormState(this.formState);
       return element;
     }
   }
@@ -85,9 +94,7 @@ export class PromptPropertyForm extends HTMLElement {
     this.innerHTML = `<form></form>`;
     const form = this.querySelector("form");
     if (!form) return;
-
     form.addEventListener("submit", (e) => e.preventDefault());
-
     this.inputs.forEach((input, index) => {
       const inputElement = this.createInputElement(input, index);
       form.appendChild(inputElement);

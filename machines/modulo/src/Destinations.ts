@@ -67,7 +67,7 @@ const validators = {
   oscillator: (string: string) =>
     Boolean(
       string.match(
-        /^(((am|fm|fat)?(sine|square|sawtooth|triangle)([1-9]|[12][0-9]|3[0-2])?)|pulse)$/
+        /^(((am|fm|fat)?(sine|square|sawtooth|triangle)(\d+)?)|pulse)$/
       )
     ),
   pan: validateNumber(-1, 1),
