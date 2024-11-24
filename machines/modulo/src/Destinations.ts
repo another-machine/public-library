@@ -4,7 +4,6 @@ import { SynthSettingsOscillatorType, Synths, oscillatorTypes } from "./Synths";
 import { MODES, Notes, ROOTS } from "./Notes";
 import { DrumSequencer, Sequencer, SynthSequencer } from "./Sequencer";
 import { Keyboard } from "./Keyboard";
-import { Signal } from "tone";
 import { Time } from "tone/build/esm/core/type/Units";
 
 export type DestinationInfo = { content: () => string[]; label?: string };
@@ -187,6 +186,146 @@ export class Destination {
   }
 }
 
+const synthDestinations = (synths: Synths, a: boolean, b: boolean) => ({
+  envelope: new Destination({
+    info: {
+      content: () => [
+        Destinations.formatJSON(
+          synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope
+        ),
+      ],
+    },
+    properties: {
+      attack: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0.001,
+            max: 1,
+            initialValue: () =>
+              numericAsString(
+                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.attack
+              ),
+            label: "Attack",
+          },
+        ],
+        onSet: (_command, args, _prompt) => {
+          const valid = validators.adsrItem(args[0]);
+          if (valid) {
+            const current =
+              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
+            synths.updateSynth(
+              { envelope: { ...current, attack: parseFloat(args[0]) } },
+              a,
+              b
+            );
+          }
+          return { valid };
+        },
+      }),
+      decay: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0.001,
+            max: 1,
+            initialValue: () =>
+              numericAsString(
+                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.decay
+              ),
+            label: "Decay",
+          },
+        ],
+        onSet: (_command, args, _prompt) => {
+          const valid = validators.adsrItem(args[0]);
+          if (valid) {
+            const current =
+              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
+            synths.updateSynth(
+              { envelope: { ...current, decay: parseFloat(args[0]) } },
+              a,
+              b
+            );
+          }
+          return { valid };
+        },
+      }),
+      sustain: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0.001,
+            max: 1,
+            initialValue: () =>
+              numericAsString(
+                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.sustain
+              ),
+            label: "Sustain",
+          },
+        ],
+        onSet: (_command, args, _prompt) => {
+          const valid = validators.adsrItem(args[0]);
+          if (valid) {
+            const current =
+              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
+            synths.updateSynth(
+              { envelope: { ...current, sustain: parseFloat(args[0]) } },
+              a,
+              b
+            );
+          }
+          return { valid };
+        },
+      }),
+      release: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0.001,
+            max: 1,
+            initialValue: () =>
+              numericAsString(
+                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.release
+              ),
+            label: "Release",
+          },
+        ],
+        onSet: (_command, args, _prompt) => {
+          const valid = validators.adsrItem(args[0]);
+          if (valid) {
+            const current =
+              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
+            synths.updateSynth(
+              { envelope: { ...current, release: parseFloat(args[0]) } },
+              a,
+              b
+            );
+          }
+          return { valid };
+        },
+      }),
+    },
+  }),
+});
+
+const synthVolumeProperty = (synths: Synths) => ({
+  volume: new DestinationProperty({
+    inputs: [
+      {
+        type: "number",
+        min: 0,
+        max: 1,
+        initialValue: () => numericAsString(synths.getGain()),
+      },
+    ],
+    onSet: (_command, [value]) => {
+      const valid = validators.volume(value);
+      synths.updateGain(parseFloat(value));
+      return { valid };
+    },
+  }),
+});
+
 const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
   type: new DestinationProperty({
     inputs: [
@@ -215,59 +354,6 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
       if (valid) {
         synths.updateSynth(
           { oscillator: { type: value as SynthSettingsOscillatorType } },
-          a,
-          b
-        );
-      }
-      return { valid };
-    },
-  }),
-  adsr: new DestinationProperty({
-    inputs: [
-      {
-        type: "number",
-        min: 0.001,
-        max: 1,
-        initialValue: () =>
-          numericAsString(synths.voices[0].nodeA.envelope.attack),
-        label: "Attack",
-      },
-      {
-        type: "number",
-        min: 0.001,
-        max: 1,
-        initialValue: () =>
-          numericAsString(synths.voices[0].nodeA.envelope.decay),
-        label: "Decay",
-      },
-      {
-        type: "number",
-        min: 0.001,
-        max: 1,
-        initialValue: () => synths.voices[0].nodeA.envelope.sustain.toFixed(3),
-        label: "Sustain",
-      },
-      {
-        type: "number",
-        min: 0.001,
-        max: 1,
-        initialValue: () =>
-          numericAsString(synths.voices[0].nodeA.envelope.release),
-        label: "Release",
-      },
-    ],
-    onSet: (_command, args, _prompt) => {
-      const valid = validators.adsr(args);
-      if (valid) {
-        synths.updateSynth(
-          {
-            envelope: {
-              attack: parseFloat(args[0]),
-              decay: parseFloat(args[1]),
-              sustain: parseFloat(args[2]),
-              release: parseFloat(args[3]),
-            },
-          },
           a,
           b
         );
@@ -331,6 +417,17 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
 });
 
 const synthsCommands = (synths: Synths, a: boolean, b: boolean) => ({
+  sync: new DestinationCommand({
+    description: "Sync synths to this setting",
+    onCommand: (_command, _args, _prompt) => {
+      const settings = synths.voices[0].exportParams()[a ? "a" : "b"].options;
+      synths.updateSynth(settings, !a, !b);
+      return {
+        valid: true,
+        output: ["Synced synth settings"],
+      };
+    },
+  }),
   random: new DestinationCommand({
     description: "Randomize synth settings",
     onCommand: (_command, _args, _prompt) => {
@@ -341,14 +438,6 @@ const synthsCommands = (synths: Synths, a: boolean, b: boolean) => ({
       };
     },
   }),
-  // load: new DestinationCommand({
-  //   description: "Load synth configuration",
-  //   onCommand,
-  // }),
-  // save: new DestinationCommand({
-  //   description: "Save synth configuration",
-  //   onCommand,
-  // }),
 });
 
 export class Destinations {
@@ -821,8 +910,33 @@ export class Destinations {
               Destinations.formatJSON(keyboard.main.exportParams()),
             ],
           },
-          commands: synthsCommands(keyboard.main, true, true),
-          properties: synthProperties(keyboard.main, true, true),
+          properties: { ...synthVolumeProperty(keyboard.main) },
+          destinations: {
+            a: new Destination({
+              info: {
+                content: () => [
+                  Destinations.formatJSON(
+                    keyboard.main.exportParams().settings.a
+                  ),
+                ],
+              },
+              commands: synthsCommands(keyboard.main, true, false),
+              properties: synthProperties(keyboard.main, true, false),
+              destinations: synthDestinations(keyboard.main, true, false),
+            }),
+            b: new Destination({
+              info: {
+                content: () => [
+                  Destinations.formatJSON(
+                    keyboard.main.exportParams().settings.b
+                  ),
+                ],
+              },
+              commands: synthsCommands(keyboard.main, false, true),
+              properties: synthProperties(keyboard.main, false, true),
+              destinations: synthDestinations(keyboard.main, false, true),
+            }),
+          },
         }),
         ghosts: new Destination({
           info: {
@@ -830,8 +944,33 @@ export class Destinations {
               Destinations.formatJSON(keyboard.ghosts.exportParams()),
             ],
           },
-          commands: synthsCommands(keyboard.ghosts, true, true),
-          properties: synthProperties(keyboard.ghosts, true, true),
+          properties: { ...synthVolumeProperty(keyboard.ghosts) },
+          destinations: {
+            a: new Destination({
+              info: {
+                content: () => [
+                  Destinations.formatJSON(
+                    keyboard.ghosts.exportParams().settings.a
+                  ),
+                ],
+              },
+              commands: synthsCommands(keyboard.ghosts, true, false),
+              properties: synthProperties(keyboard.ghosts, true, false),
+              destinations: synthDestinations(keyboard.ghosts, true, false),
+            }),
+            b: new Destination({
+              info: {
+                content: () => [
+                  Destinations.formatJSON(
+                    keyboard.ghosts.exportParams().settings.b
+                  ),
+                ],
+              },
+              commands: synthsCommands(keyboard.ghosts, false, true),
+              properties: synthProperties(keyboard.ghosts, false, true),
+              destinations: synthDestinations(keyboard.ghosts, false, true),
+            }),
+          },
         }),
       },
       properties: {
@@ -874,21 +1013,6 @@ export class Destinations {
           content: () => [Destinations.formatJSON(sequencer.exportParams())],
         },
         properties: {
-          volume: new DestinationProperty({
-            inputs: [
-              {
-                type: "number",
-                min: 0,
-                max: 1,
-                initialValue: () => numericAsString(synth.getGain()),
-              },
-            ],
-            onSet: (_command, [value]) => {
-              const valid = validators.volume(value);
-              synth.updateGain(parseFloat(value));
-              return { valid };
-            },
-          }),
           octave: new DestinationProperty({
             inputs: [
               {
@@ -960,14 +1084,10 @@ export class Destinations {
             info: {
               content: () => {
                 const settings = synth.exportParams();
-                return [
-                  Destinations.formatJSON(settings.settings.a),
-                  Destinations.formatJSON(settings.settings.b),
-                ];
+                return [Destinations.formatJSON(settings)];
               },
             },
-            commands: synthsCommands(synth, true, true),
-            properties: synthProperties(synth, true, true),
+            properties: { ...synthVolumeProperty(synth) },
             destinations: {
               a: new Destination({
                 info: {
@@ -977,6 +1097,7 @@ export class Destinations {
                 },
                 commands: synthsCommands(synth, true, false),
                 properties: synthProperties(synth, true, false),
+                destinations: synthDestinations(synth, true, false),
               }),
               b: new Destination({
                 info: {
@@ -986,6 +1107,7 @@ export class Destinations {
                 },
                 commands: synthsCommands(synth, false, true),
                 properties: synthProperties(synth, false, true),
+                destinations: synthDestinations(synth, false, true),
               }),
             },
           }),
