@@ -125,10 +125,7 @@ export class Machine {
     }
 
     this.destination = Destinations.generateDestinations({
-      clock: this.clock,
-      notes: this.notes,
-      sequencers: this.sequencers,
-      keyboard: this.keyboard,
+      machine: this,
       onExport: this.onExport.bind(this),
       onToggleMachine: this.onToggleMachine.bind(this),
       onToggleRainbow: this.onToggleRainbow.bind(this),
@@ -138,7 +135,6 @@ export class Machine {
     });
 
     this._initialize = () => {
-      // Initialize keys synths
       this.keyboard.initialize({
         mixer: this.mixer,
         octave: keyboard.octave,
@@ -165,11 +161,13 @@ export class Machine {
 
     if (firstPass) {
       this.prompt = new Prompt({ destination: this.destination });
-      const promptElement = document.createElement(
+      const promptInterface = document.createElement(
         "prompt-interface"
       ) as PromptInterface;
-      promptElement.initialize(this.element, this.prompt);
-      this.promptInterface = promptElement;
+      promptInterface.initialize(this.element, this.prompt);
+      // TODO: close by default
+      promptInterface.toggle();
+      this.promptInterface = promptInterface;
     } else {
       this.prompt.update({ destination: this.destination });
       this.promptInterface.reset(this.element);
@@ -260,18 +258,12 @@ export class Machine {
       source: this.renderer.snapshot(),
       messages: [JSON.stringify(this.exportParams())],
     });
-    // const a = document.createElement("a");
-    // a.href = canvas.toDataURL();
-    // a.className = "export";
-    // a.target = "blank";
     canvas.className = "export";
     canvas.addEventListener("click", (e) => canvas.remove());
-    // a.appendChild(canvas);
     document.body.appendChild(canvas);
   }
 
   onRandomize() {
-    // Randomizing to start
     this.sequencers.forEach((sequencer) => {
       sequencer.steps.randomize();
       if (sequencer.isSynth()) sequencer.synths.randomizeNodes(true, true);

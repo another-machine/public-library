@@ -1,12 +1,16 @@
 import { Clock } from "./Clock";
 import { Prompt, PromptOutput } from "./prompt/Prompt";
 import { SynthSettingsOscillatorType, Synths, oscillatorTypes } from "./Synths";
-import { MODES, Notes, ROOTS } from "./Notes";
-import { DrumSequencer, Sequencer, SynthSequencer } from "./Sequencer";
+import { Machine } from "./Machine";
+import { MODES, ROOTS } from "./Notes";
+import { DrumSequencer, SynthSequencer } from "./Sequencer";
 import { Keyboard } from "./Keyboard";
-import { Time } from "tone/build/esm/core/type/Units";
+import { Time as TimeUnit } from "tone/build/esm/core/type/Units";
+import { Time } from "tone/build/esm/core";
 
 export type DestinationInfo = { content: () => string; label?: string };
+
+const timeOptions = ["4n", "8n", "16n", "32n", "4t", "8t", "16t", "32t"];
 
 export type DestinationCommandArgs = {
   description: string;
@@ -76,7 +80,7 @@ const validators = {
   wet: validateNumber(0, 1),
 };
 
-const numericAsString = (time: Time | number): string => {
+const numericAsString = (time: TimeUnit | number): string => {
   if (typeof time === "number") {
     return time.toFixed(3);
   } else if (typeof time === "string") {
@@ -563,10 +567,7 @@ export class Destinations {
   }
 
   static generateDestinations({
-    clock,
-    notes,
-    sequencers,
-    keyboard,
+    machine,
     onExport,
     onToggleMachine,
     onToggleRainbow,
@@ -574,10 +575,7 @@ export class Destinations {
     onModeChange,
     onRandomize,
   }: {
-    clock: Clock;
-    notes: Notes;
-    sequencers: Sequencer[];
-    keyboard: Keyboard;
+    machine: Machine;
     onExport: () => void;
     onToggleMachine: () => boolean;
     onToggleRainbow: () => boolean;
@@ -585,6 +583,7 @@ export class Destinations {
     onModeChange: () => void;
     onRandomize: () => void;
   }): Destination {
+    const { sequencers, keyboard, clock } = machine;
     const synthSequencers = sequencers.filter((sequencer) =>
       sequencer.isSynth()
     );
@@ -599,8 +598,7 @@ export class Destinations {
         onStepChange,
       }),
       ...Destinations.generateCoreDestination({
-        clock,
-        notes,
+        machine,
         onExport,
         onToggleMachine,
         onToggleRainbow,
@@ -622,22 +620,21 @@ export class Destinations {
   }
 
   static generateCoreDestination({
-    clock,
-    notes,
+    machine,
     onExport,
     onToggleMachine,
     onToggleRainbow,
     onModeChange,
     onRandomize,
   }: {
-    clock: Clock;
-    notes: Notes;
+    machine: Machine;
     onExport: () => void;
     onToggleRainbow: () => boolean;
     onToggleMachine: () => boolean;
     onModeChange: () => void;
     onRandomize: () => void;
   }): Destinations {
+    const { clock, notes } = machine;
     const commands = {
       random: new DestinationCommand({
         description: "Randomize all steps and synths",
@@ -662,7 +659,7 @@ export class Destinations {
         key: "core",
         info: {
           label: "Core configurations for the machine",
-          content: () => "",
+          content: () => Destinations.formatJSON(machine.exportParams()),
         },
         commands,
         properties: {},
@@ -720,7 +717,7 @@ export class Destinations {
               }),
             },
           }),
-          key: new Destination({
+          notes: new Destination({
             info: {
               label: "Musical key for the machine",
               content: () => Destinations.formatJSON(notes.exportParams()),
@@ -1116,12 +1113,18 @@ export class Destinations {
               }),
               time: new DestinationProperty({
                 inputs: [
+                  // {
+                  //   type: "number",
+                  //   min: 0,
+                  //   max: 1,
+                  //   initialValue: () =>
+                  //     numericAsString(synth.voices[0].delay.delayTime.value),
+                  // },
                   {
-                    type: "number",
-                    min: 0,
-                    max: 3,
+                    type: "select",
+                    options: timeOptions,
                     initialValue: () =>
-                      numericAsString(synth.voices[0].delay.delayTime.value),
+                      Time(synth.voices[0].delay.delayTime.value).toNotation(),
                   },
                 ],
                 onSet: (_command, [value]) => {

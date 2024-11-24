@@ -337,7 +337,7 @@ prompt-interface {
   justify-content: start;
   order: -1;
   padding: calc(var(--prompt-gap-column-factor) * var(--size-unit));
-  width: min(30rem, 100%);
+  width: min(32rem, 100%);
 
   > * {
     width: 100%;
@@ -349,6 +349,7 @@ prompt-interface {
 
   &,
   input,
+  select,
   button {
     font-family: Andale Mono, monospace;
     font-size: var(--font-size);
@@ -400,7 +401,7 @@ prompt-interface {
     button {
       border: none;
       border-radius: var(--border-radius);
-      font-size: calc(var(--prompt-size-font) * var(--size-unit));
+      font-size: calc(var(--prompt-size-font-factor) * var(--size-unit));
       padding: calc(var(--prompt-padding-y-factor) * var(--size-unit))
         calc(var(--prompt-padding-x-factor) * var(--size-unit));
     }
@@ -425,9 +426,13 @@ prompt-interface {
   prompt-suggestions {
     align-items: center;
     display: flex;
-    flex-wrap: wrap;
     gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
     justify-content: start;
+    overflow-x: auto;
+
+    &:has(button:only-child) {
+      display: none;
+    }
 
     button {
       border-radius: var(--border-radius);
@@ -440,6 +445,7 @@ prompt-interface {
       }
 
       &[prompt-type="property"] {
+        background: var(--color-1);
         box-shadow: inset 0 0 0
           calc(var(--prompt-size-border-factor) * var(--size-unit))
           var(--color-2);
@@ -478,65 +484,70 @@ prompt-interface {
       flex-wrap: wrap;
       gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
 
-      button {
-        background: var(--color-1);
-        border-radius: var(--border-radius);
-        color: var(--color-2);
-        flex: 1;
-        padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
-          calc(var(--prompt-padding-x-factor) * var(--size-unit));
-        text-align: center;
-      }
-
       > * {
         width: 100%;
       }
 
-      .field {
-        display: flex;
+      prompt-form-input-select,
+      prompt-form-input-step-number {
         flex: 1;
-        gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
-
-        &:has(input) {
-          width: 100%;
-        }
 
         select,
         input {
           -webkit-appearance: none;
           appearance: none;
-          background: var(--color-2);
+          background: var(--color-1);
           border: none;
           border-radius: var(--border-radius);
-          color: var(--color-1);
-          font-size: calc(var(--prompt-size-font) * var(--size-unit));
+          box-shadow: inset 0 0 0
+            calc(var(--prompt-size-border-factor) * var(--size-unit))
+            var(--color-2);
+          color: var(--color-2);
+          font-size: calc(var(--prompt-size-font-factor) * var(--size-unit));
           padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
             calc(var(--prompt-padding-x-factor) * var(--size-unit));
-          text-align: center;
         }
+      }
+
+      prompt-form-input-select {
+        select {
+          width: 100%;
+        }
+      }
+
+      prompt-form-input-step-number {
+        display: flex;
+        gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
 
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
           -webkit-appearance: none;
         }
 
+        input {
+          flex: 1;
+          width: calc(var(--prompt-size-font-factor) * var(--size-unit) * 5);
+        }
+
+        &:has(input) {
+          width: 100%;
+        }
+
         > div {
           display: flex;
-          flex: 1;
           gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
 
           button {
-            background-color: transparent;
-            box-shadow: inset 0 0 0
-              calc(var(--prompt-size-border-factor) * var(--size-unit))
-              var(--color-2);
-            color: var(--color-2);
-            flex: 1;
+            background-color: var(--color-2);
+            border-radius: var(--border-radius);
+            color: var(--color-1);
+            padding: calc(
+                var(--prompt-padding-y-factor) * 0.5 * var(--size-unit)
+              )
+              calc(var(--prompt-padding-x-factor) * var(--size-unit));
+            text-align: center;
           }
         }
-      }
-      > button {
-        width: 100%;
       }
     }
   }
@@ -546,7 +557,6 @@ prompt-interface {
     display: flex;
     flex-direction: column;
     flex: 1;
-    text-align: center;
     min-height: 0;
     width: 100%;
 
@@ -572,7 +582,8 @@ prompt-interface {
       display: block;
       flex: 1;
       margin: 0;
-      padding: calc(var(--prompt-gap-column-factor) * var(--size-unit));
+      padding: calc(var(--prompt-gap-row-factor) * 2 * var(--size-unit))
+        calc(var(--prompt-gap-column-factor) * var(--size-unit));
       overflow-y: auto;
       text-align: left;
 

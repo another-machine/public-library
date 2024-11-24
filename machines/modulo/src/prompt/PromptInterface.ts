@@ -106,12 +106,10 @@ export class PromptInterface extends HTMLElement {
       },
     });
 
-    // Configure suggestions handling
     this.suggestions.configure({
       onSelect: (token, type) => this.handleSuggestionSelection(token, type),
     });
 
-    // Setup escape key handler
     document.body.addEventListener("keyup", (e) => {
       if (e.key === "Escape") {
         this.toggle();

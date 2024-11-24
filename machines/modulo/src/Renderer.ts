@@ -246,7 +246,7 @@ export class Renderer {
     for (let i = 0; i < 8; i++) {
       const pad = this.createButton("TAP", "PADS", i);
       this.elementPads.appendChild(pad);
-      pad.setAttribute("state", "1/4");
+      pad.setAttribute("state", i === 7 ? "1/4" : "0");
     }
     this.updatePads(0);
   }
@@ -319,20 +319,18 @@ export class Renderer {
     let minY = Infinity;
     let maxX = -Infinity;
     let maxY = -Infinity;
-    this.elementMain
-      .querySelectorAll<HTMLButtonElement>("button")
-      .forEach((button) => {
-        const { top, right, bottom, left } = button.getBoundingClientRect();
-        minX = Math.min(minX, left);
-        minY = Math.min(minY, top);
-        maxX = Math.max(maxX, right);
-        maxY = Math.max(maxY, bottom);
-        const computed = getComputedStyle(button);
-        const fill = computed.backgroundColor;
-        const zIndex =
-          computed.zIndex !== "auto" ? parseInt(computed.zIndex) : -1;
-        buttons.push({ top, left, right, bottom, fill, zIndex });
-      });
+    this.elementMain.querySelectorAll("button").forEach((button) => {
+      const { top, right, bottom, left } = button.getBoundingClientRect();
+      minX = Math.min(minX, left);
+      minY = Math.min(minY, top);
+      maxX = Math.max(maxX, right);
+      maxY = Math.max(maxY, bottom);
+      const computed = getComputedStyle(button);
+      const fill = computed.backgroundColor;
+      const zIndex =
+        computed.zIndex !== "auto" ? parseInt(computed.zIndex) : -1;
+      buttons.push({ top, left, right, bottom, fill, zIndex });
+    });
 
     buttons.sort((a, b) => a.zIndex - b.zIndex);
     const width = Math.ceil(maxX - minX);
@@ -398,7 +396,7 @@ export class Renderer {
     this.elementPads
       .querySelectorAll("button:not(:nth-child(8))")
       .forEach((child) => {
-        child.setAttribute("state", "1/4");
+        child.setAttribute("state", "0");
         child.removeAttribute("active");
       });
     const activePad = this.elementPads.querySelector(

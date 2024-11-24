@@ -9,7 +9,7 @@ new Machine({
     color: {
       core: {
         on: { l: 0.6, c: 0.45, h: 180 },
-        off: { l: 0.05, c: 0.03, h: 180 },
+        off: { l: 0.2, c: 0.03, h: 180 },
         disabled: { l: 0.05, c: 0, h: 0 },
       },
       sequencers: {

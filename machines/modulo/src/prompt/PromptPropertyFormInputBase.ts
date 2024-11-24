@@ -1,6 +1,6 @@
 import { PromptPropertyFormState } from "./PromptPropertyFormState.ts";
 
-export abstract class PromptFormInputBase extends HTMLElement {
+export abstract class PromptPropertyFormInputBase extends HTMLElement {
   protected formState?: PromptPropertyFormState;
   protected key: string = "";
 

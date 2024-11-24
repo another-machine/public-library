@@ -1,5 +1,5 @@
-import { PromptFormInputSelect } from "./PromptFormInputSelect";
-import { PromptFormInputStepNumber } from "./PromptFormInputStepNumber";
+import { PromptPropertyFormInputSelect } from "./PromptPropertyFormInputSelect";
+import { PromptPropertyFormInputStepNumber } from "./PromptPropertyFormInputStepNumber";
 import { PromptInfo } from "./PromptInfo";
 import { PromptInput } from "./PromptInput";
 import { PromptInterface } from "./PromptInterface";
@@ -12,9 +12,12 @@ export default function register() {
   customElements.define("prompt-info", PromptInfo);
   customElements.define(
     "prompt-form-input-step-number",
-    PromptFormInputStepNumber
+    PromptPropertyFormInputStepNumber
   );
-  customElements.define("prompt-form-input-select", PromptFormInputSelect);
+  customElements.define(
+    "prompt-form-input-select",
+    PromptPropertyFormInputSelect
+  );
   customElements.define("prompt-property-form", PromptPropertyForm);
   customElements.define("prompt-interface", PromptInterface);
 }
