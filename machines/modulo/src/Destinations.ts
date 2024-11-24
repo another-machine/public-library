@@ -727,7 +727,7 @@ export class Destinations {
                 inputs: [
                   {
                     type: "select",
-                    initialValue: () => notes.getMode().name,
+                    initialValue: () => notes.getMode().type,
                     options: MODES,
                   },
                 ],

@@ -3,7 +3,6 @@ import {
   Scale,
   Mode,
   Note,
-  Interval,
 } from "../../../packages/amplib-music-theory/src";
 import { StepsSlot } from "./Steps";
 
