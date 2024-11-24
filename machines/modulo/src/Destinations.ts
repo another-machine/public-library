@@ -894,7 +894,7 @@ export class Destinations {
         main: new Destination({
           info: {
             content: () =>
-              Destinations.formatJSON(keyboard.main.exportParams()),
+              Destinations.formatJSON(keyboard.main.exportParams(), 4),
           },
           properties: { ...synthVolumeProperty(keyboard.main) },
           destinations: {
@@ -925,7 +925,7 @@ export class Destinations {
         ghosts: new Destination({
           info: {
             content: () =>
-              Destinations.formatJSON(keyboard.ghosts.exportParams()),
+              Destinations.formatJSON(keyboard.ghosts.exportParams(), 4),
           },
           properties: { ...synthVolumeProperty(keyboard.ghosts) },
           destinations: {
@@ -991,7 +991,7 @@ export class Destinations {
       destinations[key] = new Destination({
         key,
         info: {
-          content: () => Destinations.formatJSON(sequencer.exportParams()),
+          content: () => Destinations.formatJSON(sequencer.exportParams(), 4),
         },
         properties: {
           octave: new DestinationProperty({
