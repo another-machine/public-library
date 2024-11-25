@@ -79,8 +79,12 @@ export class PromptPropertyForm extends HTMLElement {
         steps = [0.001, 0.01, 0.05];
       } else if (diff < 25) {
         steps = [1];
-      } else {
+      } else if (diff < 300) {
         steps = [1, 10, 25];
+      } else if (diff < 1000) {
+        steps = [1, 10, 100];
+      } else {
+        steps = [10, 100, 1000];
       }
       element.setAttribute("step", steps[0].toString());
       element.setAttribute("steps", steps.join(","));

@@ -7,6 +7,12 @@ import { DrumSequencer, SynthSequencer } from "./Sequencer";
 import { Keyboard } from "./Keyboard";
 import { Time as TimeUnit } from "tone/build/esm/core/type/Units";
 import { Time } from "tone/build/esm/core";
+import {
+  ConfigurableHat,
+  ConfigurableKick,
+  ConfigurableSnare,
+  Drums,
+} from "./Drums";
 
 export type DestinationInfo = { content: () => string; label?: string };
 
@@ -57,11 +63,13 @@ const validators = {
     const validator = validateNumber(0, 1);
     return args.every(validator);
   },
+  bits: validateNumber(1, 16),
   bpm: validateNumber(0, 360),
   chance: validateNumber(0, 1),
   detune: validateNumber(-100, 100),
   feedback: validateNumber(0, 1),
   volume: validateNumber(0, 1),
+  Q: validateNumber(0, 1),
   mode: validateOptions(MODES),
   octave: validateNumber(0, 7),
   oscillator: (string: string) =>
@@ -311,19 +319,273 @@ const synthDestinations = (synths: Synths, a: boolean, b: boolean) => ({
   }),
 });
 
-const synthVolumeProperty = (synths: Synths) => ({
+const synthEffectsDestinations = (
+  loader: () => ConfigurableHat | ConfigurableKick | ConfigurableSnare
+) => ({
+  highpass: new Destination({
+    info: {
+      content: () =>
+        Destinations.formatJSON(loader().exportParams().settings.highpass),
+    },
+    properties: {
+      Q: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0,
+            max: 1,
+            initialValue: () =>
+              numericAsString(loader().exportParams().settings.highpass.Q || 0),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.Q(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              highpass: { ...settings.highpass, Q: parseFloat(value) },
+            },
+          });
+          return { valid };
+        },
+      }),
+      frequency: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0,
+            max: 12000,
+            initialValue: () =>
+              numericAsString(
+                loader().exportParams().settings.highpass.frequency || 0
+              ),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.Q(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              highpass: { ...settings.highpass, frequency: parseFloat(value) },
+            },
+          });
+          return { valid };
+        },
+      }),
+    },
+  }),
+  lowpass: new Destination({
+    info: {
+      content: () =>
+        Destinations.formatJSON(loader().exportParams().settings.lowpass),
+    },
+    properties: {
+      Q: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0,
+            max: 1,
+            initialValue: () =>
+              numericAsString(loader().exportParams().settings.lowpass.Q || 0),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.Q(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              lowpass: { ...settings.lowpass, Q: parseFloat(value) },
+            },
+          });
+          return { valid };
+        },
+      }),
+      frequency: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0,
+            max: 12000,
+            initialValue: () =>
+              numericAsString(
+                loader().exportParams().settings.lowpass.frequency || 0
+              ),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.Q(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              lowpass: { ...settings.lowpass, frequency: parseFloat(value) },
+            },
+          });
+          return { valid };
+        },
+      }),
+    },
+  }),
+  crush: new Destination({
+    info: {
+      content: () =>
+        Destinations.formatJSON(loader().exportParams().settings.crush),
+    },
+    properties: {
+      wet: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0,
+            max: 1,
+            initialValue: () =>
+              numericAsString(loader().exportParams().settings.crush.wet || 0),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.wet(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              crush: { ...settings.crush, wet: parseFloat(value) },
+            },
+          });
+          return { valid };
+        },
+      }),
+      bits: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 1,
+            max: 16,
+            initialValue: () =>
+              numericAsString(loader().exportParams().settings.crush.bits || 1),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.bits(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              crush: { ...settings.crush, bits: parseFloat(value) },
+            },
+          });
+          return { valid };
+        },
+      }),
+    },
+  }),
+  delay: new Destination({
+    info: {
+      content: () =>
+        Destinations.formatJSON(loader().exportParams().settings.delay),
+    },
+    properties: {
+      feedback: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0,
+            max: 1,
+            initialValue: () => numericAsString(loader().delay.feedback.value),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.feedback(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              delay: { ...settings.delay, feedback: parseFloat(value) },
+            },
+          });
+          return { valid };
+        },
+      }),
+      time: new DestinationProperty({
+        inputs: [
+          {
+            type: "select",
+            options: timeOptions,
+            initialValue: () =>
+              Time(loader().delay.delayTime.value).toNotation(),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.time(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              delay: { ...settings.delay, delayTime: value },
+            },
+          });
+          return { valid };
+        },
+      }),
+      wet: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0,
+            max: 1,
+            initialValue: () =>
+              numericAsString(loader().exportParams().settings.delay.wet || 0),
+          },
+        ],
+        onSet: (_command, [value]) => {
+          const valid = validators.wet(value);
+          const { volume, settings } = loader().exportParams();
+          loader().updateSettings({
+            volume,
+            settings: {
+              ...settings,
+              delay: { ...settings.delay, wet: parseFloat(value) },
+            },
+          });
+          return { valid };
+        },
+      }),
+    },
+  }),
+});
+
+const synthVolumeProperty = (
+  loader: () =>
+    | Synths
+    | Drums
+    | ConfigurableHat
+    | ConfigurableKick
+    | ConfigurableSnare
+) => ({
   volume: new DestinationProperty({
     inputs: [
       {
         type: "number",
         min: 0,
         max: 1,
-        initialValue: () => numericAsString(synths.getGain()),
+        initialValue: () => numericAsString(loader().getGain()),
       },
     ],
     onSet: (_command, [value]) => {
       const valid = validators.volume(value);
-      synths.updateGain(parseFloat(value));
+      console.log(value, valid, loader());
+      loader().updateGain(parseFloat(value));
       return { valid };
     },
   }),
@@ -797,23 +1059,7 @@ export class Destinations {
         info: {
           content: () => Destinations.formatJSON(sequencer.exportParams()),
         },
-        properties: {
-          volume: new DestinationProperty({
-            inputs: [
-              {
-                type: "number",
-                min: 0,
-                max: 1,
-                initialValue: () => numericAsString(drum.getGain()),
-              },
-            ],
-            onSet: (_command, [value]) => {
-              const valid = validators.volume(value);
-              drum.updateGain(parseFloat(value));
-              return { valid };
-            },
-          }),
-        },
+        properties: {},
 
         destinations: {
           steps: new Destination({
@@ -879,6 +1125,73 @@ export class Destinations {
               }),
             },
           }),
+          synths: new Destination({
+            info: {
+              content: () =>
+                Destinations.formatJSON(sequencer.drums.exportParams()),
+            },
+            properties: {
+              ...synthVolumeProperty(() => drum),
+            },
+            destinations: {
+              kick: new Destination({
+                info: {
+                  content: () =>
+                    Destinations.formatJSON(
+                      sequencer.drums.kit.kick.exportParams()
+                    ),
+                },
+                properties: {
+                  ...synthVolumeProperty(() => sequencer.drums.kit.kick),
+                },
+                destinations: {
+                  ...synthEffectsDestinations(() => sequencer.drums.kit.kick),
+                },
+              }),
+              snare: new Destination({
+                info: {
+                  content: () =>
+                    Destinations.formatJSON(
+                      sequencer.drums.kit.snare.exportParams()
+                    ),
+                },
+                properties: {
+                  ...synthVolumeProperty(() => sequencer.drums.kit.snare),
+                },
+                destinations: {
+                  ...synthEffectsDestinations(() => sequencer.drums.kit.snare),
+                },
+              }),
+              closed: new Destination({
+                info: {
+                  content: () =>
+                    Destinations.formatJSON(
+                      sequencer.drums.kit.closed.exportParams()
+                    ),
+                },
+                properties: {
+                  ...synthVolumeProperty(() => sequencer.drums.kit.closed),
+                },
+                destinations: {
+                  ...synthEffectsDestinations(() => sequencer.drums.kit.closed),
+                },
+              }),
+              open: new Destination({
+                info: {
+                  content: () =>
+                    Destinations.formatJSON(
+                      sequencer.drums.kit.open.exportParams()
+                    ),
+                },
+                properties: {
+                  ...synthVolumeProperty(() => sequencer.drums.kit.open),
+                },
+                destinations: {
+                  ...synthEffectsDestinations(() => sequencer.drums.kit.open),
+                },
+              }),
+            },
+          }),
         },
       });
     });
@@ -904,7 +1217,7 @@ export class Destinations {
             content: () =>
               Destinations.formatJSON(keyboard.main.exportParams(), 4),
           },
-          properties: { ...synthVolumeProperty(keyboard.main) },
+          properties: { ...synthVolumeProperty(() => keyboard.main) },
           destinations: {
             a: new Destination({
               info: {
@@ -935,7 +1248,7 @@ export class Destinations {
             content: () =>
               Destinations.formatJSON(keyboard.ghosts.exportParams(), 4),
           },
-          properties: { ...synthVolumeProperty(keyboard.ghosts) },
+          properties: { ...synthVolumeProperty(() => keyboard.ghosts) },
           destinations: {
             a: new Destination({
               info: {
@@ -1083,7 +1396,7 @@ export class Destinations {
                 return Destinations.formatJSON(settings);
               },
             },
-            properties: { ...synthVolumeProperty(synth) },
+            properties: { ...synthVolumeProperty(() => synth) },
             destinations: {
               a: new Destination({
                 info: {

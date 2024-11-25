@@ -1,3 +1,4 @@
+import { ConfigurableHat, ConfigurableKick, ConfigurableSnare } from "./Drums";
 import { Machine } from "./Machine";
 import { Synths } from "./Synths";
 
@@ -28,7 +29,7 @@ new Machine({
           off: { l: 0.2, c: 0.03, h: 120 },
           disabled: { l: 0.05, c: 0, h: 0 },
         },
-        kit: {
+        drums: {
           on: { l: 0.6, c: 0.5, h: 290 },
           off: { l: 0.2, c: 0.03, h: 290 },
           disabled: { l: 0.05, c: 0, h: 0 },
@@ -111,7 +112,7 @@ new Machine({
       synths: { volume: 0.1, settings: Synths.initialSettings, voices: 1 },
     },
     {
-      key: "kit",
+      key: "drums",
       type: "DRUM",
       steps: {
         size: 12,
@@ -123,10 +124,14 @@ new Machine({
           [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
         ],
       },
-      drums: {
+      synths: {
         volume: 0.4,
-        kit: [{}, {}, {}],
-        pieces: ["OPEN_HAT", "CLOSED_HAT", "SNARE", "KICK"],
+        settings: {
+          closed: ConfigurableHat.initialSettings,
+          open: ConfigurableHat.initialSettings,
+          snare: ConfigurableSnare.initialSettings,
+          kick: ConfigurableKick.initialSettings,
+        },
       },
     },
   ],

@@ -10,7 +10,7 @@ interface SharedSequencerParams {
   steps: StepsParams;
 }
 interface DrumSequencerParams extends SharedSequencerParams {
-  drums: DrumsParams;
+  synths: DrumsParams;
   type: "DRUM";
 }
 interface SynthSequencerParams extends SharedSequencerParams {
@@ -51,8 +51,16 @@ export class DrumSequencer extends SequencerBase {
     this.drums = drums;
   }
 
-  initialize({ volume, mixer }: { volume: number; mixer: Mixer }) {
-    this.drums.initialize(volume, mixer);
+  initialize({
+    volume,
+    mixer,
+    settings,
+  }: {
+    volume: number;
+    mixer: Mixer;
+    settings: DrumsParams["settings"];
+  }) {
+    this.drums.initialize({ volume, mixer, settings });
   }
 
   dispose() {
@@ -71,7 +79,7 @@ export class DrumSequencer extends SequencerBase {
     return {
       ...this.exportParamsShared(),
       type: this.type,
-      drums: this.drums.exportParams(),
+      synths: this.drums.exportParams(),
     };
   }
 }

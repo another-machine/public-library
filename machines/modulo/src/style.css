@@ -390,6 +390,23 @@ prompt-interface {
             )
         ) / 1
     );
+
+    --color-3: oklch(
+      calc(
+          var(--color-off-lit) +
+            (var(--color-on-lit) * 1.5 - var(--color-off-lit))
+        )
+        calc(
+          var(--color-off-chr) + (var(--color-on-chr) - var(--color-off-chr))
+        )
+        calc(
+          var(--color-hue-base) +
+            (
+              var(--color-off-hue) +
+                (var(--color-on-hue) - var(--color-off-hue))
+            )
+        ) / 1
+    );
   }
 
   prompt-input > div {
@@ -578,7 +595,7 @@ prompt-interface {
 
     > pre {
       background: var(--color-1);
-      color: var(--color-2);
+      color: var(--color-3);
       display: block;
       flex: 1;
       margin: 0;

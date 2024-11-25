@@ -94,7 +94,7 @@ export class Machine {
         return new DrumSequencer({
           key: sequencer.key,
           steps: new Steps(sequencer.steps),
-          drums: new Drums({ pieces: sequencer.drums.pieces }),
+          drums: new Drums(),
         });
       } else {
         return sequencer as never;
@@ -123,7 +123,7 @@ export class Machine {
         keyboard: this.keyboard,
       });
     }
-
+    console.log(this.sequencers);
     this.destination = Destinations.generateDestinations({
       machine: this,
       onExport: this.onExport.bind(this),
@@ -152,12 +152,17 @@ export class Machine {
           });
         } else if (sequencer.type === "DRUM" && sequencers[i].type === "DRUM") {
           sequencer.initialize({
-            volume: sequencers[i].drums.volume,
+            volume: sequencers[i].synths.volume,
             mixer: this.mixer,
+            settings: sequencers[i].synths.settings,
           });
         }
       });
     };
+
+    if (!firstPass) {
+      this._initialize();
+    }
 
     if (firstPass) {
       this.prompt = new Prompt({ destination: this.destination });
@@ -171,10 +176,6 @@ export class Machine {
     } else {
       this.prompt.update({ destination: this.destination });
       this.promptInterface.reset(this.element);
-    }
-
-    if (!firstPass) {
-      this._initialize();
     }
   }
 

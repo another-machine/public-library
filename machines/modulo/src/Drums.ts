@@ -1,195 +1,456 @@
-import { Filter, Gain, MembraneSynth, NoiseSynth, Synth } from "tone";
+import {
+  BitCrusher,
+  Filter,
+  FeedbackDelay,
+  Gain,
+  NoiseSynth,
+  MembraneSynth,
+  Synth,
+} from "tone";
 import { Mixer } from "./Mixer";
 import { StepsSlot } from "./Steps";
+import { Time } from "tone/build/esm/core/type/Units";
 
-type DrumTypeKey = "SNARE" | "KICK" | "CLOSED_HAT" | "OPEN_HAT";
+type DrumKitKey = "open" | "closed" | "snare" | "kick";
 
+// Drums class interface simplified to match
 export interface DrumsParams {
   volume: number;
-  pieces: DrumTypeKey[];
-  kit: (
-    | ConfigurableHatParams
-    | ConfigurableSnareParams
-    | ConfigurableKickParams
-  )[];
+  settings: {
+    open: ConfigurableHatParams;
+    closed: ConfigurableHatParams;
+    snare: ConfigurableSnareParams;
+    kick: ConfigurableKickParams;
+  };
 }
 
-type ConfigurableHatParams = {};
-type ConfigurableSnareParams = {};
-type ConfigurableKickParams = {};
+type DrumTypeSettings =
+  | {
+      type: Extract<DrumKitKey, "snare">;
+      settings: ConfigurableSnareParams;
+    }
+  | {
+      type: Extract<DrumKitKey, "kick">;
+      settings: ConfigurableKickParams;
+    }
+  | {
+      type: Extract<DrumKitKey, "closed" | "open">;
+      settings: ConfigurableHatParams;
+    };
+
+// Base settings interfaces
+interface DrumSettingsFilter {
+  frequency: number;
+  Q: number;
+}
+
+interface DrumSettingsDelay {
+  wet: number;
+  feedback: number;
+  delayTime: Time;
+}
+
+interface DrumSettingsBitCrush {
+  wet: number;
+  bits: number;
+}
+
+// Configuration interfaces (effects only)
+interface DrumParams {
+  volume: number;
+  settings: {
+    highpass: DrumSettingsFilter;
+    lowpass: DrumSettingsFilter;
+    crush: DrumSettingsBitCrush;
+    delay: DrumSettingsDelay;
+  };
+}
+
+export type ConfigurableHatParams = DrumParams;
+export type ConfigurableSnareParams = DrumParams;
+export type ConfigurableKickParams = DrumParams;
+
+const DEFAULT_HAT_SETTINGS: DrumParams = {
+  volume: 0.185,
+  settings: {
+    highpass: { frequency: 0, Q: 1 },
+    lowpass: { frequency: 12000, Q: 1 },
+    crush: { wet: 0, bits: 8 },
+    delay: { wet: 0, feedback: 0.3, delayTime: "16n" },
+  },
+};
+
+const DEFAULT_SNARE_SETTINGS: DrumParams = {
+  volume: 0.5,
+  settings: {
+    highpass: { frequency: 0, Q: 1 },
+    lowpass: { frequency: 12000, Q: 1 },
+    crush: { wet: 0, bits: 8 },
+    delay: { wet: 0, feedback: 0.3, delayTime: "16n" },
+  },
+};
+
+const DEFAULT_KICK_SETTINGS: DrumParams = {
+  volume: 0.75,
+  settings: {
+    highpass: { frequency: 0, Q: 1 },
+    lowpass: { frequency: 12000, Q: 1 },
+    crush: { wet: 0, bits: 8 },
+    delay: { wet: 0, feedback: 0.3, delayTime: "8n" },
+  },
+};
 
 export class ConfigurableHat {
+  type: Extract<DrumKitKey, "closed" | "open">;
   closed: boolean;
   node: NoiseSynth;
   output: Gain;
+  highpass: Filter;
+  lowpass: Filter;
+  crush: BitCrusher;
+  delay: FeedbackDelay;
+  params: DrumParams;
 
-  constructor(gain: number, closed: boolean) {
-    this.closed = closed;
-    this.node = new NoiseSynth();
-    this.output = new Gain(gain);
-    this.node.connect(this.output);
-    if (this.closed) {
-      this.node.envelope.attack = 0.0001;
-      this.node.envelope.decay = 0.17;
-      this.node.envelope.sustain = 0;
-      this.node.envelope.release = 0.05;
-    } else {
-      this.node.noise.type = "white";
-      this.node.envelope.attack = 0.0001;
-      this.node.envelope.decay = 0.27;
-      this.node.envelope.sustain = 0.1;
-      this.node.envelope.release = 0.5;
-    }
+  static get initialSettings() {
+    return DEFAULT_HAT_SETTINGS;
   }
 
-  exportParams() {
-    return {};
+  constructor(closed: boolean, params: DrumParams) {
+    this.type = closed ? "closed" : "open";
+    this.closed = closed;
+    this.params = params;
+    this.node = new NoiseSynth();
+    this.output = new Gain(params.volume);
+
+    // Set fixed envelope and noise settings
+    this.node.noise.type = "white";
+    this.node.envelope.attack = 0.0001;
+    this.node.envelope.decay = this.closed ? 0.17 : 0.27;
+    this.node.envelope.sustain = this.closed ? 0 : 0.1;
+    this.node.envelope.release = this.closed ? 0.05 : 0.5;
+
+    // Initialize effects
+    this.highpass = new Filter({
+      type: "highpass",
+      ...params.settings.highpass,
+    });
+    this.lowpass = new Filter({
+      type: "lowpass",
+      ...params.settings.lowpass,
+    });
+    this.crush = new BitCrusher(params.settings.crush);
+    this.delay = new FeedbackDelay(params.settings.delay);
+
+    // Connect effects chain
+    this.node.connect(this.highpass);
+    this.highpass.connect(this.lowpass);
+    this.lowpass.connect(this.crush);
+    this.crush.connect(this.delay);
+    this.delay.connect(this.output);
+  }
+
+  updateSettings(params: DrumParams) {
+    this.params = params;
+    this.highpass.set(params.settings.highpass);
+    this.lowpass.set(params.settings.lowpass);
+    this.crush.set(params.settings.crush);
+    this.delay.set(params.settings.delay);
+  }
+
+  exportParams(): DrumParams {
+    return this.params;
+  }
+
+  getGain() {
+    return this.output.gain.value;
+  }
+
+  updateGain(value: number) {
+    this.params.volume = value;
+    return (this.output.gain.value = value);
   }
 
   play(velocity: number | null, time: number) {
-    if (velocity === null) {
-      return;
-    }
+    if (velocity === null) return;
     this.node.triggerAttackRelease("16n", time, velocity);
   }
 }
 
 export class ConfigurableSnare {
+  type: Extract<DrumKitKey, "snare">;
   node1: Synth;
   node2: NoiseSynth;
   output: Gain;
+  highpass: Filter;
+  lowpass: Filter;
+  crush: BitCrusher;
+  delay: FeedbackDelay;
+  params: DrumParams;
 
-  constructor(gain: number) {
+  static get initialSettings() {
+    return DEFAULT_SNARE_SETTINGS;
+  }
+
+  constructor(params: DrumParams) {
+    this.params = params;
     this.node1 = new Synth();
     this.node2 = new NoiseSynth();
-    this.output = new Gain(gain);
-    const lowPass = new Filter({ frequency: 11000 });
-    this.node1.connect(this.output);
-    this.node2.connect(lowPass);
-    lowPass.connect(this.output);
+    this.output = new Gain(params.volume);
 
+    // Set fixed synth settings
+    this.node1.oscillator.type = "sine";
+    this.node1.oscillator.partials = [1, 4];
     this.node1.envelope.attack = 0.0001;
     this.node1.envelope.decay = 0.17;
     this.node1.envelope.sustain = 0;
     this.node1.envelope.release = 0.05;
-    this.node1.oscillator.partials = [1, 4];
 
+    // Set fixed noise settings
     this.node2.noise.type = "brown";
     this.node2.noise.playbackRate = 3;
     this.node2.envelope.attack = 0.001;
     this.node2.envelope.decay = 0.13;
     this.node2.envelope.sustain = 0;
     this.node2.envelope.release = 0.03;
+
+    // Initialize effects
+    this.highpass = new Filter({
+      type: "highpass",
+      ...params.settings.highpass,
+    });
+    this.lowpass = new Filter({
+      type: "lowpass",
+      ...params.settings.lowpass,
+    });
+    this.crush = new BitCrusher(params.settings.crush);
+    this.delay = new FeedbackDelay(params.settings.delay);
+
+    // Create parallel paths for tone and noise
+    const toneChain = new Gain(1);
+    const noiseChain = new Gain(0.5);
+
+    // Connect tone path
+    this.node1.connect(toneChain);
+    toneChain.connect(this.highpass);
+
+    // Connect noise path
+    this.node2.connect(noiseChain);
+    noiseChain.connect(this.highpass);
+
+    // Connect shared effects chain
+    this.highpass.connect(this.lowpass);
+    this.lowpass.connect(this.crush);
+    this.crush.connect(this.delay);
+    this.delay.connect(this.output);
   }
 
-  exportParams() {
-    return {};
+  updateSettings(params: DrumParams) {
+    this.params = params;
+    this.highpass.set(params.settings.highpass);
+    this.lowpass.set(params.settings.lowpass);
+    this.crush.set(params.settings.crush);
+    this.delay.set(params.settings.delay);
+  }
+
+  exportParams(): DrumParams {
+    return this.params;
+  }
+
+  getGain() {
+    return this.output.gain.value;
+  }
+
+  updateGain(value: number) {
+    this.params.volume = value;
+    return (this.output.gain.value = value);
   }
 
   play(velocity: number | null, time: number) {
-    if (velocity === null) {
-      return;
-    }
-    this.node1.triggerAttackRelease("B2", "16n", time, velocity);
-    this.node1.triggerAttackRelease("Eb3", "16n", time + 0.02, velocity);
+    if (velocity === null) return;
+
+    this.node1.triggerAttackRelease("B2", "16n", time, velocity * 0.7);
+    this.node1.triggerAttackRelease("Eb3", "16n", time + 0.02, velocity * 0.5);
     this.node2.triggerAttackRelease("16n", time, velocity);
   }
 }
 
 export class ConfigurableKick {
+  type: Extract<DrumKitKey, "kick">;
   node1: MembraneSynth;
   node2: NoiseSynth;
   output: Gain;
+  highpass: Filter;
+  lowpass: Filter;
+  crush: BitCrusher;
+  delay: FeedbackDelay;
+  params: DrumParams;
 
-  constructor(gain: number) {
+  static get initialSettings() {
+    return DEFAULT_KICK_SETTINGS;
+  }
+
+  constructor(params: DrumParams) {
+    this.params = params;
     this.node1 = new MembraneSynth();
     this.node2 = new NoiseSynth();
-    this.output = new Gain(gain);
-    const kickNoise = new Gain(0.2);
-    this.node1.connect(this.output);
-    kickNoise.connect(this.output);
-    this.node2.connect(kickNoise);
+    this.output = new Gain(params.volume);
 
+    // Set fixed envelope settings
+    this.node1.envelope.attack = 0.001;
+    this.node1.envelope.decay = 0.2;
+    this.node1.envelope.sustain = 0;
+    this.node1.envelope.release = 0.1;
+
+    // Set fixed noise settings
     this.node2.noise.type = "brown";
-    this.node2.noise.playbackRate = 3;
     this.node2.envelope.attack = 0.001;
     this.node2.envelope.decay = 0.13;
     this.node2.envelope.sustain = 0;
     this.node2.envelope.release = 0.03;
+
+    // Initialize effects
+    this.highpass = new Filter({
+      type: "highpass",
+      ...params.settings.highpass,
+    });
+    this.lowpass = new Filter({
+      type: "lowpass",
+      ...params.settings.lowpass,
+    });
+    this.crush = new BitCrusher(params.settings.crush);
+    this.delay = new FeedbackDelay(params.settings.delay);
+
+    // Create parallel paths for membrane and noise
+    const membraneChain = new Gain(1);
+    const noiseChain = new Gain(0.2);
+
+    // Connect membrane path
+    this.node1.connect(membraneChain);
+    membraneChain.connect(this.highpass);
+
+    // Connect noise path
+    this.node2.connect(noiseChain);
+    noiseChain.connect(this.highpass);
+
+    // Connect shared effects chain
+    this.highpass.connect(this.lowpass);
+    this.lowpass.connect(this.crush);
+    this.crush.connect(this.delay);
+    this.delay.connect(this.output);
   }
 
-  exportParams() {
-    return {};
+  updateSettings(params: DrumParams) {
+    this.params = params;
+    this.highpass.set(params.settings.highpass);
+    this.lowpass.set(params.settings.lowpass);
+    this.crush.set(params.settings.crush);
+    this.delay.set(params.settings.delay);
+  }
+
+  getGain() {
+    return this.output.gain.value;
+  }
+
+  updateGain(value: number) {
+    this.params.volume = value;
+    return (this.output.gain.value = value);
+  }
+
+  exportParams(): DrumParams {
+    return this.params;
   }
 
   play(velocity: number | null, time: number) {
-    if (velocity === null) {
-      return;
-    }
-    this.node1.triggerAttackRelease("C0", "8n", time, velocity);
-    this.node1.triggerAttackRelease("E0", "8n", time + 0.01, velocity);
-    this.node2.triggerAttackRelease("16n", time + 0.02, velocity);
+    if (velocity === null) return;
+
+    this.node1.triggerAttackRelease("E0", "8n", time, velocity);
+    this.node1.triggerAttackRelease("C0", "8n", time + 0.01, velocity * 0.8);
+    this.node2.triggerAttackRelease("16n", time + 0.02, velocity * 0.5);
   }
 }
 
 export class Drums {
   output?: Gain;
+  kit: {
+    open: ConfigurableHat;
+    closed: ConfigurableHat;
+    snare: ConfigurableSnare;
+    kick: ConfigurableKick;
+  };
 
   static velocitiesForStepsSlots(
     stepsSlotArray: StepsSlot[],
     maxValue: number
   ) {
     return stepsSlotArray.map((slot) => {
-      if (!slot) {
-        return null;
-      }
+      if (!slot) return null;
       return ((slot - 1) / (maxValue - 1)) * 0.2 + 0.8;
     });
   }
 
-  pieces: DrumTypeKey[];
-  kit: (ConfigurableKick | ConfigurableSnare | ConfigurableHat)[] = [];
+  constructor() {}
 
-  constructor({ pieces }: { pieces: DrumTypeKey[] }) {
-    this.pieces = pieces;
-  }
-
-  initialize(volume: number, mixer: Mixer) {
+  initialize({
+    volume,
+    mixer,
+    settings,
+  }: {
+    volume: number;
+    mixer: Mixer;
+    settings: DrumsParams["settings"];
+  }) {
     this.output = new Gain(volume);
     if (mixer.channel) this.output.connect(mixer.channel);
-    const gain = 1 / this.pieces.length;
-    const channel = mixer.channel;
-    this.kit = this.pieces.map((piece) => {
-      let drum;
-      if (piece === "KICK") {
-        drum = new ConfigurableKick(gain * 3);
-      } else if (piece === "SNARE") {
-        drum = new ConfigurableSnare(gain * 2);
-      } else if (piece === "CLOSED_HAT") {
-        drum = new ConfigurableHat(gain * 0.75, true);
-      } else {
-        // if (piece === "OPEN_HAT") {
-        drum = new ConfigurableHat(gain * 0.75, false);
-      }
-      if (channel && this.output) drum.output.connect(this.output);
-      return drum;
-    });
+    this.kit = {
+      open: new ConfigurableHat(false, {
+        ...DEFAULT_HAT_SETTINGS,
+        ...settings.open,
+      }),
+      closed: new ConfigurableHat(true, {
+        ...DEFAULT_HAT_SETTINGS,
+        ...settings.closed,
+      }),
+      snare: new ConfigurableSnare({
+        ...DEFAULT_SNARE_SETTINGS,
+        ...settings.snare,
+      }),
+      kick: new ConfigurableKick({
+        ...DEFAULT_KICK_SETTINGS,
+        ...settings.kick,
+      }),
+    };
+
+    for (let drum in this.kit) {
+      if (mixer.channel && this.output)
+        this.kit[drum].output.connect(this.output);
+    }
+  }
+
+  updateSettings({ type, settings }: DrumTypeSettings) {
+    this.kit[type].updateSettings(settings);
   }
 
   dispose() {
-    this.kit.forEach((item) => item.output.dispose());
+    Object.values(this.kit).forEach((item) => item.output.dispose());
   }
 
   exportParams(): DrumsParams {
+    const settings: DrumsParams["settings"] = {
+      closed: this.kit.closed.exportParams(),
+      open: this.kit.open.exportParams(),
+      snare: this.kit.snare.exportParams(),
+      kick: this.kit.kick.exportParams(),
+    };
     return {
       volume: this.output?.gain.value || 0,
-      pieces: this.pieces,
-      kit: this.kit.map((d) => d.exportParams()),
+      settings,
     };
   }
 
   playVelocities(velocities: (number | null)[], time: number) {
-    this.kit.forEach((drum, i) => drum.play(velocities[i], time));
+    Object.values(this.kit).forEach((drum, i) =>
+      drum.play(velocities[i], time)
+    );
   }
 
   getGain() {
