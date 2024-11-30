@@ -29,6 +29,7 @@ export type DestinationPropertyInput =
       initialValue: () => string;
       min: number;
       max: number;
+      steps?: number[];
       label?: string;
     }
   | {
@@ -36,6 +37,7 @@ export type DestinationPropertyInput =
       initialValue: () => string;
       min: number;
       max: number;
+      step?: number;
       label?: string;
     }
   | {
@@ -640,9 +642,10 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
   portamento: new DestinationProperty({
     inputs: [
       {
-        type: "number",
+        type: "range",
         min: 0,
         max: 1,
+        step: 0.001,
         initialValue: () => numericAsString(synths.voices[0].nodeA.portamento),
       },
     ],
@@ -657,9 +660,10 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
   detune: new DestinationProperty({
     inputs: [
       {
-        type: "number",
+        type: "range",
         min: -100,
         max: 100,
+        step: 1,
         initialValue: () =>
           numericAsString(synths.voices[0].nodeA.detune.value),
       },
@@ -675,9 +679,10 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
   pan: new DestinationProperty({
     inputs: [
       {
-        type: "number",
+        type: "range",
         min: -1,
         max: 1,
+        step: 0.01,
         initialValue: () =>
           numericAsString(synths.voices[0][a ? "panA" : "panB"].pan.value),
       },
@@ -692,43 +697,41 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
   }),
 });
 
-const colorObject = (
+const lchProperty = (
   initialValue: () => RendererThemeLCH,
   onSet: (color: RendererThemeLCH) => void
 ) => {
-  return {
-    lch: new DestinationProperty({
-      inputs: [
-        {
-          type: "range",
-          min: 0,
-          max: 1,
-          initialValue: () => numericAsString(initialValue().l),
-        },
-        {
-          type: "range",
-          min: 0,
-          max: 0.5,
-          initialValue: () => numericAsString(initialValue().c),
-        },
-        {
-          type: "range",
-          min: 0,
-          max: 360,
-          initialValue: () => numericAsString(initialValue().h),
-        },
-      ],
-      inputsFormatter: (values) => values.join(" "),
-      onSet: (_command, [l, c, h], _prompt) => {
-        const valid =
-          validators.colorL(l) && validators.colorC(c) && validators.colorH(h);
-        if (valid) {
-          onSet({ l: parseFloat(l), c: parseFloat(c), h: parseInt(h) });
-        }
-        return { valid };
+  return new DestinationProperty({
+    inputs: [
+      {
+        type: "range",
+        min: 0,
+        max: 1,
+        initialValue: () => numericAsString(initialValue().l),
       },
-    }),
-  };
+      {
+        type: "range",
+        min: 0,
+        max: 0.5,
+        initialValue: () => numericAsString(initialValue().c),
+      },
+      {
+        type: "range",
+        min: 0,
+        max: 360,
+        initialValue: () => numericAsString(initialValue().h),
+      },
+    ],
+    inputsFormatter: (values) => values.join(" "),
+    onSet: (_command, [l, c, h], _prompt) => {
+      const valid =
+        validators.colorL(l) && validators.colorC(c) && validators.colorH(h);
+      if (valid) {
+        onSet({ l: parseFloat(l), c: parseFloat(c), h: parseInt(h) });
+      }
+      return { valid };
+    },
+  });
 };
 
 const synthsCommands = (synths: Synths, a: boolean, b: boolean) => ({
@@ -885,7 +888,6 @@ export class Destinations {
     onToggleRainbow,
     onStepChange,
     onModeChange,
-    onRandomize,
   }: {
     machine: Machine;
     onExport: () => void;
@@ -893,7 +895,6 @@ export class Destinations {
     onToggleRainbow: () => boolean;
     onStepChange: () => void;
     onModeChange: () => void;
-    onRandomize: () => void;
   }): Destination {
     const { sequencers, keyboard, clock } = machine;
     const synthSequencers = sequencers.filter((sequencer) =>
@@ -907,7 +908,6 @@ export class Destinations {
         onToggleMachine,
         onToggleRainbow,
         onModeChange,
-        onRandomize,
       }),
       ...Destinations.generateSynthsDestinations({
         sequencers: synthSequencers,
@@ -940,34 +940,71 @@ export class Destinations {
     onToggleMachine,
     onToggleRainbow,
     onModeChange,
-    onRandomize,
   }: {
     machine: Machine;
     onExport: () => void;
     onToggleRainbow: () => boolean;
     onToggleMachine: () => boolean;
     onModeChange: () => void;
-    onRandomize: () => void;
   }): Destinations {
-    const { clock, notes } = machine;
+    const { clock, notes, sequencers } = machine;
     const commands = {
-      random: new DestinationCommand({
-        description: "Randomize all steps and synths",
+      toggle: new DestinationCommand({
+        description: "Toggle the clock state on or off",
         onCommand: (_command, _args, _prompt) => {
-          onRandomize();
-          const output = ["Randomized all steps and synths!"];
+          const output = [`Turned clock ${onToggleMachine() ? "on" : "off"}`];
           return { valid: true, output };
         },
       }),
-      export: new DestinationCommand({
-        description: "Export settings as a Steganographic image.",
+      rainbow: new DestinationCommand({
+        description: "Toggle the rainbow mode",
         onCommand: (_command, _args, _prompt) => {
-          onExport();
-          const output = ["Exported settings!"];
+          const output = [`Turned rainbow ${onToggleRainbow() ? "on" : "off"}`];
           return { valid: true, output };
         },
       }),
     };
+
+    const sequencerColorDestinations = {};
+    sequencers.forEach((sequencer) => {
+      const key = sequencer.key;
+      sequencerColorDestinations[key] = new Destination({
+        key,
+        info: {
+          label: `Color settings for ${key}`,
+          content: () =>
+            Destinations.formatJSON(
+              machine.exportParams().theme.color.sequencers[key]
+            ),
+        },
+        properties: {
+          on: lchProperty(
+            () => machine.exportParams().theme.color.sequencers[key].on,
+            (settings) =>
+              machine.renderer.updateThemeColor(
+                `sequencers.${key}.on`,
+                settings
+              )
+          ),
+          off: lchProperty(
+            () => machine.exportParams().theme.color.sequencers[key].off,
+            (settings) =>
+              machine.renderer.updateThemeColor(
+                `sequencers.${key}.off`,
+                settings
+              )
+          ),
+          disabled: lchProperty(
+            () => machine.exportParams().theme.color.sequencers[key].disabled,
+            (settings) =>
+              machine.renderer.updateThemeColor(
+                `sequencers.${key}.disabled`,
+                settings
+              )
+          ),
+        },
+      });
+    });
 
     return {
       core: new Destination({
@@ -977,205 +1014,109 @@ export class Destinations {
           content: () => Destinations.formatJSON(machine.exportParams()),
         },
         commands,
-        properties: {},
         destinations: {
-          clock: new Destination({
+          save: new Destination({
             info: {
-              label: "Clock timing and state",
-              content: () => Destinations.formatJSON(clock.exportParams()),
+              label: "Save current state of the machine",
+              content: () => Destinations.formatJSON(machine.exportParams()),
             },
             commands: {
-              toggle: new DestinationCommand({
-                description: "Toggle the clock state on or off",
+              image: new DestinationCommand({
+                description: "Export as a Steganographic image.",
                 onCommand: (_command, _args, _prompt) => {
-                  const output = [
-                    `Turned clock ${onToggleMachine() ? "on" : "off"}`,
-                  ];
+                  onExport();
+                  const output = ["Exported settings!"];
+                  return { valid: true, output };
+                },
+              }),
+              json: new DestinationCommand({
+                description: "Export as JSON.",
+                onCommand: (_command, _args, _prompt) => {
+                  onExport();
+                  const output = ["Exported settings!"];
+                  return { valid: true, output };
+                },
+              }),
+              url: new DestinationCommand({
+                description: "Export as a url.",
+                onCommand: (_command, _args, _prompt) => {
+                  onExport();
+                  const output = ["Exported settings!"];
                   return { valid: true, output };
                 },
               }),
             },
-            properties: {
-              tempo: new DestinationProperty({
-                inputs: [
-                  {
-                    type: "number",
-                    min: 45,
-                    max: 300,
-                    initialValue: () => numericAsString(clock.getRate()),
-                  },
-                ],
-                onSet: (_command, [value]) => {
-                  const valid = validators.bpm(value);
-                  if (valid) {
-                    clock.setRate(parseInt(value));
-                  }
-                  return { valid };
-                },
-              }),
-              swing: new DestinationProperty({
-                inputs: [
-                  {
-                    type: "number",
-                    min: 0,
-                    max: 1,
-                    initialValue: () => numericAsString(clock.getSwing()),
-                  },
-                ],
-                onSet: (_command, [value]) => {
-                  const valid = validators.swing(value);
-                  if (valid) {
-                    clock.setSwing(parseFloat(value));
-                  }
-                  return { valid };
-                },
-              }),
-            },
-          }),
-          notes: new Destination({
-            info: {
-              label: "Musical key for the machine",
-              content: () => Destinations.formatJSON(notes.exportParams()),
-            },
-            properties: {
-              key: new DestinationProperty({
-                inputs: [
-                  {
-                    type: "select",
-                    initialValue: () => notes.getRoot(),
-                    options: ROOTS,
-                  },
-                  {
-                    type: "select",
-                    initialValue: () => notes.getMode().type,
-                    options: MODES,
-                  },
-                ],
-                onSet: (_command, [root, mode]) => {
-                  const valid = validators.mode(mode) && validators.root(root);
-                  if (valid) {
-                    notes.setMode(mode);
-                    notes.setRoot(root);
-                    onModeChange();
-                  }
-                  return { valid };
-                },
-              }),
-            },
-          }),
-          color: new Destination({
-            info: {
-              label: "Color settings for the core",
-              content: () =>
-                Destinations.formatJSON(
-                  machine.exportParams().theme.color.core
-                ),
-            },
-            destinations: {
-              on: new Destination({
-                info: {
-                  label: "Color settings for core on state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.core.on
-                    ),
-                },
-                properties: colorObject(
-                  () => machine.exportParams().theme.color.core.on,
-                  (settings) =>
-                    machine.renderer.updateThemeColor("core.on", settings)
-                ),
-              }),
-              off: new Destination({
-                info: {
-                  label: "Color settings for core off state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.core.off
-                    ),
-                },
-                properties: colorObject(
-                  () => machine.exportParams().theme.color.core.off,
-                  (settings) =>
-                    machine.renderer.updateThemeColor("core.off", settings)
-                ),
-              }),
-              disabled: new Destination({
-                info: {
-                  label: "Color settings for core disabled state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.core.disabled
-                    ),
-                },
-                properties: colorObject(
-                  () => machine.exportParams().theme.color.core.disabled,
-                  (settings) =>
-                    machine.renderer.updateThemeColor("core.disabled", settings)
-                ),
-              }),
-            },
           }),
           theme: new Destination({
+            key: "core",
             info: {
               label: "Theme settings for the machine",
               content: () =>
                 Destinations.formatJSON(machine.exportParams().theme),
             },
             destinations: {
-              color: new Destination({
+              ...sequencerColorDestinations,
+              keyboard: new Destination({
+                key: "keyboard",
                 info: {
-                  label: "Color settings for the machine",
+                  label: "Color settings for the keyboard",
                   content: () =>
-                    Destinations.formatJSON(machine.exportParams().theme.color),
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.keyboard
+                    ),
                 },
-                destinations: {
-                  background: new Destination({
-                    info: {
-                      label: "Background color",
-                      content: () =>
-                        Destinations.formatJSON(
-                          machine.exportParams().theme.color.background
-                        ),
-                    },
-                    properties: {
-                      ...colorObject(
-                        () => machine.exportParams().theme.color.background,
-                        (settings) =>
-                          machine.renderer.updateThemeColor(
-                            "background",
-                            settings
-                          )
-                      ),
-                    },
-                  }),
-                  text: new Destination({
-                    info: {
-                      label: "Text color",
-                      content: () =>
-                        Destinations.formatJSON(
-                          machine.exportParams().theme.color.text
-                        ),
-                    },
-                    properties: {
-                      ...colorObject(
-                        () => machine.exportParams().theme.color.text,
-                        (settings) =>
-                          machine.renderer.updateThemeColor("text", settings)
-                      ),
-                    },
-                  }),
+                properties: {
+                  on: lchProperty(
+                    () => machine.exportParams().theme.color.keyboard.on,
+                    (settings) =>
+                      machine.renderer.updateThemeColor("keyboard.on", settings)
+                  ),
+                  off: lchProperty(
+                    () => machine.exportParams().theme.color.keyboard.off,
+                    (settings) =>
+                      machine.renderer.updateThemeColor(
+                        "keyboard.off",
+                        settings
+                      )
+                  ),
+                  disabled: lchProperty(
+                    () => machine.exportParams().theme.color.keyboard.disabled,
+                    (settings) =>
+                      machine.renderer.updateThemeColor(
+                        "keyboard.disabled",
+                        settings
+                      )
+                  ),
                 },
-                commands: {
-                  rainbow: new DestinationCommand({
-                    description: "Toggle the rainbow mode",
-                    onCommand: (_command, _args, _prompt) => {
-                      const output = [
-                        `Turned rainbow ${onToggleRainbow() ? "on" : "off"}`,
-                      ];
-                      return { valid: true, output };
-                    },
-                  }),
+              }),
+              core: new Destination({
+                key: "core",
+                info: {
+                  label: "Color settings for the core",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.core
+                    ),
+                },
+                properties: {
+                  on: lchProperty(
+                    () => machine.exportParams().theme.color.core.on,
+                    (settings) =>
+                      machine.renderer.updateThemeColor("core.on", settings)
+                  ),
+                  off: lchProperty(
+                    () => machine.exportParams().theme.color.core.off,
+                    (settings) =>
+                      machine.renderer.updateThemeColor("core.off", settings)
+                  ),
+                  disabled: lchProperty(
+                    () => machine.exportParams().theme.color.core.disabled,
+                    (settings) =>
+                      machine.renderer.updateThemeColor(
+                        "core.disabled",
+                        settings
+                      )
+                  ),
                 },
               }),
               interface: new Destination({
@@ -1196,6 +1137,68 @@ export class Destinations {
                     ),
                 },
               }),
+            },
+            properties: {
+              background: lchProperty(
+                () => machine.exportParams().theme.color.background,
+                (settings) =>
+                  machine.renderer.updateThemeColor("background", settings)
+              ),
+              text: lchProperty(
+                () => machine.exportParams().theme.color.text,
+                (settings) =>
+                  machine.renderer.updateThemeColor("text", settings)
+              ),
+            },
+          }),
+        },
+        properties: {
+          key: new DestinationProperty({
+            inputs: [
+              {
+                type: "select",
+                initialValue: () => notes.getRoot(),
+                options: ROOTS,
+              },
+              {
+                type: "select",
+                initialValue: () => notes.getMode().type,
+                options: MODES,
+              },
+            ],
+            onSet: (_command, [root, mode]) => {
+              const valid = validators.mode(mode) && validators.root(root);
+              if (valid) {
+                notes.setMode(mode);
+                notes.setRoot(root);
+                onModeChange();
+              }
+              return { valid };
+            },
+          }),
+          tempo: new DestinationProperty({
+            inputs: [
+              {
+                type: "range",
+                min: 45,
+                max: 300,
+                step: 1,
+                initialValue: () => numericAsString(clock.getRate()),
+              },
+              {
+                type: "range",
+                min: 0,
+                max: 1,
+                initialValue: () => numericAsString(clock.getSwing()),
+              },
+            ],
+            onSet: (_command, [rate, swing]) => {
+              const valid = validators.bpm(rate) && validators.swing(swing);
+              if (valid) {
+                clock.setRate(parseInt(rate));
+                clock.setSwing(parseFloat(swing));
+              }
+              return { valid };
             },
           }),
         },
@@ -1230,41 +1233,59 @@ export class Destinations {
                 Destinations.formatJSON(sequencer.steps.exportParams()),
             },
             commands: {
-              rsparse: new DestinationCommand({
-                description:
-                  'Randomize steps. Argument "chance" from 0 through 1.',
-                onCommand: (_command, args, _prompt) => {
-                  if (
-                    args.length <= 1 &&
-                    (!args[0] || validators.chance(args[0]))
-                  ) {
-                    sequencer.steps.randomize(
-                      args[0] ? parseFloat(args[0]) : undefined
-                    );
-                    onStepChange();
-                    return { valid: true, output: ["Randomized steps"] };
-                  }
-                  return {
-                    valid: false,
-                    output: ["Could not randomize steps. Invalid arguments."],
-                  };
-                },
-              }),
-              rdense: new DestinationCommand({
-                description: "Randomize steps.",
+              halve: new DestinationCommand({
+                description: "Halve steps",
                 onCommand: (_command, _args, _prompt) => {
-                  sequencer.steps.randomize(0.8);
+                  sequencer.steps.halve();
                   onStepChange();
-                  return { valid: true, output: ["Randomized steps"] };
+                  return { valid: true, output: ["Halved steps"] };
                 },
               }),
               double: new DestinationCommand({
-                description:
-                  'Double steps. Argument "chance" from 0 through 1.',
+                description: "Double steps",
                 onCommand: (_command, _args, _prompt) => {
                   sequencer.steps.double();
                   onStepChange();
-                  return { valid: true, output: ["Randomized steps"] };
+                  return { valid: true, output: ["Doubled steps"] };
+                },
+              }),
+            },
+            destinations: {
+              random: new Destination({
+                info: {
+                  content: () =>
+                    Destinations.formatJSON(sequencer.steps.exportParams()),
+                },
+                commands: {
+                  sparse: new DestinationCommand({
+                    description: "Randomize steps",
+                    onCommand: (_command, args, _prompt) => {
+                      if (
+                        args.length <= 1 &&
+                        (!args[0] || validators.chance(args[0]))
+                      ) {
+                        sequencer.steps.randomize(
+                          args[0] ? parseFloat(args[0]) : undefined
+                        );
+                        onStepChange();
+                        return { valid: true, output: ["Randomized steps"] };
+                      }
+                      return {
+                        valid: false,
+                        output: [
+                          "Could not randomize steps. Invalid arguments.",
+                        ],
+                      };
+                    },
+                  }),
+                  dense: new DestinationCommand({
+                    description: "Randomize steps",
+                    onCommand: (_command, _args, _prompt) => {
+                      sequencer.steps.randomize(0.8);
+                      onStepChange();
+                      return { valid: true, output: ["Randomized steps"] };
+                    },
+                  }),
                 },
               }),
             },
@@ -1275,6 +1296,7 @@ export class Destinations {
                     type: "number",
                     min: 1,
                     max: 64,
+                    steps: [1, 4],
                     initialValue: () => sequencer.steps.size.toString(),
                   },
                 ],
@@ -1351,71 +1373,6 @@ export class Destinations {
                 destinations: {
                   ...synthEffectsDestinations(() => sequencer.drums.kit.open),
                 },
-              }),
-            },
-          }),
-          color: new Destination({
-            info: {
-              label: "Color settings for the drums",
-              content: () =>
-                Destinations.formatJSON(
-                  machine.exportParams().theme.color.sequencers.drums
-                ),
-            },
-            destinations: {
-              on: new Destination({
-                info: {
-                  label: "Color settings for drums on state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.sequencers.drums.on
-                    ),
-                },
-                properties: colorObject(
-                  () => machine.exportParams().theme.color.sequencers.drums.on,
-                  (settings) =>
-                    machine.renderer.updateThemeColor(
-                      "sequencers.drums.on",
-                      settings
-                    )
-                ),
-              }),
-              off: new Destination({
-                info: {
-                  label: "Color settings for drums off state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.sequencers.drums.off
-                    ),
-                },
-                properties: colorObject(
-                  () => machine.exportParams().theme.color.sequencers.drums.off,
-                  (settings) =>
-                    machine.renderer.updateThemeColor(
-                      "sequencers.drums.off",
-                      settings
-                    )
-                ),
-              }),
-              disabled: new Destination({
-                info: {
-                  label: "Color settings for drums disabled state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.sequencers.drums
-                        .disabled
-                    ),
-                },
-                properties: colorObject(
-                  () =>
-                    machine.exportParams().theme.color.sequencers.drums
-                      .disabled,
-                  (settings) =>
-                    machine.renderer.updateThemeColor(
-                      "sequencers.drums.disabled",
-                      settings
-                    )
-                ),
               }),
             },
           }),
@@ -1503,62 +1460,6 @@ export class Destinations {
             }),
           },
         }),
-        color: new Destination({
-          info: {
-            label: "Color settings for the keyboard",
-            content: () =>
-              Destinations.formatJSON(
-                machine.exportParams().theme.color.keyboard
-              ),
-          },
-          destinations: {
-            on: new Destination({
-              info: {
-                label: "Color settings for keyboard on state",
-                content: () =>
-                  Destinations.formatJSON(
-                    machine.exportParams().theme.color.keyboard.on
-                  ),
-              },
-              properties: colorObject(
-                () => machine.exportParams().theme.color.keyboard.on,
-                (settings) =>
-                  machine.renderer.updateThemeColor("keyboard.on", settings)
-              ),
-            }),
-            off: new Destination({
-              info: {
-                label: "Color settings for keyboard off state",
-                content: () =>
-                  Destinations.formatJSON(
-                    machine.exportParams().theme.color.keyboard.off
-                  ),
-              },
-              properties: colorObject(
-                () => machine.exportParams().theme.color.keyboard.off,
-                (settings) =>
-                  machine.renderer.updateThemeColor("keyboard.off", settings)
-              ),
-            }),
-            disabled: new Destination({
-              info: {
-                label: "Color settings for keyboard disabled state",
-                content: () =>
-                  Destinations.formatJSON(
-                    machine.exportParams().theme.color.keyboard.disabled
-                  ),
-              },
-              properties: colorObject(
-                () => machine.exportParams().theme.color.keyboard.disabled,
-                (settings) =>
-                  machine.renderer.updateThemeColor(
-                    "keyboard.disabled",
-                    settings
-                  )
-              ),
-            }),
-          },
-        }),
       },
       properties: {
         octave: new DestinationProperty({
@@ -1628,32 +1529,59 @@ export class Destinations {
                 Destinations.formatJSON(sequencer.steps.exportParams()),
             },
             commands: {
-              rsparse: new DestinationCommand({
-                description:
-                  'Randomize steps. Argument "chance" from 0 through 1.',
-                onCommand: (_command, args, _prompt) => {
-                  if (
-                    args.length <= 1 &&
-                    (!args[0] || validators.chance(args[0]))
-                  ) {
-                    sequencer.steps.randomize(
-                      args[0] ? parseFloat(args[0]) : undefined
-                    );
-                    onStepChange();
-                    return { valid: true, output: ["Randomized steps"] };
-                  }
-                  return {
-                    valid: false,
-                    output: ["Could not randomize steps. Invalid arguments."],
-                  };
+              halve: new DestinationCommand({
+                description: "Halve steps",
+                onCommand: (_command, _args, _prompt) => {
+                  sequencer.steps.halve();
+                  onStepChange();
+                  return { valid: true, output: ["Halved steps"] };
                 },
               }),
-              rdense: new DestinationCommand({
-                description: "Randomize steps.",
+              double: new DestinationCommand({
+                description: "Double steps",
                 onCommand: (_command, _args, _prompt) => {
-                  sequencer.steps.randomize(0.8);
+                  sequencer.steps.double();
                   onStepChange();
-                  return { valid: true, output: ["Randomized steps"] };
+                  return { valid: true, output: ["Doubled steps"] };
+                },
+              }),
+            },
+            destinations: {
+              random: new Destination({
+                info: {
+                  content: () =>
+                    Destinations.formatJSON(sequencer.steps.exportParams()),
+                },
+                commands: {
+                  sparse: new DestinationCommand({
+                    description: "Randomize steps",
+                    onCommand: (_command, args, _prompt) => {
+                      if (
+                        args.length <= 1 &&
+                        (!args[0] || validators.chance(args[0]))
+                      ) {
+                        sequencer.steps.randomize(
+                          args[0] ? parseFloat(args[0]) : undefined
+                        );
+                        onStepChange();
+                        return { valid: true, output: ["Randomized steps"] };
+                      }
+                      return {
+                        valid: false,
+                        output: [
+                          "Could not randomize steps. Invalid arguments.",
+                        ],
+                      };
+                    },
+                  }),
+                  dense: new DestinationCommand({
+                    description: "Randomize steps",
+                    onCommand: (_command, _args, _prompt) => {
+                      sequencer.steps.randomize(0.8);
+                      onStepChange();
+                      return { valid: true, output: ["Randomized steps"] };
+                    },
+                  }),
                 },
               }),
             },
@@ -1664,6 +1592,7 @@ export class Destinations {
                     type: "number",
                     min: 1,
                     max: 64,
+                    steps: [1, 4],
                     initialValue: () => sequencer.steps.size.toString(),
                   },
                 ],
@@ -1810,70 +1739,6 @@ export class Destinations {
           //     }),
           //   },
           // }),
-          color: new Destination({
-            info: {
-              label: "Color settings for the sequencers",
-              content: () =>
-                Destinations.formatJSON(
-                  machine.exportParams().theme.color.sequencers[key]
-                ),
-            },
-            destinations: {
-              on: new Destination({
-                info: {
-                  label: "Color settings for sequencers on state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.sequencers[key].on
-                    ),
-                },
-                properties: colorObject(
-                  () => machine.exportParams().theme.color.sequencers[key].on,
-                  (settings) =>
-                    machine.renderer.updateThemeColor(
-                      `sequencers.${key}.on`,
-                      settings
-                    )
-                ),
-              }),
-              off: new Destination({
-                info: {
-                  label: "Color settings for sequencers off state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.sequencers[key].off
-                    ),
-                },
-                properties: colorObject(
-                  () => machine.exportParams().theme.color.sequencers[key].off,
-                  (settings) =>
-                    machine.renderer.updateThemeColor(
-                      `sequencers.${key}.off`,
-                      settings
-                    )
-                ),
-              }),
-              disabled: new Destination({
-                info: {
-                  label: "Color settings for sequencers disabled state",
-                  content: () =>
-                    Destinations.formatJSON(
-                      machine.exportParams().theme.color.sequencers[key]
-                        .disabled
-                    ),
-                },
-                properties: colorObject(
-                  () =>
-                    machine.exportParams().theme.color.sequencers[key].disabled,
-                  (settings) =>
-                    machine.renderer.updateThemeColor(
-                      `sequencers.${key}.disabled`,
-                      settings
-                    )
-                ),
-              }),
-            },
-          }),
         },
       });
     });

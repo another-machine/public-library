@@ -37,6 +37,7 @@ export class Prompt {
 
   constructor({ destination }: { destination: Destination }) {
     this.destination = destination;
+    this.getNextSuggestions(COMMANDS.HOME[0]);
   }
 
   get currentDestination(): Destination {

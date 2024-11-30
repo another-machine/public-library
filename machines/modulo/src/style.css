@@ -88,6 +88,12 @@ main[stepping="true"] .sequencer {
   }
 }
 
+/* TODO: properly handle focus */
+button:focus-visible {
+  outline: red solid 2px !important;
+  outline-offset: 2px !important;
+}
+
 .sequencer button,
 #keys button,
 #pads button {
@@ -410,37 +416,6 @@ prompt-interface {
     );
   }
 
-  prompt-input > div {
-    align-items: center;
-    display: flex;
-    gap: var(--gap);
-
-    input,
-    button {
-      border: none;
-      border-radius: var(--border-radius);
-      font-size: calc(var(--prompt-size-font-factor) * var(--size-unit));
-      padding: calc(var(--prompt-padding-y-factor) * var(--size-unit))
-        calc(var(--prompt-padding-x-factor) * var(--size-unit));
-    }
-
-    button {
-      background: var(--color-1);
-      color: var(--color-2);
-    }
-
-    input {
-      background: var(--color-2);
-      color: var(--color-1);
-      flex-grow: 1;
-      width: 100%;
-
-      &:focus {
-        outline: none;
-      }
-    }
-  }
-
   prompt-suggestions {
     align-items: center;
     display: flex;
@@ -448,12 +423,20 @@ prompt-interface {
     justify-content: start;
     overflow-x: auto;
     scrollbar-color: var(--color-2) var(--color-1);
+    scrollbar-color: var(--color-2) transparent;
     scrollbar-width: thin;
 
     button {
+      background: var(--color-1);
       border-radius: var(--border-radius);
+      color: var(--color-2);
       padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
         calc(var(--prompt-padding-x-factor) * var(--size-unit));
+
+      &:first-child {
+        left: 0;
+        position: sticky;
+      }
 
       strong {
         font-weight: bold;
@@ -690,6 +673,7 @@ prompt-interface {
         calc(var(--prompt-gap-column-factor) * var(--size-unit));
       overflow-y: auto;
       scrollbar-color: var(--color-2) var(--color-1);
+      scrollbar-color: var(--color-2) transparent;
       scrollbar-width: thin;
       text-align: left;
 

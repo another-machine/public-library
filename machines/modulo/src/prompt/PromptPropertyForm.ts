@@ -74,17 +74,19 @@ export class PromptPropertyForm extends HTMLElement {
       element.setAttribute("min", input.min.toString());
       element.setAttribute("max", input.max.toString());
       const diff = input.max - input.min;
-      let steps: number[];
-      if (diff < 3) {
-        steps = [0.001, 0.01, 0.05];
-      } else if (diff < 25) {
-        steps = [1];
-      } else if (diff < 300) {
-        steps = [1, 10, 25];
-      } else if (diff < 1000) {
-        steps = [1, 10, 100];
-      } else {
-        steps = [10, 100, 1000];
+      const steps: number[] = input.steps || [];
+      if (!steps.length) {
+        if (diff < 3) {
+          steps.push(0.001, 0.01, 0.05);
+        } else if (diff < 25) {
+          steps.push(1);
+        } else if (diff < 300) {
+          steps.push(1, 10, 25);
+        } else if (diff < 1000) {
+          steps.push(1, 10, 100);
+        } else {
+          steps.push(10, 100, 1000);
+        }
       }
       element.setAttribute("step", steps[0].toString());
       element.setAttribute("steps", steps.join(","));
@@ -100,7 +102,7 @@ export class PromptPropertyForm extends HTMLElement {
       element.setAttribute("min", input.min.toString());
       element.setAttribute("max", input.max.toString());
       const diff = input.max - input.min;
-      const step = diff < 3 ? 0.001 : 1;
+      const step = input.step || (diff < 3 ? 0.001 : 1);
       element.setAttribute("step", step.toString());
       element.setAttribute("value", input.initialValue());
       element.setPromptPropertyFormState(this.formState);

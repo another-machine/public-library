@@ -72,8 +72,8 @@ export class PromptPropertyFormInputRange extends PromptPropertyFormInputBase {
         clearTimeout(this.inputTimeout);
       }
       this.inputTimeout = setTimeout(() => {
-        const value = parseFloat(inputRange.value);
-        inputNumber.value = inputRange.value;
+        const value = Math.round(parseFloat(inputRange.value) * 10000) / 10000;
+        inputNumber.value = value.toString();
         this.formState?.publish(this.key, value);
       }, 100);
     });
@@ -82,8 +82,8 @@ export class PromptPropertyFormInputRange extends PromptPropertyFormInputBase {
         clearTimeout(this.inputTimeout);
       }
       this.inputTimeout = setTimeout(() => {
-        const value = parseFloat(inputNumber.value);
-        inputRange.value = inputNumber.value;
+        const value = Math.round(parseFloat(inputNumber.value) * 10000) / 10000;
+        inputRange.value = value.toString();
         this.formState?.publish(this.key, value);
       }, 100);
     });

@@ -147,6 +147,13 @@ export class Steps {
     this.rows.forEach((row) => (row.slots = [...row.slots, ...row.slots]));
   }
 
+  halve() {
+    this.rows.forEach(
+      (row) =>
+        (row.slots = row.slots.splice(0, Math.ceil(row.slots.length * 0.5)))
+    );
+  }
+
   grow() {
     this.rows.forEach((row) => row.grow());
   }

@@ -45,7 +45,7 @@ export class Clock {
   }
 
   getRate() {
-    return getTransport().bpm.value;
+    return Math.round(getTransport().bpm.value * 10000) / 10000;
   }
 
   setSwing(swing: number) {

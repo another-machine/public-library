@@ -84,7 +84,7 @@ export class PromptPropertyFormInputStepNumber extends PromptPropertyFormInputBa
       button.addEventListener("click", () => {
         const step = parseFloat(button.dataset.step || "0");
         const currentValue = parseFloat(input.value || "0");
-        const newValue = Math.round((currentValue + step) * 1000) / 1000;
+        const newValue = Math.round((currentValue + step) * 10000) / 10000;
         const min = parseFloat(input.min);
         const max = parseFloat(input.max);
         input.value = Math.min(max, Math.max(min, newValue)).toString();

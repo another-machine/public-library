@@ -131,7 +131,6 @@ export class Machine {
       onToggleRainbow: this.onToggleRainbow.bind(this),
       onModeChange: this.onModeChange.bind(this),
       onStepChange: this.onStepChange.bind(this),
-      onRandomize: this.onRandomize.bind(this),
     });
 
     this._initialize = () => {
@@ -262,16 +261,6 @@ export class Machine {
     canvas.className = "export";
     canvas.addEventListener("click", (e) => canvas.remove());
     document.body.appendChild(canvas);
-  }
-
-  onRandomize() {
-    this.sequencers.forEach((sequencer) => {
-      sequencer.steps.randomize();
-      if (sequencer.isSynth()) sequencer.synths.randomizeNodes(true, true);
-    });
-    this.keyboard.main.randomizeNodes(true, true);
-    this.keyboard.ghosts.randomizeNodes(true, true);
-    this.onStepChange();
   }
 
   onModeChange() {
