@@ -10,13 +10,13 @@ export type RendererEventHandler = (
   valueB?: number
 ) => void;
 
-interface RendererThemeLCH {
+export interface RendererThemeLCH {
   l: number;
   c: number;
   h: number;
 }
 
-interface RendererThemeColor {
+export interface RendererThemeColor {
   on: RendererThemeLCH;
   off: RendererThemeLCH;
   disabled: RendererThemeLCH;
@@ -60,6 +60,7 @@ export class Renderer {
   elementKeys = document.createElement("div");
   elementPads = document.createElement("div");
   style = document.createElement("style");
+  theme: RendererTheme;
   rendererEventHandler: RendererEventHandler;
 
   constructor({
@@ -125,7 +126,22 @@ export class Renderer {
     this.handleStepsSizeChange();
   }
 
+  updateThemeColor(string: string, value: RendererThemeLCH) {
+    const theme = this.theme;
+    let object = theme.color;
+    const path = string.split(".");
+    path.forEach((k, i) => {
+      if (i === path.length - 1) {
+        object[k] = value;
+      } else {
+        object = object[k];
+      }
+    });
+    this.setTheme(theme);
+  }
+
   setTheme(theme: RendererTheme) {
+    this.theme = theme;
     function setProperty(property: string, value: number) {
       document.documentElement.style.setProperty(property, value.toString());
     }

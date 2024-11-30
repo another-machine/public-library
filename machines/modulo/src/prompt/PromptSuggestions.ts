@@ -2,7 +2,7 @@ import { PromptOutput } from "./Prompt";
 
 export class PromptSuggestions extends HTMLElement {
   private lastMatch: RegExp | null = null;
-  private onSelect?: (token: string, type: string) => void;
+  private onSelect: (token: string, type: string) => void;
 
   configure({ onSelect }: { onSelect: (token: string, type: string) => void }) {
     this.onSelect = onSelect;
@@ -60,7 +60,7 @@ export class PromptSuggestions extends HTMLElement {
     button.setAttribute("prompt-token", token);
     button.setAttribute("prompt-type", type);
     button.addEventListener("click", () => {
-      this.onSelect?.(token, type);
+      this.onSelect(token, type);
     });
     return button;
   }

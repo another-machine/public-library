@@ -13,6 +13,7 @@ import {
   ConfigurableSnare,
   Drums,
 } from "./Drums";
+import { RendererThemeLCH } from "./Renderer";
 
 export type DestinationInfo = { content: () => string; label?: string };
 
@@ -25,6 +26,13 @@ export type DestinationCommandArgs = {
 export type DestinationPropertyInput =
   | {
       type: "number";
+      initialValue: () => string;
+      min: number;
+      max: number;
+      label?: string;
+    }
+  | {
+      type: "range";
       initialValue: () => string;
       min: number;
       max: number;
@@ -66,6 +74,9 @@ const validators = {
   bits: validateNumber(1, 16),
   bpm: validateNumber(0, 360),
   chance: validateNumber(0, 1),
+  colorL: validateNumber(0, 1),
+  colorC: validateNumber(0, 0.5),
+  colorH: validateNumber(0, 360),
   detune: validateNumber(-100, 100),
   feedback: validateNumber(0, 1),
   volume: validateNumber(0, 1),
@@ -90,7 +101,7 @@ const validators = {
 
 const numericAsString = (time: TimeUnit | number): string => {
   if (typeof time === "number") {
-    return time.toFixed(3);
+    return (Math.round(time * 10000) / 10000).toString();
   } else if (typeof time === "string") {
     return time;
   }
@@ -197,127 +208,6 @@ export class Destination {
     };
   }
 }
-
-const synthDestinations = (synths: Synths, a: boolean, b: boolean) => ({
-  envelope: new Destination({
-    info: {
-      content: () =>
-        Destinations.formatJSON(
-          synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope
-        ),
-    },
-    properties: {
-      attack: new DestinationProperty({
-        inputs: [
-          {
-            type: "number",
-            min: 0.001,
-            max: 1,
-            initialValue: () =>
-              numericAsString(
-                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.attack
-              ),
-            label: "Attack",
-          },
-        ],
-        onSet: (_command, args, _prompt) => {
-          const valid = validators.adsrItem(args[0]);
-          if (valid) {
-            const current =
-              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
-            synths.updateSynth(
-              { envelope: { ...current, attack: parseFloat(args[0]) } },
-              a,
-              b
-            );
-          }
-          return { valid };
-        },
-      }),
-      decay: new DestinationProperty({
-        inputs: [
-          {
-            type: "number",
-            min: 0.001,
-            max: 1,
-            initialValue: () =>
-              numericAsString(
-                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.decay
-              ),
-            label: "Decay",
-          },
-        ],
-        onSet: (_command, args, _prompt) => {
-          const valid = validators.adsrItem(args[0]);
-          if (valid) {
-            const current =
-              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
-            synths.updateSynth(
-              { envelope: { ...current, decay: parseFloat(args[0]) } },
-              a,
-              b
-            );
-          }
-          return { valid };
-        },
-      }),
-      sustain: new DestinationProperty({
-        inputs: [
-          {
-            type: "number",
-            min: 0.001,
-            max: 1,
-            initialValue: () =>
-              numericAsString(
-                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.sustain
-              ),
-            label: "Sustain",
-          },
-        ],
-        onSet: (_command, args, _prompt) => {
-          const valid = validators.adsrItem(args[0]);
-          if (valid) {
-            const current =
-              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
-            synths.updateSynth(
-              { envelope: { ...current, sustain: parseFloat(args[0]) } },
-              a,
-              b
-            );
-          }
-          return { valid };
-        },
-      }),
-      release: new DestinationProperty({
-        inputs: [
-          {
-            type: "number",
-            min: 0.001,
-            max: 1,
-            initialValue: () =>
-              numericAsString(
-                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.release
-              ),
-            label: "Release",
-          },
-        ],
-        onSet: (_command, args, _prompt) => {
-          const valid = validators.adsrItem(args[0]);
-          if (valid) {
-            const current =
-              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
-            synths.updateSynth(
-              { envelope: { ...current, release: parseFloat(args[0]) } },
-              a,
-              b
-            );
-          }
-          return { valid };
-        },
-      }),
-    },
-  }),
-});
 
 const synthEffectsDestinations = (
   loader: () => ConfigurableHat | ConfigurableKick | ConfigurableSnare
@@ -565,6 +455,127 @@ const synthEffectsDestinations = (
   }),
 });
 
+const synthDestinations = (synths: Synths, a: boolean, b: boolean) => ({
+  envelope: new Destination({
+    info: {
+      content: () =>
+        Destinations.formatJSON(
+          synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope
+        ),
+    },
+    properties: {
+      attack: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0.001,
+            max: 1,
+            initialValue: () =>
+              numericAsString(
+                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.attack
+              ),
+            label: "Attack",
+          },
+        ],
+        onSet: (_command, args, _prompt) => {
+          const valid = validators.adsrItem(args[0]);
+          if (valid) {
+            const current =
+              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
+            synths.updateSynth(
+              { envelope: { ...current, attack: parseFloat(args[0]) } },
+              a,
+              b
+            );
+          }
+          return { valid };
+        },
+      }),
+      decay: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0.001,
+            max: 1,
+            initialValue: () =>
+              numericAsString(
+                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.decay
+              ),
+            label: "Decay",
+          },
+        ],
+        onSet: (_command, args, _prompt) => {
+          const valid = validators.adsrItem(args[0]);
+          if (valid) {
+            const current =
+              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
+            synths.updateSynth(
+              { envelope: { ...current, decay: parseFloat(args[0]) } },
+              a,
+              b
+            );
+          }
+          return { valid };
+        },
+      }),
+      sustain: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0.001,
+            max: 1,
+            initialValue: () =>
+              numericAsString(
+                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.sustain
+              ),
+            label: "Sustain",
+          },
+        ],
+        onSet: (_command, args, _prompt) => {
+          const valid = validators.adsrItem(args[0]);
+          if (valid) {
+            const current =
+              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
+            synths.updateSynth(
+              { envelope: { ...current, sustain: parseFloat(args[0]) } },
+              a,
+              b
+            );
+          }
+          return { valid };
+        },
+      }),
+      release: new DestinationProperty({
+        inputs: [
+          {
+            type: "number",
+            min: 0.001,
+            max: 1,
+            initialValue: () =>
+              numericAsString(
+                synths.voices[0][a ? "nodeA" : "nodeB"].envelope.release
+              ),
+            label: "Release",
+          },
+        ],
+        onSet: (_command, args, _prompt) => {
+          const valid = validators.adsrItem(args[0]);
+          if (valid) {
+            const current =
+              synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope;
+            synths.updateSynth(
+              { envelope: { ...current, release: parseFloat(args[0]) } },
+              a,
+              b
+            );
+          }
+          return { valid };
+        },
+      }),
+    },
+  }),
+});
+
 const synthVolumeProperty = (
   loader: () =>
     | Synths
@@ -680,6 +691,45 @@ const synthProperties = (synths: Synths, a: boolean, b: boolean) => ({
     },
   }),
 });
+
+const colorObject = (
+  initialValue: () => RendererThemeLCH,
+  onSet: (color: RendererThemeLCH) => void
+) => {
+  return {
+    lch: new DestinationProperty({
+      inputs: [
+        {
+          type: "range",
+          min: 0,
+          max: 1,
+          initialValue: () => numericAsString(initialValue().l),
+        },
+        {
+          type: "range",
+          min: 0,
+          max: 0.5,
+          initialValue: () => numericAsString(initialValue().c),
+        },
+        {
+          type: "range",
+          min: 0,
+          max: 360,
+          initialValue: () => numericAsString(initialValue().h),
+        },
+      ],
+      inputsFormatter: (values) => values.join(" "),
+      onSet: (_command, [l, c, h], _prompt) => {
+        const valid =
+          validators.colorL(l) && validators.colorC(c) && validators.colorH(h);
+        if (valid) {
+          onSet({ l: parseFloat(l), c: parseFloat(c), h: parseInt(h) });
+        }
+        return { valid };
+      },
+    }),
+  };
+};
 
 const synthsCommands = (synths: Synths, a: boolean, b: boolean) => ({
   sync: new DestinationCommand({
@@ -861,14 +911,17 @@ export class Destinations {
       }),
       ...Destinations.generateSynthsDestinations({
         sequencers: synthSequencers,
+        machine,
         onStepChange,
       }),
       ...Destinations.generateDrumsDestinations({
         sequencers: drumSequencers,
+        machine,
         onStepChange,
       }),
       ...Destinations.generateKeyboardDestinations({
         keyboard,
+        machine,
         clock,
       }),
     };
@@ -985,35 +1038,24 @@ export class Destinations {
               content: () => Destinations.formatJSON(notes.exportParams()),
             },
             properties: {
-              mode: new DestinationProperty({
-                inputs: [
-                  {
-                    type: "select",
-                    initialValue: () => notes.getMode().type,
-                    options: MODES,
-                  },
-                ],
-                onSet: (_command, [value]) => {
-                  const valid = validators.mode(value);
-                  if (valid) {
-                    notes.setMode(value);
-                    onModeChange();
-                  }
-                  return { valid };
-                },
-              }),
-              root: new DestinationProperty({
+              key: new DestinationProperty({
                 inputs: [
                   {
                     type: "select",
                     initialValue: () => notes.getRoot(),
                     options: ROOTS,
                   },
+                  {
+                    type: "select",
+                    initialValue: () => notes.getMode().type,
+                    options: MODES,
+                  },
                 ],
-                onSet: (_command, [value]) => {
-                  const valid = validators.root(value);
+                onSet: (_command, [root, mode]) => {
+                  const valid = validators.mode(mode) && validators.root(root);
                   if (valid) {
-                    notes.setRoot(value);
+                    notes.setMode(mode);
+                    notes.setRoot(root);
                     onModeChange();
                   }
                   return { valid };
@@ -1023,17 +1065,135 @@ export class Destinations {
           }),
           color: new Destination({
             info: {
-              label: "Color settings for the machine",
-              content: () => "",
+              label: "Color settings for the core",
+              content: () =>
+                Destinations.formatJSON(
+                  machine.exportParams().theme.color.core
+                ),
             },
-            commands: {
-              rainbow: new DestinationCommand({
-                description: "Toggle the rainbow mode",
-                onCommand: (_command, _args, _prompt) => {
-                  const output = [
-                    `Turned rainbow ${onToggleRainbow() ? "on" : "off"}`,
-                  ];
-                  return { valid: true, output };
+            destinations: {
+              on: new Destination({
+                info: {
+                  label: "Color settings for core on state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.core.on
+                    ),
+                },
+                properties: colorObject(
+                  () => machine.exportParams().theme.color.core.on,
+                  (settings) =>
+                    machine.renderer.updateThemeColor("core.on", settings)
+                ),
+              }),
+              off: new Destination({
+                info: {
+                  label: "Color settings for core off state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.core.off
+                    ),
+                },
+                properties: colorObject(
+                  () => machine.exportParams().theme.color.core.off,
+                  (settings) =>
+                    machine.renderer.updateThemeColor("core.off", settings)
+                ),
+              }),
+              disabled: new Destination({
+                info: {
+                  label: "Color settings for core disabled state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.core.disabled
+                    ),
+                },
+                properties: colorObject(
+                  () => machine.exportParams().theme.color.core.disabled,
+                  (settings) =>
+                    machine.renderer.updateThemeColor("core.disabled", settings)
+                ),
+              }),
+            },
+          }),
+          theme: new Destination({
+            info: {
+              label: "Theme settings for the machine",
+              content: () =>
+                Destinations.formatJSON(machine.exportParams().theme),
+            },
+            destinations: {
+              color: new Destination({
+                info: {
+                  label: "Color settings for the machine",
+                  content: () =>
+                    Destinations.formatJSON(machine.exportParams().theme.color),
+                },
+                destinations: {
+                  background: new Destination({
+                    info: {
+                      label: "Background color",
+                      content: () =>
+                        Destinations.formatJSON(
+                          machine.exportParams().theme.color.background
+                        ),
+                    },
+                    properties: {
+                      ...colorObject(
+                        () => machine.exportParams().theme.color.background,
+                        (settings) =>
+                          machine.renderer.updateThemeColor(
+                            "background",
+                            settings
+                          )
+                      ),
+                    },
+                  }),
+                  text: new Destination({
+                    info: {
+                      label: "Text color",
+                      content: () =>
+                        Destinations.formatJSON(
+                          machine.exportParams().theme.color.text
+                        ),
+                    },
+                    properties: {
+                      ...colorObject(
+                        () => machine.exportParams().theme.color.text,
+                        (settings) =>
+                          machine.renderer.updateThemeColor("text", settings)
+                      ),
+                    },
+                  }),
+                },
+                commands: {
+                  rainbow: new DestinationCommand({
+                    description: "Toggle the rainbow mode",
+                    onCommand: (_command, _args, _prompt) => {
+                      const output = [
+                        `Turned rainbow ${onToggleRainbow() ? "on" : "off"}`,
+                      ];
+                      return { valid: true, output };
+                    },
+                  }),
+                },
+              }),
+              interface: new Destination({
+                info: {
+                  label: "Settings for the interface",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.interface
+                    ),
+                },
+              }),
+              prompt: new Destination({
+                info: {
+                  label: "Settings for the prompt",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.prompt
+                    ),
                 },
               }),
             },
@@ -1045,9 +1205,11 @@ export class Destinations {
 
   static generateDrumsDestinations({
     sequencers,
+    machine,
     onStepChange,
   }: {
     sequencers: DrumSequencer[];
+    machine: Machine;
     onStepChange: () => void;
   }): Destinations {
     const destinations: { [destination: string]: Destination } = {};
@@ -1192,6 +1354,71 @@ export class Destinations {
               }),
             },
           }),
+          color: new Destination({
+            info: {
+              label: "Color settings for the drums",
+              content: () =>
+                Destinations.formatJSON(
+                  machine.exportParams().theme.color.sequencers.drums
+                ),
+            },
+            destinations: {
+              on: new Destination({
+                info: {
+                  label: "Color settings for drums on state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.sequencers.drums.on
+                    ),
+                },
+                properties: colorObject(
+                  () => machine.exportParams().theme.color.sequencers.drums.on,
+                  (settings) =>
+                    machine.renderer.updateThemeColor(
+                      "sequencers.drums.on",
+                      settings
+                    )
+                ),
+              }),
+              off: new Destination({
+                info: {
+                  label: "Color settings for drums off state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.sequencers.drums.off
+                    ),
+                },
+                properties: colorObject(
+                  () => machine.exportParams().theme.color.sequencers.drums.off,
+                  (settings) =>
+                    machine.renderer.updateThemeColor(
+                      "sequencers.drums.off",
+                      settings
+                    )
+                ),
+              }),
+              disabled: new Destination({
+                info: {
+                  label: "Color settings for drums disabled state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.sequencers.drums
+                        .disabled
+                    ),
+                },
+                properties: colorObject(
+                  () =>
+                    machine.exportParams().theme.color.sequencers.drums
+                      .disabled,
+                  (settings) =>
+                    machine.renderer.updateThemeColor(
+                      "sequencers.drums.disabled",
+                      settings
+                    )
+                ),
+              }),
+            },
+          }),
         },
       });
     });
@@ -1200,9 +1427,11 @@ export class Destinations {
 
   static generateKeyboardDestinations({
     keyboard,
+    machine,
     clock: _clock,
   }: {
     keyboard: Keyboard;
+    machine: Machine;
     clock: Clock;
   }): Destinations {
     const destinations: { [destination: string]: Destination } = {};
@@ -1274,6 +1503,62 @@ export class Destinations {
             }),
           },
         }),
+        color: new Destination({
+          info: {
+            label: "Color settings for the keyboard",
+            content: () =>
+              Destinations.formatJSON(
+                machine.exportParams().theme.color.keyboard
+              ),
+          },
+          destinations: {
+            on: new Destination({
+              info: {
+                label: "Color settings for keyboard on state",
+                content: () =>
+                  Destinations.formatJSON(
+                    machine.exportParams().theme.color.keyboard.on
+                  ),
+              },
+              properties: colorObject(
+                () => machine.exportParams().theme.color.keyboard.on,
+                (settings) =>
+                  machine.renderer.updateThemeColor("keyboard.on", settings)
+              ),
+            }),
+            off: new Destination({
+              info: {
+                label: "Color settings for keyboard off state",
+                content: () =>
+                  Destinations.formatJSON(
+                    machine.exportParams().theme.color.keyboard.off
+                  ),
+              },
+              properties: colorObject(
+                () => machine.exportParams().theme.color.keyboard.off,
+                (settings) =>
+                  machine.renderer.updateThemeColor("keyboard.off", settings)
+              ),
+            }),
+            disabled: new Destination({
+              info: {
+                label: "Color settings for keyboard disabled state",
+                content: () =>
+                  Destinations.formatJSON(
+                    machine.exportParams().theme.color.keyboard.disabled
+                  ),
+              },
+              properties: colorObject(
+                () => machine.exportParams().theme.color.keyboard.disabled,
+                (settings) =>
+                  machine.renderer.updateThemeColor(
+                    "keyboard.disabled",
+                    settings
+                  )
+              ),
+            }),
+          },
+        }),
       },
       properties: {
         octave: new DestinationProperty({
@@ -1300,9 +1585,11 @@ export class Destinations {
 
   static generateSynthsDestinations({
     sequencers,
+    machine,
     onStepChange,
   }: {
     sequencers: SynthSequencer[];
+    machine: Machine;
     onStepChange: () => void;
   }): Destinations {
     const destinations: { [destination: string]: Destination } = {};
@@ -1523,6 +1810,70 @@ export class Destinations {
           //     }),
           //   },
           // }),
+          color: new Destination({
+            info: {
+              label: "Color settings for the sequencers",
+              content: () =>
+                Destinations.formatJSON(
+                  machine.exportParams().theme.color.sequencers[key]
+                ),
+            },
+            destinations: {
+              on: new Destination({
+                info: {
+                  label: "Color settings for sequencers on state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.sequencers[key].on
+                    ),
+                },
+                properties: colorObject(
+                  () => machine.exportParams().theme.color.sequencers[key].on,
+                  (settings) =>
+                    machine.renderer.updateThemeColor(
+                      `sequencers.${key}.on`,
+                      settings
+                    )
+                ),
+              }),
+              off: new Destination({
+                info: {
+                  label: "Color settings for sequencers off state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.sequencers[key].off
+                    ),
+                },
+                properties: colorObject(
+                  () => machine.exportParams().theme.color.sequencers[key].off,
+                  (settings) =>
+                    machine.renderer.updateThemeColor(
+                      `sequencers.${key}.off`,
+                      settings
+                    )
+                ),
+              }),
+              disabled: new Destination({
+                info: {
+                  label: "Color settings for sequencers disabled state",
+                  content: () =>
+                    Destinations.formatJSON(
+                      machine.exportParams().theme.color.sequencers[key]
+                        .disabled
+                    ),
+                },
+                properties: colorObject(
+                  () =>
+                    machine.exportParams().theme.color.sequencers[key].disabled,
+                  (settings) =>
+                    machine.renderer.updateThemeColor(
+                      `sequencers.${key}.disabled`,
+                      settings
+                    )
+                ),
+              }),
+            },
+          }),
         },
       });
     });

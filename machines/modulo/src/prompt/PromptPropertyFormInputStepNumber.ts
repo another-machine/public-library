@@ -5,23 +5,27 @@ export class PromptPropertyFormInputStepNumber extends PromptPropertyFormInputBa
     if (!this.formState || !this.key) return;
 
     // First render the element
-    this.render();
+    // this.render();
 
     // Then publish initial value and set up subscription
     const initialValue = parseFloat(this.getAttribute("value") || "0");
     this.formState.publish(this.key, initialValue);
 
-    this.formState.subscribe(this.key, (value: number) => {
-      const input = this.querySelector("input");
-      if (input) {
-        input.value = value?.toString() || "";
-      }
-    });
+    // this.formState.subscribe(
+    //   this.key,
+    //   initialValue.toString(),
+    //   (value: number) => {
+    //     const input = this.querySelector("input");
+    //     if (input) {
+    //       input.value = value?.toString() || "";
+    //     }
+    //   }
+    // );
   }
 
   public connectedCallback() {
     super.connectedCallback();
-    this.setupPromptPropertyFormState();
+    // this.setupPromptPropertyFormState();
   }
 
   protected render() {

@@ -95,7 +95,8 @@ export class PromptInput extends HTMLElement {
     this.backButton.addEventListener("click", () => {
       if (this.input?.value === "") {
         onBack();
-      } else if (this.input) {
+      }
+      if (this.input) {
         this.input.value = "";
         onInputClear();
       }

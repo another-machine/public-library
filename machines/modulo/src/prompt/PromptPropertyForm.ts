@@ -2,6 +2,7 @@ import {
   DestinationPropertyInput,
   DestinationPropertyInputFormatter,
 } from "../Destinations";
+import { PromptPropertyFormInputRange } from "./PromptPropertyFormInputRange.ts";
 import { PromptPropertyFormInputSelect } from "./PromptPropertyFormInputSelect.ts";
 import { PromptPropertyFormInputStepNumber } from "./PromptPropertyFormInputStepNumber.ts";
 import { PromptPropertyFormState } from "./PromptPropertyFormState.ts";
@@ -29,15 +30,15 @@ export class PromptPropertyForm extends HTMLElement {
     this.setupPromptPropertyFormState();
     this.render();
 
-    // Trigger initial form change after rendering
-    requestAnimationFrame(() => {
-      this.handleFormChange();
-    });
+    // This may not be necessary
+    // requestAnimationFrame(() => {
+    //   this.handleFormChange();
+    // });
   }
 
   private setupPromptPropertyFormState() {
     this.inputs.forEach((input, index) => {
-      this.formState.subscribe(`input-${index}`, () => {
+      this.formState.subscribe(`input-${index}`, input.initialValue(), () => {
         this.handleFormChange();
       });
     });
@@ -65,8 +66,7 @@ export class PromptPropertyForm extends HTMLElement {
       element.setAttribute("value", input.initialValue());
       element.setPromptPropertyFormState(this.formState);
       return element;
-    } else {
-      // Similar changes would be needed for PromptPropertyFormInputStepNumber
+    } else if (input.type === "number") {
       const element = document.createElement(
         "prompt-form-input-step-number"
       ) as PromptPropertyFormInputStepNumber;
@@ -88,6 +88,20 @@ export class PromptPropertyForm extends HTMLElement {
       }
       element.setAttribute("step", steps[0].toString());
       element.setAttribute("steps", steps.join(","));
+      element.setAttribute("value", input.initialValue());
+      element.setPromptPropertyFormState(this.formState);
+      return element;
+    } else {
+      // if (input.type === "range")
+      const element = document.createElement(
+        "prompt-form-input-range"
+      ) as PromptPropertyFormInputRange;
+      element.setAttribute("key", `input-${index}`);
+      element.setAttribute("min", input.min.toString());
+      element.setAttribute("max", input.max.toString());
+      const diff = input.max - input.min;
+      const step = diff < 3 ? 0.001 : 1;
+      element.setAttribute("step", step.toString());
       element.setAttribute("value", input.initialValue());
       element.setPromptPropertyFormState(this.formState);
       return element;

@@ -1,3 +1,4 @@
+import { PromptPropertyFormInputRange } from "./PromptPropertyFormInputRange";
 import { PromptPropertyFormInputSelect } from "./PromptPropertyFormInputSelect";
 import { PromptPropertyFormInputStepNumber } from "./PromptPropertyFormInputStepNumber";
 import { PromptInfo } from "./PromptInfo";
@@ -10,6 +11,10 @@ export default function register() {
   customElements.define("prompt-input", PromptInput);
   customElements.define("prompt-suggestions", PromptSuggestions);
   customElements.define("prompt-info", PromptInfo);
+  customElements.define(
+    "prompt-form-input-range",
+    PromptPropertyFormInputRange
+  );
   customElements.define(
     "prompt-form-input-step-number",
     PromptPropertyFormInputStepNumber

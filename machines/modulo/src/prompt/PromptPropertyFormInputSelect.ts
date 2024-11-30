@@ -4,22 +4,21 @@ export class PromptPropertyFormInputSelect extends PromptPropertyFormInputBase {
   protected setupPromptPropertyFormState() {
     if (!this.formState || !this.key) return;
 
-    this.render();
+    // this.render();
 
     const initialValue = this.getAttribute("value") || "";
     this.formState.publish(this.key, initialValue);
-
-    this.formState.subscribe(this.key, (value: string) => {
-      const select = this.querySelector("select");
-      if (select) {
-        select.value = value || "";
-      }
-    });
+    // this.formState.subscribe(this.key, initialValue, (value: string) => {
+    //   const select = this.querySelector("select");
+    //   if (select) {
+    //     select.value = value || "";
+    //   }
+    // });
   }
 
   public connectedCallback() {
     super.connectedCallback();
-    this.setupPromptPropertyFormState();
+    // this.setupPromptPropertyFormState();
   }
 
   protected render() {

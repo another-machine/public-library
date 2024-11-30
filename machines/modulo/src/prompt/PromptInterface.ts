@@ -95,12 +95,13 @@ export class PromptInterface extends HTMLElement {
             this.handleSubmit();
           }
         }
-        this.updateSuggestions();
+        if (event.code !== "Backspace") {
+          this.updateSuggestions();
+        }
       },
-      onFocus: () => this.updateSuggestions(),
+      onFocus: () => {},
       onBlur: () => {},
       onInputClear: () => {
-        this.updateSuggestions();
         this.clearPropertyForm();
       },
     });
@@ -180,9 +181,8 @@ export class PromptInterface extends HTMLElement {
 
     if (type === "command" || type === "destination") {
       this.handleSubmit();
-    } else {
-      this.updateSuggestions();
     }
+    this.updateSuggestions();
     this.focus();
   }
 

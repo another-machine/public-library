@@ -2,7 +2,7 @@ export class PromptPropertyFormState {
   private subscribers: Map<string, Function[]> = new Map();
   private values: Map<string, any> = new Map();
 
-  subscribe(key: string, callback: Function) {
+  subscribe(key: string, value: string, callback: Function) {
     if (!this.subscribers.has(key)) {
       this.subscribers.set(key, []);
     }
@@ -11,6 +11,7 @@ export class PromptPropertyFormState {
     if (this.values.has(key)) {
       callback(this.values.get(key));
     }
+    this.values.set(key, value);
 
     return () => this.unsubscribe(key, callback);
   }
