@@ -1,7 +1,7 @@
 import {
   DestinationPropertyInput,
   DestinationPropertyInputFormatter,
-} from "../Destinations";
+} from "../destinations/Destination";
 import { COMMANDS, Prompt } from "./Prompt";
 import { PromptSuggestions } from "./PromptSuggestions";
 import { PromptInfo } from "./PromptInfo";

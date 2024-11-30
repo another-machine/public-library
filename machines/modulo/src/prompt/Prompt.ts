@@ -2,7 +2,7 @@ import {
   Destination,
   DestinationInfo,
   DestinationPropertyInput,
-} from "../Destinations";
+} from "../destinations/Destination";
 
 const escapedStringForRegex = (string: string) =>
   string.replace(/([^a-zA-Z\d])/g, "\\$1");

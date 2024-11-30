@@ -1,4 +1,4 @@
-import { DestinationInfo } from "../Destinations";
+import { DestinationInfo } from "../destinations/Destination";
 
 export class PromptInfo extends HTMLElement {
   private breadcrumbs: HTMLSpanElement;

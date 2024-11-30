@@ -1,7 +1,7 @@
 import {
   DestinationPropertyInput,
   DestinationPropertyInputFormatter,
-} from "../Destinations";
+} from "../destinations/Destination";
 import { PromptPropertyFormInputRange } from "./PromptPropertyFormInputRange.ts";
 import { PromptPropertyFormInputSelect } from "./PromptPropertyFormInputSelect.ts";
 import { PromptPropertyFormInputStepNumber } from "./PromptPropertyFormInputStepNumber.ts";

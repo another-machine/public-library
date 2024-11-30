@@ -1,5 +1,5 @@
 import { Clock, ClockParams } from "./Clock";
-import { Destination, Destinations } from "./Destinations";
+import { Destinations } from "./destinations/Destinations";
 import { Drums } from "./Drums";
 import { Keyboard, KeyboardParams } from "./Keyboard";
 import { Mixer } from "./Mixer";
@@ -26,6 +26,7 @@ import {
   createImageDropReader,
 } from "../../../packages/amplib-steganography/src";
 import register from "./prompt/register";
+import { Destination } from "./destinations/Destination";
 
 export interface MachineParams {
   clock: ClockParams;
