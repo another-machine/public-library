@@ -395,7 +395,7 @@ prompt-interface {
     --color-3: oklch(
       calc(
           var(--color-off-lit) +
-            (var(--color-on-lit) * 1.5 - var(--color-off-lit))
+            (var(--color-on-lit) * 1.3 - var(--color-off-lit))
         )
         calc(
           var(--color-off-chr) + (var(--color-on-chr) - var(--color-off-chr))
