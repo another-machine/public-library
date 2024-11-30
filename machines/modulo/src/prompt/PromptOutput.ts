@@ -1,6 +1,6 @@
 import { DestinationInfo } from "../destinations/Destination";
 
-export class PromptInfo extends HTMLElement {
+export class PromptOutput extends HTMLElement {
   private breadcrumbs: HTMLSpanElement;
   private pre: HTMLPreElement;
   private previousContent: string = "";
@@ -27,7 +27,11 @@ export class PromptInfo extends HTMLElement {
     this.previousContent = content;
   }
 
-  private highlightDiff(oldStr: string, newStr: string): string {
+  private highlightDiff(
+    oldStr: string,
+    newStr: string,
+    maxChanges: number = 10
+  ): string {
     // Early return if strings are too different in length
     if (Math.abs(oldStr.length - newStr.length) > 20) {
       return newStr;
@@ -51,7 +55,6 @@ export class PromptInfo extends HTMLElement {
       for (let i = 0; i < Math.max(line1.length, line2.length); i++) {
         const char1 = line1[i] || "";
         const char2 = line2[i] || "";
-
         const isCurrentAlphanumeric =
           isAlphanumeric(char1) || isAlphanumeric(char2);
 
@@ -65,7 +68,6 @@ export class PromptInfo extends HTMLElement {
         }
 
         inAlphanumericSequence = true;
-
         if (char1 !== char2) {
           if (!currentDiff) {
             currentDiff = {
@@ -94,6 +96,7 @@ export class PromptInfo extends HTMLElement {
     // Find all differences line by line
     const differences: Array<{ start: number; end: number }> = [];
     let currentPosition = 0;
+    let totalChangeCount = 0;
 
     // Process each line
     for (let i = 0; i < Math.max(oldLines.length, newLines.length); i++) {
@@ -102,8 +105,14 @@ export class PromptInfo extends HTMLElement {
 
       // Find differences in this line
       const lineDiffs = findLineChanges(oldLine, newLine, currentPosition);
-      differences.push(...lineDiffs);
 
+      // Update total change count and check threshold
+      totalChangeCount += lineDiffs.length;
+      if (totalChangeCount > maxChanges) {
+        return newStr;
+      }
+
+      differences.push(...lineDiffs);
       // Update position to include this line and the newline character
       currentPosition += newLine.length + 1; // +1 for the newline character
     }

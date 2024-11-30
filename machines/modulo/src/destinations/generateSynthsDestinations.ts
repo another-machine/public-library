@@ -37,9 +37,10 @@ export function generateSynthsDestinations({
         octave: new DestinationProperty({
           inputs: [
             {
-              type: "number",
+              type: "range",
               min: 0,
               max: 7,
+              step: 1,
               initialValue: () => sequencer.octave.toString(),
             },
           ],
@@ -66,6 +67,14 @@ export function generateSynthsDestinations({
                 sequencer.steps.halve();
                 onStepChange();
                 return { valid: true, output: ["Halved steps"] };
+              },
+            }),
+            third: new DestinationCommand({
+              description: "Third steps",
+              onCommand: (_command, _args, _prompt) => {
+                sequencer.steps.third();
+                onStepChange();
+                return { valid: true, output: ["Thirded steps"] };
               },
             }),
             double: new DestinationCommand({
@@ -163,111 +172,78 @@ export function generateSynthsDestinations({
             }),
           },
         }),
-        delay: new Destination({
+        effects: new Destination({
           info: {
             content: () =>
               Destinations.formatJSON(synth.exportParams().settings.delay),
           },
           properties: {
-            feedback: new DestinationProperty({
+            delay: new DestinationProperty({
               inputs: [
                 {
-                  type: "number",
+                  label: "feedback",
+                  type: "range",
                   min: 0,
                   max: 1,
                   initialValue: () =>
                     numericAsString(synth.voices[0].delay.feedback.value),
                 },
-              ],
-              onSet: (_command, [value]) => {
-                const valid = validators.feedback(value);
-                synth.updateDelay({ feedback: parseFloat(value) });
-                return { valid };
-              },
-            }),
-            time: new DestinationProperty({
-              inputs: [
-                // {
-                //   type: "number",
-                //   min: 0,
-                //   max: 1,
-                //   initialValue: () =>
-                //     numericAsString(synth.voices[0].delay.delayTime.value),
-                // },
                 {
+                  label: "wet",
+                  type: "range",
+                  min: 0,
+                  max: 1,
+                  initialValue: () =>
+                    numericAsString(synth.voices[0].delay.wet.value),
+                },
+                {
+                  label: "time",
                   type: "select",
                   options: timeOptions,
                   initialValue: () =>
                     Time(synth.voices[0].delay.delayTime.value).toNotation(),
                 },
               ],
-              onSet: (_command, [value]) => {
-                const valid = validators.time(value);
-                synth.updateDelay({ delayTime: value });
+              onSet: (_command, [feedback, wet, time]) => {
+                const valid = true;
+                synth.updateDelay({
+                  feedback: parseFloat(feedback),
+                  delayTime: time,
+                  wet: parseFloat(wet),
+                });
                 return { valid };
               },
             }),
-            wet: new DestinationProperty({
+            reverb: new DestinationProperty({
               inputs: [
                 {
-                  type: "number",
+                  label: "size",
+                  type: "range",
                   min: 0,
                   max: 1,
                   initialValue: () =>
-                    numericAsString(synth.voices[0].delay.wet.value),
+                    numericAsString(synth.voices[0].reverb.roomSize.value),
+                },
+                {
+                  label: "wet",
+                  type: "range",
+                  min: 0,
+                  max: 1,
+                  initialValue: () =>
+                    numericAsString(synth.voices[0].reverb.wet.value),
                 },
               ],
-              onSet: (_command, [value]) => {
-                const valid = validators.wet(value);
-                synth.updateDelay({ wet: parseFloat(value) });
+              onSet: (_command, [size, wet]) => {
+                const valid = true;
+                synth.updateReverb({
+                  roomSize: parseFloat(size),
+                  wet: parseFloat(wet),
+                });
                 return { valid };
               },
             }),
           },
         }),
-        // reverb: new Destination({
-        //   description: "Reverb effect",
-        //   properties: {
-        //     size: new DestinationProperty({
-        //       description: "Size is 0 - 1",
-        //       onSet: (_command, [value]) => {
-        //         const valid = validators.roomSize(value);
-        //         synth.updateReverb({ roomSize: parseFloat(value) });
-        //         if (valid) {
-        //           return { valid, output: [`Set size to ${value}`] };
-        //         } else {
-        //           return {
-        //             valid,
-        //             output: [`Could not set size to ${value}`],
-        //           };
-        //         }
-        //       },
-        //       onGet: () => ({
-        //         valid: true,
-        //         output: [`Size is ${synth.voices[0].reverb.roomSize.value}`],
-        //       }),
-        //     }),
-        //     wet: new DestinationProperty({
-        //       description: "Wet is 0 - 1",
-        //       onSet: (_command, [value]) => {
-        //         const valid = validators.wet(value);
-        //         synth.updateReverb({ wet: parseFloat(value) });
-        //         if (valid) {
-        //           return { valid, output: [`Set wet to ${value}`] };
-        //         } else {
-        //           return {
-        //             valid,
-        //             output: [`Could not set wet to ${value}`],
-        //           };
-        //         }
-        //       },
-        //       onGet: () => ({
-        //         valid: true,
-        //         output: [`Wet is ${synth.voices[0].reverb.wet.value}`],
-        //       }),
-        //     }),
-        //   },
-        // }),
       },
     });
   });

@@ -11,263 +11,159 @@ import {
   DestinationProperty,
 } from "./Destination";
 
-function synthEffectsDestinations(
+function synthEffectsProperties(
   loader: () => ConfigurableHat | ConfigurableKick | ConfigurableSnare
-) {
+): { [k: string]: DestinationProperty } {
   return {
-    highpass: new Destination({
-      info: {
-        content: () =>
-          Destinations.formatJSON(loader().exportParams().settings.highpass),
-      },
-      properties: {
-        Q: new DestinationProperty({
-          inputs: [
-            {
-              type: "number",
-              min: 0,
-              max: 1,
-              initialValue: () =>
-                numericAsString(
-                  loader().exportParams().settings.highpass.Q || 0
-                ),
+    highpass: new DestinationProperty({
+      inputs: [
+        {
+          label: "Q",
+          type: "range",
+          min: 0,
+          max: 1,
+          initialValue: () =>
+            numericAsString(loader().exportParams().settings.highpass.Q || 0),
+        },
+        {
+          label: "frequency",
+          type: "range",
+          min: 0,
+          max: 12000,
+          initialValue: () =>
+            numericAsString(
+              loader().exportParams().settings.highpass.frequency || 0
+            ),
+        },
+      ],
+      onSet: (_command, [q, frequency]) => {
+        const { volume, settings } = loader().exportParams();
+        loader().updateSettings({
+          volume,
+          settings: {
+            ...settings,
+            highpass: {
+              ...settings.highpass,
+              Q: parseFloat(q),
+              frequency: parseFloat(frequency),
             },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.Q(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                highpass: { ...settings.highpass, Q: parseFloat(value) },
-              },
-            });
-            return { valid };
           },
-        }),
-        frequency: new DestinationProperty({
-          inputs: [
-            {
-              type: "number",
-              min: 0,
-              max: 12000,
-              initialValue: () =>
-                numericAsString(
-                  loader().exportParams().settings.highpass.frequency || 0
-                ),
-            },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.Q(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                highpass: {
-                  ...settings.highpass,
-                  frequency: parseFloat(value),
-                },
-              },
-            });
-            return { valid };
-          },
-        }),
+        });
+        return { valid: true };
       },
     }),
-    lowpass: new Destination({
-      info: {
-        content: () =>
-          Destinations.formatJSON(loader().exportParams().settings.lowpass),
-      },
-      properties: {
-        Q: new DestinationProperty({
-          inputs: [
-            {
-              type: "number",
-              min: 0,
-              max: 1,
-              initialValue: () =>
-                numericAsString(
-                  loader().exportParams().settings.lowpass.Q || 0
-                ),
+    lowpass: new DestinationProperty({
+      inputs: [
+        {
+          label: "Q",
+          type: "range",
+          min: 0,
+          max: 1,
+          initialValue: () =>
+            numericAsString(loader().exportParams().settings.lowpass.Q || 0),
+        },
+        {
+          label: "frequency",
+          type: "range",
+          min: 0,
+          max: 12000,
+          initialValue: () =>
+            numericAsString(
+              loader().exportParams().settings.lowpass.frequency || 0
+            ),
+        },
+      ],
+      onSet: (_command, [q, frequency]) => {
+        const { volume, settings } = loader().exportParams();
+        loader().updateSettings({
+          volume,
+          settings: {
+            ...settings,
+            lowpass: {
+              ...settings.lowpass,
+              Q: parseFloat(q),
+              frequency: parseFloat(frequency),
             },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.Q(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                lowpass: { ...settings.lowpass, Q: parseFloat(value) },
-              },
-            });
-            return { valid };
           },
-        }),
-        frequency: new DestinationProperty({
-          inputs: [
-            {
-              type: "number",
-              min: 0,
-              max: 12000,
-              initialValue: () =>
-                numericAsString(
-                  loader().exportParams().settings.lowpass.frequency || 0
-                ),
-            },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.Q(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                lowpass: { ...settings.lowpass, frequency: parseFloat(value) },
-              },
-            });
-            return { valid };
-          },
-        }),
+        });
+        return { valid: true };
       },
     }),
-    crush: new Destination({
-      info: {
-        content: () =>
-          Destinations.formatJSON(loader().exportParams().settings.crush),
-      },
-      properties: {
-        wet: new DestinationProperty({
-          inputs: [
-            {
-              type: "number",
-              min: 0,
-              max: 1,
-              initialValue: () =>
-                numericAsString(
-                  loader().exportParams().settings.crush.wet || 0
-                ),
+    crush: new DestinationProperty({
+      inputs: [
+        {
+          label: "bits",
+          type: "range",
+          min: 1,
+          max: 16,
+          step: 1,
+          initialValue: () =>
+            numericAsString(loader().exportParams().settings.crush.bits || 1),
+        },
+        {
+          label: "wet",
+          type: "range",
+          min: 0,
+          max: 1,
+          initialValue: () =>
+            numericAsString(loader().exportParams().settings.crush.wet || 0),
+        },
+      ],
+      onSet: (_command, [bits, wet]) => {
+        const { volume, settings } = loader().exportParams();
+        loader().updateSettings({
+          volume,
+          settings: {
+            ...settings,
+            crush: {
+              ...settings.crush,
+              wet: parseFloat(wet),
+              bits: parseInt(bits),
             },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.wet(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                crush: { ...settings.crush, wet: parseFloat(value) },
-              },
-            });
-            return { valid };
           },
-        }),
-        bits: new DestinationProperty({
-          inputs: [
-            {
-              type: "number",
-              min: 1,
-              max: 16,
-              initialValue: () =>
-                numericAsString(
-                  loader().exportParams().settings.crush.bits || 1
-                ),
-            },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.bits(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                crush: { ...settings.crush, bits: parseFloat(value) },
-              },
-            });
-            return { valid };
-          },
-        }),
+        });
+        return { valid: true };
       },
     }),
-    delay: new Destination({
-      info: {
-        content: () =>
-          Destinations.formatJSON(loader().exportParams().settings.delay),
-      },
-      properties: {
-        feedback: new DestinationProperty({
-          inputs: [
-            {
-              type: "number",
-              min: 0,
-              max: 1,
-              initialValue: () =>
-                numericAsString(loader().delay.feedback.value),
+
+    delay: new DestinationProperty({
+      inputs: [
+        {
+          label: "feedback",
+          type: "range",
+          min: 0,
+          max: 1,
+          initialValue: () => numericAsString(loader().delay.feedback.value),
+        },
+        {
+          label: "wet",
+          type: "range",
+          min: 0,
+          max: 1,
+          initialValue: () => numericAsString(loader().delay.wet.value),
+        },
+        {
+          label: "time",
+          type: "select",
+          options: timeOptions,
+          initialValue: () => Time(loader().delay.delayTime.value).toNotation(),
+        },
+      ],
+      onSet: (_command, [feedback, wet, time]) => {
+        const { volume, settings } = loader().exportParams();
+        loader().updateSettings({
+          volume,
+          settings: {
+            ...settings,
+            delay: {
+              ...settings.delay,
+              feedback: parseFloat(feedback),
+              delayTime: time,
+              wet: parseFloat(wet),
             },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.feedback(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                delay: { ...settings.delay, feedback: parseFloat(value) },
-              },
-            });
-            return { valid };
           },
-        }),
-        time: new DestinationProperty({
-          inputs: [
-            {
-              type: "select",
-              options: timeOptions,
-              initialValue: () =>
-                Time(loader().delay.delayTime.value).toNotation(),
-            },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.time(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                delay: { ...settings.delay, delayTime: value },
-              },
-            });
-            return { valid };
-          },
-        }),
-        wet: new DestinationProperty({
-          inputs: [
-            {
-              type: "number",
-              min: 0,
-              max: 1,
-              initialValue: () =>
-                numericAsString(
-                  loader().exportParams().settings.delay.wet || 0
-                ),
-            },
-          ],
-          onSet: (_command, [value]) => {
-            const valid = validators.wet(value);
-            const { volume, settings } = loader().exportParams();
-            loader().updateSettings({
-              volume,
-              settings: {
-                ...settings,
-                delay: { ...settings.delay, wet: parseFloat(value) },
-              },
-            });
-            return { valid };
-          },
-        }),
+        });
+        return { valid: true };
       },
     }),
   };
@@ -306,6 +202,14 @@ export function generateDrumsDestinations({
                 sequencer.steps.halve();
                 onStepChange();
                 return { valid: true, output: ["Halved steps"] };
+              },
+            }),
+            third: new DestinationCommand({
+              description: "Third steps",
+              onCommand: (_command, _args, _prompt) => {
+                sequencer.steps.third();
+                onStepChange();
+                return { valid: true, output: ["Thirded steps"] };
               },
             }),
             double: new DestinationCommand({
@@ -392,10 +296,9 @@ export function generateDrumsDestinations({
               },
               properties: {
                 ...synthVolumeProperty(() => sequencer.drums.kit.kick),
+                ...synthEffectsProperties(() => sequencer.drums.kit.kick),
               },
-              destinations: {
-                ...synthEffectsDestinations(() => sequencer.drums.kit.kick),
-              },
+              destinations: {},
             }),
             snare: new Destination({
               info: {
@@ -406,10 +309,9 @@ export function generateDrumsDestinations({
               },
               properties: {
                 ...synthVolumeProperty(() => sequencer.drums.kit.snare),
+                ...synthEffectsProperties(() => sequencer.drums.kit.snare),
               },
-              destinations: {
-                ...synthEffectsDestinations(() => sequencer.drums.kit.snare),
-              },
+              destinations: {},
             }),
             closed: new Destination({
               info: {
@@ -420,10 +322,9 @@ export function generateDrumsDestinations({
               },
               properties: {
                 ...synthVolumeProperty(() => sequencer.drums.kit.closed),
+                ...synthEffectsProperties(() => sequencer.drums.kit.closed),
               },
-              destinations: {
-                ...synthEffectsDestinations(() => sequencer.drums.kit.closed),
-              },
+              destinations: {},
             }),
             open: new Destination({
               info: {
@@ -434,10 +335,9 @@ export function generateDrumsDestinations({
               },
               properties: {
                 ...synthVolumeProperty(() => sequencer.drums.kit.open),
+                ...synthEffectsProperties(() => sequencer.drums.kit.open),
               },
-              destinations: {
-                ...synthEffectsDestinations(() => sequencer.drums.kit.open),
-              },
+              destinations: {},
             }),
           },
         }),

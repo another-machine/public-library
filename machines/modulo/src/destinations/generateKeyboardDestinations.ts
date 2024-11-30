@@ -94,9 +94,10 @@ export function generateKeyboardDestinations({
       octave: new DestinationProperty({
         inputs: [
           {
-            type: "number",
+            type: "range",
             min: 0,
             max: 7,
+            step: 1,
             initialValue: () => keyboard.octave.toString(),
           },
         ],

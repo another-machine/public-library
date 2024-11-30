@@ -29,7 +29,7 @@ export function synthVolumeProperty(
     volume: new DestinationProperty({
       inputs: [
         {
-          type: "number",
+          type: "range",
           min: 0,
           max: 1,
           initialValue: () => numericAsString(loader().getGain()),

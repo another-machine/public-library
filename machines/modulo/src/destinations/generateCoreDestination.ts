@@ -10,8 +10,31 @@ import {
   Destination,
   DestinationCommand,
   DestinationProperty,
+  DestinationPropertyInput,
 } from "./Destination";
 import { numericAsString, validators } from "./utilities";
+
+function propertyGeneratorLayoutRange(
+  machine: Machine,
+  type: "prompt" | "interface"
+) {
+  return function (
+    key: string,
+    min = 0,
+    max = 1,
+    step = 0.01
+  ): DestinationPropertyInput {
+    return {
+      label: key,
+      type: "range",
+      min,
+      max,
+      step,
+      initialValue: () =>
+        numericAsString(machine.exportParams().theme.layout[type][key]),
+    };
+  };
+}
 
 function lchProperty(
   initialValue: () => RendererThemeLCH,
@@ -115,6 +138,12 @@ export function generateCoreDestination({
       },
     });
   });
+
+  const layoutInterfaceProperty = propertyGeneratorLayoutRange(
+    machine,
+    "interface"
+  );
+  const layoutPromptProperty = propertyGeneratorLayoutRange(machine, "prompt");
 
   return {
     core: new Destination({
@@ -262,17 +291,12 @@ export function generateCoreDestination({
               },
               properties: {
                 interface: new DestinationProperty({
-                  inputs: ["border", "corner", "gapX", "gapY"].map((label) => ({
-                    label,
-                    type: "range",
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    initialValue: () =>
-                      numericAsString(
-                        machine.exportParams().theme.layout.interface[label]
-                      ),
-                  })),
+                  inputs: [
+                    layoutInterfaceProperty("border", 0, 0.5),
+                    layoutInterfaceProperty("corner", 0, 1),
+                    layoutInterfaceProperty("gapX", 0, 2),
+                    layoutInterfaceProperty("gapY", 0, 2),
+                  ],
                   onSet: (_command, [border, corner, gapX, gapY], _prompt) => {
                     const valid = true;
                     if (valid) {
@@ -288,24 +312,14 @@ export function generateCoreDestination({
                 }),
                 prompt: new DestinationProperty({
                   inputs: [
-                    "border",
-                    "corner",
-                    "font",
-                    "gapX",
-                    "gapY",
-                    "paddingX",
-                    "paddingY",
-                  ].map((label) => ({
-                    label,
-                    type: "range",
-                    min: 0,
-                    max: 2,
-                    step: 0.01,
-                    initialValue: () =>
-                      numericAsString(
-                        machine.exportParams().theme.layout.prompt[label]
-                      ),
-                  })),
+                    layoutPromptProperty("border", 0, 0.5),
+                    layoutPromptProperty("corner", 0, 1),
+                    layoutPromptProperty("font", 0.2, 2),
+                    layoutPromptProperty("gapX", 0, 2),
+                    layoutPromptProperty("gapY", 0, 2),
+                    layoutPromptProperty("paddingX", 0, 2),
+                    layoutPromptProperty("paddingY", 0, 2),
+                  ],
                   onSet: (
                     _command,
                     [border, corner, font, gapX, gapY, paddingX, paddingY],

@@ -144,13 +144,22 @@ export class Steps {
   }
 
   double() {
-    this.rows.forEach((row) => (row.slots = [...row.slots, ...row.slots]));
+    this.rows.forEach(
+      (row) => (row.slots = [...row.slots, ...row.slots].splice(0, 64))
+    );
   }
 
   halve() {
     this.rows.forEach(
       (row) =>
         (row.slots = row.slots.splice(0, Math.ceil(row.slots.length * 0.5)))
+    );
+  }
+
+  third() {
+    this.rows.forEach(
+      (row) =>
+        (row.slots = row.slots.splice(0, Math.ceil(row.slots.length * 0.3333)))
     );
   }
 

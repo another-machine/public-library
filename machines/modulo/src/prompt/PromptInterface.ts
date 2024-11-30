@@ -4,45 +4,18 @@ import {
 } from "../destinations/Destination";
 import { COMMANDS, Prompt } from "./Prompt";
 import { PromptSuggestions } from "./PromptSuggestions";
-import { PromptInfo } from "./PromptInfo";
+import { PromptOutput } from "./PromptOutput";
 import { PromptPropertyForm } from "./PromptPropertyForm";
 
-class PromptInterfaceState {
-  private subscribers: Map<string, Function[]> = new Map();
-
-  subscribe(event: string, callback: Function) {
-    if (!this.subscribers.has(event)) {
-      this.subscribers.set(event, []);
-    }
-    this.subscribers.get(event)?.push(callback);
-    return () => this.unsubscribe(event, callback);
-  }
-
-  unsubscribe(event: string, callback: Function) {
-    const callbacks = this.subscribers.get(event) || [];
-    const index = callbacks.indexOf(callback);
-    if (index > -1) {
-      callbacks.splice(index, 1);
-    }
-  }
-
-  publish(event: string, data: any) {
-    const callbacks = this.subscribers.get(event) || [];
-    callbacks.forEach((callback) => callback(data));
-  }
-}
-
 export class PromptInterface extends HTMLElement {
-  private state: PromptInterfaceState;
+  private output: PromptOutput;
   private prompt: Prompt;
   private suggestions: PromptSuggestions;
-  private info: PromptInfo;
   private propertyForm?: PromptPropertyForm;
   private filterBuffer = "";
 
   constructor() {
     super();
-    this.state = new PromptInterfaceState();
   }
 
   initialize(parent: HTMLElement, prompt: Prompt) {
@@ -59,11 +32,11 @@ export class PromptInterface extends HTMLElement {
     this.id = "prompt";
     this.innerHTML = `
       <prompt-suggestions></prompt-suggestions>
-      <prompt-info></prompt-info>
+      <prompt-output></prompt-output>
     `;
 
     this.suggestions = this.querySelector("prompt-suggestions")!;
-    this.info = this.querySelector("prompt-info")!;
+    this.output = this.querySelector("prompt-output")!;
   }
 
   private setupComponents() {
@@ -83,7 +56,10 @@ export class PromptInterface extends HTMLElement {
     document.addEventListener("keydown", (e) => {
       if (!this.classList.contains("open")) return;
 
-      // Check if we're in an input field
+      if (e.shiftKey || e.metaKey || e.altKey || e.ctrlKey) {
+        return;
+      }
+
       const activeElement = document.activeElement;
       const isInInput =
         activeElement instanceof HTMLInputElement ||
@@ -96,9 +72,7 @@ export class PromptInterface extends HTMLElement {
         return;
       }
 
-      // Handle single character inputs for filtering
       if (e.key.length === 1 && !isInInput) {
-        // Get current suggestions to check if character would match anything
         const output = this.prompt.getNextSuggestions(
           this.filterBuffer + e.key.toLowerCase()
         );
@@ -106,7 +80,6 @@ export class PromptInterface extends HTMLElement {
 
         if (!suggestions) return;
 
-        // Check if the character would match any available options
         const wouldMatch =
           suggestions.destinations.some((dest) =>
             dest.startsWith(this.filterBuffer + e.key.toLowerCase())
@@ -161,7 +134,9 @@ export class PromptInterface extends HTMLElement {
         console.log("Command output:", result.output);
       }
       this.filterBuffer = "";
-      this.info.updateBreadcrumbs(this.prompt.destinationKeys.join("/") || "");
+      this.output.updateBreadcrumbs(
+        this.prompt.destinationKeys.join("/") || ""
+      );
       this.renderDestinationInfo();
       this.clearPropertyForm();
     } else if (type === "property") {
@@ -219,11 +194,11 @@ export class PromptInterface extends HTMLElement {
     });
 
     this.clearPropertyForm();
-    this.insertBefore(form, this.info);
+    this.insertBefore(form, this.output);
     this.propertyForm = form;
   }
 
   public renderDestinationInfo() {
-    this.info.update(this.prompt.currentDestination.info);
+    this.output.update(this.prompt.currentDestination.info);
   }
 }

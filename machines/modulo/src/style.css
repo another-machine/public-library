@@ -28,6 +28,9 @@
   --color-text-chr: 0;
   --color-text-hue: 0;
 
+  --outline-offset: 2px;
+  --outline-width: 2px;
+
   --color-background: oklch(
     var(--color-background-lit) var(--color-background-chr)
       calc(var(--color-hue-base) + var(--color-background-hue)) / 1
@@ -47,7 +50,6 @@ button {
 *,
 button {
   box-sizing: border-box;
-  user-select: none;
 }
 
 body {
@@ -90,8 +92,8 @@ main[stepping="true"] .sequencer {
 
 /* TODO: properly handle focus */
 button:focus-visible {
-  outline: red solid 2px !important;
-  outline-offset: 2px !important;
+  outline: var(--color-text) solid var(--outline-width) !important;
+  outline-offset: var(--outline-offset) !important;
 }
 
 .sequencer button,
@@ -355,7 +357,7 @@ prompt-interface {
     font-size: var(--font-size);
   }
 
-  prompt-info,
+  prompt-output,
   prompt-suggestions,
   label,
   input,
@@ -392,23 +394,6 @@ prompt-interface {
             )
         ) / 1
     );
-
-    --color-3: oklch(
-      calc(
-          var(--color-off-lit) +
-            (var(--color-on-lit) * 1.3 - var(--color-off-lit))
-        )
-        calc(
-          var(--color-off-chr) + (var(--color-on-chr) - var(--color-off-chr))
-        )
-        calc(
-          var(--color-hue-base) +
-            (
-              var(--color-off-hue) +
-                (var(--color-on-hue) - var(--color-off-hue))
-            )
-        ) / 1
-    );
   }
 
   prompt-suggestions {
@@ -417,6 +402,8 @@ prompt-interface {
     gap: calc(var(--size-unit) * var(--prompt-gap-y-factor));
     justify-content: start;
     overflow-x: auto;
+    padding-top: calc(var(--outline-width) + var(--outline-offset));
+    padding-bottom: calc(var(--outline-width) + var(--outline-offset));
     scrollbar-color: var(--color-2) var(--color-1);
     scrollbar-color: var(--color-2) transparent;
     scrollbar-width: thin;
@@ -494,7 +481,8 @@ prompt-interface {
           border: none;
           border-radius: var(--border-radius);
           box-shadow: inset 0 0 0
-            calc(var(--prompt-border-factor) * var(--size-unit)) var(--color-2);
+            calc(var(--prompt-border-factor) * var(--size-unit)) solid
+            var(--color-2);
           color: var(--color-2);
           font-size: calc(var(--prompt-font-factor) * var(--size-unit));
           padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
@@ -638,7 +626,7 @@ prompt-interface {
     }
   }
 
-  prompt-info {
+  prompt-output {
     color: var(--color-text);
     display: flex;
     flex-direction: column;
@@ -664,11 +652,11 @@ prompt-interface {
 
     > pre {
       background: var(--color-1);
-      color: var(--color-3);
+      color: var(--color-2);
       display: block;
       flex: 1;
       margin: 0;
-      line-height: calc(var(--prompt-gap-y-factor) * 3);
+      line-height: 1.4;
       padding: calc(var(--prompt-gap-y-factor) * 2 * var(--size-unit))
         calc(var(--prompt-gap-x-factor) * var(--size-unit));
       overflow-y: auto;
@@ -676,6 +664,16 @@ prompt-interface {
       scrollbar-color: var(--color-2) transparent;
       scrollbar-width: thin;
       text-align: left;
+
+      &::selection {
+        background: var(--color-2);
+        color: var(--color-1);
+      }
+
+      &::-moz-selection {
+        background: var(--color-2);
+        color: var(--color-1);
+      }
 
       &:empty {
         display: none;
