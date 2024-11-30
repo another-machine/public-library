@@ -64,6 +64,9 @@ export class PromptPropertyForm extends HTMLElement {
       element.setAttribute("key", `input-${index}`);
       element.setAttribute("options", input.options.join(","));
       element.setAttribute("value", input.initialValue());
+      if (input.label) {
+        element.setAttribute("label", input.label);
+      }
       element.setPromptPropertyFormState(this.formState);
       return element;
     } else if (input.type === "number") {
@@ -91,6 +94,9 @@ export class PromptPropertyForm extends HTMLElement {
       element.setAttribute("step", steps[0].toString());
       element.setAttribute("steps", steps.join(","));
       element.setAttribute("value", input.initialValue());
+      if (input.label) {
+        element.setAttribute("label", input.label);
+      }
       element.setPromptPropertyFormState(this.formState);
       return element;
     } else {
@@ -105,6 +111,9 @@ export class PromptPropertyForm extends HTMLElement {
       const step = input.step || (diff < 3 ? 0.001 : 1);
       element.setAttribute("step", step.toString());
       element.setAttribute("value", input.initialValue());
+      if (input.label) {
+        element.setAttribute("label", input.label);
+      }
       element.setPromptPropertyFormState(this.formState);
       return element;
     }

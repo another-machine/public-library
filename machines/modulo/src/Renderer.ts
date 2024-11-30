@@ -22,6 +22,22 @@ export interface RendererThemeColor {
   disabled: RendererThemeLCH;
 }
 
+export interface RendererThemeLayoutInterface {
+  corner: number;
+  gapX: number;
+  gapY: number;
+  border: number;
+}
+export interface RendererThemeLayoutPrompt {
+  corner: number;
+  gapX: number;
+  gapY: number;
+  paddingX: number;
+  paddingY: number;
+  border: number;
+  font: number;
+}
+
 export interface RendererTheme {
   color: {
     core: RendererThemeColor;
@@ -30,20 +46,9 @@ export interface RendererTheme {
     background: RendererThemeLCH;
     text: RendererThemeLCH;
   };
-  prompt: {
-    corner: number;
-    gapColumn: number;
-    gapRow: number;
-    paddingX: number;
-    paddingY: number;
-    sizeBorder: number;
-    sizeFont: number;
-  };
-  interface: {
-    corner: number;
-    gapColumn: number;
-    gapRow: number;
-    sizeBorder: number;
+  layout: {
+    prompt: RendererThemeLayoutPrompt;
+    interface: RendererThemeLayoutInterface;
   };
 }
 
@@ -140,8 +145,23 @@ export class Renderer {
     this.setTheme(theme);
   }
 
+  updateThemeLayoutInterface(value: RendererThemeLayoutInterface) {
+    this.setTheme({
+      ...this.theme,
+      layout: { ...this.theme.layout, interface: value },
+    });
+  }
+
+  updateThemeLayoutPrompt(value: RendererThemeLayoutPrompt) {
+    this.setTheme({
+      ...this.theme,
+      layout: { ...this.theme.layout, prompt: value },
+    });
+  }
+
   setTheme(theme: RendererTheme) {
     this.theme = theme;
+
     function setProperty(property: string, value: number) {
       document.documentElement.style.setProperty(property, value.toString());
     }
@@ -167,18 +187,18 @@ export class Renderer {
     setColor(["background"], theme.color.background);
     setColor(["text"], theme.color.text);
 
-    setProperty("--prompt-corner-factor", theme.prompt.corner);
-    setProperty("--prompt-gap-column-factor", theme.prompt.gapColumn);
-    setProperty("--prompt-gap-row-factor", theme.prompt.gapRow);
-    setProperty("--prompt-padding-x-factor", theme.prompt.paddingX);
-    setProperty("--prompt-padding-y-factor", theme.prompt.paddingY);
-    setProperty("--prompt-size-border-factor", theme.prompt.sizeBorder);
-    setProperty("--prompt-size-font-factor", theme.prompt.sizeFont);
+    setProperty("--prompt-corner-factor", theme.layout.prompt.corner);
+    setProperty("--prompt-gap-x-factor", theme.layout.prompt.gapX);
+    setProperty("--prompt-gap-y-factor", theme.layout.prompt.gapY);
+    setProperty("--prompt-padding-x-factor", theme.layout.prompt.paddingX);
+    setProperty("--prompt-padding-y-factor", theme.layout.prompt.paddingY);
+    setProperty("--prompt-border-factor", theme.layout.prompt.border);
+    setProperty("--prompt-font-factor", theme.layout.prompt.font);
 
-    setProperty("--interface-corner-factor", theme.interface.corner);
-    setProperty("--interface-gap-column-factor", theme.interface.gapColumn);
-    setProperty("--interface-gap-row-factor", theme.interface.gapRow);
-    setProperty("--interface-size-border-factor", theme.interface.sizeBorder);
+    setProperty("--interface-corner-factor", theme.layout.interface.corner);
+    setProperty("--interface-gap-x-factor", theme.layout.interface.gapX);
+    setProperty("--interface-gap-y-factor", theme.layout.interface.gapY);
+    setProperty("--interface-border-factor", theme.layout.interface.border);
   }
 
   createButton(

@@ -1,7 +1,11 @@
 import { Destinations } from "./Destinations";
 import { Machine } from "../Machine";
 import { ROOTS, MODES } from "../Notes";
-import { RendererThemeLCH } from "../Renderer";
+import {
+  RendererThemeLCH,
+  RendererThemeLayoutInterface,
+  RendererThemeLayoutPrompt,
+} from "../Renderer";
 import {
   Destination,
   DestinationCommand,
@@ -161,91 +165,169 @@ export function generateCoreDestination({
               Destinations.formatJSON(machine.exportParams().theme),
           },
           destinations: {
-            ...sequencerColorDestinations,
-            keyboard: new Destination({
-              key: "keyboard",
-              info: {
-                label: "Color settings for the keyboard",
-                content: () =>
-                  Destinations.formatJSON(
-                    machine.exportParams().theme.color.keyboard
-                  ),
-              },
-              properties: {
-                on: lchProperty(
-                  () => machine.exportParams().theme.color.keyboard.on,
-                  (settings) =>
-                    machine.renderer.updateThemeColor("keyboard.on", settings)
-                ),
-                off: lchProperty(
-                  () => machine.exportParams().theme.color.keyboard.off,
-                  (settings) =>
-                    machine.renderer.updateThemeColor("keyboard.off", settings)
-                ),
-                disabled: lchProperty(
-                  () => machine.exportParams().theme.color.keyboard.disabled,
-                  (settings) =>
-                    machine.renderer.updateThemeColor(
-                      "keyboard.disabled",
-                      settings
-                    )
-                ),
-              },
-            }),
-            core: new Destination({
+            color: new Destination({
               key: "core",
               info: {
-                label: "Color settings for the core",
                 content: () =>
-                  Destinations.formatJSON(
-                    machine.exportParams().theme.color.core
-                  ),
+                  Destinations.formatJSON(machine.exportParams().theme.color),
+              },
+              destinations: {
+                ...sequencerColorDestinations,
+                keyboard: new Destination({
+                  key: "keyboard",
+                  info: {
+                    label: "Color settings for the keyboard",
+                    content: () =>
+                      Destinations.formatJSON(
+                        machine.exportParams().theme.color.keyboard
+                      ),
+                  },
+                  properties: {
+                    on: lchProperty(
+                      () => machine.exportParams().theme.color.keyboard.on,
+                      (settings) =>
+                        machine.renderer.updateThemeColor(
+                          "keyboard.on",
+                          settings
+                        )
+                    ),
+                    off: lchProperty(
+                      () => machine.exportParams().theme.color.keyboard.off,
+                      (settings) =>
+                        machine.renderer.updateThemeColor(
+                          "keyboard.off",
+                          settings
+                        )
+                    ),
+                    disabled: lchProperty(
+                      () =>
+                        machine.exportParams().theme.color.keyboard.disabled,
+                      (settings) =>
+                        machine.renderer.updateThemeColor(
+                          "keyboard.disabled",
+                          settings
+                        )
+                    ),
+                  },
+                }),
+                core: new Destination({
+                  key: "core",
+                  info: {
+                    label: "Color settings for the core",
+                    content: () =>
+                      Destinations.formatJSON(
+                        machine.exportParams().theme.color.core
+                      ),
+                  },
+                  properties: {
+                    on: lchProperty(
+                      () => machine.exportParams().theme.color.core.on,
+                      (settings) =>
+                        machine.renderer.updateThemeColor("core.on", settings)
+                    ),
+                    off: lchProperty(
+                      () => machine.exportParams().theme.color.core.off,
+                      (settings) =>
+                        machine.renderer.updateThemeColor("core.off", settings)
+                    ),
+                    disabled: lchProperty(
+                      () => machine.exportParams().theme.color.core.disabled,
+                      (settings) =>
+                        machine.renderer.updateThemeColor(
+                          "core.disabled",
+                          settings
+                        )
+                    ),
+                  },
+                }),
               },
               properties: {
-                on: lchProperty(
-                  () => machine.exportParams().theme.color.core.on,
+                background: lchProperty(
+                  () => machine.exportParams().theme.color.background,
                   (settings) =>
-                    machine.renderer.updateThemeColor("core.on", settings)
+                    machine.renderer.updateThemeColor("background", settings)
                 ),
-                off: lchProperty(
-                  () => machine.exportParams().theme.color.core.off,
+                text: lchProperty(
+                  () => machine.exportParams().theme.color.text,
                   (settings) =>
-                    machine.renderer.updateThemeColor("core.off", settings)
-                ),
-                disabled: lchProperty(
-                  () => machine.exportParams().theme.color.core.disabled,
-                  (settings) =>
-                    machine.renderer.updateThemeColor("core.disabled", settings)
+                    machine.renderer.updateThemeColor("text", settings)
                 ),
               },
             }),
-            interface: new Destination({
+            layout: new Destination({
               info: {
-                label: "Settings for the interface",
+                label: "Layout theme settings",
                 content: () =>
-                  Destinations.formatJSON(
-                    machine.exportParams().theme.interface
-                  ),
+                  Destinations.formatJSON(machine.exportParams().theme.layout),
+              },
+              properties: {
+                interface: new DestinationProperty({
+                  inputs: ["border", "corner", "gapX", "gapY"].map((label) => ({
+                    label,
+                    type: "range",
+                    min: 0,
+                    max: 2,
+                    step: 0.01,
+                    initialValue: () =>
+                      numericAsString(
+                        machine.exportParams().theme.layout.interface[label]
+                      ),
+                  })),
+                  onSet: (_command, [border, corner, gapX, gapY], _prompt) => {
+                    const valid = true;
+                    if (valid) {
+                      machine.renderer.updateThemeLayoutInterface({
+                        border: parseFloat(border),
+                        corner: parseFloat(corner),
+                        gapX: parseFloat(gapX),
+                        gapY: parseFloat(gapY),
+                      });
+                    }
+                    return { valid };
+                  },
+                }),
+                prompt: new DestinationProperty({
+                  inputs: [
+                    "border",
+                    "corner",
+                    "font",
+                    "gapX",
+                    "gapY",
+                    "paddingX",
+                    "paddingY",
+                  ].map((label) => ({
+                    label,
+                    type: "range",
+                    min: 0,
+                    max: 2,
+                    step: 0.01,
+                    initialValue: () =>
+                      numericAsString(
+                        machine.exportParams().theme.layout.prompt[label]
+                      ),
+                  })),
+                  onSet: (
+                    _command,
+                    [border, corner, font, gapX, gapY, paddingX, paddingY],
+                    _prompt
+                  ) => {
+                    const valid = true;
+                    if (valid) {
+                      machine.renderer.updateThemeLayoutPrompt({
+                        border: parseFloat(border),
+                        corner: parseFloat(corner),
+                        font: parseFloat(font),
+                        gapX: parseFloat(gapX),
+                        gapY: parseFloat(gapY),
+                        paddingX: parseFloat(paddingX),
+                        paddingY: parseFloat(paddingY),
+                      });
+                    }
+                    return { valid };
+                  },
+                }),
               },
             }),
-            prompt: new Destination({
-              info: {
-                label: "Settings for the prompt",
-                content: () =>
-                  Destinations.formatJSON(machine.exportParams().theme.prompt),
-              },
-            }),
-          },
-          properties: {
-            background: lchProperty(
-              () => machine.exportParams().theme.color.background,
-              (settings) =>
-                machine.renderer.updateThemeColor("background", settings)
-            ),
-            text: lchProperty(
-              () => machine.exportParams().theme.color.text,
-              (settings) => machine.renderer.updateThemeColor("text", settings)
-            ),
           },
         }),
       },

@@ -1,14 +1,14 @@
 :root {
   --prompt-corner-factor: 0.4;
-  --prompt-gap-column-factor: 0.4;
-  --prompt-gap-row-factor: 0.4;
+  --prompt-gap-x-factor: 0.4;
+  --prompt-gap-y-factor: 0.4;
   --prompt-padding-x-factor: 0.3;
   --prompt-padding-y-factor: 0.3;
-  --prompt-size-border-factor: 0.2;
-  --prompt-size-font-factor: 0.8;
+  --prompt-border-factor: 0.2;
+  --prompt-font-factor: 0.8;
   --interface-corner-factor: 1;
-  --interface-gap-column-factor: 0.4;
-  --interface-gap-row-factor: 0.4;
+  --interface-gap-x-factor: 0.4;
+  --interface-gap-y-factor: 0.4;
 
   --color-hue-base: 0;
   --color-on-lit: 1;
@@ -74,10 +74,10 @@ main {
   display: flex;
   flex: 3;
   flex-direction: column;
-  gap: calc(var(--interface-gap-column-factor) * var(--size-unit));
+  gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
   height: 100%;
   overflow: visible;
-  padding: calc(var(--interface-gap-row-factor) * var(--size-unit));
+  padding: calc(var(--interface-gap-y-factor) * var(--size-unit));
   position: relative;
 }
 
@@ -131,10 +131,9 @@ button:focus-visible {
     &::after {
       content: "";
       border-radius: var(--border-radius);
-      box-shadow: 0 0 0 calc(var(--interface-gap-row-factor) * var(--size-unit))
+      box-shadow: 0 0 0 calc(var(--interface-gap-y-factor) * var(--size-unit))
           var(--color-text),
-        inset 0 0 0
-          calc(var(--interface-gap-row-factor) * var(--size-unit) * 0.5)
+        inset 0 0 0 calc(var(--interface-gap-y-factor) * var(--size-unit) * 0.5)
           var(--color-text);
       inset: 0;
       position: absolute;
@@ -189,9 +188,7 @@ button:focus-visible {
   }
   &[active] {
     &:not([state="0"]) {
-      --shadow-spread: calc(
-        var(--interface-size-border-factor) * var(--size-unit)
-      );
+      --shadow-spread: calc(var(--interface-border-factor) * var(--size-unit));
       --illumination-lit-offset: 0.16;
     }
   }
@@ -207,7 +204,7 @@ button:focus-visible {
 .sequencer {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--interface-gap-row-factor) * var(--size-unit));
+  gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
   width: 100%;
 
   &:has(> :last-child:nth-child(1)) {
@@ -229,7 +226,7 @@ button:focus-visible {
   > div {
     display: flex;
     flex: 1;
-    gap: calc(var(--interface-gap-row-factor) * var(--size-unit));
+    gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
   }
 
   button {
@@ -239,8 +236,7 @@ button:focus-visible {
 
 #keys {
   --size-key-width: calc(
-    1 / 14 * 100% - (var(--interface-gap-row-factor) * var(--size-unit)) * 13 /
-      14
+    1 / 14 * 100% - (var(--interface-gap-y-factor) * var(--size-unit)) * 13 / 14
   );
   display: flex;
   flex: 2;
@@ -267,10 +263,10 @@ button:focus-visible {
   > button:nth-child(23) {
     --size-short-key-width: calc(
       var(--size-key-width) -
-        calc(var(--interface-gap-row-factor) * var(--size-unit)) * 2
+        calc(var(--interface-gap-y-factor) * var(--size-unit)) * 2
     );
     box-shadow: var(--box-shadow),
-      0 0 0 calc(var(--interface-gap-row-factor) * var(--size-unit))
+      0 0 0 calc(var(--interface-gap-y-factor) * var(--size-unit))
         var(--color-background);
     height: 60%;
     margin-left: calc(var(--size-short-key-width) * -0.5);
@@ -294,11 +290,9 @@ button:focus-visible {
   > button:nth-child(20),
   > button:nth-child(22),
   > button:nth-child(24) {
-    margin-left: calc(
-      (var(--interface-gap-row-factor) * var(--size-unit)) * 0.5
-    );
+    margin-left: calc((var(--interface-gap-y-factor) * var(--size-unit)) * 0.5);
     margin-right: calc(
-      (var(--interface-gap-row-factor) * var(--size-unit)) * 0.5
+      (var(--interface-gap-y-factor) * var(--size-unit)) * 0.5
     );
     width: var(--size-key-width);
   }
@@ -321,7 +315,7 @@ button:focus-visible {
 #pads {
   display: flex;
   flex-wrap: wrap;
-  gap: calc(var(--interface-gap-row-factor) * var(--size-unit));
+  gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
   flex: 1;
   width: 100%;
 
@@ -331,18 +325,18 @@ button:focus-visible {
 }
 
 prompt-interface {
-  --font-size: calc(var(--size-unit) * var(--prompt-size-font-factor));
+  --font-size: calc(var(--size-unit) * var(--prompt-font-factor));
   --border-radius: calc(var(--size-unit) * var(--prompt-corner-factor));
-  --gap: calc(var(--prompt-gap-column-factor) * var(--size-unit));
 
   align-items: start;
   display: none;
   flex-direction: column;
   flex-wrap: wrap;
-  gap: var(--gap);
+  gap: calc(var(--prompt-gap-y-factor) * var(--size-unit));
   justify-content: start;
   order: -1;
-  padding: calc(var(--prompt-gap-column-factor) * var(--size-unit));
+  padding: calc(var(--prompt-gap-y-factor) * var(--size-unit))
+    calc(var(--prompt-gap-x-factor) * var(--size-unit));
   width: min(32rem, 100%);
 
   > * {
@@ -363,6 +357,7 @@ prompt-interface {
 
   prompt-info,
   prompt-suggestions,
+  label,
   input,
   button,
   select {
@@ -419,7 +414,7 @@ prompt-interface {
   prompt-suggestions {
     align-items: center;
     display: flex;
-    gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+    gap: calc(var(--size-unit) * var(--prompt-gap-y-factor));
     justify-content: start;
     overflow-x: auto;
     scrollbar-color: var(--color-2) var(--color-1);
@@ -446,8 +441,7 @@ prompt-interface {
       &[prompt-type="property"] {
         background: var(--color-1);
         box-shadow: inset 0 0 0
-          calc(var(--prompt-size-border-factor) * var(--size-unit))
-          var(--color-2);
+          calc(var(--prompt-border-factor) * var(--size-unit)) var(--color-2);
         color: var(--color-2);
         font-style: italic;
       }
@@ -481,7 +475,7 @@ prompt-interface {
       display: flex;
       flex-direction: row;
       flex-wrap: wrap;
-      gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+      gap: calc(var(--size-unit) * var(--prompt-gap-y-factor));
 
       > * {
         width: 100%;
@@ -500,19 +494,23 @@ prompt-interface {
           border: none;
           border-radius: var(--border-radius);
           box-shadow: inset 0 0 0
-            calc(var(--prompt-size-border-factor) * var(--size-unit))
-            var(--color-2);
+            calc(var(--prompt-border-factor) * var(--size-unit)) var(--color-2);
           color: var(--color-2);
-          font-size: calc(var(--prompt-size-font-factor) * var(--size-unit));
+          font-size: calc(var(--prompt-font-factor) * var(--size-unit));
           padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
             calc(var(--prompt-padding-x-factor) * var(--size-unit));
+        }
+
+        label {
+          color: var(--color-2);
         }
       }
 
       prompt-form-input-range {
+        align-items: center;
         display: flex;
         flex-basis: 100%;
-        gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+        gap: calc(var(--size-unit) * var(--prompt-gap-x-factor));
         width: 100%;
 
         input::-webkit-outer-spin-button,
@@ -520,21 +518,22 @@ prompt-interface {
           -webkit-appearance: none;
         }
 
-        input[type="number"] {
-          width: calc(var(--prompt-size-font-factor) * var(--size-unit) * 5);
+        input[type="number"],
+        label {
+          width: calc(var(--prompt-font-factor) * var(--size-unit) * 6);
         }
 
         input[type="range"] {
           --input-range-background: var(--color-1);
           --input-range-thumb-background: var(--color-2);
           --input-range-height: calc(
-            var(--prompt-size-font-factor) * var(--size-unit) * 0.3
+            var(--prompt-border-factor) * var(--size-unit) * 2
           );
           --input-range-thumb-height: calc(
-            var(--prompt-size-font-factor) * var(--size-unit) * 1.6
+            var(--prompt-font-factor) * var(--size-unit)
           );
           --input-range-thumb-width: calc(
-            var(--prompt-size-font-factor) * var(--size-unit) * 0.3
+            var(--prompt-border-factor) * var(--size-unit) * 2
           );
           -webkit-appearance: none;
           appearance: none;
@@ -581,7 +580,7 @@ prompt-interface {
 
         > div {
           display: flex;
-          gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+          gap: calc(var(--size-unit) * var(--prompt-gap-y-factor));
 
           button {
             background-color: var(--color-2);
@@ -604,7 +603,7 @@ prompt-interface {
 
       prompt-form-input-step-number {
         display: flex;
-        gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+        gap: calc(var(--size-unit) * var(--prompt-gap-y-factor));
 
         input::-webkit-outer-spin-button,
         input::-webkit-inner-spin-button {
@@ -613,7 +612,7 @@ prompt-interface {
 
         input {
           flex: 1;
-          width: calc(var(--prompt-size-font-factor) * var(--size-unit) * 5);
+          width: calc(var(--prompt-font-factor) * var(--size-unit) * 5);
         }
 
         &:has(input) {
@@ -622,7 +621,7 @@ prompt-interface {
 
         > div {
           display: flex;
-          gap: calc(var(--size-unit) * var(--prompt-gap-row-factor));
+          gap: calc(var(--size-unit) * var(--prompt-gap-y-factor));
 
           button {
             background-color: var(--color-2);
@@ -669,8 +668,9 @@ prompt-interface {
       display: block;
       flex: 1;
       margin: 0;
-      padding: calc(var(--prompt-gap-row-factor) * 2 * var(--size-unit))
-        calc(var(--prompt-gap-column-factor) * var(--size-unit));
+      line-height: calc(var(--prompt-gap-y-factor) * 3);
+      padding: calc(var(--prompt-gap-y-factor) * 2 * var(--size-unit))
+        calc(var(--prompt-gap-x-factor) * var(--size-unit));
       overflow-y: auto;
       scrollbar-color: var(--color-2) var(--color-1);
       scrollbar-color: var(--color-2) transparent;
@@ -682,8 +682,7 @@ prompt-interface {
       }
 
       + pre {
-        border-left: calc(var(--prompt-size-border-factor) * var(--size-unit))
-          solid;
+        border-left: calc(var(--prompt-border-factor) * var(--size-unit)) solid;
       }
 
       &:first-child {

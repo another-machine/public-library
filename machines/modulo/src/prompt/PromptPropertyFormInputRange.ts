@@ -41,8 +41,10 @@ export class PromptPropertyFormInputRange extends PromptPropertyFormInputBase {
     const max = this.getAttribute("max") || "100";
     const step = this.getAttribute("step") || "1";
     const value = this.getAttribute("value") || "";
+    const label = this.getAttribute("label") || "";
 
     this.innerHTML = `
+      ${label ? `<label>${label}</label>` : ""}
       <input type="number"
         min="${min}"
         max="${max}"

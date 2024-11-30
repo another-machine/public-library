@@ -54,7 +54,6 @@ export class Machine {
 
   constructor(initialParams: MachineParams & { element: HTMLElement }) {
     register();
-    this.theme = initialParams.theme;
     this.element = initialParams.element;
     this.mixer = new Mixer();
     this.midi = new MIDI(this.onMidiEvent.bind(this));
@@ -66,8 +65,6 @@ export class Machine {
     { theme, notes, clock, keyboard, sequencers }: MachineParams,
     firstPass = false
   ) {
-    this.theme = theme;
-
     this.stop();
 
     if (firstPass) {
@@ -111,7 +108,7 @@ export class Machine {
 
     if (firstPass) {
       this.renderer = new Renderer({
-        theme: this.theme,
+        theme,
         element: this.element,
         sequencers: this.sequencers,
         keyboard: this.keyboard,
@@ -119,7 +116,7 @@ export class Machine {
       });
     } else {
       this.renderer.update({
-        theme: this.theme,
+        theme,
         sequencers: this.sequencers,
         keyboard: this.keyboard,
       });
@@ -219,7 +216,7 @@ export class Machine {
 
   exportParams(): MachineParams {
     return {
-      theme: this.theme,
+      theme: this.renderer.theme,
       clock: this.clock.exportParams(),
       notes: this.notes.exportParams(),
       sequencers: this.sequencers.map((sequencers) =>
