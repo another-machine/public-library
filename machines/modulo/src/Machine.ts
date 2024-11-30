@@ -124,7 +124,6 @@ export class Machine {
         keyboard: this.keyboard,
       });
     }
-    console.log(this.sequencers);
     this.destination = Destinations.generateDestinations({
       machine: this,
       onExport: this.onExport.bind(this),
@@ -141,6 +140,9 @@ export class Machine {
         main: keyboard.main,
         ghosts: keyboard.ghosts,
       });
+
+      // TODO: close this by default? have button always visible besides escape?
+      this.promptInterface.toggle();
 
       this.sequencers.forEach((sequencer, i) => {
         if (sequencer.type === "SYNTH" && sequencers[i].type === "SYNTH") {
@@ -166,13 +168,10 @@ export class Machine {
 
     if (firstPass) {
       this.prompt = new Prompt({ destination: this.destination });
-      const promptInterface = document.createElement(
+      this.promptInterface = document.createElement(
         "prompt-interface"
       ) as PromptInterface;
-      promptInterface.initialize(this.element, this.prompt);
-      // TODO: close by default
-      promptInterface.toggle();
-      this.promptInterface = promptInterface;
+      this.promptInterface.initialize(this.element, this.prompt);
     } else {
       this.prompt.update({ destination: this.destination });
       this.promptInterface.reset(this.element);
@@ -186,7 +185,6 @@ export class Machine {
 
     this.midi.initialize();
     document.body.addEventListener("click", this.initialize.bind(this));
-    document.body.addEventListener("keyup", this.initialize.bind(this));
   }
 
   initialize() {
