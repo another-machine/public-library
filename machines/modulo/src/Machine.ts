@@ -243,15 +243,21 @@ export class Machine {
     });
   }
 
-  onExport() {
-    this.promptInterface.toggle();
-    const canvas = Stega64.encode({
-      source: this.renderer.snapshot(),
-      messages: [JSON.stringify(this.exportParams())],
-    });
-    canvas.className = "export";
-    canvas.addEventListener("click", (e) => canvas.remove());
-    document.body.appendChild(canvas);
+  onExport(type: "image" | "json" | "url") {
+    if (type === "image") {
+      this.promptInterface.toggle();
+      const canvas = Stega64.encode({
+        source: this.renderer.snapshot(),
+        messages: [JSON.stringify(this.exportParams())],
+      });
+      canvas.className = "export";
+      canvas.addEventListener("click", (e) => canvas.remove());
+      document.body.appendChild(canvas);
+    } else if (type === "json") {
+      console.log("json", JSON.stringify(this.exportParams()));
+    } else if (type === "url") {
+      console.log("url", JSON.stringify(this.exportParams()));
+    }
   }
 
   onModeChange() {

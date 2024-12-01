@@ -80,7 +80,7 @@ export function generateCoreDestination({
   onModeChange,
 }: {
   machine: Machine;
-  onExport: () => void;
+  onExport: (type: "image" | "json" | "url") => void;
   onToggleRainbow: () => boolean;
   onToggleMachine: () => boolean;
   onModeChange: () => void;
@@ -238,7 +238,7 @@ export function generateCoreDestination({
             image: new DestinationCommand({
               description: "Export as a Steganographic image.",
               onCommand: (_command, _args, _prompt) => {
-                onExport();
+                onExport("image");
                 const output = ["Exported settings!"];
                 return { valid: true, output };
               },
@@ -246,7 +246,7 @@ export function generateCoreDestination({
             json: new DestinationCommand({
               description: "Export as JSON.",
               onCommand: (_command, _args, _prompt) => {
-                onExport();
+                onExport("json");
                 const output = ["Exported settings!"];
                 return { valid: true, output };
               },
@@ -254,7 +254,7 @@ export function generateCoreDestination({
             url: new DestinationCommand({
               description: "Export as a url.",
               onCommand: (_command, _args, _prompt) => {
-                onExport();
+                onExport("url");
                 const output = ["Exported settings!"];
                 return { valid: true, output };
               },
