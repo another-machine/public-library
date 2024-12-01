@@ -133,6 +133,7 @@ export class Renderer {
     this.elementMain.appendChild(this.elementPads);
     this.elementMain.appendChild(this.elementKeys);
     this.handleStepsSizeChange();
+    this.refreshTheme();
   }
 
   updateThemeColors(

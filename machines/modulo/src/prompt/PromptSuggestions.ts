@@ -29,7 +29,7 @@ export class PromptSuggestions extends HTMLElement {
     filterText: string;
   }) {
     this.lastMatch = lastMatch;
-    this.innerHTML = "<button>&lt;</button>";
+    this.innerHTML = `<button>${currentKey ? "&lt;" : "&times;"}</button>`;
     this.back = this.querySelector("button")!;
     this.back.addEventListener("click", () => this.onBack());
 

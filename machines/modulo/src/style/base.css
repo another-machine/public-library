@@ -1,8 +1,43 @@
 body {
   background: var(--color-page);
   display: flex;
+  flex-direction: column;
   height: 100vh;
   margin: 0;
+}
+
+prompt-interface {
+  padding: calc(var(--interface-gap-y-factor) * var(--size-unit))
+    calc(var(--interface-gap-x-factor) * var(--size-unit));
+  width: 100%;
+
+  &.theme-key-undefined > prompt-suggestions > button:first-child {
+    display: none;
+  }
+}
+
+prompt-output {
+  display: none;
+}
+
+@media (min-width: 1024px) {
+  body {
+    flex-direction: row;
+  }
+
+  prompt-interface {
+    padding: calc(var(--prompt-gap-y-factor) * var(--size-unit))
+      calc(var(--prompt-gap-x-factor) * var(--size-unit));
+    width: min(calc(var(--prompt-width-factor) * var(--size-unit)), 100%);
+
+    &.theme-key-undefined > prompt-suggestions > button:first-child {
+      display: inline-flex;
+    }
+  }
+
+  prompt-output {
+    display: flex;
+  }
 }
 
 body,
@@ -26,14 +61,14 @@ canvas.export {
   top: 50%;
   transform: translate(-50%, -50%);
   width: min(80vw, 80vh);
-  z-index: 9999;
+  z-index: 99999999;
 }
 
 button#start {
   background: var(--color-background);
-  border: 1px solid var(--color-text);
   color: var(--color-text);
   font-size: 2rem;
   text-align: center;
+  height: 100%;
   width: 100%;
 }

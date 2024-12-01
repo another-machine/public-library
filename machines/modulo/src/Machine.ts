@@ -44,7 +44,6 @@ export class Machine {
   _initialize: () => void = () => {};
   initialized = false;
   element: HTMLElement;
-  theme: number;
   mixer: Mixer;
   midi: MIDI;
   clock!: Clock;
@@ -66,7 +65,6 @@ export class Machine {
   }
 
   update({ theme, core, keys, sequencers }: MachineParams, firstPass = false) {
-    this.theme = core.theme;
     this.stop();
 
     if (firstPass) {
@@ -216,7 +214,7 @@ export class Machine {
   exportParams(): MachineParams {
     return {
       core: {
-        theme: this.theme,
+        theme: this.renderer.core.theme,
         clock: this.clock.exportParams(),
         notes: this.notes.exportParams(),
       },

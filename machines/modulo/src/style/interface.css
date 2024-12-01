@@ -1,7 +1,7 @@
 main {
   display: flex;
-  flex: 3;
   flex-direction: column;
+  flex-grow: 1;
   gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
   height: 100%;
   overflow: visible;

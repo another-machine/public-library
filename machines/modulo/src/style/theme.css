@@ -41,6 +41,10 @@
     var(--color-page-lit) var(--color-page-chr)
       calc(var(--color-hue-base) + var(--color-page-hue)) / 1
   );
+  --color-page-overlay: oklch(
+    var(--color-page-lit) var(--color-page-chr)
+      calc(var(--color-hue-base) + var(--color-page-hue)) / 0.5
+  );
   --color-background: oklch(
     var(--color-background-lit) var(--color-background-chr)
       calc(var(--color-hue-base) + var(--color-background-hue)) / 1

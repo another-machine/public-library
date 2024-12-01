@@ -102,7 +102,9 @@ export class PromptInterface extends HTMLElement {
   }
 
   handleBack() {
-    if (this.filterBuffer) {
+    if (this.prompt.destinationKeys.length === 0) {
+      this.toggle();
+    } else if (this.filterBuffer) {
       this.filterBuffer = this.filterBuffer.slice(0, -1);
       this.updateSuggestions();
     } else {

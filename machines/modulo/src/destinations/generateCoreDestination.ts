@@ -39,18 +39,21 @@ function lchProperty(
   return new DestinationProperty({
     inputs: [
       {
+        label: "l",
         type: "range",
         min: 0,
         max: 1,
         initialValue: () => numericAsString(initialValue().l),
       },
       {
+        label: "c",
         type: "range",
         min: 0,
         max: 0.5,
         initialValue: () => numericAsString(initialValue().c),
       },
       {
+        label: "h",
         type: "range",
         min: 0,
         max: 360,
@@ -159,7 +162,7 @@ export function generateCoreDestination({
 
   return {
     machine: new Destination({
-      key: machine.theme.toString(),
+      key: machine.renderer.core.theme.toString(),
       info: {
         label: "Core configurations for the machine",
         content: () => formatJSON(machine.exportParams()),
@@ -174,8 +177,8 @@ export function generateCoreDestination({
           properties: {
             ...themeSelectorProperty(
               machine,
-              (value) => (machine.theme = value),
-              () => machine.theme.toString()
+              (value) => (machine.renderer.core.theme = value),
+              () => machine.renderer.core.theme.toString()
             ),
             key: new DestinationProperty({
               inputs: [
@@ -203,6 +206,7 @@ export function generateCoreDestination({
             tempo: new DestinationProperty({
               inputs: [
                 {
+                  label: "bpm",
                   type: "range",
                   min: 45,
                   max: 300,
@@ -210,6 +214,7 @@ export function generateCoreDestination({
                   initialValue: () => numericAsString(clock.getRate()),
                 },
                 {
+                  label: "swing",
                   type: "range",
                   min: 0,
                   max: 1,
@@ -266,7 +271,7 @@ export function generateCoreDestination({
           },
           destinations: {
             colors: new Destination({
-              key: machine.theme.toString(),
+              key: machine.renderer.core.theme.toString(),
               info: {
                 content: () => formatJSON(machine.exportParams().theme.colors),
               },

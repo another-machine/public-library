@@ -9,16 +9,13 @@ prompt-interface {
   gap: calc(var(--prompt-gap-y-factor) * var(--size-unit));
   justify-content: start;
   order: -1;
-  padding: calc(var(--prompt-gap-y-factor) * var(--size-unit))
-    calc(var(--prompt-gap-x-factor) * var(--size-unit));
-  width: min(calc(var(--prompt-width-factor) * var(--size-unit)), 100%);
-
-  > * {
-    width: 100%;
-  }
 
   &.open {
     display: flex;
+  }
+
+  > * {
+    width: 100%;
   }
 
   &,
@@ -300,7 +297,6 @@ prompt-interface {
 
   prompt-output {
     color: var(--color-text);
-    display: flex;
     flex-direction: column;
     flex: 1;
     min-height: 0;
