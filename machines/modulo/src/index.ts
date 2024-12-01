@@ -6,64 +6,13 @@ console.clear();
 
 new Machine({
   element: document.body,
-  theme: {
-    color: {
-      core: {
-        on: { l: 0.6, c: 0.45, h: 180 },
-        off: { l: 0.2, c: 0.03, h: 180 },
-        disabled: { l: 0.05, c: 0, h: 0 },
-      },
-      sequencers: {
-        lead: {
-          on: { l: 0.6, c: 0.45, h: 10 },
-          off: { l: 0.2, c: 0.03, h: 10 },
-          disabled: { l: 0.05, c: 0, h: 0 },
-        },
-        arp: {
-          on: { l: 0.6, c: 0.5, h: 105 },
-          off: { l: 0.21, c: 0.03, h: 105 },
-          disabled: { l: 0.05, c: 0, h: 0 },
-        },
-        bass: {
-          on: { l: 0.6, c: 0.45, h: 120 },
-          off: { l: 0.2, c: 0.03, h: 120 },
-          disabled: { l: 0.05, c: 0, h: 0 },
-        },
-        drums: {
-          on: { l: 0.6, c: 0.5, h: 290 },
-          off: { l: 0.2, c: 0.03, h: 290 },
-          disabled: { l: 0.05, c: 0, h: 0 },
-        },
-      },
-      keyboard: {
-        on: { l: 0.6, c: 0.43, h: 210 },
-        off: { l: 0.2, c: 0.03, h: 210 },
-        disabled: { l: 0.2, c: 0.03, h: 210 },
-      },
-      background: { l: 0, c: 0, h: 0 },
-      text: { l: 1, c: 0, h: 0 },
-    },
-    layout: {
-      interface: {
-        border: 0.1,
-        corner: 0.2,
-        gapX: 0.4,
-        gapY: 0.4,
-      },
-      prompt: {
-        border: 0.1,
-        corner: 0.2,
-        font: 1,
-        gapX: 0.4,
-        gapY: 0.4,
-        paddingX: 0.5,
-        paddingY: 0.5,
-      },
-    },
+  core: {
+    theme: 1,
+    notes: { root: "F#", mode: "locrian" },
+    clock: { tempo: 90, swing: 0 },
   },
-  notes: { root: "F#", mode: "locrian" },
-  clock: { tempo: 90, swing: 0 },
-  keyboard: {
+  keys: {
+    theme: 6,
     octave: 3,
     main: {
       volume: 0.1,
@@ -79,6 +28,7 @@ new Machine({
     {
       key: "lead",
       type: "SYNTH",
+      theme: 2,
       octave: 5,
       steps: {
         size: 12,
@@ -90,6 +40,7 @@ new Machine({
     {
       key: "arp",
       type: "SYNTH",
+      theme: 3,
       octave: 3,
       steps: {
         size: 12,
@@ -105,6 +56,7 @@ new Machine({
     {
       key: "bass",
       type: "SYNTH",
+      theme: 4,
       octave: 1,
       steps: {
         size: 12,
@@ -114,8 +66,9 @@ new Machine({
       synths: { volume: 0.1, settings: Synths.initialSettings, voices: 1 },
     },
     {
-      key: "drums",
+      key: "kit",
       type: "DRUM",
+      theme: 5,
       steps: {
         size: 12,
         max: 2,
@@ -137,4 +90,60 @@ new Machine({
       },
     },
   ],
+  theme: {
+    colors: [
+      {
+        a: { l: 1, c: 0, h: 0 },
+        b: { l: 0.2, c: 0, h: 0 },
+        c: { l: 0, c: 0, h: 0 },
+      },
+      {
+        a: { l: 0.6, c: 0.45, h: 180 },
+        b: { l: 0.2, c: 0.03, h: 180 },
+        c: { l: 0.05, c: 0, h: 0 },
+      },
+      {
+        a: { l: 0.6, c: 0.45, h: 10 },
+        b: { l: 0.2, c: 0.03, h: 10 },
+        c: { l: 0.05, c: 0, h: 0 },
+      },
+      {
+        a: { l: 0.6, c: 0.5, h: 105 },
+        b: { l: 0.21, c: 0.03, h: 105 },
+        c: { l: 0.05, c: 0, h: 0 },
+      },
+      {
+        a: { l: 0.6, c: 0.45, h: 120 },
+        b: { l: 0.2, c: 0.03, h: 120 },
+        c: { l: 0.05, c: 0, h: 0 },
+      },
+      {
+        a: { l: 0.6, c: 0.5, h: 290 },
+        b: { l: 0.2, c: 0.03, h: 290 },
+        c: { l: 0.05, c: 0, h: 0 },
+      },
+      {
+        a: { l: 0.6, c: 0.43, h: 210 },
+        b: { l: 0.2, c: 0.03, h: 210 },
+        c: { l: 0.2, c: 0.03, h: 210 },
+      },
+    ],
+    layout: {
+      interface: {
+        border: 0.1,
+        corner: 0.2,
+        gapX: 0.4,
+        gapY: 0.4,
+      },
+      prompt: {
+        border: 0.1,
+        corner: 0.2,
+        font: 1,
+        gapX: 0.4,
+        gapY: 0.4,
+        paddingX: 0.5,
+        paddingY: 0.5,
+      },
+    },
+  },
 });

@@ -2,9 +2,14 @@ import { Destinations } from "./Destinations";
 import { Machine } from "../Machine";
 import { DrumSequencer } from "../Sequencer";
 import { Time } from "tone/build/esm/core";
-import { numericAsString, timeOptions, validators } from "./utilities";
+import {
+  formatJSON,
+  numericAsString,
+  timeOptions,
+  validators,
+} from "./utilities";
 import { ConfigurableHat, ConfigurableKick, ConfigurableSnare } from "../Drums";
-import { synthVolumeProperty } from "./synthUtilities";
+import { synthVolumeProperty, themeSelectorProperty } from "./synthUtilities";
 import {
   Destination,
   DestinationCommand,
@@ -177,23 +182,28 @@ export function generateDrumsDestinations({
   sequencers: DrumSequencer[];
   machine: Machine;
   onStepChange: () => void;
-}): Destinations {
+}): { [destination: string]: Destination } {
   const destinations: { [destination: string]: Destination } = {};
   sequencers.forEach((sequencer) => {
     const drum = sequencer.drums;
     const key = sequencer.key;
     destinations[key] = new Destination({
-      key,
+      key: sequencer.theme.toString(),
       info: {
-        content: () => Destinations.formatJSON(sequencer.exportParams()),
+        content: () => formatJSON(sequencer.exportParams()),
       },
-      properties: {},
+      properties: {
+        ...themeSelectorProperty(
+          machine,
+          (value) => (sequencer.theme = value),
+          () => sequencer.theme.toString()
+        ),
+      },
 
       destinations: {
         steps: new Destination({
           info: {
-            content: () =>
-              Destinations.formatJSON(sequencer.steps.exportParams()),
+            content: () => formatJSON(sequencer.steps.exportParams()),
           },
           commands: {
             halve: new DestinationCommand({
@@ -224,8 +234,7 @@ export function generateDrumsDestinations({
           destinations: {
             random: new Destination({
               info: {
-                content: () =>
-                  Destinations.formatJSON(sequencer.steps.exportParams()),
+                content: () => formatJSON(sequencer.steps.exportParams()),
               },
               commands: {
                 sparse: new DestinationCommand({
@@ -280,8 +289,7 @@ export function generateDrumsDestinations({
         }),
         synths: new Destination({
           info: {
-            content: () =>
-              Destinations.formatJSON(sequencer.drums.exportParams()),
+            content: () => formatJSON(sequencer.drums.exportParams()),
           },
           properties: {
             ...synthVolumeProperty(() => drum),
@@ -290,9 +298,7 @@ export function generateDrumsDestinations({
             kick: new Destination({
               info: {
                 content: () =>
-                  Destinations.formatJSON(
-                    sequencer.drums.kit.kick.exportParams()
-                  ),
+                  formatJSON(sequencer.drums.kit.kick.exportParams()),
               },
               properties: {
                 ...synthVolumeProperty(() => sequencer.drums.kit.kick),
@@ -303,9 +309,7 @@ export function generateDrumsDestinations({
             snare: new Destination({
               info: {
                 content: () =>
-                  Destinations.formatJSON(
-                    sequencer.drums.kit.snare.exportParams()
-                  ),
+                  formatJSON(sequencer.drums.kit.snare.exportParams()),
               },
               properties: {
                 ...synthVolumeProperty(() => sequencer.drums.kit.snare),
@@ -316,9 +320,7 @@ export function generateDrumsDestinations({
             closed: new Destination({
               info: {
                 content: () =>
-                  Destinations.formatJSON(
-                    sequencer.drums.kit.closed.exportParams()
-                  ),
+                  formatJSON(sequencer.drums.kit.closed.exportParams()),
               },
               properties: {
                 ...synthVolumeProperty(() => sequencer.drums.kit.closed),
@@ -329,9 +331,7 @@ export function generateDrumsDestinations({
             open: new Destination({
               info: {
                 content: () =>
-                  Destinations.formatJSON(
-                    sequencer.drums.kit.open.exportParams()
-                  ),
+                  formatJSON(sequencer.drums.kit.open.exportParams()),
               },
               properties: {
                 ...synthVolumeProperty(() => sequencer.drums.kit.open),

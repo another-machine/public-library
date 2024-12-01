@@ -1,4 +1,5 @@
 import { Keyboard } from "./Keyboard";
+import { MachineCore } from "./Machine";
 import { Sequencer } from "./Sequencer";
 import { StepsSlot } from "./Steps";
 export type RendererEventType = "TAP" | "PRESS" | "RELEASE";
@@ -17,9 +18,9 @@ export interface RendererThemeLCH {
 }
 
 export interface RendererThemeColor {
-  on: RendererThemeLCH;
-  off: RendererThemeLCH;
-  disabled: RendererThemeLCH;
+  a: RendererThemeLCH;
+  b: RendererThemeLCH;
+  c: RendererThemeLCH;
 }
 
 export interface RendererThemeLayoutInterface {
@@ -39,13 +40,7 @@ export interface RendererThemeLayoutPrompt {
 }
 
 export interface RendererTheme {
-  color: {
-    core: RendererThemeColor;
-    sequencers: { [key: string]: RendererThemeColor };
-    keyboard: RendererThemeColor;
-    background: RendererThemeLCH;
-    text: RendererThemeLCH;
-  };
+  colors: RendererThemeColor[];
   layout: {
     prompt: RendererThemeLayoutPrompt;
     interface: RendererThemeLayoutInterface;
@@ -61,31 +56,35 @@ export class Renderer {
   elementRoot: HTMLElement;
   sequencerElements: { [key: string]: HTMLDivElement } = {};
   sequencers: Sequencer[] = [];
-  keyboard: Keyboard;
+  keys: Keyboard;
   elementKeys = document.createElement("div");
   elementPads = document.createElement("div");
   style = document.createElement("style");
   theme: RendererTheme;
+  core: MachineCore;
   rendererEventHandler: RendererEventHandler;
 
   constructor({
     theme,
+    core,
     element,
     sequencers,
-    keyboard,
+    keys,
     rendererEventHandler,
   }: {
     theme: RendererTheme;
+    core: MachineCore;
     element: HTMLElement;
     sequencers: Sequencer[];
-    keyboard: Keyboard;
+    keys: Keyboard;
     rendererEventHandler: RendererEventHandler;
   }) {
+    this.core = core;
     this.elementRoot = element;
     this.elementRoot.appendChild(this.elementMain);
     this.elementRoot.appendChild(this.style);
     this.sequencers = sequencers;
-    this.keyboard = keyboard;
+    this.keys = keys;
     this.setTheme(theme);
     this.rendererEventHandler = rendererEventHandler;
     this.initializeSequencers();
@@ -113,15 +112,18 @@ export class Renderer {
 
   update({
     theme,
+    core,
     sequencers,
-    keyboard,
+    keys,
   }: {
     theme: RendererTheme;
+    core: MachineCore;
     sequencers: Sequencer[];
-    keyboard: Keyboard;
+    keys: Keyboard;
   }) {
+    this.core = core;
     this.sequencers = sequencers;
-    this.keyboard = keyboard;
+    this.keys = keys;
     this.elementMain.innerHTML = "";
     this.elementRoot.appendChild(this.style);
     this.setTheme(theme);
@@ -131,17 +133,37 @@ export class Renderer {
     this.handleStepsSizeChange();
   }
 
-  updateThemeColor(string: string, value: RendererThemeLCH) {
+  updateThemeColors(
+    index: number,
+    type: "a" | "b" | "c",
+    value: RendererThemeLCH
+  ) {
     const theme = this.theme;
-    let object = theme.color;
-    const path = string.split(".");
-    path.forEach((k, i) => {
-      if (i === path.length - 1) {
-        object[k] = value;
-      } else {
-        object = object[k];
+    theme.colors[index][type] = value;
+    this.setTheme(theme);
+  }
+
+  removeThemeColors(index: number) {
+    const theme = this.theme;
+    this.sequencers.forEach((sequencer) => {
+      if (sequencer.theme === index) {
+        sequencer.theme = 0;
       }
     });
+    if (this.keys.theme === index) {
+      this.keys.theme = 0;
+    }
+    if (this.core.theme === index) {
+      this.core.theme = 0;
+    }
+    theme.colors.splice(index, 1);
+    this.setTheme(theme);
+    this.refreshTheme();
+  }
+
+  duplicateThemeColors(index: number) {
+    const theme = this.theme;
+    theme.colors.push({ ...theme.colors[index] });
     this.setTheme(theme);
   }
 
@@ -172,20 +194,12 @@ export class Renderer {
       setProperty(`--color-${prefix.join("-")}-hue`, color.h);
     }
 
-    const themeColorKeys: (keyof RendererThemeColor)[] = [
-      "on",
-      "off",
-      "disabled",
-    ];
-    themeColorKeys.forEach((type) => {
-      setColor(["core", type], theme.color.core[type]);
-      setColor(["keyboard", type], theme.color.keyboard[type]);
-      for (let key in theme.color.sequencers) {
-        setColor(["sequencer", key, type], theme.color.sequencers[key][type]);
+    theme.colors.forEach((color, i) => {
+      for (let item in color) {
+        setColor([i.toString(), item], theme.colors[i][item]);
       }
+      this.addTheme(`theme-key-${i}`, `${i}`);
     });
-    setColor(["background"], theme.color.background);
-    setColor(["text"], theme.color.text);
 
     setProperty("--prompt-corner-factor", theme.layout.prompt.corner);
     setProperty("--prompt-gap-x-factor", theme.layout.prompt.gapX);
@@ -215,7 +229,7 @@ export class Renderer {
   }
 
   addTheme(themeClassName: string, propertyPrefix: string) {
-    const properties = ["off", "on", "disabled"].flatMap((type) =>
+    const properties = ["b", "a", "c"].flatMap((type) =>
       ["lit", "chr", "hue"].map(
         (lch) =>
           `--color-${type}-${lch}: var(--color-${propertyPrefix}-${type}-${lch})`
@@ -224,14 +238,25 @@ export class Renderer {
     this.style.innerHTML += `.${themeClassName} { ${properties.join("; ")} } `;
   }
 
-  initializeSequencers() {
+  refreshTheme() {
     this.sequencers.forEach((sequencer) => {
-      const element = document.createElement("div");
-      this.addTheme(`theme-key-${sequencer.key}`, `sequencer-${sequencer.key}`);
+      const element = this.sequencerElements[sequencer.key];
       element.id = `sequencer-${sequencer.key}`;
       element.className = `sequencer sequencer-${
         sequencer.isDrum() ? "drum" : "synth"
-      } theme-key-${sequencer.key}`;
+      } theme-key-${sequencer.theme}`;
+    });
+    this.elementKeys.classList.add(`theme-key-${this.keys.theme}`);
+    this.elementPads.classList.add(`theme-key-${this.core.theme}`);
+  }
+
+  initializeSequencers() {
+    this.sequencers.forEach((sequencer) => {
+      const element = document.createElement("div");
+      element.id = `sequencer-${sequencer.key}`;
+      element.className = `sequencer sequencer-${
+        sequencer.isDrum() ? "drum" : "synth"
+      } theme-key-${sequencer.theme}`;
       this.elementMain.appendChild(element);
       this.sequencerElements[sequencer.key] = element;
     });
@@ -239,8 +264,7 @@ export class Renderer {
 
   initializeKeys() {
     this.elementKeys.id = "keys";
-    this.elementKeys.classList.add("theme-key-keyboard");
-    this.addTheme("theme-key-keyboard", "keyboard");
+    this.elementKeys.classList.add(`theme-key-${this.keys.theme}`);
     for (let i = 0; i < 24; i++) {
       const key = document.createElement("button");
       key.addEventListener("click", () => {
@@ -277,8 +301,7 @@ export class Renderer {
 
   initializePads() {
     this.elementPads.id = "pads";
-    this.elementPads.classList.add("theme-key-core");
-    this.addTheme("theme-key-core", "core");
+    this.elementPads.classList.add(`theme-key-${this.core.theme}`);
     for (let i = 0; i < 8; i++) {
       const pad = this.createButton("TAP", "PADS", i);
       this.elementPads.appendChild(pad);
@@ -390,7 +413,7 @@ export class Renderer {
 
   updateKeyboard() {
     const { stepsForScale, stepsForInterval, stepsForRoot } =
-      this.keyboard.notes.currentModeSteps();
+      this.keys.notes.currentModeSteps();
     this.elementKeys
       .querySelectorAll("[step]")
       .forEach((a) => a.removeAttribute("step"));
@@ -412,7 +435,7 @@ export class Renderer {
   }
 
   updateKeyboardActives() {
-    const { mainStep, ghostSteps } = this.keyboard;
+    const { mainStep, ghostSteps } = this.keys;
     this.elementKeys
       .querySelectorAll("[active]")
       .forEach((a) => a.removeAttribute("active"));

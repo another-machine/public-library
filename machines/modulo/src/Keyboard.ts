@@ -4,6 +4,7 @@ import { Synths, ConfigurableSynthParams } from "./Synths";
 
 export interface KeyboardParams {
   octave: number;
+  theme: number;
   main: { volume: number; settings: ConfigurableSynthParams };
   ghosts: {
     volume: number;
@@ -14,6 +15,7 @@ export interface KeyboardParams {
 
 export class Keyboard {
   notes: Notes;
+  theme: number;
   octave: number;
   main: Synths;
   ghosts: Synths;
@@ -23,16 +25,19 @@ export class Keyboard {
   ghostSteps: number[] = [];
 
   constructor({
+    theme,
     notes,
     main,
     ghosts,
     octave,
   }: {
+    theme: number;
     notes: Notes;
     main: Synths;
     ghosts: Synths;
     octave: number;
   }) {
+    this.theme = theme;
     this.notes = notes;
     this.main = main;
     this.ghosts = ghosts;
@@ -57,6 +62,7 @@ export class Keyboard {
 
   exportParams(): KeyboardParams {
     return {
+      theme: this.theme,
       octave: this.octave,
       main: this.main.exportParams(),
       ghosts: this.ghosts.exportParams(),

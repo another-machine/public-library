@@ -8,84 +8,71 @@ import {
   synthProperties,
   synthDestinations,
   synthVolumeProperty,
+  themeSelectorProperty,
 } from "./synthUtilities";
-import { validators } from "./utilities";
+import { formatJSON, validators } from "./utilities";
 
 export function generateKeyboardDestinations({
-  keyboard,
+  keys,
   machine,
   clock: _clock,
 }: {
-  keyboard: Keyboard;
+  keys: Keyboard;
   machine: Machine;
   clock: Clock;
-}): Destinations {
+}): { [destination: string]: Destination } {
   const destinations: { [destination: string]: Destination } = {};
-  destinations.keyboard = new Destination({
-    key: "keyboard",
+  destinations.keys = new Destination({
+    key: keys.theme.toString(),
     info: {
-      content: () => Destinations.formatJSON(keyboard.exportParams()),
+      content: () => formatJSON(keys.exportParams()),
     },
     destinations: {
       main: new Destination({
         info: {
-          content: () =>
-            Destinations.formatJSON(keyboard.main.exportParams(), 4),
+          content: () => formatJSON(keys.main.exportParams(), 4),
         },
-        properties: { ...synthVolumeProperty(() => keyboard.main) },
+        properties: { ...synthVolumeProperty(() => keys.main) },
         destinations: {
           a: new Destination({
             info: {
-              content: () =>
-                Destinations.formatJSON(
-                  keyboard.main.exportParams().settings.a
-                ),
+              content: () => formatJSON(keys.main.exportParams().settings.a),
             },
-            commands: synthsCommands(keyboard.main, true, false),
-            properties: synthProperties(keyboard.main, true, false),
-            destinations: synthDestinations(keyboard.main, true, false),
+            commands: synthsCommands(keys.main, true, false),
+            properties: synthProperties(keys.main, true, false),
+            destinations: synthDestinations(keys.main, true, false),
           }),
           b: new Destination({
             info: {
-              content: () =>
-                Destinations.formatJSON(
-                  keyboard.main.exportParams().settings.b
-                ),
+              content: () => formatJSON(keys.main.exportParams().settings.b),
             },
-            commands: synthsCommands(keyboard.main, false, true),
-            properties: synthProperties(keyboard.main, false, true),
-            destinations: synthDestinations(keyboard.main, false, true),
+            commands: synthsCommands(keys.main, false, true),
+            properties: synthProperties(keys.main, false, true),
+            destinations: synthDestinations(keys.main, false, true),
           }),
         },
       }),
       ghosts: new Destination({
         info: {
-          content: () =>
-            Destinations.formatJSON(keyboard.ghosts.exportParams(), 4),
+          content: () => formatJSON(keys.ghosts.exportParams(), 4),
         },
-        properties: { ...synthVolumeProperty(() => keyboard.ghosts) },
+        properties: { ...synthVolumeProperty(() => keys.ghosts) },
         destinations: {
           a: new Destination({
             info: {
-              content: () =>
-                Destinations.formatJSON(
-                  keyboard.ghosts.exportParams().settings.a
-                ),
+              content: () => formatJSON(keys.ghosts.exportParams().settings.a),
             },
-            commands: synthsCommands(keyboard.ghosts, true, false),
-            properties: synthProperties(keyboard.ghosts, true, false),
-            destinations: synthDestinations(keyboard.ghosts, true, false),
+            commands: synthsCommands(keys.ghosts, true, false),
+            properties: synthProperties(keys.ghosts, true, false),
+            destinations: synthDestinations(keys.ghosts, true, false),
           }),
           b: new Destination({
             info: {
-              content: () =>
-                Destinations.formatJSON(
-                  keyboard.ghosts.exportParams().settings.b
-                ),
+              content: () => formatJSON(keys.ghosts.exportParams().settings.b),
             },
-            commands: synthsCommands(keyboard.ghosts, false, true),
-            properties: synthProperties(keyboard.ghosts, false, true),
-            destinations: synthDestinations(keyboard.ghosts, false, true),
+            commands: synthsCommands(keys.ghosts, false, true),
+            properties: synthProperties(keys.ghosts, false, true),
+            destinations: synthDestinations(keys.ghosts, false, true),
           }),
         },
       }),
@@ -98,17 +85,22 @@ export function generateKeyboardDestinations({
             min: 0,
             max: 7,
             step: 1,
-            initialValue: () => keyboard.octave.toString(),
+            initialValue: () => keys.octave.toString(),
           },
         ],
         onSet: (_command, [value]) => {
           const valid = validators.octave(value);
           if (valid) {
-            keyboard.octave = parseInt(value);
+            keys.octave = parseInt(value);
           }
           return { valid };
         },
       }),
+      ...themeSelectorProperty(
+        machine,
+        (value) => (keys.theme = value),
+        () => keys.theme.toString()
+      ),
     },
   });
   return destinations;

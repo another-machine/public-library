@@ -2,12 +2,18 @@ import { Time } from "tone";
 import { Destinations } from "./Destinations";
 import { Machine } from "../Machine";
 import { SynthSequencer } from "../Sequencer";
-import { validators, numericAsString, timeOptions } from "./utilities";
+import {
+  validators,
+  numericAsString,
+  timeOptions,
+  formatJSON,
+} from "./utilities";
 import {
   synthDestinations,
   synthProperties,
   synthsCommands,
   synthVolumeProperty,
+  themeSelectorProperty,
 } from "./synthUtilities";
 import {
   Destination,
@@ -23,15 +29,15 @@ export function generateSynthsDestinations({
   sequencers: SynthSequencer[];
   machine: Machine;
   onStepChange: () => void;
-}): Destinations {
+}): { [destination: string]: Destination } {
   const destinations: { [destination: string]: Destination } = {};
   sequencers.forEach((sequencer) => {
     const synth = sequencer.synths;
     const key = sequencer.key;
     destinations[key] = new Destination({
-      key,
+      key: sequencer.theme.toString(),
       info: {
-        content: () => Destinations.formatJSON(sequencer.exportParams(), 4),
+        content: () => formatJSON(sequencer.exportParams(), 4),
       },
       properties: {
         octave: new DestinationProperty({
@@ -52,13 +58,17 @@ export function generateSynthsDestinations({
             return { valid };
           },
         }),
+        ...themeSelectorProperty(
+          machine,
+          (value) => (sequencer.theme = value),
+          () => sequencer.theme.toString()
+        ),
       },
 
       destinations: {
         steps: new Destination({
           info: {
-            content: () =>
-              Destinations.formatJSON(sequencer.steps.exportParams()),
+            content: () => formatJSON(sequencer.steps.exportParams()),
           },
           commands: {
             halve: new DestinationCommand({
@@ -89,8 +99,7 @@ export function generateSynthsDestinations({
           destinations: {
             random: new Destination({
               info: {
-                content: () =>
-                  Destinations.formatJSON(sequencer.steps.exportParams()),
+                content: () => formatJSON(sequencer.steps.exportParams()),
               },
               commands: {
                 sparse: new DestinationCommand({
@@ -147,15 +156,14 @@ export function generateSynthsDestinations({
           info: {
             content: () => {
               const settings = synth.exportParams();
-              return Destinations.formatJSON(settings);
+              return formatJSON(settings);
             },
           },
           properties: { ...synthVolumeProperty(() => synth) },
           destinations: {
             a: new Destination({
               info: {
-                content: () =>
-                  Destinations.formatJSON(synth.exportParams().settings.a),
+                content: () => formatJSON(synth.exportParams().settings.a),
               },
               commands: synthsCommands(synth, true, false),
               properties: synthProperties(synth, true, false),
@@ -163,8 +171,7 @@ export function generateSynthsDestinations({
             }),
             b: new Destination({
               info: {
-                content: () =>
-                  Destinations.formatJSON(synth.exportParams().settings.b),
+                content: () => formatJSON(synth.exportParams().settings.b),
               },
               commands: synthsCommands(synth, false, true),
               properties: synthProperties(synth, false, true),
@@ -174,8 +181,7 @@ export function generateSynthsDestinations({
         }),
         effects: new Destination({
           info: {
-            content: () =>
-              Destinations.formatJSON(synth.exportParams().settings.delay),
+            content: () => formatJSON(synth.exportParams().settings.delay),
           },
           properties: {
             delay: new DestinationProperty({

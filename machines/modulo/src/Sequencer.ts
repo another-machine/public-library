@@ -3,10 +3,11 @@ import { Mixer } from "./Mixer";
 import { Steps, StepsParams } from "./Steps";
 import { Synths, ConfigurableSynthParams, SynthsParams } from "./Synths";
 
-type SequencerBaseProps = { key: string; steps: Steps };
+type SequencerBaseProps = { theme: number; key: string; steps: Steps };
 
 interface SharedSequencerParams {
   key: string;
+  theme: number;
   steps: StepsParams;
 }
 interface DrumSequencerParams extends SharedSequencerParams {
@@ -19,15 +20,20 @@ interface SynthSequencerParams extends SharedSequencerParams {
   type: "SYNTH";
 }
 
-export type SequencerParams = DrumSequencerParams | SynthSequencerParams;
+export type SequencerParams = { theme: number } & (
+  | DrumSequencerParams
+  | SynthSequencerParams
+);
 
 class SequencerBase {
   key: string;
   steps: Steps;
+  theme: number;
 
-  constructor({ key, steps }: SequencerBaseProps) {
+  constructor({ key, steps, theme }: SequencerBaseProps) {
     this.key = key;
     this.steps = steps;
+    this.theme = theme;
   }
 
   initialize(_args: { volume: number; mixer: Mixer }) {}
@@ -36,6 +42,7 @@ class SequencerBase {
 
   exportParamsShared(): SharedSequencerParams {
     return {
+      theme: this.theme,
       key: this.key,
       steps: this.steps.exportParams(),
     };
@@ -46,8 +53,13 @@ export class DrumSequencer extends SequencerBase {
   drums: Drums;
   type: "DRUM" = "DRUM";
 
-  constructor({ key, steps, drums }: SequencerBaseProps & { drums: Drums }) {
-    super({ key, steps });
+  constructor({
+    key,
+    steps,
+    theme,
+    drums,
+  }: SequencerBaseProps & { drums: Drums }) {
+    super({ key, steps, theme });
     this.drums = drums;
   }
 
@@ -93,9 +105,10 @@ export class SynthSequencer extends SequencerBase {
     key,
     octave,
     steps,
+    theme,
     synths,
   }: SequencerBaseProps & { octave: number; synths: Synths }) {
-    super({ key, steps });
+    super({ key, steps, theme });
     this.octave = octave;
     this.synths = synths;
   }

@@ -1,18 +1,15 @@
 import { Destinations } from "./Destinations";
 import { Machine } from "../Machine";
 import { ROOTS, MODES } from "../Notes";
-import {
-  RendererThemeLCH,
-  RendererThemeLayoutInterface,
-  RendererThemeLayoutPrompt,
-} from "../Renderer";
+import { RendererThemeLCH } from "../Renderer";
 import {
   Destination,
   DestinationCommand,
   DestinationProperty,
   DestinationPropertyInput,
 } from "./Destination";
-import { numericAsString, validators } from "./utilities";
+import { formatJSON, numericAsString, validators } from "./utilities";
+import { themeSelectorProperty } from "./synthUtilities";
 
 function propertyGeneratorLayoutRange(
   machine: Machine,
@@ -85,8 +82,8 @@ export function generateCoreDestination({
   onToggleRainbow: () => boolean;
   onToggleMachine: () => boolean;
   onModeChange: () => void;
-}): Destinations {
-  const { clock, notes, sequencers } = machine;
+}): { [destination: string]: Destination } {
+  const { clock, notes, sequencers, renderer } = machine;
   const commands = {
     toggle: new DestinationCommand({
       description: "Toggle the clock state on or off",
@@ -104,40 +101,56 @@ export function generateCoreDestination({
     }),
   };
 
-  const sequencerColorDestinations = {};
-  sequencers.forEach((sequencer) => {
-    const key = sequencer.key;
-    sequencerColorDestinations[key] = new Destination({
-      key,
+  const colorDestinations = renderer.theme.colors.reduce<{
+    [k: string]: Destination;
+  }>((into, color, i) => {
+    into[i] = new Destination({
+      key: i.toString(),
       info: {
-        label: `Color settings for ${key}`,
-        content: () =>
-          Destinations.formatJSON(
-            machine.exportParams().theme.color.sequencers[key]
-          ),
+        content: () => formatJSON(machine.exportParams().theme.colors[i]),
       },
+      commands: {
+        dupe: new DestinationCommand({
+          description: "Duplicate the color",
+          onCommand: (_command, _args, _prompt) => {
+            machine.renderer.duplicateThemeColors(i);
+            machine.promptInterface.handleBack();
+            machine.destinations.refresh();
+            return { valid: true };
+          },
+        }),
+        ...(i > 0
+          ? {
+              delete: new DestinationCommand({
+                description: "Delete the color",
+                onCommand: (_command, _args, _prompt) => {
+                  machine.renderer.removeThemeColors(i);
+                  machine.promptInterface.handleBack();
+                  machine.destinations.refresh();
+                  return { valid: true };
+                },
+              }),
+            }
+          : {}),
+      },
+
       properties: {
-        on: lchProperty(
-          () => machine.exportParams().theme.color.sequencers[key].on,
-          (settings) =>
-            machine.renderer.updateThemeColor(`sequencers.${key}.on`, settings)
+        a: lchProperty(
+          () => machine.exportParams().theme.colors[i].a,
+          (settings) => machine.renderer.updateThemeColors(i, "a", settings)
         ),
-        off: lchProperty(
-          () => machine.exportParams().theme.color.sequencers[key].off,
-          (settings) =>
-            machine.renderer.updateThemeColor(`sequencers.${key}.off`, settings)
+        b: lchProperty(
+          () => machine.exportParams().theme.colors[i].b,
+          (settings) => machine.renderer.updateThemeColors(i, "b", settings)
         ),
-        disabled: lchProperty(
-          () => machine.exportParams().theme.color.sequencers[key].disabled,
-          (settings) =>
-            machine.renderer.updateThemeColor(
-              `sequencers.${key}.disabled`,
-              settings
-            )
+        c: lchProperty(
+          () => machine.exportParams().theme.colors[i].c,
+          (settings) => machine.renderer.updateThemeColors(i, "c", settings)
         ),
       },
     });
-  });
+    return into;
+  }, {});
 
   const layoutInterfaceProperty = propertyGeneratorLayoutRange(
     machine,
@@ -146,18 +159,79 @@ export function generateCoreDestination({
   const layoutPromptProperty = propertyGeneratorLayoutRange(machine, "prompt");
 
   return {
-    core: new Destination({
-      key: "core",
+    machine: new Destination({
+      key: machine.theme.toString(),
       info: {
         label: "Core configurations for the machine",
-        content: () => Destinations.formatJSON(machine.exportParams()),
+        content: () => formatJSON(machine.exportParams()),
       },
       commands,
       destinations: {
+        core: new Destination({
+          info: {
+            label: "Core properties",
+            content: () => formatJSON(machine.exportParams().core),
+          },
+          properties: {
+            ...themeSelectorProperty(
+              machine,
+              (value) => (machine.theme = value),
+              () => machine.theme.toString()
+            ),
+            key: new DestinationProperty({
+              inputs: [
+                {
+                  type: "select",
+                  initialValue: () => notes.getRoot(),
+                  options: ROOTS,
+                },
+                {
+                  type: "select",
+                  initialValue: () => notes.getMode().type,
+                  options: MODES,
+                },
+              ],
+              onSet: (_command, [root, mode]) => {
+                const valid = validators.mode(mode) && validators.root(root);
+                if (valid) {
+                  notes.setMode(mode);
+                  notes.setRoot(root);
+                  onModeChange();
+                }
+                return { valid };
+              },
+            }),
+            tempo: new DestinationProperty({
+              inputs: [
+                {
+                  type: "range",
+                  min: 45,
+                  max: 300,
+                  step: 1,
+                  initialValue: () => numericAsString(clock.getRate()),
+                },
+                {
+                  type: "range",
+                  min: 0,
+                  max: 1,
+                  initialValue: () => numericAsString(clock.getSwing()),
+                },
+              ],
+              onSet: (_command, [rate, swing]) => {
+                const valid = validators.bpm(rate) && validators.swing(swing);
+                if (valid) {
+                  clock.setRate(parseInt(rate));
+                  clock.setSwing(parseFloat(swing));
+                }
+                return { valid };
+              },
+            }),
+          },
+        }),
         save: new Destination({
           info: {
             label: "Save current state of the machine",
-            content: () => Destinations.formatJSON(machine.exportParams()),
+            content: () => formatJSON(machine.exportParams()),
           },
           commands: {
             image: new DestinationCommand({
@@ -187,107 +261,22 @@ export function generateCoreDestination({
           },
         }),
         theme: new Destination({
-          key: "core",
           info: {
             label: "Theme settings for the machine",
-            content: () =>
-              Destinations.formatJSON(machine.exportParams().theme),
+            content: () => formatJSON(machine.exportParams().theme),
           },
           destinations: {
-            color: new Destination({
-              key: "core",
+            colors: new Destination({
+              key: machine.theme.toString(),
               info: {
-                content: () =>
-                  Destinations.formatJSON(machine.exportParams().theme.color),
+                content: () => formatJSON(machine.exportParams().theme.colors),
               },
-              destinations: {
-                ...sequencerColorDestinations,
-                keyboard: new Destination({
-                  key: "keyboard",
-                  info: {
-                    label: "Color settings for the keyboard",
-                    content: () =>
-                      Destinations.formatJSON(
-                        machine.exportParams().theme.color.keyboard
-                      ),
-                  },
-                  properties: {
-                    on: lchProperty(
-                      () => machine.exportParams().theme.color.keyboard.on,
-                      (settings) =>
-                        machine.renderer.updateThemeColor(
-                          "keyboard.on",
-                          settings
-                        )
-                    ),
-                    off: lchProperty(
-                      () => machine.exportParams().theme.color.keyboard.off,
-                      (settings) =>
-                        machine.renderer.updateThemeColor(
-                          "keyboard.off",
-                          settings
-                        )
-                    ),
-                    disabled: lchProperty(
-                      () =>
-                        machine.exportParams().theme.color.keyboard.disabled,
-                      (settings) =>
-                        machine.renderer.updateThemeColor(
-                          "keyboard.disabled",
-                          settings
-                        )
-                    ),
-                  },
-                }),
-                core: new Destination({
-                  key: "core",
-                  info: {
-                    label: "Color settings for the core",
-                    content: () =>
-                      Destinations.formatJSON(
-                        machine.exportParams().theme.color.core
-                      ),
-                  },
-                  properties: {
-                    on: lchProperty(
-                      () => machine.exportParams().theme.color.core.on,
-                      (settings) =>
-                        machine.renderer.updateThemeColor("core.on", settings)
-                    ),
-                    off: lchProperty(
-                      () => machine.exportParams().theme.color.core.off,
-                      (settings) =>
-                        machine.renderer.updateThemeColor("core.off", settings)
-                    ),
-                    disabled: lchProperty(
-                      () => machine.exportParams().theme.color.core.disabled,
-                      (settings) =>
-                        machine.renderer.updateThemeColor(
-                          "core.disabled",
-                          settings
-                        )
-                    ),
-                  },
-                }),
-              },
-              properties: {
-                background: lchProperty(
-                  () => machine.exportParams().theme.color.background,
-                  (settings) =>
-                    machine.renderer.updateThemeColor("background", settings)
-                ),
-                text: lchProperty(
-                  () => machine.exportParams().theme.color.text,
-                  (settings) =>
-                    machine.renderer.updateThemeColor("text", settings)
-                ),
-              },
+              destinations: colorDestinations,
             }),
             layout: new Destination({
               info: {
                 label: "Layout theme settings",
-                content: () =>
-                  Destinations.formatJSON(machine.exportParams().theme.layout),
+                content: () => formatJSON(machine.exportParams().theme.layout),
               },
               properties: {
                 interface: new DestinationProperty({
@@ -342,56 +331,6 @@ export function generateCoreDestination({
                 }),
               },
             }),
-          },
-        }),
-      },
-      properties: {
-        key: new DestinationProperty({
-          inputs: [
-            {
-              type: "select",
-              initialValue: () => notes.getRoot(),
-              options: ROOTS,
-            },
-            {
-              type: "select",
-              initialValue: () => notes.getMode().type,
-              options: MODES,
-            },
-          ],
-          onSet: (_command, [root, mode]) => {
-            const valid = validators.mode(mode) && validators.root(root);
-            if (valid) {
-              notes.setMode(mode);
-              notes.setRoot(root);
-              onModeChange();
-            }
-            return { valid };
-          },
-        }),
-        tempo: new DestinationProperty({
-          inputs: [
-            {
-              type: "range",
-              min: 45,
-              max: 300,
-              step: 1,
-              initialValue: () => numericAsString(clock.getRate()),
-            },
-            {
-              type: "range",
-              min: 0,
-              max: 1,
-              initialValue: () => numericAsString(clock.getSwing()),
-            },
-          ],
-          onSet: (_command, [rate, swing]) => {
-            const valid = validators.bpm(rate) && validators.swing(swing);
-            if (valid) {
-              clock.setRate(parseInt(rate));
-              clock.setSwing(parseFloat(swing));
-            }
-            return { valid };
           },
         }),
       },

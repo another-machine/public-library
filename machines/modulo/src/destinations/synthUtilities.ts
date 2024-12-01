@@ -15,7 +15,9 @@ import {
   DestinationProperty,
   DestinationCommand,
 } from "./Destination";
-import { numericAsString, validators } from "./utilities";
+import { formatJSON, numericAsString, validators } from "./utilities";
+import { Sequencer } from "../Sequencer";
+import { Machine } from "../Machine";
 
 export function synthVolumeProperty(
   loader: () =>
@@ -45,11 +47,34 @@ export function synthVolumeProperty(
   };
 }
 
+export const themeSelectorProperty = (
+  machine: Machine,
+  set: (theme: number) => void,
+  get: () => string
+) => ({
+  theme: new DestinationProperty({
+    inputs: [
+      {
+        type: "select",
+        options: machine.renderer.theme.colors.map((_, i) => i.toString()),
+        initialValue: get,
+      },
+    ],
+    onSet: (_command, [value]) => {
+      set(parseInt(value));
+      machine.renderer.refreshTheme();
+      machine.promptInterface.updateTheme(value);
+      machine.destinations.refresh();
+      return { valid: true };
+    },
+  }),
+});
+
 export const synthDestinations = (synths: Synths, a: boolean, b: boolean) => ({
   envelope: new Destination({
     info: {
       content: () =>
-        Destinations.formatJSON(
+        formatJSON(
           synths.voices[0].exportParams()[a ? "a" : "b"].options.envelope
         ),
     },

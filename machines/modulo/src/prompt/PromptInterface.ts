@@ -104,7 +104,7 @@ export class PromptInterface extends HTMLElement {
     this.updateSuggestions();
   }
 
-  private handleBack() {
+  handleBack() {
     if (this.filterBuffer) {
       this.filterBuffer = this.filterBuffer.slice(0, -1);
       this.updateSuggestions();
@@ -158,10 +158,7 @@ export class PromptInterface extends HTMLElement {
     const output = this.prompt.getNextSuggestions(this.filterBuffer);
     const key = this.prompt.lastDestinationKey;
 
-    this.className = this.className.replace(/theme-key-[^ ]+/, "");
-    if (key !== undefined) {
-      this.classList.add(`theme-key-${key}`);
-    }
+    this.updateTheme(`${key}`);
 
     this.suggestions.update({
       suggestions: output.suggestions,
@@ -200,5 +197,12 @@ export class PromptInterface extends HTMLElement {
 
   public renderDestinationInfo() {
     this.output.update(this.prompt.currentDestination.info);
+  }
+
+  public updateTheme(theme: string) {
+    this.className = this.className.replace(/theme-key-[^ ]+/, "");
+    if (theme !== undefined) {
+      this.classList.add(`theme-key-${theme}`);
+    }
   }
 }

@@ -11,26 +11,33 @@
   --interface-gap-y-factor: 0.4;
 
   --color-hue-base: 0;
-  --color-on-lit: 1;
-  --color-on-chr: 0;
-  --color-on-hue: 0;
-  --color-off-lit: 0;
-  --color-off-chr: 0;
-  --color-off-hue: 0;
-  --color-disabled-lit: 0;
-  --color-disabled-chr: 0;
-  --color-disabled-hue: 0;
+  --color-a-lit: 1;
+  --color-a-chr: 0;
+  --color-a-hue: 0;
+  --color-b-lit: 0;
+  --color-b-chr: 0;
+  --color-b-hue: 0;
+  --color-c-lit: 0;
+  --color-c-chr: 0;
+  --color-c-hue: 0;
 
-  --color-background-lit: 0;
-  --color-background-chr: 0;
-  --color-background-hue: 0;
-  --color-text-lit: 1;
-  --color-text-chr: 0;
-  --color-text-hue: 0;
+  --color-page-lit: var(--color-0-c-lit, 0);
+  --color-page-chr: var(--color-0-c-chr, 0);
+  --color-page-hue: var(--color-0-c-hue, 0);
+  --color-background-lit: var(--color-0-off-lit, 0);
+  --color-background-chr: var(--color-0-off-chr, 0);
+  --color-background-hue: var(--color-0-off-hue, 0);
+  --color-text-lit: var(--color-0-on-lit, 1);
+  --color-text-chr: var(--color-0-on-chr, 0);
+  --color-text-hue: var(--color-0-on-hue, 0);
 
   --outline-offset: 2px;
   --outline-width: 2px;
 
+  --color-page: oklch(
+    var(--color-page-lit) var(--color-page-chr)
+      calc(var(--color-hue-base) + var(--color-page-hue)) / 1
+  );
   --color-background: oklch(
     var(--color-background-lit) var(--color-background-chr)
       calc(var(--color-hue-base) + var(--color-background-hue)) / 1
@@ -53,7 +60,7 @@ button {
 }
 
 body {
-  background: var(--color-background);
+  background: var(--color-page);
   display: flex;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
@@ -99,9 +106,9 @@ button:focus-visible {
 .sequencer button,
 #keys button,
 #pads button {
-  --button-lit: var(--color-disabled-lit);
-  --button-chr: var(--color-disabled-chr);
-  --button-hue: var(--color-disabled-hue);
+  --button-lit: var(--color-c-lit);
+  --button-chr: var(--color-c-chr);
+  --button-hue: var(--color-c-hue);
 
   --background-color: oklch(
     var(--button-lit) var(--button-chr)
@@ -146,46 +153,46 @@ button:focus-visible {
   &[active],
   &[state] {
     --button-lit: calc(
-      var(--color-off-lit) + (var(--color-on-lit) - var(--color-off-lit)) *
-        var(--color-on-amount)
+      var(--color-b-lit) + (var(--color-a-lit) - var(--color-b-lit)) *
+        var(--color-a-amount)
     );
     --button-chr: calc(
-      var(--color-off-chr) + (var(--color-on-chr) - var(--color-off-chr)) *
-        var(--color-on-amount)
+      var(--color-b-chr) + (var(--color-a-chr) - var(--color-b-chr)) *
+        var(--color-a-amount)
     );
     --button-hue: calc(
       (
-        var(--color-off-hue) + (var(--color-on-hue) - var(--color-off-hue)) *
-          var(--color-on-amount)
+        var(--color-b-hue) + (var(--color-a-hue) - var(--color-b-hue)) *
+          var(--color-a-amount)
       )
     );
   }
 
   &[state="0"] {
-    --color-on-amount: 0;
+    --color-a-amount: 0;
     --illumination-lit-offset: 0;
   }
   &[step="scale"],
   &[state="1/4"] {
-    --color-on-amount: 0.25;
+    --color-a-amount: 0.25;
     --illumination-lit-offset: 0.05;
   }
   &[step="interval"],
   &[step="root"],
   &[state="1/2"],
   &[state="2/4"] {
-    --color-on-amount: 0.5;
+    --color-a-amount: 0.5;
     --illumination-lit-offset: 0.05;
   }
   &[active="ghost"],
   &[state="3/4"] {
-    --color-on-amount: 0.75;
+    --color-a-amount: 0.75;
     --illumination-lit-offset: 0.05;
   }
   &[active="main"],
   &[state="2/2"],
   &[state="4/4"] {
-    --color-on-amount: 1;
+    --color-a-amount: 1;
     --illumination-lit-offset: 0.05;
   }
   &[active] {
@@ -228,7 +235,7 @@ button:focus-visible {
   > div {
     display: flex;
     flex: 1;
-    gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
+    gap: calc(var(--interface-gap-x-factor) * var(--size-unit));
   }
 
   button {
@@ -238,7 +245,7 @@ button:focus-visible {
 
 #keys {
   --size-key-width: calc(
-    1 / 14 * 100% - (var(--interface-gap-y-factor) * var(--size-unit)) * 13 / 14
+    1 / 14 * 100% - (var(--interface-gap-x-factor) * var(--size-unit)) * 13 / 14
   );
   display: flex;
   flex: 2;
@@ -265,17 +272,54 @@ button:focus-visible {
   > button:nth-child(23) {
     --size-short-key-width: calc(
       var(--size-key-width) -
-        calc(var(--interface-gap-y-factor) * var(--size-unit)) * 2
+        calc(var(--interface-gap-x-factor) * var(--size-unit)) * 2
     );
-    box-shadow: var(--box-shadow),
-      0 0 0 calc(var(--interface-gap-y-factor) * var(--size-unit))
-        var(--color-background);
+    box-shadow: var(--box-shadow);
+    /*0 0 0 calc(var(--interface-gap-x-factor) * var(--size-unit))
+      var(--color-background); */
     height: 60%;
     margin-left: calc(var(--size-short-key-width) * -0.5);
     margin-right: calc(var(--size-short-key-width) * -0.5);
     position: relative;
     width: var(--size-short-key-width);
     z-index: 1;
+
+    &:before {
+      content: "";
+      background: var(--color-background);
+      border-radius: calc(
+          var(--interface-corner-factor) * var(--size-unit) * 0.25
+        )
+        calc(var(--interface-corner-factor) * var(--size-unit) * 0.25)
+        calc(
+          var(--interface-corner-factor) * var(--size-unit) +
+            (var(--interface-gap-y-factor) * var(--size-unit))
+        )
+        calc(
+          var(--interface-corner-factor) * var(--size-unit) +
+            (var(--interface-gap-y-factor) * var(--size-unit))
+        );
+
+      bottom: calc(var(--interface-gap-y-factor) * var(--size-unit) * -1);
+      display: block;
+      left: calc(var(--interface-gap-x-factor) * var(--size-unit) * -1);
+      position: absolute;
+      top: -1px;
+      width: calc(100% + var(--interface-gap-x-factor) * var(--size-unit) * 2);
+      z-index: 0;
+    }
+    &:after {
+      content: "";
+      background: var(--background-color);
+      border-radius: var(--border-radius);
+      bottom: 0;
+      display: block;
+      left: 0;
+      position: absolute;
+      top: 0;
+      width: 100%;
+      z-index: 1;
+    }
   }
 
   > button:nth-child(1),
@@ -292,9 +336,9 @@ button:focus-visible {
   > button:nth-child(20),
   > button:nth-child(22),
   > button:nth-child(24) {
-    margin-left: calc((var(--interface-gap-y-factor) * var(--size-unit)) * 0.5);
+    margin-left: calc((var(--interface-gap-x-factor) * var(--size-unit)) * 0.5);
     margin-right: calc(
-      (var(--interface-gap-y-factor) * var(--size-unit)) * 0.5
+      (var(--interface-gap-x-factor) * var(--size-unit)) * 0.5
     );
     width: var(--size-key-width);
   }
@@ -317,7 +361,7 @@ button:focus-visible {
 #pads {
   display: flex;
   flex-wrap: wrap;
-  gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
+  gap: calc(var(--interface-gap-x-factor) * var(--size-unit));
   flex: 1;
   width: 100%;
 
@@ -365,33 +409,28 @@ prompt-interface {
   select {
     --color-1: oklch(
       calc(
-          var(--color-off-lit) + (var(--color-on-lit) - var(--color-off-lit)) *
+          var(--color-b-lit) + (var(--color-a-lit) - var(--color-b-lit)) *
             0.0675
         )
         calc(
-          var(--color-off-chr) + (var(--color-on-chr) - var(--color-off-chr)) *
+          var(--color-b-chr) + (var(--color-a-chr) - var(--color-b-chr)) *
             0.0675
         )
         calc(
           var(--color-hue-base) +
             (
-              var(--color-off-hue) +
-                (var(--color-on-hue) - var(--color-off-hue)) * 0.5
+              var(--color-b-hue) + (var(--color-a-hue) - var(--color-b-hue)) *
+                0.5
             )
         ) / 1
     );
 
     --color-2: oklch(
-      calc(var(--color-off-lit) + (var(--color-on-lit) - var(--color-off-lit)))
-        calc(
-          var(--color-off-chr) + (var(--color-on-chr) - var(--color-off-chr))
-        )
+      calc(var(--color-b-lit) + (var(--color-a-lit) - var(--color-b-lit)))
+        calc(var(--color-b-chr) + (var(--color-a-chr) - var(--color-b-chr)))
         calc(
           var(--color-hue-base) +
-            (
-              var(--color-off-hue) +
-                (var(--color-on-hue) - var(--color-off-hue))
-            )
+            (var(--color-b-hue) + (var(--color-a-hue) - var(--color-b-hue)))
         ) / 1
     );
   }

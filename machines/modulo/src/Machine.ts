@@ -26,13 +26,17 @@ import {
   createImageDropReader,
 } from "../../../packages/amplib-steganography/src";
 import register from "./prompt/register";
-import { Destination } from "./destinations/Destination";
 
-export interface MachineParams {
+export interface MachineCore {
+  theme: number;
   clock: ClockParams;
   notes: NotesParams;
+}
+
+export interface MachineParams {
+  core: MachineCore;
   sequencers: SequencerParams[];
-  keyboard: KeyboardParams;
+  keys: KeyboardParams;
   theme: RendererTheme;
 }
 
@@ -40,12 +44,12 @@ export class Machine {
   _initialize: () => void = () => {};
   initialized = false;
   element: HTMLElement;
-  theme: MachineParams["theme"];
+  theme: number;
   mixer: Mixer;
   midi: MIDI;
   clock!: Clock;
-  destination!: Destination;
-  keyboard!: Keyboard;
+  destinations!: Destinations;
+  keys!: Keyboard;
   notes!: Notes;
   prompt!: Prompt;
   promptInterface!: PromptInterface;
@@ -61,28 +65,30 @@ export class Machine {
     this.setup();
   }
 
-  update(
-    { theme, notes, clock, keyboard, sequencers }: MachineParams,
-    firstPass = false
-  ) {
+  update({ theme, core, keys, sequencers }: MachineParams, firstPass = false) {
+    this.theme = core.theme;
     this.stop();
 
     if (firstPass) {
-      this.notes = new Notes(notes);
+      this.notes = new Notes(core.notes);
     } else {
-      this.notes.setMode(notes.mode);
-      this.notes.setRoot(notes.root);
+      this.notes.setMode(core.notes.mode);
+      this.notes.setRoot(core.notes.root);
     }
 
     if (firstPass) {
-      this.clock = new Clock({ ...clock, onTick: this.handleTick.bind(this) });
+      this.clock = new Clock({
+        ...core.clock,
+        onTick: this.handleTick.bind(this),
+      });
     } else {
-      this.clock.setRate(clock.tempo);
+      this.clock.setRate(core.clock.tempo);
     }
 
     this.sequencers = sequencers.map((sequencer) => {
       if (sequencer.type === "SYNTH") {
         return new SynthSequencer({
+          theme: sequencer.theme,
           key: sequencer.key,
           octave: sequencer.octave,
           steps: new Steps(sequencer.steps),
@@ -90,6 +96,7 @@ export class Machine {
         });
       } else if (sequencer.type === "DRUM") {
         return new DrumSequencer({
+          theme: sequencer.theme,
           key: sequencer.key,
           steps: new Steps(sequencer.steps),
           drums: new Drums(),
@@ -99,29 +106,33 @@ export class Machine {
       }
     });
 
-    this.keyboard = new Keyboard({
+    this.keys = new Keyboard({
+      theme: keys.theme,
       notes: this.notes,
       main: new Synths(),
       ghosts: new Synths(),
-      octave: keyboard.octave,
+      octave: keys.octave,
     });
 
     if (firstPass) {
       this.renderer = new Renderer({
         theme,
+        core,
         element: this.element,
         sequencers: this.sequencers,
-        keyboard: this.keyboard,
+        keys: this.keys,
         rendererEventHandler: this.handleRendererEvent.bind(this),
       });
     } else {
       this.renderer.update({
         theme,
+        core,
         sequencers: this.sequencers,
-        keyboard: this.keyboard,
+        keys: this.keys,
       });
     }
-    this.destination = Destinations.generateDestinations({
+
+    this.destinations = new Destinations({
       machine: this,
       onExport: this.onExport.bind(this),
       onToggleMachine: this.onToggleMachine.bind(this),
@@ -131,11 +142,12 @@ export class Machine {
     });
 
     this._initialize = () => {
-      this.keyboard.initialize({
+      this.keys.initialize({
+        theme: keys.theme,
         mixer: this.mixer,
-        octave: keyboard.octave,
-        main: keyboard.main,
-        ghosts: keyboard.ghosts,
+        octave: keys.octave,
+        main: keys.main,
+        ghosts: keys.ghosts,
       });
 
       // TODO: close this by default? have button always visible besides escape?
@@ -164,13 +176,13 @@ export class Machine {
     }
 
     if (firstPass) {
-      this.prompt = new Prompt({ destination: this.destination });
+      this.prompt = new Prompt({ destination: this.destinations.root });
       this.promptInterface = document.createElement(
         "prompt-interface"
       ) as PromptInterface;
       this.promptInterface.initialize(this.element, this.prompt);
     } else {
-      this.prompt.update({ destination: this.destination });
+      this.prompt.update({ destination: this.destinations.root });
       this.promptInterface.reset(this.element);
     }
   }
@@ -209,20 +221,21 @@ export class Machine {
     if (this.sequencers) {
       this.sequencers.forEach((sequencer) => sequencer.dispose());
     }
-    if (this.keyboard) {
-      this.keyboard.dispose();
+    if (this.keys) {
+      this.keys.dispose();
     }
   }
 
   exportParams(): MachineParams {
     return {
+      core: {
+        theme: this.theme,
+        clock: this.clock.exportParams(),
+        notes: this.notes.exportParams(),
+      },
+      sequencers: this.sequencers.map((sequencer) => sequencer.exportParams()),
+      keys: this.keys.exportParams(),
       theme: this.renderer.theme,
-      clock: this.clock.exportParams(),
-      notes: this.notes.exportParams(),
-      sequencers: this.sequencers.map((sequencers) =>
-        sequencers.exportParams()
-      ),
-      keyboard: this.keyboard.exportParams(),
     };
   }
 
@@ -260,7 +273,7 @@ export class Machine {
   }
 
   onModeChange() {
-    this.keyboard.handleIntervalChange({ time: this.clock.time });
+    this.keys.handleIntervalChange({ time: this.clock.time });
     this.renderer.updateKeyboard();
   }
 
@@ -359,12 +372,12 @@ export class Machine {
         this.onToggleMachine();
       } else {
         this.notes.setInterval(valueA);
-        this.keyboard.handleIntervalChange({ time: this.clock.time });
+        this.keys.handleIntervalChange({ time: this.clock.time });
         this.renderer.updateKeyboard();
         this.renderer.updatePads(valueA);
       }
     } else if (type === "TAP" && location === "KEYS") {
-      this.keyboard.handlePress({
+      this.keys.handlePress({
         time: this.clock.time,
         step: valueA % 12,
         octave: Math.floor(valueA / 12),
@@ -387,13 +400,13 @@ export class Machine {
       }
     } else if (location === "KEYS") {
       if (type === "PRESS") {
-        this.keyboard.handlePress({
+        this.keys.handlePress({
           time: this.clock.time,
           step: valueA % 12,
           octave: Math.floor(valueA / 12),
         });
       } else if (type === "RELEASE") {
-        this.keyboard.handleRelease({
+        this.keys.handleRelease({
           time: this.clock.time,
           step: valueA % 12,
           octave: Math.floor(valueA / 12),
