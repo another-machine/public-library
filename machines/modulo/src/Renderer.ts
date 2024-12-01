@@ -23,27 +23,29 @@ export interface RendererThemeColor {
   c: RendererThemeLCH;
 }
 
-export interface RendererThemeLayoutInterface {
+export interface RendererThemeSizesInterface {
+  border: number;
   corner: number;
   gapX: number;
   gapY: number;
-  border: number;
+  glow: number;
 }
-export interface RendererThemeLayoutPrompt {
+export interface RendererThemeSizesPrompt {
+  border: number;
   corner: number;
+  font: number;
   gapX: number;
   gapY: number;
   paddingX: number;
   paddingY: number;
-  border: number;
-  font: number;
+  width: number;
 }
 
 export interface RendererTheme {
   colors: RendererThemeColor[];
-  layout: {
-    prompt: RendererThemeLayoutPrompt;
-    interface: RendererThemeLayoutInterface;
+  sizes: {
+    prompt: RendererThemeSizesPrompt;
+    interface: RendererThemeSizesInterface;
   };
 }
 
@@ -167,17 +169,17 @@ export class Renderer {
     this.setTheme(theme);
   }
 
-  updateThemeLayoutInterface(value: RendererThemeLayoutInterface) {
+  updateThemeLayoutInterface(value: RendererThemeSizesInterface) {
     this.setTheme({
       ...this.theme,
-      layout: { ...this.theme.layout, interface: value },
+      sizes: { ...this.theme.sizes, interface: value },
     });
   }
 
-  updateThemeLayoutPrompt(value: RendererThemeLayoutPrompt) {
+  updateThemeLayoutPrompt(value: RendererThemeSizesPrompt) {
     this.setTheme({
       ...this.theme,
-      layout: { ...this.theme.layout, prompt: value },
+      sizes: { ...this.theme.sizes, prompt: value },
     });
   }
 
@@ -194,6 +196,8 @@ export class Renderer {
       setProperty(`--color-${prefix.join("-")}-hue`, color.h);
     }
 
+    // TODO: This clearing of theme is overkill, but fix for the fact that themes can be added and removed;
+    this.style.innerHTML = "";
     theme.colors.forEach((color, i) => {
       for (let item in color) {
         setColor([i.toString(), item], theme.colors[i][item]);
@@ -201,18 +205,18 @@ export class Renderer {
       this.addTheme(`theme-key-${i}`, `${i}`);
     });
 
-    setProperty("--prompt-corner-factor", theme.layout.prompt.corner);
-    setProperty("--prompt-gap-x-factor", theme.layout.prompt.gapX);
-    setProperty("--prompt-gap-y-factor", theme.layout.prompt.gapY);
-    setProperty("--prompt-padding-x-factor", theme.layout.prompt.paddingX);
-    setProperty("--prompt-padding-y-factor", theme.layout.prompt.paddingY);
-    setProperty("--prompt-border-factor", theme.layout.prompt.border);
-    setProperty("--prompt-font-factor", theme.layout.prompt.font);
-
-    setProperty("--interface-corner-factor", theme.layout.interface.corner);
-    setProperty("--interface-gap-x-factor", theme.layout.interface.gapX);
-    setProperty("--interface-gap-y-factor", theme.layout.interface.gapY);
-    setProperty("--interface-border-factor", theme.layout.interface.border);
+    for (let type in theme.sizes) {
+      const object = theme.sizes[type];
+      for (let key in object) {
+        const token = key
+          .replace(/([^a-z])/g, "-$1")
+          .split("-")
+          .filter(Boolean)
+          .join("-")
+          .toLowerCase();
+        setProperty(`--${type}-${token}-factor`, object[key]);
+      }
+    }
   }
 
   createButton(

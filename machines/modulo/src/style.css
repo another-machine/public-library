@@ -1,14 +1,17 @@
 :root {
+  --interface-border-factor: 0;
+  --interface-corner-factor: 1;
+  --interface-gap-x-factor: 0.4;
+  --interface-gap-y-factor: 0.4;
+  --interface-glow-factor: 0.1;
+  --prompt-border-factor: 0.2;
   --prompt-corner-factor: 0.4;
+  --prompt-font-factor: 1;
   --prompt-gap-x-factor: 0.4;
   --prompt-gap-y-factor: 0.4;
   --prompt-padding-x-factor: 0.3;
   --prompt-padding-y-factor: 0.3;
-  --prompt-border-factor: 0.2;
-  --prompt-font-factor: 0.8;
-  --interface-corner-factor: 1;
-  --interface-gap-x-factor: 0.4;
-  --interface-gap-y-factor: 0.4;
+  --prompt-width-factor: 32;
 
   --color-hue-base: 0;
   --color-a-lit: 1;
@@ -24,12 +27,12 @@
   --color-page-lit: var(--color-0-c-lit, 0);
   --color-page-chr: var(--color-0-c-chr, 0);
   --color-page-hue: var(--color-0-c-hue, 0);
-  --color-background-lit: var(--color-0-off-lit, 0);
-  --color-background-chr: var(--color-0-off-chr, 0);
-  --color-background-hue: var(--color-0-off-hue, 0);
-  --color-text-lit: var(--color-0-on-lit, 1);
-  --color-text-chr: var(--color-0-on-chr, 0);
-  --color-text-hue: var(--color-0-on-hue, 0);
+  --color-background-lit: var(--color-0-b-lit, 0);
+  --color-background-chr: var(--color-0-b-chr, 0);
+  --color-background-hue: var(--color-0-b-hue, 0);
+  --color-text-lit: var(--color-0-a-lit, 1);
+  --color-text-chr: var(--color-0-a-chr, 0);
+  --color-text-hue: var(--color-0-a-hue, 0);
 
   --outline-offset: 2px;
   --outline-width: 2px;
@@ -115,14 +118,21 @@ button:focus-visible {
       calc(var(--color-hue-base) + var(--button-hue)) / 1
   );
   --border-radius: calc(var(--interface-corner-factor) * var(--size-unit));
-  --box-shadow: 0 0 var(--shadow-spread, 0)
-    oklch(
-      min(1, calc(var(--button-lit) + 0.2)) var(--button-chr)
-        calc(var(--color-hue-base) + var(--button-hue)) / 1
-    );
+  --box-shadow-color: oklch(
+    min(1, calc(var(--button-lit) + 0.2)) var(--button-chr)
+      calc(var(--color-hue-base) + var(--button-hue)) / 1
+  );
+  --box-shadow-border-color: oklch(
+    min(1, calc(var(--button-lit) - 0.2)) var(--button-chr)
+      calc(var(--color-hue-base) + var(--button-hue)) / 1
+  );
+  --box-shadow: inset 0 0 0
+      calc(var(--interface-border-factor) * var(--size-unit))
+      var(--box-shadow-border-color),
+    0 0 var(--shadow-spread, 0) var(--box-shadow-color);
   --background-gradient: radial-gradient(
     oklch(
-        min(1, calc(var(--button-lit) + var(--illumination-lit-offset, 0)))
+        min(1, calc(var(--button-lit) + var(--glow-lit-offset, 0)))
           var(--button-chr) calc(var(--color-hue-base) + var(--button-hue)) / 1
       )
       20%,
@@ -170,35 +180,102 @@ button:focus-visible {
 
   &[state="0"] {
     --color-a-amount: 0;
-    --illumination-lit-offset: 0;
+    --glow-lit-offset: 0;
+  }
+  &[state="1/8"] {
+    --color-a-amount: 0.125;
+  }
+  &[state="1/7"] {
+    --color-a-amount: 0.1428;
+  }
+  &[state="1/6"] {
+    --color-a-amount: 0.1667;
+  }
+  &[state="1/5"] {
+    --color-a-amount: 0.2;
   }
   &[step="scale"],
-  &[state="1/4"] {
+  &[state="1/4"],
+  &[state="2/8"] {
     --color-a-amount: 0.25;
-    --illumination-lit-offset: 0.05;
+  }
+  &[state="2/7"] {
+    --color-a-amount: 0.2857;
+  }
+  &[state="1/3"],
+  &[state="2/6"] {
+    --color-a-amount: 0.3334;
+  }
+  &[state="3/8"] {
+    --color-a-amount: 0.375;
+  }
+  &[state="2/5"] {
+    --color-a-amount: 0.4;
+  }
+  &[state="3/7"] {
+    --color-a-amount: 0.4286;
   }
   &[step="interval"],
   &[step="root"],
   &[state="1/2"],
-  &[state="2/4"] {
+  &[state="2/4"],
+  &[state="3/6"],
+  &[state="4/8"] {
     --color-a-amount: 0.5;
-    --illumination-lit-offset: 0.05;
+  }
+  &[state="4/7"] {
+    --color-a-amount: 0.5714;
+  }
+  &[state="3/5"] {
+    --color-a-amount: 0.6;
+  }
+  &[state="5/8"] {
+    --color-a-amount: 0.625;
+  }
+  &[state="2/3"],
+  &[state="4/6"] {
+    --color-a-amount: 0.6667;
+  }
+  &[state="5/7"] {
+    --color-a-amount: 0.7143;
   }
   &[active="ghost"],
-  &[state="3/4"] {
+  &[state="3/4"],
+  &[state="6/8"] {
     --color-a-amount: 0.75;
-    --illumination-lit-offset: 0.05;
+  }
+  &[state="4/5"] {
+    --color-a-amount: 0.8;
+  }
+  &[state="5/6"] {
+    --color-a-amount: 0.8334;
+  }
+  &[state="6/7"] {
+    --color-a-amount: 0.8571;
+  }
+  &[state="7/8"] {
+    --color-a-amount: 0.875;
   }
   &[active="main"],
+  &[state="1/1"],
   &[state="2/2"],
-  &[state="4/4"] {
+  &[state="3/3"],
+  &[state="4/4"],
+  &[state="5/5"],
+  &[state="6/6"],
+  &[state="7/7"],
+  &[state="8/8"] {
     --color-a-amount: 1;
-    --illumination-lit-offset: 0.05;
   }
+
+  &[state*="/"] {
+    --glow-lit-offset: 0.05;
+  }
+
   &[active] {
     &:not([state="0"]) {
-      --shadow-spread: calc(var(--interface-border-factor) * var(--size-unit));
-      --illumination-lit-offset: 0.16;
+      --shadow-spread: calc(var(--interface-glow-factor) * var(--size-unit));
+      --glow-lit-offset: 0.16;
     }
   }
 }
@@ -260,6 +337,7 @@ button:focus-visible {
       calc(var(--interface-corner-factor) * var(--size-unit))
       calc(var(--interface-corner-factor) * var(--size-unit));
   }
+
   > button:nth-child(2),
   > button:nth-child(4),
   > button:nth-child(7),
@@ -274,9 +352,7 @@ button:focus-visible {
       var(--size-key-width) -
         calc(var(--interface-gap-x-factor) * var(--size-unit)) * 2
     );
-    box-shadow: var(--box-shadow);
-    /*0 0 0 calc(var(--interface-gap-x-factor) * var(--size-unit))
-      var(--color-background); */
+
     height: 60%;
     margin-left: calc(var(--size-short-key-width) * -0.5);
     margin-right: calc(var(--size-short-key-width) * -0.5);
@@ -286,7 +362,7 @@ button:focus-visible {
 
     &:before {
       content: "";
-      background: var(--color-background);
+      background: var(--color-page);
       border-radius: calc(
           var(--interface-corner-factor) * var(--size-unit) * 0.25
         )
@@ -304,7 +380,7 @@ button:focus-visible {
       display: block;
       left: calc(var(--interface-gap-x-factor) * var(--size-unit) * -1);
       position: absolute;
-      top: -1px;
+      top: calc(var(--interface-gap-y-factor) * var(--size-unit) * -1);
       width: calc(100% + var(--interface-gap-x-factor) * var(--size-unit) * 2);
       z-index: 0;
     }
@@ -313,6 +389,7 @@ button:focus-visible {
       background: var(--background-color);
       border-radius: var(--border-radius);
       bottom: 0;
+      box-shadow: var(--box-shadow);
       display: block;
       left: 0;
       position: absolute;
@@ -364,6 +441,7 @@ button:focus-visible {
   gap: calc(var(--interface-gap-x-factor) * var(--size-unit));
   flex: 1;
   width: 100%;
+  z-index: 2;
 
   > button {
     flex: 1;
@@ -383,7 +461,7 @@ prompt-interface {
   order: -1;
   padding: calc(var(--prompt-gap-y-factor) * var(--size-unit))
     calc(var(--prompt-gap-x-factor) * var(--size-unit));
-  width: min(32rem, 100%);
+  width: min(calc(var(--prompt-width-factor) * var(--size-unit)), 100%);
 
   > * {
     width: 100%;
@@ -448,13 +526,18 @@ prompt-interface {
     scrollbar-width: thin;
 
     button {
-      background: var(--color-1);
       border-radius: var(--border-radius);
-      color: var(--color-2);
       padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
         calc(var(--prompt-padding-x-factor) * var(--size-unit));
 
+      &:not(:first-child) {
+        background: var(--color-1);
+        color: var(--color-2);
+      }
+
       &:first-child {
+        background: var(--color-background);
+        color: var(--color-text);
         left: 0;
         position: sticky;
       }

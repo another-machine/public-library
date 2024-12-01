@@ -16,12 +16,11 @@ type DrumKitKey = "open" | "closed" | "snare" | "kick";
 // Drums class interface simplified to match
 export interface DrumsParams {
   volume: number;
-  settings: {
-    open: ConfigurableHatParams;
-    closed: ConfigurableHatParams;
-    snare: ConfigurableSnareParams;
-    kick: ConfigurableKickParams;
-  };
+  settings: (
+    | ConfigurableHatParams
+    | ConfigurableKickParams
+    | ConfigurableSnareParams
+  )[];
 }
 
 type DrumTypeSettings =
@@ -66,9 +65,15 @@ interface DrumParams {
   };
 }
 
-export type ConfigurableHatParams = DrumParams;
-export type ConfigurableSnareParams = DrumParams;
-export type ConfigurableKickParams = DrumParams;
+export type ConfigurableHatParams = DrumParams & {
+  type: Extract<DrumKitKey, "closed" | "open">;
+};
+export type ConfigurableSnareParams = DrumParams & {
+  type: Extract<DrumKitKey, "snare">;
+};
+export type ConfigurableKickParams = DrumParams & {
+  type: Extract<DrumKitKey, "kick">;
+};
 
 const DEFAULT_HAT_SETTINGS: DrumParams = {
   volume: 0.185,
@@ -80,7 +85,8 @@ const DEFAULT_HAT_SETTINGS: DrumParams = {
   },
 };
 
-const DEFAULT_SNARE_SETTINGS: DrumParams = {
+const DEFAULT_SNARE_SETTINGS: ConfigurableSnareParams = {
+  type: "snare",
   volume: 0.5,
   settings: {
     highpass: { frequency: 0, Q: 1 },
@@ -90,7 +96,8 @@ const DEFAULT_SNARE_SETTINGS: DrumParams = {
   },
 };
 
-const DEFAULT_KICK_SETTINGS: DrumParams = {
+const DEFAULT_KICK_SETTINGS: ConfigurableKickParams = {
+  type: "kick",
   volume: 0.75,
   settings: {
     highpass: { frequency: 0, Q: 1 },
@@ -109,15 +116,14 @@ export class ConfigurableHat {
   lowpass: Filter;
   crush: BitCrusher;
   delay: FeedbackDelay;
-  params: DrumParams;
+  params: ConfigurableHatParams;
 
-  static get initialSettings() {
-    return DEFAULT_HAT_SETTINGS;
+  static initialSettings(type: Extract<DrumKitKey, "closed" | "open">) {
+    return { type, ...DEFAULT_HAT_SETTINGS };
   }
 
-  constructor(closed: boolean, params: DrumParams) {
-    this.type = closed ? "closed" : "open";
-    this.closed = closed;
+  constructor(params: ConfigurableHatParams) {
+    this.type = params.type;
     this.params = params;
     this.node = new NoiseSynth();
     this.output = new Gain(params.volume);
@@ -125,9 +131,9 @@ export class ConfigurableHat {
     // Set fixed envelope and noise settings
     this.node.noise.type = "white";
     this.node.envelope.attack = 0.0001;
-    this.node.envelope.decay = this.closed ? 0.17 : 0.27;
-    this.node.envelope.sustain = this.closed ? 0 : 0.1;
-    this.node.envelope.release = this.closed ? 0.05 : 0.5;
+    this.node.envelope.decay = params.type === "closed" ? 0.17 : 0.27;
+    this.node.envelope.sustain = params.type === "closed" ? 0 : 0.1;
+    this.node.envelope.release = params.type === "closed" ? 0.05 : 0.5;
 
     // Initialize effects
     this.highpass = new Filter({
@@ -149,7 +155,7 @@ export class ConfigurableHat {
     this.delay.connect(this.output);
   }
 
-  updateSettings(params: DrumParams) {
+  updateSettings(params: Exclude<ConfigurableHatParams, "type">) {
     this.params = params;
     this.highpass.set(params.settings.highpass);
     this.lowpass.set(params.settings.lowpass);
@@ -157,7 +163,7 @@ export class ConfigurableHat {
     this.delay.set(params.settings.delay);
   }
 
-  exportParams(): DrumParams {
+  exportParams() {
     return this.params;
   }
 
@@ -185,13 +191,13 @@ export class ConfigurableSnare {
   lowpass: Filter;
   crush: BitCrusher;
   delay: FeedbackDelay;
-  params: DrumParams;
+  params: ConfigurableSnareParams;
 
   static get initialSettings() {
     return DEFAULT_SNARE_SETTINGS;
   }
 
-  constructor(params: DrumParams) {
+  constructor(params: ConfigurableSnareParams) {
     this.params = params;
     this.node1 = new Synth();
     this.node2 = new NoiseSynth();
@@ -244,7 +250,7 @@ export class ConfigurableSnare {
     this.delay.connect(this.output);
   }
 
-  updateSettings(params: DrumParams) {
+  updateSettings(params: Exclude<ConfigurableSnareParams, "type">) {
     this.params = params;
     this.highpass.set(params.settings.highpass);
     this.lowpass.set(params.settings.lowpass);
@@ -252,7 +258,7 @@ export class ConfigurableSnare {
     this.delay.set(params.settings.delay);
   }
 
-  exportParams(): DrumParams {
+  exportParams() {
     return this.params;
   }
 
@@ -283,13 +289,13 @@ export class ConfigurableKick {
   lowpass: Filter;
   crush: BitCrusher;
   delay: FeedbackDelay;
-  params: DrumParams;
+  params: ConfigurableKickParams;
 
   static get initialSettings() {
     return DEFAULT_KICK_SETTINGS;
   }
 
-  constructor(params: DrumParams) {
+  constructor(params: ConfigurableKickParams) {
     this.params = params;
     this.node1 = new MembraneSynth();
     this.node2 = new NoiseSynth();
@@ -339,7 +345,7 @@ export class ConfigurableKick {
     this.delay.connect(this.output);
   }
 
-  updateSettings(params: DrumParams) {
+  updateSettings(params: Exclude<ConfigurableKickParams, "type">) {
     this.params = params;
     this.highpass.set(params.settings.highpass);
     this.lowpass.set(params.settings.lowpass);
@@ -356,7 +362,7 @@ export class ConfigurableKick {
     return (this.output.gain.value = value);
   }
 
-  exportParams(): DrumParams {
+  exportParams() {
     return this.params;
   }
 
@@ -371,12 +377,7 @@ export class ConfigurableKick {
 
 export class Drums {
   output?: Gain;
-  kit: {
-    open: ConfigurableHat;
-    closed: ConfigurableHat;
-    snare: ConfigurableSnare;
-    kick: ConfigurableKick;
-  };
+  kit: (ConfigurableHat | ConfigurableSnare | ConfigurableKick)[];
 
   static velocitiesForStepsSlots(
     stepsSlotArray: StepsSlot[],
@@ -401,24 +402,17 @@ export class Drums {
   }) {
     this.output = new Gain(volume);
     if (mixer.channel) this.output.connect(mixer.channel);
-    this.kit = {
-      open: new ConfigurableHat(false, {
-        ...DEFAULT_HAT_SETTINGS,
-        ...settings.open,
-      }),
-      closed: new ConfigurableHat(true, {
-        ...DEFAULT_HAT_SETTINGS,
-        ...settings.closed,
-      }),
-      snare: new ConfigurableSnare({
-        ...DEFAULT_SNARE_SETTINGS,
-        ...settings.snare,
-      }),
-      kick: new ConfigurableKick({
-        ...DEFAULT_KICK_SETTINGS,
-        ...settings.kick,
-      }),
-    };
+    this.kit = settings.map((setting) => {
+      switch (setting.type) {
+        case "closed":
+        case "open":
+          return new ConfigurableHat(setting);
+        case "kick":
+          return new ConfigurableKick(setting);
+        case "snare":
+          return new ConfigurableSnare(setting);
+      }
+    });
 
     for (let drum in this.kit) {
       if (mixer.channel && this.output)
@@ -435,12 +429,7 @@ export class Drums {
   }
 
   exportParams(): DrumsParams {
-    const settings: DrumsParams["settings"] = {
-      closed: this.kit.closed.exportParams(),
-      open: this.kit.open.exportParams(),
-      snare: this.kit.snare.exportParams(),
-      kick: this.kit.kick.exportParams(),
-    };
+    const settings = this.kit.map((a) => a.exportParams());
     return {
       volume: this.output?.gain.value || 0,
       settings,

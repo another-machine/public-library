@@ -81,12 +81,12 @@ new Machine({
       },
       synths: {
         volume: 0.4,
-        settings: {
-          closed: ConfigurableHat.initialSettings,
-          open: ConfigurableHat.initialSettings,
-          snare: ConfigurableSnare.initialSettings,
-          kick: ConfigurableKick.initialSettings,
-        },
+        settings: [
+          ConfigurableHat.initialSettings("open"),
+          ConfigurableHat.initialSettings("closed"),
+          ConfigurableSnare.initialSettings,
+          ConfigurableKick.initialSettings,
+        ],
       },
     },
   ],
@@ -128,12 +128,13 @@ new Machine({
         c: { l: 0.2, c: 0.03, h: 210 },
       },
     ],
-    layout: {
+    sizes: {
       interface: {
         border: 0.1,
         corner: 0.2,
         gapX: 0.4,
         gapY: 0.4,
+        glow: 0.1,
       },
       prompt: {
         border: 0.1,
@@ -143,6 +144,7 @@ new Machine({
         gapY: 0.4,
         paddingX: 0.5,
         paddingY: 0.5,
+        width: 32,
       },
     },
   },

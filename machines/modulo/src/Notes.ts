@@ -138,8 +138,9 @@ export class Notes {
         return null;
       }
       if (valueIsOctave) {
+        const octaveOffset = Math.floor(i / 3);
         const { notation, octave } = this.interval.notes[i % 3];
-        return `${notation}${slot - 1 + octave + baseOctave}`;
+        return `${notation}${slot - 1 + octave + baseOctave + octaveOffset}`;
       } else {
         const { notation, octave } = this.interval.notes[slot % 3];
         const octaveFactor = Math.floor(slot / 3);

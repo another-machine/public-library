@@ -28,7 +28,7 @@ function propertyGeneratorLayoutRange(
       max,
       step,
       initialValue: () =>
-        numericAsString(machine.exportParams().theme.layout[type][key]),
+        numericAsString(machine.exportParams().theme.sizes[type][key]),
     };
   };
 }
@@ -152,11 +152,11 @@ export function generateCoreDestination({
     return into;
   }, {});
 
-  const layoutInterfaceProperty = propertyGeneratorLayoutRange(
+  const sizesInterfaceProperty = propertyGeneratorLayoutRange(
     machine,
     "interface"
   );
-  const layoutPromptProperty = propertyGeneratorLayoutRange(machine, "prompt");
+  const sizesPromptProperty = propertyGeneratorLayoutRange(machine, "prompt");
 
   return {
     machine: new Destination({
@@ -273,20 +273,24 @@ export function generateCoreDestination({
               },
               destinations: colorDestinations,
             }),
-            layout: new Destination({
+            sizes: new Destination({
               info: {
-                label: "Layout theme settings",
-                content: () => formatJSON(machine.exportParams().theme.layout),
+                content: () => formatJSON(machine.exportParams().theme.sizes),
               },
               properties: {
                 interface: new DestinationProperty({
                   inputs: [
-                    layoutInterfaceProperty("border", 0, 0.5),
-                    layoutInterfaceProperty("corner", 0, 1),
-                    layoutInterfaceProperty("gapX", 0, 2),
-                    layoutInterfaceProperty("gapY", 0, 2),
+                    sizesInterfaceProperty("border", 0, 0.5),
+                    sizesInterfaceProperty("corner", 0, 1),
+                    sizesInterfaceProperty("gapX", 0, 2),
+                    sizesInterfaceProperty("gapY", 0, 2),
+                    sizesInterfaceProperty("glow", 0, 1),
                   ],
-                  onSet: (_command, [border, corner, gapX, gapY], _prompt) => {
+                  onSet: (
+                    _command,
+                    [border, corner, gapX, gapY, glow],
+                    _prompt
+                  ) => {
                     const valid = true;
                     if (valid) {
                       machine.renderer.updateThemeLayoutInterface({
@@ -294,6 +298,7 @@ export function generateCoreDestination({
                         corner: parseFloat(corner),
                         gapX: parseFloat(gapX),
                         gapY: parseFloat(gapY),
+                        glow: parseFloat(glow),
                       });
                     }
                     return { valid };
@@ -301,17 +306,27 @@ export function generateCoreDestination({
                 }),
                 prompt: new DestinationProperty({
                   inputs: [
-                    layoutPromptProperty("border", 0, 0.5),
-                    layoutPromptProperty("corner", 0, 1),
-                    layoutPromptProperty("font", 0.2, 2),
-                    layoutPromptProperty("gapX", 0, 2),
-                    layoutPromptProperty("gapY", 0, 2),
-                    layoutPromptProperty("paddingX", 0, 2),
-                    layoutPromptProperty("paddingY", 0, 2),
+                    sizesPromptProperty("border", 0, 0.5),
+                    sizesPromptProperty("corner", 0, 1),
+                    sizesPromptProperty("font", 0.5, 2),
+                    sizesPromptProperty("gapX", 0, 2),
+                    sizesPromptProperty("gapY", 0, 2),
+                    sizesPromptProperty("paddingX", 0, 2),
+                    sizesPromptProperty("paddingY", 0, 2),
+                    sizesPromptProperty("width", 20, 80),
                   ],
                   onSet: (
                     _command,
-                    [border, corner, font, gapX, gapY, paddingX, paddingY],
+                    [
+                      border,
+                      corner,
+                      font,
+                      gapX,
+                      gapY,
+                      paddingX,
+                      paddingY,
+                      width,
+                    ],
                     _prompt
                   ) => {
                     const valid = true;
@@ -324,6 +339,7 @@ export function generateCoreDestination({
                         gapY: parseFloat(gapY),
                         paddingX: parseFloat(paddingX),
                         paddingY: parseFloat(paddingY),
+                        width: parseFloat(width),
                       });
                     }
                     return { valid };
