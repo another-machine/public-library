@@ -7,10 +7,8 @@
     "start": "parcel",
     "build": "parcel build"
   },
-  "devDependencies": {
-    "tone": "^15.0.4"
-  },
   "dependencies": {
-    "npm": "^10.9.1"
+    "npm": "^10.9.1",
+    "tone": "^15.0.4"
   }
 }
