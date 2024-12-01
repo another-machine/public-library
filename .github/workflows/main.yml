@@ -51,6 +51,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - run: npm ci
+        working-directory: machines/modulo
       - run: npm run build
         working-directory: machines/modulo
       - name: Setup Pages
