@@ -7,6 +7,7 @@ body {
 }
 
 prompt-interface {
+  padding: var(--padding-y) var(--padding-x) 0;
   width: 100%;
 
   &.theme-key-undefined > prompt-suggestions > button:first-child {
@@ -24,6 +25,7 @@ prompt-output {
   }
 
   prompt-interface {
+    padding: var(--padding-y) 0 var(--padding-y) var(--padding-x);
     width: min(calc(var(--prompt-width-factor) * var(--size-unit)), 100%);
 
     &:not(.open) {

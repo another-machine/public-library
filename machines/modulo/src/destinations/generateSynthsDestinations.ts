@@ -180,7 +180,10 @@ export function generateSynthsDestinations({
         }),
         effects: new Destination({
           info: {
-            content: () => formatJSON(synth.exportParams().settings.delay),
+            content: () => {
+              const { delay, reverb } = synth.exportParams().settings;
+              return formatJSON({ delay, reverb });
+            },
           },
           properties: {
             delay: new DestinationProperty({

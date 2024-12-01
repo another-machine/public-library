@@ -1,6 +1,8 @@
 prompt-interface {
   --font-size: calc(var(--size-unit) * var(--prompt-font-factor));
   --border-radius: calc(var(--size-unit) * var(--prompt-corner-factor));
+  --padding-x: calc(var(--pads-padding-x-factor) * var(--size-unit));
+  --padding-y: calc(var(--pads-padding-y-factor) * var(--size-unit));
 
   align-items: start;
   display: flex;
@@ -8,9 +10,6 @@ prompt-interface {
   gap: calc(var(--prompt-gap-y-factor) * var(--size-unit));
   justify-content: start;
   order: -1;
-  padding: calc(var(--pads-padding-y-factor) * var(--size-unit)) 0
-    calc(var(--pads-padding-y-factor) * var(--size-unit))
-    calc(var(--pads-padding-x-factor) * var(--size-unit));
 
   > * {
     width: 100%;
