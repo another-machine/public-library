@@ -5,8 +5,7 @@ export class PromptOutput extends HTMLElement {
   private pre: HTMLPreElement;
   private previousContent: string = "";
 
-  constructor() {
-    super();
+  public initialize() {
     this.innerHTML = `
       <span></span>
       <pre></pre>
@@ -15,16 +14,16 @@ export class PromptOutput extends HTMLElement {
     this.pre = this.querySelector("pre")!;
   }
 
-  updateBreadcrumbs(path: string) {
-    this.breadcrumbs.innerHTML = path;
-  }
-
-  update(info: DestinationInfo) {
+  public update(info: DestinationInfo) {
     const content = info.content();
     this.pre.innerHTML = this.previousContent
       ? this.highlightDiff(this.previousContent, content)
       : content;
     this.previousContent = content;
+  }
+
+  public updateBreadcrumbs(path: string) {
+    this.breadcrumbs.innerHTML = path;
   }
 
   private highlightDiff(

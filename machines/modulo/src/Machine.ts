@@ -148,9 +148,6 @@ export class Machine {
         ghosts: keys.ghosts,
       });
 
-      // TODO: close this by default? have button always visible besides escape?
-      this.promptInterface.toggle();
-
       this.sequencers.forEach((sequencer, i) => {
         sequencer.initialize({ mixer: this.mixer });
       });

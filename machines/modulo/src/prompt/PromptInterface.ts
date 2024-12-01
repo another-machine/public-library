@@ -14,11 +14,7 @@ export class PromptInterface extends HTMLElement {
   private propertyForm?: PromptPropertyForm;
   private filterBuffer = "";
 
-  constructor() {
-    super();
-  }
-
-  initialize(parent: HTMLElement, prompt: Prompt) {
+  public initialize(parent: HTMLElement, prompt: Prompt) {
     this.prompt = prompt;
     this.render();
     this.setupComponents();
@@ -28,15 +24,51 @@ export class PromptInterface extends HTMLElement {
     return this;
   }
 
+  public handleBack() {
+    if (this.prompt.destinationKeys.length === 0) {
+      this.toggle();
+    } else if (this.filterBuffer) {
+      this.filterBuffer = this.filterBuffer.slice(0, -1);
+      this.updateSuggestions();
+    } else {
+      this.handleSuggestionSelection(COMMANDS.BACK[0], "command");
+      this.clearPropertyForm();
+    }
+  }
+
+  public renderDestinationInfo() {
+    this.output.update(this.prompt.currentDestination.info);
+  }
+
+  public reset(parent: HTMLElement) {
+    parent.appendChild(this);
+    this.updateSuggestions();
+  }
+
+  public toggle() {
+    this.classList.toggle("open");
+    if (this.classList.contains("open")) {
+      this.filterBuffer = "";
+      this.updateSuggestions();
+    }
+  }
+
+  public updateTheme(theme: string) {
+    this.className = this.className.replace(/theme-key-[^ ]+/, "");
+    if (theme !== undefined) {
+      this.classList.add(`theme-key-${theme}`);
+    }
+  }
+
   private render() {
     this.id = "prompt";
     this.innerHTML = `
       <prompt-suggestions></prompt-suggestions>
       <prompt-output></prompt-output>
     `;
-
-    this.suggestions = this.querySelector("prompt-suggestions")!;
     this.output = this.querySelector("prompt-output")!;
+    this.output.initialize();
+    this.suggestions = this.querySelector("prompt-suggestions")!;
   }
 
   private setupComponents() {
@@ -98,31 +130,6 @@ export class PromptInterface extends HTMLElement {
 
   private handleFilterInput(char: string) {
     this.filterBuffer += char.toLowerCase();
-    this.updateSuggestions();
-  }
-
-  handleBack() {
-    if (this.prompt.destinationKeys.length === 0) {
-      this.toggle();
-    } else if (this.filterBuffer) {
-      this.filterBuffer = this.filterBuffer.slice(0, -1);
-      this.updateSuggestions();
-    } else {
-      this.handleSuggestionSelection(COMMANDS.BACK[0], "command");
-      this.clearPropertyForm();
-    }
-  }
-
-  toggle() {
-    this.classList.toggle("open");
-    if (this.classList.contains("open")) {
-      this.filterBuffer = "";
-      this.updateSuggestions();
-    }
-  }
-
-  reset(parent: HTMLElement) {
-    parent.appendChild(this);
     this.updateSuggestions();
   }
 
@@ -192,16 +199,5 @@ export class PromptInterface extends HTMLElement {
     this.clearPropertyForm();
     this.insertBefore(form, this.output);
     this.propertyForm = form;
-  }
-
-  public renderDestinationInfo() {
-    this.output.update(this.prompt.currentDestination.info);
-  }
-
-  public updateTheme(theme: string) {
-    this.className = this.className.replace(/theme-key-[^ ]+/, "");
-    if (theme !== undefined) {
-      this.classList.add(`theme-key-${theme}`);
-    }
   }
 }

@@ -9,7 +9,7 @@ start.addEventListener("click", () => initialize());
 
 function initialize() {
   start.remove();
-  const machine = new Machine({
+  new Machine({
     element: document.body,
     core: {
       theme: 1,
@@ -134,12 +134,14 @@ function initialize() {
         },
       ],
       sizes: {
-        interface: {
+        pads: {
           border: 0.1,
           corner: 0.2,
           gapX: 0.4,
           gapY: 0.4,
           glow: 0.1,
+          paddingX: 0.5,
+          paddingY: 0.5,
         },
         prompt: {
           border: 0.1,

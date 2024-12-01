@@ -12,7 +12,7 @@ import { themeSelectorProperty } from "./synthUtilities";
 
 function propertyGeneratorLayoutRange(
   machine: Machine,
-  type: "prompt" | "interface"
+  type: "prompt" | "pads"
 ) {
   return function (
     key: string,
@@ -154,10 +154,7 @@ export function generateCoreDestination({
     return into;
   }, {});
 
-  const sizesInterfaceProperty = propertyGeneratorLayoutRange(
-    machine,
-    "interface"
-  );
+  const sizesInterfaceProperty = propertyGeneratorLayoutRange(machine, "pads");
   const sizesPromptProperty = propertyGeneratorLayoutRange(machine, "prompt");
 
   return {
@@ -282,27 +279,31 @@ export function generateCoreDestination({
                 content: () => formatJSON(machine.exportParams().theme.sizes),
               },
               properties: {
-                interface: new DestinationProperty({
+                pads: new DestinationProperty({
                   inputs: [
                     sizesInterfaceProperty("border", 0, 0.5),
                     sizesInterfaceProperty("corner", 0, 1),
                     sizesInterfaceProperty("gapX", 0, 2),
                     sizesInterfaceProperty("gapY", 0, 2),
                     sizesInterfaceProperty("glow", 0, 1),
+                    sizesPromptProperty("paddingX", 0, 2),
+                    sizesPromptProperty("paddingY", 0, 2),
                   ],
                   onSet: (
                     _command,
-                    [border, corner, gapX, gapY, glow],
+                    [border, corner, gapX, gapY, glow, paddingX, paddingY],
                     _prompt
                   ) => {
                     const valid = true;
                     if (valid) {
-                      machine.renderer.updateThemeLayoutInterface({
+                      machine.renderer.updateThemeLayoutPads({
                         border: parseFloat(border),
                         corner: parseFloat(corner),
                         gapX: parseFloat(gapX),
                         gapY: parseFloat(gapY),
                         glow: parseFloat(glow),
+                        paddingX: parseFloat(paddingX),
+                        paddingY: parseFloat(paddingY),
                       });
                     }
                     return { valid };

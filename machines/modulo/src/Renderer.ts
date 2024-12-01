@@ -23,12 +23,14 @@ export interface RendererThemeColor {
   c: RendererThemeLCH;
 }
 
-export interface RendererThemeSizesInterface {
+export interface RendererThemeSizesPads {
   border: number;
   corner: number;
   gapX: number;
   gapY: number;
   glow: number;
+  paddingX: number;
+  paddingY: number;
 }
 export interface RendererThemeSizesPrompt {
   border: number;
@@ -45,7 +47,7 @@ export interface RendererTheme {
   colors: RendererThemeColor[];
   sizes: {
     prompt: RendererThemeSizesPrompt;
-    interface: RendererThemeSizesInterface;
+    pads: RendererThemeSizesPads;
   };
 }
 
@@ -170,10 +172,10 @@ export class Renderer {
     this.setTheme(theme);
   }
 
-  updateThemeLayoutInterface(value: RendererThemeSizesInterface) {
+  updateThemeLayoutPads(value: RendererThemeSizesPads) {
     this.setTheme({
       ...this.theme,
-      sizes: { ...this.theme.sizes, interface: value },
+      sizes: { ...this.theme.sizes, pads: value },
     });
   }
 

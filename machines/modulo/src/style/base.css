@@ -7,8 +7,6 @@ body {
 }
 
 prompt-interface {
-  padding: calc(var(--interface-gap-y-factor) * var(--size-unit))
-    calc(var(--interface-gap-x-factor) * var(--size-unit));
   width: 100%;
 
   &.theme-key-undefined > prompt-suggestions > button:first-child {
@@ -26,12 +24,10 @@ prompt-output {
   }
 
   prompt-interface {
-    padding: calc(var(--prompt-gap-y-factor) * var(--size-unit))
-      calc(var(--prompt-gap-x-factor) * var(--size-unit));
     width: min(calc(var(--prompt-width-factor) * var(--size-unit)), 100%);
 
-    &.theme-key-undefined > prompt-suggestions > button:first-child {
-      display: inline-flex;
+    &:not(.open) {
+      display: none;
     }
   }
 

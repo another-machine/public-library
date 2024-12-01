@@ -2,10 +2,11 @@ main {
   display: flex;
   flex-direction: column;
   flex-grow: 1;
-  gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
+  gap: calc(var(--pads-gap-y-factor) * var(--size-unit));
   height: 100%;
   overflow: visible;
-  padding: calc(var(--interface-gap-y-factor) * var(--size-unit));
+  padding: calc(var(--pads-padding-y-factor) * var(--size-unit))
+    calc(var(--pads-padding-x-factor) * var(--size-unit));
   position: relative;
 }
 
@@ -27,7 +28,7 @@ main[stepping="true"] .sequencer {
     var(--button-lit) var(--button-chr)
       calc(var(--color-hue-base) + var(--button-hue)) / 1
   );
-  --border-radius: calc(var(--interface-corner-factor) * var(--size-unit));
+  --border-radius: calc(var(--pads-corner-factor) * var(--size-unit));
   --box-shadow-color: oklch(
     min(1, calc(var(--button-lit) + 0.2)) var(--button-chr)
       calc(var(--color-hue-base) + var(--button-hue)) / 1
@@ -36,8 +37,7 @@ main[stepping="true"] .sequencer {
     min(1, calc(var(--button-lit) - 0.2)) var(--button-chr)
       calc(var(--color-hue-base) + var(--button-hue)) / 1
   );
-  --box-shadow: inset 0 0 0
-      calc(var(--interface-border-factor) * var(--size-unit))
+  --box-shadow: inset 0 0 0 calc(var(--pads-border-factor) * var(--size-unit))
       var(--box-shadow-border-color),
     0 0 var(--shadow-spread, 0) var(--box-shadow-color);
   --background-gradient: radial-gradient(
@@ -60,9 +60,9 @@ main[stepping="true"] .sequencer {
     &::after {
       content: "";
       border-radius: var(--border-radius);
-      box-shadow: 0 0 0 calc(var(--interface-gap-y-factor) * var(--size-unit))
+      box-shadow: 0 0 0 calc(var(--pads-gap-y-factor) * var(--size-unit))
           var(--color-text),
-        inset 0 0 0 calc(var(--interface-gap-y-factor) * var(--size-unit) * 0.5)
+        inset 0 0 0 calc(var(--pads-gap-y-factor) * var(--size-unit) * 0.5)
           var(--color-text);
       inset: 0;
       position: absolute;
@@ -184,7 +184,7 @@ main[stepping="true"] .sequencer {
 
   &[active] {
     &:not([state="0"]) {
-      --shadow-spread: calc(var(--interface-glow-factor) * var(--size-unit));
+      --shadow-spread: calc(var(--pads-glow-factor) * var(--size-unit));
       --glow-lit-offset: 0.16;
     }
   }
@@ -200,7 +200,7 @@ main[stepping="true"] .sequencer {
 .sequencer {
   display: flex;
   flex-direction: column;
-  gap: calc(var(--interface-gap-y-factor) * var(--size-unit));
+  gap: calc(var(--pads-gap-y-factor) * var(--size-unit));
   width: 100%;
 
   &:has(> :last-child:nth-child(1)) {
@@ -222,7 +222,7 @@ main[stepping="true"] .sequencer {
   > div {
     display: flex;
     flex: 1;
-    gap: calc(var(--interface-gap-x-factor) * var(--size-unit));
+    gap: calc(var(--pads-gap-x-factor) * var(--size-unit));
   }
 
   button {
@@ -232,7 +232,7 @@ main[stepping="true"] .sequencer {
 
 #keys {
   --size-key-width: calc(
-    1 / 14 * 100% - (var(--interface-gap-x-factor) * var(--size-unit)) * 13 / 14
+    1 / 14 * 100% - (var(--pads-gap-x-factor) * var(--size-unit)) * 13 / 14
   );
   display: flex;
   flex: 2;
@@ -240,12 +240,10 @@ main[stepping="true"] .sequencer {
   width: 100%;
 
   > button {
-    --border-radius: calc(
-        var(--interface-corner-factor) * var(--size-unit) * 0.25
-      )
-      calc(var(--interface-corner-factor) * var(--size-unit) * 0.25)
-      calc(var(--interface-corner-factor) * var(--size-unit))
-      calc(var(--interface-corner-factor) * var(--size-unit));
+    --border-radius: calc(var(--pads-corner-factor) * var(--size-unit) * 0.25)
+      calc(var(--pads-corner-factor) * var(--size-unit) * 0.25)
+      calc(var(--pads-corner-factor) * var(--size-unit))
+      calc(var(--pads-corner-factor) * var(--size-unit));
   }
 
   > button:nth-child(2),
@@ -259,8 +257,8 @@ main[stepping="true"] .sequencer {
   > button:nth-child(21),
   > button:nth-child(23) {
     --size-short-key-width: calc(
-      var(--size-key-width) -
-        calc(var(--interface-gap-x-factor) * var(--size-unit)) * 2
+      var(--size-key-width) - calc(var(--pads-gap-x-factor) * var(--size-unit)) *
+        2
     );
 
     height: 60%;
@@ -273,25 +271,23 @@ main[stepping="true"] .sequencer {
     &:before {
       content: "";
       background: var(--color-page);
-      border-radius: calc(
-          var(--interface-corner-factor) * var(--size-unit) * 0.25
-        )
-        calc(var(--interface-corner-factor) * var(--size-unit) * 0.25)
+      border-radius: calc(var(--pads-corner-factor) * var(--size-unit) * 0.25)
+        calc(var(--pads-corner-factor) * var(--size-unit) * 0.25)
         calc(
-          var(--interface-corner-factor) * var(--size-unit) +
-            (var(--interface-gap-y-factor) * var(--size-unit))
+          var(--pads-corner-factor) * var(--size-unit) +
+            (var(--pads-gap-y-factor) * var(--size-unit))
         )
         calc(
-          var(--interface-corner-factor) * var(--size-unit) +
-            (var(--interface-gap-y-factor) * var(--size-unit))
+          var(--pads-corner-factor) * var(--size-unit) +
+            (var(--pads-gap-y-factor) * var(--size-unit))
         );
 
-      bottom: calc(var(--interface-gap-y-factor) * var(--size-unit) * -1);
+      bottom: calc(var(--pads-gap-y-factor) * var(--size-unit) * -1);
       display: block;
-      left: calc(var(--interface-gap-x-factor) * var(--size-unit) * -1);
+      left: calc(var(--pads-gap-x-factor) * var(--size-unit) * -1);
       position: absolute;
-      top: calc(var(--interface-gap-y-factor) * var(--size-unit) * -1);
-      width: calc(100% + var(--interface-gap-x-factor) * var(--size-unit) * 2);
+      top: calc(var(--pads-gap-y-factor) * var(--size-unit) * -1);
+      width: calc(100% + var(--pads-gap-x-factor) * var(--size-unit) * 2);
       z-index: 0;
     }
     &:after {
@@ -323,24 +319,18 @@ main[stepping="true"] .sequencer {
   > button:nth-child(20),
   > button:nth-child(22),
   > button:nth-child(24) {
-    margin-left: calc((var(--interface-gap-x-factor) * var(--size-unit)) * 0.5);
-    margin-right: calc(
-      (var(--interface-gap-x-factor) * var(--size-unit)) * 0.5
-    );
+    margin-left: calc((var(--pads-gap-x-factor) * var(--size-unit)) * 0.5);
+    margin-right: calc((var(--pads-gap-x-factor) * var(--size-unit)) * 0.5);
     width: var(--size-key-width);
   }
 
   > button:nth-child(1) {
-    border-top-left-radius: calc(
-      var(--interface-corner-factor) * var(--size-unit)
-    );
+    border-top-left-radius: calc(var(--pads-corner-factor) * var(--size-unit));
     margin-left: 0;
   }
 
   > button:nth-child(24) {
-    border-top-right-radius: calc(
-      var(--interface-corner-factor) * var(--size-unit)
-    );
+    border-top-right-radius: calc(var(--pads-corner-factor) * var(--size-unit));
     margin-right: 0;
   }
 }
@@ -348,7 +338,7 @@ main[stepping="true"] .sequencer {
 #pads {
   display: flex;
   flex-wrap: wrap;
-  gap: calc(var(--interface-gap-x-factor) * var(--size-unit));
+  gap: calc(var(--pads-gap-x-factor) * var(--size-unit));
   flex: 1;
   width: 100%;
   z-index: 2;
