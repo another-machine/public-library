@@ -185,7 +185,7 @@ export function generateDrumsDestinations({
 }): { [destination: string]: Destination } {
   const destinations: { [destination: string]: Destination } = {};
   sequencers.forEach((sequencer) => {
-    const drum = sequencer.drums;
+    const drums = sequencer.drums;
     const key = sequencer.key;
     destinations[key] = new Destination({
       key: sequencer.theme.toString(),
@@ -289,57 +289,26 @@ export function generateDrumsDestinations({
         }),
         synths: new Destination({
           info: {
-            content: () => formatJSON(sequencer.drums.exportParams()),
+            content: () => formatJSON(drums.exportParams()),
           },
           properties: {
-            ...synthVolumeProperty(() => drum),
+            ...synthVolumeProperty(() => drums),
           },
-          destinations: {
-            kick: new Destination({
+          destinations: drums.kit.reduce<{
+            [k: string]: Destination;
+          }>((into, drum, index) => {
+            into[index] = new Destination({
               info: {
-                content: () =>
-                  formatJSON(sequencer.drums.kit.kick.exportParams()),
+                content: () => formatJSON(drum.exportParams()),
               },
               properties: {
-                ...synthVolumeProperty(() => sequencer.drums.kit.kick),
-                ...synthEffectsProperties(() => sequencer.drums.kit.kick),
+                ...synthVolumeProperty(() => drum),
+                ...synthEffectsProperties(() => drum),
               },
               destinations: {},
-            }),
-            snare: new Destination({
-              info: {
-                content: () =>
-                  formatJSON(sequencer.drums.kit.snare.exportParams()),
-              },
-              properties: {
-                ...synthVolumeProperty(() => sequencer.drums.kit.snare),
-                ...synthEffectsProperties(() => sequencer.drums.kit.snare),
-              },
-              destinations: {},
-            }),
-            closed: new Destination({
-              info: {
-                content: () =>
-                  formatJSON(sequencer.drums.kit.closed.exportParams()),
-              },
-              properties: {
-                ...synthVolumeProperty(() => sequencer.drums.kit.closed),
-                ...synthEffectsProperties(() => sequencer.drums.kit.closed),
-              },
-              destinations: {},
-            }),
-            open: new Destination({
-              info: {
-                content: () =>
-                  formatJSON(sequencer.drums.kit.open.exportParams()),
-              },
-              properties: {
-                ...synthVolumeProperty(() => sequencer.drums.kit.open),
-                ...synthEffectsProperties(() => sequencer.drums.kit.open),
-              },
-              destinations: {},
-            }),
-          },
+            });
+            return into;
+          }, {}),
         }),
       },
     });

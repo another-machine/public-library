@@ -86,9 +86,6 @@ export class PromptInterface extends HTMLElement {
           ) ||
           suggestions.commands.some((cmd) =>
             cmd.startsWith(this.filterBuffer + e.key.toLowerCase())
-          ) ||
-          suggestions.properties.some((prop) =>
-            prop.startsWith(this.filterBuffer + e.key.toLowerCase())
           );
 
         if (wouldMatch) {

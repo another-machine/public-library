@@ -1,0 +1,39 @@
+body {
+  background: var(--color-page);
+  display: flex;
+  height: 100vh;
+  margin: 0;
+}
+
+body,
+button {
+  font-family: var(--font-family);
+}
+
+/* TODO: properly handle focus */
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: var(--color-text) solid var(--outline-width) !important;
+  outline-offset: var(--outline-offset) !important;
+}
+
+canvas.export {
+  height: auto;
+  image-rendering: pixelated;
+  left: 50%;
+  position: fixed;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(80vw, 80vh);
+  z-index: 9999;
+}
+
+button#start {
+  background: var(--color-background);
+  border: 1px solid var(--color-text);
+  color: var(--color-text);
+  font-size: 2rem;
+  text-align: center;
+  width: 100%;
+}

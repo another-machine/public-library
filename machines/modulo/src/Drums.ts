@@ -155,8 +155,12 @@ export class ConfigurableHat {
     this.delay.connect(this.output);
   }
 
-  updateSettings(params: Exclude<ConfigurableHatParams, "type">) {
-    this.params = params;
+  updateSettings(params: DrumParams) {
+    this.params = {
+      ...this.params,
+      ...params,
+      settings: { ...this.params.settings, ...params.settings },
+    };
     this.highpass.set(params.settings.highpass);
     this.lowpass.set(params.settings.lowpass);
     this.crush.set(params.settings.crush);
@@ -250,8 +254,12 @@ export class ConfigurableSnare {
     this.delay.connect(this.output);
   }
 
-  updateSettings(params: Exclude<ConfigurableSnareParams, "type">) {
-    this.params = params;
+  updateSettings(params: DrumParams) {
+    this.params = {
+      ...this.params,
+      ...params,
+      settings: { ...this.params.settings, ...params.settings },
+    };
     this.highpass.set(params.settings.highpass);
     this.lowpass.set(params.settings.lowpass);
     this.crush.set(params.settings.crush);
@@ -345,8 +353,12 @@ export class ConfigurableKick {
     this.delay.connect(this.output);
   }
 
-  updateSettings(params: Exclude<ConfigurableKickParams, "type">) {
-    this.params = params;
+  updateSettings(params: DrumParams) {
+    this.params = {
+      ...this.params,
+      ...params,
+      settings: { ...this.params.settings, ...params.settings },
+    };
     this.highpass.set(params.settings.highpass);
     this.lowpass.set(params.settings.lowpass);
     this.crush.set(params.settings.crush);
@@ -377,7 +389,8 @@ export class ConfigurableKick {
 
 export class Drums {
   output?: Gain;
-  kit: (ConfigurableHat | ConfigurableSnare | ConfigurableKick)[];
+  kit: (ConfigurableHat | ConfigurableSnare | ConfigurableKick)[] = [];
+  volume: number;
 
   static velocitiesForStepsSlots(
     stepsSlotArray: StepsSlot[],
@@ -389,19 +402,8 @@ export class Drums {
     });
   }
 
-  constructor() {}
-
-  initialize({
-    volume,
-    mixer,
-    settings,
-  }: {
-    volume: number;
-    mixer: Mixer;
-    settings: DrumsParams["settings"];
-  }) {
-    this.output = new Gain(volume);
-    if (mixer.channel) this.output.connect(mixer.channel);
+  constructor({ volume, settings }: DrumsParams) {
+    this.volume = volume;
     this.kit = settings.map((setting) => {
       switch (setting.type) {
         case "closed":
@@ -413,11 +415,15 @@ export class Drums {
           return new ConfigurableSnare(setting);
       }
     });
+  }
 
-    for (let drum in this.kit) {
-      if (mixer.channel && this.output)
-        this.kit[drum].output.connect(this.output);
-    }
+  initialize({ mixer }: { mixer: Mixer }) {
+    this.output = new Gain(this.volume);
+    if (mixer.channel) this.output.connect(mixer.channel);
+
+    this.kit.forEach((drum) => {
+      if (mixer.channel && this.output) drum.output.connect(this.output);
+    });
   }
 
   updateSettings({ type, settings }: DrumTypeSettings) {

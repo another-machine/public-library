@@ -92,14 +92,14 @@ export class Machine {
           key: sequencer.key,
           octave: sequencer.octave,
           steps: new Steps(sequencer.steps),
-          synths: new Synths(),
+          synths: new Synths(sequencer.synths, sequencer.steps.rows.length),
         });
       } else if (sequencer.type === "DRUM") {
         return new DrumSequencer({
           theme: sequencer.theme,
           key: sequencer.key,
           steps: new Steps(sequencer.steps),
-          drums: new Drums(),
+          drums: new Drums(sequencer.synths),
         });
       } else {
         return sequencer as never;
@@ -109,8 +109,8 @@ export class Machine {
     this.keys = new Keyboard({
       theme: keys.theme,
       notes: this.notes,
-      main: new Synths(),
-      ghosts: new Synths(),
+      main: new Synths(keys.main, 1),
+      ghosts: new Synths(keys.ghosts, 1),
       octave: keys.octave,
     });
 
@@ -154,20 +154,7 @@ export class Machine {
       this.promptInterface.toggle();
 
       this.sequencers.forEach((sequencer, i) => {
-        if (sequencer.type === "SYNTH" && sequencers[i].type === "SYNTH") {
-          sequencer.initialize({
-            voices: sequencers[i].steps.rows.length,
-            volume: sequencers[i].synths.volume,
-            mixer: this.mixer,
-            settings: sequencers[i].synths.settings,
-          });
-        } else if (sequencer.type === "DRUM" && sequencers[i].type === "DRUM") {
-          sequencer.initialize({
-            volume: sequencers[i].synths.volume,
-            mixer: this.mixer,
-            settings: sequencers[i].synths.settings,
-          });
-        }
+        sequencer.initialize({ mixer: this.mixer });
       });
     };
 

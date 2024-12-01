@@ -63,16 +63,8 @@ export class DrumSequencer extends SequencerBase {
     this.drums = drums;
   }
 
-  initialize({
-    volume,
-    mixer,
-    settings,
-  }: {
-    volume: number;
-    mixer: Mixer;
-    settings: DrumsParams["settings"];
-  }) {
-    this.drums.initialize({ volume, mixer, settings });
+  initialize({ mixer }: { mixer: Mixer }) {
+    this.drums.initialize({ mixer });
   }
 
   dispose() {
@@ -113,18 +105,8 @@ export class SynthSequencer extends SequencerBase {
     this.synths = synths;
   }
 
-  initialize({
-    voices,
-    volume,
-    mixer,
-    settings,
-  }: {
-    voices: number;
-    volume: number;
-    mixer: Mixer;
-    settings: ConfigurableSynthParams;
-  }) {
-    this.synths.initialize({ voices, volume, mixer, settings });
+  initialize({ mixer }: { mixer: Mixer }) {
+    this.synths.initialize({ mixer });
   }
 
   dispose() {

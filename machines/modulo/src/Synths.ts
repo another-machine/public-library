@@ -257,8 +257,27 @@ export interface SynthsParams {
 export class Synths {
   output?: Gain;
   voices: ConfigurableSynth[] = [];
+  volume: number;
 
-  constructor() {}
+  constructor(
+    {
+      volume,
+      settings,
+    }: {
+      volume: number;
+      settings: ConfigurableSynthParams;
+    },
+    voices: number
+  ) {
+    this.volume = volume;
+    for (let i = 0; i < voices; i++) {
+      const synth = new ConfigurableSynth({
+        gain: 1 / voices,
+        settings,
+      });
+      this.voices.push(synth);
+    }
+  }
 
   static get initialSettings() {
     return INITIAL_SETTINGS;
@@ -291,28 +310,13 @@ export class Synths {
     };
   }
 
-  initialize({
-    voices,
-    volume,
-    mixer,
-    settings,
-  }: {
-    voices: number;
-    volume: number;
-    mixer: Mixer;
-    settings: ConfigurableSynthParams;
-  }) {
-    this.output = new Gain(volume);
+  initialize({ mixer }: { mixer: Mixer }) {
+    this.output = new Gain(this.volume);
     if (mixer.channel) this.output.connect(mixer.channel);
 
-    for (let i = 0; i < voices; i++) {
-      const synth = new ConfigurableSynth({
-        gain: 1 / voices,
-        settings,
-      });
-      this.voices.push(synth);
-      synth.output.connect(this.output);
-    }
+    this.voices.forEach((synth) => {
+      if (mixer.channel && this.output) synth.output.connect(this.output);
+    });
   }
 
   dispose() {

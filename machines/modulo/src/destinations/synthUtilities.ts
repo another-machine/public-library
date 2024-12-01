@@ -39,7 +39,6 @@ export function synthVolumeProperty(
       ],
       onSet: (_command, [value]) => {
         const valid = validators.volume(value);
-        console.log(value, valid, loader());
         loader().updateGain(parseFloat(value));
         return { valid };
       },

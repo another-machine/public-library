@@ -1,0 +1,8 @@
+button {
+  all: unset;
+}
+
+*,
+button {
+  box-sizing: border-box;
+}

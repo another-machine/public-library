@@ -1,0 +1,57 @@
+:root {
+  --interface-border-factor: 0;
+  --interface-corner-factor: 1;
+  --interface-gap-x-factor: 0.4;
+  --interface-gap-y-factor: 0.4;
+  --interface-glow-factor: 0.1;
+  --prompt-border-factor: 0.2;
+  --prompt-corner-factor: 0.4;
+  --prompt-font-factor: 1;
+  --prompt-gap-x-factor: 0.4;
+  --prompt-gap-y-factor: 0.4;
+  --prompt-padding-x-factor: 0.3;
+  --prompt-padding-y-factor: 0.3;
+  --prompt-width-factor: 32;
+
+  --color-hue-base: 0;
+  --color-a-lit: 1;
+  --color-a-chr: 0;
+  --color-a-hue: 0;
+  --color-b-lit: 0;
+  --color-b-chr: 0;
+  --color-b-hue: 0;
+  --color-c-lit: 0;
+  --color-c-chr: 0;
+  --color-c-hue: 0;
+
+  --color-page-lit: var(--color-0-c-lit, 0);
+  --color-page-chr: var(--color-0-c-chr, 0);
+  --color-page-hue: var(--color-0-c-hue, 0);
+  --color-background-lit: var(--color-0-b-lit, 0);
+  --color-background-chr: var(--color-0-b-chr, 0);
+  --color-background-hue: var(--color-0-b-hue, 0);
+  --color-text-lit: var(--color-0-a-lit, 1);
+  --color-text-chr: var(--color-0-a-chr, 0);
+  --color-text-hue: var(--color-0-a-hue, 0);
+
+  --outline-offset: 2px;
+  --outline-width: 2px;
+
+  --color-page: oklch(
+    var(--color-page-lit) var(--color-page-chr)
+      calc(var(--color-hue-base) + var(--color-page-hue)) / 1
+  );
+  --color-background: oklch(
+    var(--color-background-lit) var(--color-background-chr)
+      calc(var(--color-hue-base) + var(--color-background-hue)) / 1
+  );
+  --color-text: oklch(
+    var(--color-text-lit) var(--color-text-chr)
+      calc(var(--color-hue-base) + var(--color-text-hue)) / 1
+  );
+
+  --size-unit: 1rem;
+
+  --font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+}
