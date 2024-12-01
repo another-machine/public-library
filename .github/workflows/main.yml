@@ -22,8 +22,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
-  deploy:
+  deploy-docs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -40,6 +39,26 @@ jobs:
         uses: actions/upload-pages-artifact@v2
         with:
           path: "./docs/dist"
-      - name: Deploy to GitHub Pages
+      - name: Deploy Docs to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
+  deploy-modulo:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}/modulo
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - run: npm ci
+      - run: npm run build
+        working-directory: machines/modulo
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v2
+        with:
+          path: "./machines/modulo/dist"
+      - name: Deploy Modulo to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
