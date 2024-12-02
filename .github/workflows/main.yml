@@ -41,7 +41,7 @@ jobs:
         working-directory: machines/modulo
 
       - run: mkdir site
-      - run: mv ./docs/dist ./site/docs
+      - run: mv ./docs/dist ./site
       - run: mv ./machines/modulo/dist ./site/modulo
 
       - name: Setup Pages
