@@ -40,7 +40,6 @@ jobs:
       - run: npm run build
         working-directory: machines/modulo
 
-      - run: mkdir site
       - run: mv ./docs/dist ./site
       - run: mv ./machines/modulo/dist ./site/modulo
 
