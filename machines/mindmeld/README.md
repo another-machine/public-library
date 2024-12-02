@@ -10,7 +10,7 @@ A two-person collaborative word game for idle time.
 - Players switch roles every guess.
 - The game gets more complex the more you win and less complex the more you lose.
 
-Playable prototype can be found at [mindmeld.jake.fun](https://mindmeld.jake.fun).
+Still very much WIP. Latest preview can be found at [amplib.app/mindmeld](https://amplib.app/mindmeld/). An earlier prototype can be found at [mindmeld.jake.fun](https://mindmeld.jake.fun).
 
 No network required beyond downloading the site.
 
