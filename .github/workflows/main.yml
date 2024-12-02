@@ -30,36 +30,26 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
       - run: npm ci
       - run: npm run build
         working-directory: docs
-      - name: Setup Pages
-        uses: actions/configure-pages@v3
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
-        with:
-          path: "./docs/dist"
-      - name: Deploy Docs to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v2
-  deploy-modulo:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+
       - run: npm ci
         working-directory: machines/modulo
       - run: npm run build
         working-directory: machines/modulo
+
+      - run: mkdir site
+      - run: mv ./docs/dist ./site/docs
+      - run: mv ./machines/modulo/dist ./site/modulo
+
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v2
         with:
-          path: "./machines/modulo/dist"
-      - name: Deploy Modulo to GitHub Pages
+          path: "./site"
+      - name: Deploy Docs to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
