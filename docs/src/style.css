@@ -58,7 +58,8 @@ h1 {
 }
 
 h1,
-h2 {
+h2,
+h3 {
   a {
     color: inherit;
     text-decoration: none;
@@ -74,11 +75,19 @@ p {
 
 h2 {
   font-size: 2em;
+}
+
+h2,
+h3 {
   font-style: italic;
 
   code {
     font-style: normal;
   }
+}
+
+h3 {
+  font-size: 1.8em;
 }
 
 header {
@@ -110,6 +119,7 @@ section {
   }
 
   h2,
+  h3,
   p {
     width: 100%;
   }
@@ -155,8 +165,9 @@ section {
     border: 1px solid;
     color: var(--color-text);
     flex: 1;
+    max-height: 80svh;
     padding: var(--gap);
-    overflow-x: auto;
+    overflow: auto;
 
     [data-value] {
       color: var(--color-accent);

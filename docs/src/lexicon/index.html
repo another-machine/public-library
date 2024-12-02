@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@amplib/lexicon</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        @amplib/lexicon
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-lexicon"
+          >GitHub</a
+        >
+      </h1>
+    </header>
+
+    <main>
+      <section>
+        <h2>Constraints are best used to describe single topics</h2>
+        <p><code>import { constraints } from "lexicon";</code></p>
+        <pre><code>const constraints = <span data-output="constraints"></span></code></pre>
+      </section>
+
+      <section>
+        <h2>Prompts are best used to describe multiple topics</h2>
+        <p><code>import { prompts } from "lexicon";</code></p>
+        <pre><code>const prompts = <span data-output="prompts"></span></code></pre>
+      </section>
+
+      <section>
+        <h2>Topics are grouped by association</h2>
+        <p><code>import { topics } from "lexicon";</code></p>
+        <pre><code>const topics = <span data-output="topics"></span></code></pre>
+      </section>
+    </main>
+
+    <script type="module">
+      import {
+        constraints,
+        prompts,
+        topics,
+      } from "../../../packages/amplib-lexicon/src";
+
+      document
+        .querySelectorAll('[data-output="constraints"]')
+        .forEach(
+          (item) => (item.innerHTML = JSON.stringify(constraints, null, 2))
+        );
+      document
+        .querySelectorAll('[data-output="prompts"]')
+        .forEach((item) => (item.innerHTML = JSON.stringify(prompts, null, 2)));
+      document
+        .querySelectorAll('[data-output="topics"]')
+        .forEach((item) => (item.innerHTML = JSON.stringify(topics, null, 2)));
+    </script>
+  </body>
+</html>
