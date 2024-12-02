@@ -36,6 +36,12 @@ jobs:
       - run: npm run build
         working-directory: docs
 
+      # compiling lexicon-standoff
+      - run: npm ci
+        working-directory: machines/lexicon-standoff
+      - run: npm run build
+        working-directory: machines/lexicon-standoff
+
       # compiling mindmeld
       - run: npm ci
         working-directory: machines/mindmeld
@@ -50,6 +56,8 @@ jobs:
 
       # renaming docs/dist to main site directory
       - run: mv ./docs/dist ./site
+      # moving lexicon-standoff into site
+      - run: mv ./machines/lexicon-standoff/dist ./site/lexicon-standoff
       # moving mindmeld into site
       - run: mv ./machines/mindmeld/dist ./site/mindmeld
       # moving modulo into site
