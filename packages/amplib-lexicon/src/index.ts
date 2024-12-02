@@ -17,6 +17,16 @@ export const constraints = [
   "historical",
 ];
 
+export const prompts = [
+  "Anything",
+  "Adjective",
+  "Business",
+  "Emoji",
+  "Emotion",
+  "Proper Noun",
+  "Question",
+];
+
 export const topics = [
   [
     "Cartoons",

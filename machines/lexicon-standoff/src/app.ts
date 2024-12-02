@@ -1,5 +1,5 @@
 import {
-  constraints as lexiconConstraints,
+  prompts as lexiconPrompts,
   topics as lexiconTopics,
 } from "../../../packages/amplib-lexicon/src";
 import {
@@ -47,6 +47,9 @@ const lexiconPlayerOptionKeys: LexiconPlayerOptionKey[] = Object.keys(
   lexiconPlayerOptions
 ) as LexiconPlayerOptionKey[];
 
+const lexiconPlayerFromIndex = (index: number) =>
+  lexiconPlayerOptions[lexiconPlayerOptionKeys[index]];
+
 const searchParams = new URLSearchParams(window.location.search);
 // Optionally start via url
 const savedSeed = searchParams.get("seed");
@@ -63,32 +66,20 @@ class Lexicon {
     "player-count"
   ) as HTMLInputElement;
   $inputSeed = document.getElementById("seed") as HTMLInputElement;
-  constraints: string[] = [];
+  prompts: string[] = [];
   engine: RandomEngine;
-  sync = true;
+  sync = !savedSeed;
   timecodeGenerator: () => TimecodeSeedResponse;
   topics: string[][] = [];
 
-  constructor({
-    constraints,
-    topics,
-  }: {
-    constraints: string[];
-    topics: string[][];
-  }) {
-    this.update({ constraints, topics });
+  constructor({ prompts, topics }: { prompts: string[]; topics: string[][] }) {
+    this.update({ prompts, topics });
     this.animationLoop();
     this.initializeUI();
   }
 
-  update({
-    constraints,
-    topics,
-  }: {
-    constraints: string[];
-    topics: string[][];
-  }) {
-    this.constraints = [...constraints];
+  update({ prompts, topics }: { prompts: string[]; topics: string[][] }) {
+    this.prompts = [...prompts];
     this.topics = [...topics];
     this.timecodeGenerator = RandomEngine.timecodeGenerator({
       length: 5,
@@ -103,8 +94,8 @@ class Lexicon {
     if (this.sync) {
       const result = this.timecodeGenerator();
       // Should we just use the timestamp?
-      // this.$inputSeed.value = result.code;
-      this.$inputSeed.value = (result.position / 10000).toString();
+      this.$inputSeed.value = result.code;
+      // this.$inputSeed.value = (result.position / 10000).toString();
       this.$elementSyncText.innerHTML = (result.expiry / 1000).toFixed(1);
     } else {
       this.$elementSyncText.innerHTML = "&nbsp;";
@@ -127,6 +118,12 @@ class Lexicon {
   }
 
   private initializeUI() {
+    if (savedSeed) {
+      this.$inputSeed.value = savedSeed;
+    }
+    if (savedPlayerCount) {
+      this.$inputPlayerCount.value = savedPlayerCount;
+    }
     this.$buttonSync.addEventListener("click", () => {
       this.sync = !this.sync;
       if (this.sync) {
@@ -140,6 +137,12 @@ class Lexicon {
       this.handlePlayerCountChange.bind(this)
     );
     this.handlePlayerCountChange();
+
+    if (savedPlayerIndex) {
+      this.$formLobby
+        .querySelector(`[name="player-index"][value="${savedPlayerIndex}"]`)
+        ?.setAttribute("checked", "true");
+    }
 
     this.$formLobby.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -177,9 +180,9 @@ class Lexicon {
     window.history.replaceState({ path }, "", path);
     const imposterCount = Math.floor(playerCount / 3);
     const topicCount = 3 * 2; // two randoms per topic
-    const constraintCount = 1;
+    const promptCount = 1;
     this.engine = new RandomEngine({
-      size: imposterCount + topicCount + constraintCount,
+      size: imposterCount + topicCount + promptCount,
       seed,
     });
     const randoms = this.engine.random(0);
@@ -197,7 +200,8 @@ class Lexicon {
       randomIndex++;
       topics.push(topic);
     }
-    const constraint = lexiconConstraints[randomIndex];
+    const prompt =
+      lexiconPrompts[Math.floor(randoms[randomIndex] * lexiconPrompts.length)];
     randomIndex++;
     const playerIndices: number[] = [];
     for (let i = 0; i < playerCount; i++) {
@@ -213,7 +217,7 @@ class Lexicon {
 
     this.renderRoundUI({
       topics,
-      constraint,
+      prompt,
       imposterIndices,
       playerIndex,
       playerCount,
@@ -223,29 +227,110 @@ class Lexicon {
 
   private renderRoundUI({
     topics,
-    constraint,
+    prompt,
     imposterIndices,
     playerIndex,
     playerCount,
   }: {
     topics: string[];
-    constraint: string;
+    prompt: string;
     imposterIndices: number[];
     playerIndex: number;
     playerCount: number;
   }) {
     const playerIsImposter = imposterIndices.includes(playerIndex);
-    const firstRoundTopicsArray = Lexicon.shuffle(
-      playerIsImposter ? [...topics] : [topics[0], topics[1]]
-    );
-    this.$elementMain.innerHTML = `
-    <h1>You are an ${playerIsImposter ? "Imposter" : "Agent"}!</h1>
-    <h2>Topics</h2>
-    <p>${firstRoundTopicsArray.join(" • ")}</p>
-    <h2>Constraint</h2>
-    <p>${constraint}</p>
-`;
-    console.log(topics, constraint, imposterIndices, playerIndex, playerCount);
+    const $elementMain = this.$elementMain;
+    const reset = () => {
+      document.body.className = "";
+      this.$elementMain.innerHTML = "";
+      this.$formLobby.classList.remove("hide");
+      this.sync = true;
+    };
+    const realTopics = [topics[0], topics[1]];
+    const emoji = lexiconPlayerFromIndex(playerIndex);
+
+    renderStep1();
+
+    function renderStep1() {
+      const localTopics = Lexicon.shuffle(
+        playerIsImposter ? [...topics] : realTopics
+      );
+      document.body.className = "odd";
+      $elementMain.innerHTML = `
+        <section>
+          ${localTopics.map((t) => `<h1>${t}</h1>`).join("\n")}
+          <p>You are an <strong>${
+            playerIsImposter ? "Imposter" : "Agent"
+          }</strong></p>
+        </section>
+  
+        <footer>
+          <input type="text" placeholder="Prompt: ${prompt}...">
+          <button>${emoji} Submit ${emoji}</button>
+        </footer>
+      `;
+      const $button =
+        $elementMain.querySelector<HTMLButtonElement>("footer > button")!;
+      const $input =
+        $elementMain.querySelector<HTMLInputElement>("footer > input")!;
+      $button.addEventListener("click", () => {
+        if ($input.value) {
+          renderStep2($input.value);
+        }
+      });
+    }
+
+    function renderStep2(submission) {
+      document.body.className = "";
+      $elementMain.innerHTML = `
+        <section>
+          <h1>"${submission}"</h1>
+          <p>${prompt}</p>
+          <h2>${realTopics.join(" • ")}</h2>
+        </section>
+        
+        <footer>
+          <button>${emoji} Reveal ${emoji}</button>
+        </footer>
+      `;
+
+      const $button =
+        $elementMain.querySelector<HTMLButtonElement>("footer > button")!;
+      $button.addEventListener("click", () => {
+        renderStep3();
+      });
+    }
+
+    function renderStep3() {
+      document.body.className = "odd";
+      $elementMain.innerHTML = `
+        <section>
+          <h2 class="emoji">${imposterIndices
+            .map((i) => lexiconPlayerFromIndex(i))
+            .join(" ")}</h2>
+          <h2>${realTopics.join(" • ")}<br><s>${topics[2]}</s></h2>
+        </section>
+        
+        <footer>
+          <p>${
+            playerIsImposter
+              ? `Two points if you received ${Math.floor(
+                  playerCount * 0.3334
+                )} or fewer votes`
+              : `One point if you voted for ${imposterIndices
+                  .map((i) => lexiconPlayerFromIndex(i))
+                  .join(" ")}`
+          }</p>
+          <button>${emoji} Next ${emoji}</button>
+        </footer>
+      `;
+
+      const $button =
+        $elementMain.querySelector<HTMLButtonElement>("footer > button")!;
+      $button.addEventListener("click", () => reset());
+    }
+
+    console.log(topics, prompt, imposterIndices, playerIndex, playerCount);
   }
 
   static shuffle(array: string[]) {
@@ -257,6 +342,6 @@ class Lexicon {
 }
 
 const game = new Lexicon({
-  constraints: lexiconConstraints,
+  prompts: lexiconPrompts,
   topics: lexiconTopics,
 });
