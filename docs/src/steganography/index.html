@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Steganography | a(nother) machine</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        <a href="/">a(nother) machine</a> Steganography
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-steganography"
+          >GitHub</a
+        >
+      </h1>
+    </header>
+
+    <main>
+      <section>
+        <h2>Encode messages into pixels.</h2>
+        <p>
+          <code
+            >Stega64.encode({ source: HTMLImageElement | HTMLCanvasElement;
+            messages: string[]; minWidth?: number; minHeight?: number }):
+            HTMLCanvasElement</code
+          >
+        </p>
+        <pre><code>Stega64.encode({
+  source,
+  messages: ["<span data-value="message"></span>"],
+  minWidth: <span data-value="min-width"></span>,
+  minHeight: <span data-value="min-height"></span>
+})</code></pre>
+
+        <aside>
+          <label for="message">
+            <input id="message" type="text" value="Message Here" /> messages
+          </label>
+          <label for="min-width">
+            <input id="min-width" type="number" value="10" min="0" /> minWidth
+          </label>
+          <label for="min-height">
+            <input id="min-height" type="number" value="10" min="0" /> minHeight
+          </label>
+        </aside>
+      </section>
+      <section>
+        <h2>Source / Encoded</h2>
+        <figure id="image-one"><img src="./example.jpg" /></figure>
+        <figure id="image-two"></figure>
+      </section>
+
+      <section>
+        <h2>Decode messages from encoded pixels.</h2>
+        <p>
+          <code
+            >Stega64.decode({ source: HTMLImageElement | HTMLCanvasElement; }):
+            String</code
+          >
+        </p>
+
+        <pre><code>const result = Stega64.decode({ source });
+<span data-output="decode"></span></code></pre>
+      </section>
+    </main>
+
+    <script type="module">
+      import {
+        Stega64,
+        StegaCassette,
+        StegaAnimator,
+        createImageDropReader,
+        createImageFileReader,
+        loadAudioBufferFromAudioUrl,
+        loadImageFromImageUrl,
+        playDecodedAudio,
+      } from "../../../packages/amplib-steganography/src";
+
+      example1();
+
+      async function example1() {
+        const output = document.getElementById("image-two");
+        const source = document
+          .getElementById("image-one")
+          .querySelector("img");
+        const message = document.getElementById("message");
+        const minWidth = document.getElementById("min-width");
+        const minHeight = document.getElementById("min-height");
+        const encode = () => {
+          const result = Stega64.encode({
+            source,
+            messages: [message.value],
+            minHeight: minHeight.value,
+            minWidth: minWidth.value,
+          });
+          output.innerHTML = "";
+          output.appendChild(result);
+          example2(result);
+        };
+        let timeout;
+        [message, minWidth, minHeight].forEach((item) => {
+          const update = () => {
+            document
+              .querySelectorAll(`[data-value="${item.id}"]`)
+              .forEach((a) => (a.innerText = item.value));
+          };
+          item.addEventListener("input", () => {
+            if (timeout) clearTimeout(timeout);
+            timeout = setTimeout(() => {
+              update();
+              encode();
+            }, 500);
+          });
+          update();
+        });
+
+        setTimeout(() => {
+          encode();
+        }, 1000);
+      }
+
+      async function example2(source) {
+        const decode = document.querySelector('[data-output="decode"]');
+        decode.innerHTML = JSON.stringify(Stega64.decode({ source }), null, 2);
+      }
+    </script>
+  </body>
+</html>

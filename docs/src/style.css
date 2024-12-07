@@ -51,12 +51,6 @@ h5 {
   font-weight: normal;
 }
 
-h1 {
-  display: flex;
-  font-style: italic;
-  justify-content: space-between;
-}
-
 h1,
 h2,
 h3 {
@@ -99,6 +93,20 @@ header {
   position: sticky;
   top: 0;
   width: 100%;
+
+  h1 {
+    display: flex;
+    gap: var(--gap);
+    justify-content: space-between;
+
+    a {
+      font-style: italic;
+
+      &:last-child {
+        /* margin-left: auto; */
+      }
+    }
+  }
 }
 
 main {
@@ -108,6 +116,25 @@ main {
   width: calc(100% - var(--gap) * 2);
 }
 
+:root {
+  --figure-width: calc(25% - var(--gap) * 3 / 4);
+  --form-width: 100%;
+  --vertical-spacing: 5vh;
+}
+
+@media screen and (min-width: 600px) {
+  :root {
+    --form-width: calc(25% - var(--gap) * 3 / 4);
+  }
+}
+@media screen and (min-width: 800px) {
+  :root {
+    --figure-width: calc(50% - var(--gap) / 2);
+    --form-width: calc(33.333% - var(--gap) * 2 / 3);
+    --vertical-spacing: 10vh;
+  }
+}
+
 section {
   align-items: start;
   display: flex;
@@ -115,7 +142,7 @@ section {
   gap: var(--gap);
 
   + section {
-    margin-top: 10vh;
+    margin-top: var(--vertical-spacing);
   }
 
   h2,
@@ -133,7 +160,19 @@ section {
     flex-direction: column;
     gap: var(--gap);
     min-width: 10rem;
-    width: 25%;
+    width: var(--form-width);
+  }
+
+  figure {
+    margin: 0;
+    width: var(--figure-width);
+
+    > img,
+    > canvas {
+      height: auto;
+      image-rendering: pixelated;
+      width: 100%;
+    }
   }
 
   label {
@@ -174,6 +213,7 @@ section {
       text-decoration: underline;
     }
 
+    [data-highlight],
     [data-output] {
       color: var(--color-accent);
     }
