@@ -355,6 +355,7 @@ export async function playDecodedAudio({
   source.connect(audioContext.destination);
   // Start playing the audio
   source.start();
+  return () => source.stop();
 }
 
 async function resampleAudioBuffer(

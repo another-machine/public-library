@@ -39,11 +39,20 @@ export function encode({
   return canvas;
 }
 
-export function decode({ source }: { source: HTMLImageElement }) {
+export function decode({
+  source,
+}: {
+  source: HTMLImageElement | HTMLCanvasElement;
+}) {
+  const relativeWidth =
+    "naturalWidth" in source ? source.naturalWidth : source.width;
+  const relativeHeight =
+    "naturalHeight" in source ? source.naturalHeight : source.height;
   const { canvas, context } = createCanvasAndContext(
-    source.naturalWidth,
-    source.naturalHeight
+    relativeWidth,
+    relativeHeight
   );
+
   context.drawImage(source, 0, 0);
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;

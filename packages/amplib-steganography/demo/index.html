@@ -32,7 +32,7 @@
   </head>
   <body>
     <input id="upload" type="file" />
-    <audio id="audio" src="./crash.mp3"></audio>
+    <audio id="audio" src="./example.mp3"></audio>
     <img id="input" src="./crash.jpg" />
     <img id="output" style="display: none" />
 
@@ -48,8 +48,8 @@
         StegaCassette,
       } from "../dist/index.js";
 
-      runStega64();
-      // runStegaCassette();
+      // runStega64();
+      runStegaCassette();
       // runStegaAnimator();
 
       async function runStega64() {
