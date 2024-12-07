@@ -5,8 +5,26 @@
   --color-accent: hsl(318, 73%, 25%);
   --color-background: white;
   --color-text: black;
+
+  --figure-width: calc(50% - var(--gap) / 2);
+  --form-width: 100%;
+  --pre-width: 100%;
+  --vertical-spacing: 5vh;
 }
 
+@media screen and (min-width: 600px) {
+  :root {
+    --pre-width: calc(75% - var(--gap) / 2);
+    --form-width: calc(25% - var(--gap) / 2);
+  }
+}
+@media screen and (min-width: 800px) {
+  :root {
+    --pre-width: calc(66.667% - var(--gap) / 2);
+    --form-width: calc(33.333% - var(--gap) / 2);
+    --vertical-spacing: 10vh;
+  }
+}
 @media (min-width: 1024px) {
   :root {
     --font-size: 1rem;
@@ -116,25 +134,6 @@ main {
   width: calc(100% - var(--gap) * 2);
 }
 
-:root {
-  --figure-width: calc(25% - var(--gap) * 3 / 4);
-  --form-width: 100%;
-  --vertical-spacing: 5vh;
-}
-
-@media screen and (min-width: 600px) {
-  :root {
-    --form-width: calc(25% - var(--gap) * 3 / 4);
-  }
-}
-@media screen and (min-width: 800px) {
-  :root {
-    --figure-width: calc(50% - var(--gap) / 2);
-    --form-width: calc(33.333% - var(--gap) * 2 / 3);
-    --vertical-spacing: 10vh;
-  }
-}
-
 section {
   align-items: start;
   display: flex;
@@ -159,7 +158,6 @@ section {
     display: flex;
     flex-direction: column;
     gap: var(--gap);
-    min-width: 10rem;
     width: var(--form-width);
   }
 
@@ -205,8 +203,9 @@ section {
     color: var(--color-text);
     flex: 1;
     max-height: 80svh;
-    padding: var(--gap);
+    min-width: var(--pre-width);
     overflow: auto;
+    padding: var(--gap);
 
     [data-value] {
       color: var(--color-accent);
