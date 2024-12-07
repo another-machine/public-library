@@ -118,9 +118,7 @@
           update();
         });
 
-        setTimeout(() => {
-          encode();
-        }, 1000);
+        source.onload = () => encode();
       }
 
       async function example2(source) {
