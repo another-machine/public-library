@@ -309,7 +309,7 @@ source.stop();</code></pre>
                 audioBuffer: audioBufferArray,
                 audioContext,
               });
-              stop = source.stop;
+              stop = () => source.stop();
             } else {
               stop();
               button.parentNode.remove();
@@ -331,9 +331,14 @@ source.stop();</code></pre>
         });
       }
 
+      let animator;
+
       function example3(source) {
         const output = document.getElementById("image-five");
-        const animator = new StegaAnimator({ source, resolution: 100 });
+        if (animator) {
+          animator.canvas.remove();
+        }
+        animator = new StegaAnimator({ source, resolution: 100 });
         output.appendChild(animator.canvas);
         animator.animationLoop([
           {
