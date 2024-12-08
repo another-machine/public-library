@@ -29,7 +29,7 @@
             HTMLCanvasElement</code
           >
         </p>
-        <pre><code>const source = await loadImageFromImageUrl("./example.jpg");
+        <pre><code>const source = await loadImageFromImageUrl({ url: "./example.jpg" });
 Stega64.encode({
   source,
   messages: ["<span data-value="message"></span>"],
@@ -73,8 +73,7 @@ Stega64.encode({
         </p>
         <pre><code>const audioBuffer = await loadAudioBufferFromAudioUrl({
   url: "./example.mp3",
-  audioContext,
-  sampleRate,
+  audioContext
 });
 const result = StegaCassette.encode({
   source,
@@ -94,12 +93,134 @@ const result = StegaCassette.encode({
             HTMLCanvasElement; }): Float32Array</code
           >
         </p>
-        <pre><code>const decodedAudio = StegaCassette.decode({ source: result });
-const stop = await playDecodedAudio({ 
-  decodedAudio,
-  audioContext,
-  sampleRate
+        <pre><code>const audioBuffer = StegaCassette.decode({ source: result });
+const stop = await playDecodedAudioBuffer({ 
+  audioBuffer,
+  audioContext
 });</code></pre>
+      </section>
+
+      <section>
+        <h2>Animate stegonographic image</h2>
+        <p>
+          <code
+            >new StegaAnimator({ resolution: number; source: HTMLImageElement |
+            HTMLCanvasElement; })</code
+          >
+        </p>
+
+        <pre><code>const animator = new StegaAnimator({
+  source,
+  resolution: 100,
+});
+document.body.appendChild(animator.canvas);
+await animator.animate({
+  from: { rotation: Math.PI, scale: 0.0, x: 0.5, y: 0.5, },
+  to: { rotation: Math.PI * 4, scale: 0.5, x: 0.5, y: 0.5, },
+  rate: 0.005,
+});
+const killLoop = animator.animationLoop([
+  {
+    from: { rotation: 0, scale: 0.5, x: 0.5, y: 0.5, },
+    to: { rotation: Math.PI * 1, scale: 0.6, x: 0.5, y: 0.5, },
+    rate: 0.01,
+  },
+  {
+    from: { rotation: Math.PI * 1, scale: 0.6, x: 0.5, y: 0.5, },
+    to: { rotation: Math.PI * 2, scale: 0.5, x: 0.5, y: 0.5, },
+    rate: 0.01,
+  },
+]);
+killLoop();</code></pre>
+
+        <figure id="image-five"></figure>
+      </section>
+
+      <section>
+        <h2>Turn an HTML element into a file drop area for images</h2>
+        <p>
+          <code
+            >createImageDropReader({ element: HTMLElement; onSuccess: (image:
+            HTMLImageElement) => void; onFailure?: (message: string) => void;
+            onDragEnter?: () => void; onDragLeave?: () => void; onDrop?: () =>
+            void; types?: ImageType[]; }): void</code
+          >
+        </p>
+        <pre><code>const element = document.body;
+createImageDropReader({
+  element,
+  onSuccess: (image) => element.appendChild(image),
+  onFailure: (message) => console.error(message),
+  onDragEnter: () => element.classList.add("droppable"),
+  onDragLeave: () => element.classList.remove("droppable"),
+  onDrop: () => element.classList.remove("droppable"),
+  types: ["image/png", "image/jpg"]
+});</code></pre>
+      </section>
+
+      <section>
+        <h2>Turn an input into a file input for images</h2>
+        <p>
+          <code
+            >createImageFileReader({ element: HTMLInputElement; onSuccess:
+            (image: HTMLImageElement) => void; onFailure?: (message: string) =>
+            void; types?: ImageType[]; }): void</code
+          >
+        </p>
+        <pre><code>const element = document.createElement("input");
+createImageFileReader({
+  element,
+  onSuccess: (image) => document.body.appendChild(image),
+  onFailure: (message) => console.error(message),
+  types: ["image/png", "image/jpg"]
+});</code></pre>
+      </section>
+
+      <section>
+        <h2>Load an audio buffer from a url string</h2>
+        <p>
+          <code
+            >async loadAudioBufferFromAudioUrl({ url: string; audioContext:
+            AudioContext; sampleRate?: number; }):
+            Promise&lt;Float32Array></code
+          >
+        </p>
+        <pre><code>const audioContext = new AudioContext();
+const audioBuffer = await loadAudioBufferFromAudioUrl({
+  url: "./example.mp3",
+  audioContext,
+  sampleRate: audioContext.sampleRate,
+});</code></pre>
+      </section>
+
+      <section>
+        <h2>Load an image from a url string</h2>
+        <p>
+          <code
+            >async loadImageFromImageUrl({ url: string }):
+            Promise&lt;HTMLImageElement></code
+          >
+        </p>
+        <pre><code>const audioBuffer = await loadImageFromImageUrl({
+  url: "./example.jpg"
+});</code></pre>
+      </section>
+
+      <section>
+        <h2>Play a decoded audio buffer</h2>
+        <p>
+          <code
+            >async playDecodedAudioBuffer({ audioBuffer: Float32Array;
+            audioContext: AudioContext; sampleRate?: number; }):
+            Promise&lt;AudioBufferSourceNode></code
+          >
+        </p>
+        <pre><code>const source = await playDecodedAudioBuffer({
+  audioBuffer,
+  audioContext,
+  sampleRate: audioContext.sampleRate,
+});
+source.stop();</code></pre>
       </section>
     </main>
 
@@ -112,7 +233,7 @@ const stop = await playDecodedAudio({
         createImageFileReader,
         loadAudioBufferFromAudioUrl,
         loadImageFromImageUrl,
-        playDecodedAudio,
+        playDecodedAudioBuffer,
       } from "../../../packages/amplib-steganography/src";
 
       example1();
@@ -136,6 +257,7 @@ const stop = await playDecodedAudio({
           output.innerHTML = "";
           output.appendChild(result);
           outputResult(result);
+          example3(result);
         };
         let timeout;
         [message, minWidth, minHeight].forEach((item) => {
@@ -175,8 +297,7 @@ const stop = await playDecodedAudio({
           .querySelector("img");
 
         const audioContext = new AudioContext();
-        const sampleRate = 48000;
-        let decodedAudio;
+        let audioBufferArray;
         let stop;
 
         button.addEventListener("click", async () => {
@@ -184,11 +305,11 @@ const stop = await playDecodedAudio({
             if (button.getAttribute("data-play") === "play") {
               button.setAttribute("data-play", "stop");
               button.innerText = "Stop audio playback";
-              stop = await playDecodedAudio({
-                decodedAudio,
+              const source = await playDecodedAudioBuffer({
+                audioBuffer: audioBufferArray,
                 audioContext,
-                sampleRate,
               });
+              stop = source.stop;
             } else {
               stop();
               button.parentNode.remove();
@@ -197,7 +318,6 @@ const stop = await playDecodedAudio({
             const audioBuffer = await loadAudioBufferFromAudioUrl({
               url: audio.getAttribute("src"),
               audioContext,
-              sampleRate,
             });
             const result = StegaCassette.encode({
               source,
@@ -206,9 +326,47 @@ const stop = await playDecodedAudio({
             output.appendChild(result);
             button.setAttribute("data-play", "play");
             button.innerText = "Play image as audio";
-            decodedAudio = StegaCassette.decode({ source: result });
+            audioBufferArray = StegaCassette.decode({ source: result });
           }
         });
+      }
+
+      function example3(source) {
+        const output = document.getElementById("image-five");
+        const animator = new StegaAnimator({ source, resolution: 100 });
+        output.appendChild(animator.canvas);
+        animator.animationLoop([
+          {
+            from: {
+              rotation: 0,
+              scale: 0.5,
+              x: 0.5,
+              y: 0.5,
+            },
+            to: {
+              rotation: Math.PI * 1,
+              scale: 0.6,
+              x: 0.5,
+              y: 0.5,
+            },
+            rate: 0.01,
+          },
+          {
+            from: {
+              rotation: Math.PI * 1,
+              scale: 0.6,
+              x: 0.5,
+              y: 0.5,
+            },
+            to: {
+              rotation: Math.PI * 2,
+              scale: 0.5,
+              x: 0.5,
+              y: 0.5,
+            },
+            rate: 0.01,
+          },
+        ]);
       }
     </script>
   </body>

@@ -42,7 +42,7 @@
         createImageFileReader,
         loadAudioBufferFromAudioUrl,
         loadImageFromImageUrl,
-        playDecodedAudio,
+        playDecodedAudioBuffer,
         StegaAnimator,
         Stega64,
         StegaCassette,
@@ -53,8 +53,8 @@
       // runStegaAnimator();
 
       async function runStega64() {
-        // const source = await loadImageFromImageUrl("./lion.png");
-        const source = await loadImageFromImageUrl("./crash.jpg");
+        // const source = await loadImageFromImageUrl({ url: "./lion.png" });
+        const source = await loadImageFromImageUrl({ url: "./crash.jpg" });
         // const source = document.createElement("canvas");
         // source.width = 1000;
         // source.height = 300;
@@ -103,8 +103,12 @@
           if (!initialized) {
             initialized = true;
             output.addEventListener("click", () => {
-              const decodedAudio = StegaCassette.decode({ source: output });
-              playDecodedAudio({ decodedAudio, audioContext, sampleRate });
+              const audioBuffer = StegaCassette.decode({ source: output });
+              playDecodedAudioBuffer({
+                audioBuffer,
+                audioContext,
+                sampleRate,
+              });
             });
           }
         });

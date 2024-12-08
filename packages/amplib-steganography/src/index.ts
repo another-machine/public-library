@@ -3,7 +3,7 @@ export {
   createImageFileReader,
   loadAudioBufferFromAudioUrl,
   loadImageFromImageUrl,
-  playDecodedAudio,
+  playDecodedAudioBuffer,
 } from "./utilities";
 export * as Stega64 from "./Stega64";
 export * from "./StegaAnimator";

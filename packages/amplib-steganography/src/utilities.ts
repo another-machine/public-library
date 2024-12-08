@@ -273,11 +273,11 @@ export function imageOrCanvasIsImage(
 export async function loadAudioBufferFromAudioUrl({
   url,
   audioContext,
-  sampleRate,
+  sampleRate = audioContext.sampleRate,
 }: {
   url: string;
   audioContext: AudioContext;
-  sampleRate: number;
+  sampleRate?: number;
 }) {
   const response = await fetch(url);
   const audioData = await response.arrayBuffer();
@@ -317,37 +317,39 @@ export function skippedAndIndicesFromIndexGenerator(width: number) {
 /**
  * Load an image by url.
  */
-export function loadImageFromImageUrl(
-  imageUrl: string
-): Promise<HTMLImageElement> {
+export function loadImageFromImageUrl({
+  url,
+}: {
+  url: string;
+}): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
-    image.src = imageUrl;
+    image.src = url;
     image.onload = (_) => resolve(image);
     image.onerror = reject;
   });
 }
 
-export async function playDecodedAudio({
-  decodedAudio,
+export async function playDecodedAudioBuffer({
+  audioBuffer,
   audioContext,
-  sampleRate,
+  sampleRate = audioContext.sampleRate,
 }: {
-  decodedAudio: Float32Array;
+  audioBuffer: Float32Array;
   audioContext: AudioContext;
-  sampleRate: number;
+  sampleRate?: number;
 }) {
   // Resume the AudioContext if it was suspended
   await audioContext.resume();
   // Create an AudioBuffer with 1 channel, length of decoded audio, and sample rate
   const decodedBuffer = audioContext.createBuffer(
     1,
-    decodedAudio.length,
+    audioBuffer.length,
     sampleRate
   );
   // Copy the decoded audio data into the buffer
-  decodedBuffer.getChannelData(0).set(decodedAudio);
+  decodedBuffer.getChannelData(0).set(audioBuffer);
   // Create a BufferSourceNode
   const source = audioContext.createBufferSource();
   source.buffer = decodedBuffer;
@@ -355,7 +357,7 @@ export async function playDecodedAudio({
   source.connect(audioContext.destination);
   // Start playing the audio
   source.start();
-  return () => source.stop();
+  return source;
 }
 
 async function resampleAudioBuffer(
