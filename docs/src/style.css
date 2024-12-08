@@ -189,11 +189,13 @@ section {
     justify-content: start;
 
     &,
-    & input {
+    & input,
+    & select {
       font-family: var(--font-monospace);
     }
 
-    input {
+    input,
+    select {
       border: 1px solid var(--color-text);
       padding: 0.5rem;
       width: 50%;

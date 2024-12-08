@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Theory | a(nother) machine</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        <a href="/">a(nother) machine</a> Music theory
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-music-theory"
+          >GitHub</a
+        >
+      </h1>
+    </header>
+
+    <main>
+      <section>
+        <h2>Scale hold scale data for a music key.</h2>
+        <p>
+          <code>new Scale({ root: Notation, mode: ModeType })</code>
+        </p>
+        <pre><code>const scale = new Scale({
+  root: "<span data-value="root"></span>",
+  mode: <span data-value="mode"></span>
+});
+<span data-output="scale"></span></code></pre>
+
+        <aside>
+          <label for="root">
+            <select id="root"></select>
+            root
+          </label>
+          <label for="mode">
+            <select id="mode"></select>
+            mode
+          </label>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module">
+      import {
+        Scale,
+        Mode,
+        Note,
+      } from "../../../packages/amplib-music-theory/src";
+
+      example();
+
+      async function example() {
+        const output = document.querySelector('[data-output="scale"]');
+        const mode = document.getElementById("mode");
+        const root = document.getElementById("root");
+        mode.value = Mode.types[0];
+        mode.innerHTML = Mode.types
+          .map((type) => `<option value="${type}">${type}</option>`)
+          .join("");
+        root.value = Note.notations[0];
+        root.innerHTML = Note.notations
+          .map((notation) => `<option value="${notation}">${notation}</option>`)
+          .join("");
+
+        mode.addEventListener("change", update);
+        root.addEventListener("change", update);
+        update();
+
+        function update() {
+          document.querySelector('[data-value="root"]').innerHTML = root.value;
+          document.querySelector('[data-value="mode"]').innerHTML = mode.value;
+          const scale = new Scale({ root: root.value, mode: mode.value });
+          console.log(scale);
+          output.innerHTML = `{
+  label: "${scale.label}",
+  mode: {
+    type: "${scale.mode.type}",
+    name: "${scale.mode.name}",
+    steps: [${scale.mode.steps.join(", ")}],
+    intervals: ["${scale.mode.intervals.join('", "')}"],
+  },
+  root: "${scale.root}",
+  rootOffset: "${scale.rootOffset}",
+  intervals: ${JSON.stringify(scale.intervals, null, 2)},
+  library: ${JSON.stringify(scale.library, null, 2)},
+  noteIds: ${JSON.stringify(scale.noteIds, null, 2)}
+}`;
+        }
+      }
+    </script>
+  </body>
+</html>
