@@ -38,8 +38,8 @@
 
     <script type="module">
       import {
-        createImageDropReader,
-        createImageFileReader,
+        createDropReader,
+        createFileReader,
         loadAudioBufferFromAudioUrl,
         loadImageFromImageUrl,
         playDecodedAudioBuffer,
@@ -115,14 +115,15 @@
       }
 
       function runStegaAnimator() {
-        createImageDropReader({
+        createDropReader({
           element: document.body,
           onSuccess: (image) => start(image),
-          types: ["image/png", "image/jpg"],
+          types: ["image/*"],
         });
-        createImageFileReader({
+        createFileReader({
           element: document.getElementById("upload"),
           onSuccess: (image) => start(image),
+          types: ["image/*"],
         });
 
         async function start(image) {

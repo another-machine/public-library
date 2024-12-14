@@ -140,39 +140,40 @@ killLoop();</code></pre>
         <h2>Turn an HTML element into a file drop area for images</h2>
         <p>
           <code
-            >createImageDropReader({ element: HTMLElement; onSuccess: (image:
-            HTMLImageElement) => void; onFailure?: (message: string) => void;
-            onDragEnter?: () => void; onDragLeave?: () => void; onDrop?: () =>
-            void; types?: ImageType[]; }): void</code
+            >createDropReader({ element: HTMLElement; onSuccess: (element:
+            HTMLImageElement | HTMLAudioElement) => void; onFailure?: (message:
+            string) => void; onDragEnter?: () => void; onDragLeave?: () => void;
+            onDrop?: () => void; types?: (AudioType | ImageType)[]; }):
+            void</code
           >
         </p>
         <pre><code>const element = document.body;
-createImageDropReader({
+createDropReader({
   element,
   onSuccess: (image) => element.appendChild(image),
   onFailure: (message) => console.error(message),
   onDragEnter: () => element.classList.add("droppable"),
   onDragLeave: () => element.classList.remove("droppable"),
   onDrop: () => element.classList.remove("droppable"),
-  types: ["image/png", "image/jpg"]
+  types: ["image/*"]
 });</code></pre>
       </section>
 
       <section>
-        <h2>Turn an input into a file input for images</h2>
+        <h2>Turn an input into a file input</h2>
         <p>
           <code
-            >createImageFileReader({ element: HTMLInputElement; onSuccess:
-            (image: HTMLImageElement) => void; onFailure?: (message: string) =>
-            void; types?: ImageType[]; }): void</code
+            >createFileReader({ element: HTMLInputElement; onSuccess: (element:
+            HTMLImageElement | HTMLAudioElement) => void; onFailure?: (message:
+            string) => void; types?: (AudioType | ImageType)[]; }): void</code
           >
         </p>
         <pre><code>const element = document.createElement("input");
-createImageFileReader({
+createFileReader({
   element,
   onSuccess: (image) => document.body.appendChild(image),
   onFailure: (message) => console.error(message),
-  types: ["image/png", "image/jpg"]
+  types: ["image/*"]
 });</code></pre>
       </section>
 
@@ -229,8 +230,6 @@ source.stop();</code></pre>
         Stega64,
         StegaCassette,
         StegaAnimator,
-        createImageDropReader,
-        createImageFileReader,
         loadAudioBufferFromAudioUrl,
         loadImageFromImageUrl,
         playDecodedAudioBuffer,

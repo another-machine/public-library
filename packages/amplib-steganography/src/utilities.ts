@@ -145,101 +145,184 @@ function getTransparencyRatio({
   return transparent / (sourceWidth * sourceHeight);
 }
 
-type ImageType = "image/png" | "image/jpg";
+type AudioType = "audio/*" | "audio/mp3" | "audio/wav";
+type ImageType = "image/*" | "image/png" | "image/jpg" | "image/jpeg";
 
-export function createImageDropReader({
+export function createDropReader({
   element,
   onSuccess,
   onFailure,
   onDragEnter,
   onDragLeave,
   onDrop,
-  types = ["image/png"],
+  types = ["audio/*", "image/*"],
 }: {
   element: HTMLElement;
-  onSuccess: (image: HTMLImageElement) => void;
+  onSuccess: (params: {
+    audioElements: HTMLAudioElement[];
+    imageElements: HTMLImageElement[];
+  }) => void;
   onFailure?: (message: string) => void;
   onDragEnter?: () => void;
   onDragLeave?: () => void;
   onDrop?: () => void;
-  types?: ImageType[];
+  types?: (AudioType | ImageType)[];
 }) {
   element.addEventListener("dragover", (event) => {
     event.preventDefault();
     event.stopPropagation();
   });
-  element.addEventListener("dragenter", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (onDragEnter) onDragEnter();
-  });
-  element.addEventListener("dragleave", (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (onDragLeave) onDragLeave();
-  });
+  if (onDragEnter) {
+    console.log("IN THE CONDITIONAL");
+    element.addEventListener(
+      "dragenter",
+      (event) => {
+        console.log("in the enter");
+        event.preventDefault();
+        event.stopPropagation();
+        onDragEnter();
+      },
+      false
+    );
+  }
+  if (onDragLeave) {
+    element.addEventListener(
+      "dragleave",
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onDragLeave();
+      },
+      false
+    );
+  }
 
   element.addEventListener("drop", (event) => {
     event.preventDefault();
-
-    if (onDrop) onDrop();
+    if (onDrop) {
+      onDrop();
+    }
 
     const fileInput = document.createElement("input");
     fileInput.accept = types.join(", ");
     fileInput.type = "file";
 
     const files = event.dataTransfer?.files;
-    if (files?.length) {
-      fileInput.files = files;
+    if (!files || !files?.length) {
+      if (onFailure) {
+        return onFailure("No valid files provided");
+      }
+      return;
     }
-    const file = fileInput.files?.item(0);
-    handleImageFile({ file, onSuccess, onFailure, types });
+
+    fileInput.files = files;
+    const audioElements: HTMLAudioElement[] = [];
+    const imageElements: HTMLImageElement[] = [];
+    const totalLength = files.length;
+    const checkSuccess = () => {
+      if (imageElements.length + audioElements.length === totalLength) {
+        onSuccess({ audioElements, imageElements });
+      }
+    };
+    Array.from(fileInput.files || []).forEach((file) => {
+      if (file) {
+        if (file.type.match("image")) {
+          handleImageFile({
+            file,
+            onSuccess: (element) => {
+              imageElements.push(element);
+              checkSuccess();
+            },
+            onFailure,
+          });
+        } else {
+          handleAudioFile({
+            file,
+            onSuccess: (element) => {
+              audioElements.push(element);
+              checkSuccess();
+            },
+            onFailure,
+          });
+        }
+      }
+    });
   });
 }
 
-export function createImageFileReader({
+export function createFileReader({
   element,
   onSuccess,
   onFailure,
-  types = ["image/png"],
+  types = ["audio/*", "image/*"],
 }: {
   element: HTMLInputElement;
-  onSuccess: (image: HTMLImageElement) => void;
+  onSuccess: (image: HTMLAudioElement | HTMLImageElement) => void;
   onFailure?: (message: string) => void;
-  types?: ImageType[];
+  types?: (AudioType | ImageType)[];
 }) {
   element.accept = types.join(", ");
   element.type = "file";
   element.addEventListener("change", (event) => {
     event.preventDefault();
     const file = element.files?.item(0);
-    handleImageFile({ file, onSuccess, onFailure, types });
+    if (file) {
+      if (file.type.match("image")) {
+        handleImageFile({ file, onSuccess, onFailure });
+      } else {
+        handleAudioFile({ file, onSuccess, onFailure });
+      }
+    }
   });
 }
 
-function handleImageFile({ file, onSuccess, onFailure, types }) {
-  if (file && types.includes(file.type as ImageType)) {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onloadend = (e) => {
-      const preview = document.createElement("img");
-      if (e.target?.result) {
-        preview.onload = () => onSuccess(preview);
-        if (onFailure)
-          preview.onerror = () =>
-            onFailure(`Could not load image for ${file.name}`);
-        preview.src = e.target.result.toString();
-      }
-    };
-    if (onFailure)
-      reader.onerror = () => onFailure(`Could not load file ${file.name}`);
-  } else if (onFailure) {
-    onFailure(
-      file
-        ? `File ${file.name} (${file.type}) is wrong type`
-        : "Could not find a file"
-    );
-  }
+function handleAudioFile({
+  file,
+  onSuccess,
+  onFailure,
+}: {
+  file: File;
+  onSuccess: (audio: HTMLAudioElement) => void;
+  onFailure?: (message: string) => void;
+}) {
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onloadend = (e) => {
+    const preview = document.createElement("audio");
+    preview.controls = true;
+    if (e.target?.result) {
+      preview.onloadedmetadata = () => onSuccess(preview);
+      if (onFailure)
+        preview.onerror = () =>
+          onFailure(`Could not load audio for ${file.name}`);
+      preview.src = e.target.result.toString();
+    }
+  };
+}
+
+function handleImageFile({
+  file,
+  onSuccess,
+  onFailure,
+}: {
+  file: File;
+  onSuccess: (image: HTMLImageElement) => void;
+  onFailure?: (message: string) => void;
+}) {
+  const reader = new FileReader();
+  reader.readAsDataURL(file);
+  reader.onloadend = (e) => {
+    const preview = document.createElement("img");
+    if (e.target?.result) {
+      preview.onload = () => onSuccess(preview);
+      if (onFailure)
+        preview.onerror = () =>
+          onFailure(`Could not load image for ${file.name}`);
+      preview.src = e.target.result.toString();
+    }
+  };
+  if (onFailure)
+    reader.onerror = () => onFailure(`Could not load file ${file.name}`);
 }
 
 /**

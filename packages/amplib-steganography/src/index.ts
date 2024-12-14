@@ -1,6 +1,6 @@
 export {
-  createImageDropReader,
-  createImageFileReader,
+  createDropReader,
+  createFileReader,
   loadAudioBufferFromAudioUrl,
   loadImageFromImageUrl,
   playDecodedAudioBuffer,
