@@ -5,6 +5,6 @@
   "source": "src/index.html",
   "scripts": {
     "start": "parcel",
-    "build": "parcel build"
+    "build": "parcel build --no-cache"
   }
 }
