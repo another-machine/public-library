@@ -1,3 +1,5 @@
+import { isMetadataPixel } from "./StegaMetadata";
+
 /**
  * Creating a canvas and context.
  */
@@ -423,26 +425,47 @@ export async function loadAudioBuffersFromAudioUrl({
 /**
  * Generates a function that returns information about how to handle an image data index
  */
-export function skippedAndIndicesFromIndexGenerator(width: number) {
+export function skippedAndIndicesFromIndexGenerator(
+  width: number,
+  height: number
+) {
   const widthIsOdd = width % 2 !== 0;
+
   return (i: number, data: Uint8ClampedArray) => {
     const pxIndex = Math.floor(i / 4);
     const row = Math.floor(pxIndex / width);
+    const col = pxIndex % width;
+
+    // Check if this pixel is in the metadata region
+    const isMetadata = isMetadataPixel(col, row, width, height);
+
     const evenRowCheck = widthIsOdd || row % 2 === 0;
     const nextI = i + 4;
     const isOpaque = data[pxIndex * 4 + 3] === 255;
     const isOpaqueNext = data[pxIndex * 4 + 7] === 255;
+
     // Skipped pixels contain the saved data, and are set in a prior loop.
     const sourceIndex = evenRowCheck ? nextI : i;
     const encodedIndex = evenRowCheck ? i : nextI;
-    // Skipping pixels set in prior loop or last col for odd width images
+
+    // Skipping pixels that are:
+    // - in metadata regions
+    // - set in prior loop
+    // - not opaque
+    // - next pixel not opaque
+    // - or last col for odd width images
     const isSkipped =
-      !isOpaque || !isOpaqueNext || pxIndex % 2 !== 0 || (i + 1) % 4 === 0;
+      isMetadata ||
+      !isOpaque ||
+      !isOpaqueNext ||
+      pxIndex % 2 !== 0 ||
+      (i + 1) % 4 === 0;
 
     return {
       isSkipped,
       encodedIndex,
       sourceIndex,
+      isMetadata, // Added to help consumers know why a pixel was skipped
     };
   };
 }

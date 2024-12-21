@@ -1,4 +1,10 @@
 import {
+  decodeMetadata,
+  encodeMetadata,
+  StegaContentType,
+  StegaMetadataAudio,
+} from "./StegaMetadata";
+import {
   createCanvasAndContext,
   createCanvasAndContextForImageWithMinimums,
   skippedAndIndicesFromIndexGenerator,
@@ -10,20 +16,20 @@ const defaultBitDepth: BitDepth = 8;
 interface EncodeOptions {
   source: HTMLImageElement;
   audioBuffers: Float32Array[];
+  sampleRate: number;
   bitDepth?: BitDepth;
   aspectRatio?: number;
 }
 
 interface DecodeOptions {
   source: HTMLImageElement | HTMLCanvasElement;
-  bitDepth?: BitDepth;
-  stereo?: boolean;
 }
 
 export function encode({
   source,
   audioBuffers,
   aspectRatio,
+  sampleRate,
   bitDepth = defaultBitDepth,
 }: EncodeOptions) {
   const stereo = audioBuffers.length > 1;
@@ -47,6 +53,18 @@ export function encode({
   });
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+  // Add metadata before encoding audio
+  const metadata: StegaMetadataAudio = {
+    type: StegaContentType.AUDIO,
+    sampleRate, // We'll need to add audioContext to EncodeOptions
+    bitDepth,
+    channels: stereo ? 2 : 1,
+  };
+
+  // Encode metadata into the image
+  encodeMetadata(imageData, metadata);
+
   const data = imageData.data;
   let leftAudioIndex = 0;
   let rightAudioIndex = 0;
@@ -56,7 +74,10 @@ export function encode({
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
 
-  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  const indexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height
+  );
 
   for (let i = 0; i < data.length; i += 4) {
     const isBottomHalf = stereo && i >= midPoint;
@@ -124,11 +145,7 @@ export function encode({
   return canvas;
 }
 
-export function decode({
-  source,
-  bitDepth = defaultBitDepth,
-  stereo = false,
-}: DecodeOptions) {
+export function decode({ source }: DecodeOptions) {
   const relativeWidth =
     "naturalWidth" in source ? source.naturalWidth : source.width;
   const relativeHeight =
@@ -141,6 +158,20 @@ export function decode({
   context.drawImage(source, 0, 0);
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+
+  // Decode metadata first
+  const metadata = decodeMetadata(imageData);
+
+  console.log(metadata);
+
+  if (metadata.type !== StegaContentType.AUDIO) {
+    throw new Error("Invalid image type - expected audio encoding");
+  }
+
+  // Use metadata values instead of parameters
+  const bitDepth = metadata.bitDepth || defaultBitDepth;
+  const stereo = metadata.channels === 2 || false;
+
   const data = imageData.data;
   const leftSamples: number[] = [];
   const rightSamples: number[] = [];
@@ -148,8 +179,14 @@ export function decode({
   const midPoint = stereo
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
-  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
-  const bottomIndexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  const indexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height
+  );
+  const bottomIndexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height
+  );
 
   let leftSampleIndex = 0;
   let rightSampleIndex = 0;

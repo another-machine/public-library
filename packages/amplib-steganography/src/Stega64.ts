@@ -1,4 +1,10 @@
 import {
+  decodeMetadata,
+  encodeMetadata,
+  StegaContentType,
+  StegaMetadataString,
+} from "./StegaMetadata";
+import {
   createCanvasAndContext,
   createCanvasAndContextForImageWithMinimums,
   fillCanvasWithImage,
@@ -21,30 +27,19 @@ export function encode({
   messages,
   minWidth = 0,
   minHeight = 0,
+  encoding = "base64", // Add default encoding option
 }: {
-  /**
-   * The image or canvas element to use as a source.
-   * Aspect ratio will be preserved.
-   */
   source: HTMLImageElement | HTMLCanvasElement;
-  /**
-   * An array of messages to store in the image.
-   * Each will be base64 encoded.
-   */
   messages: string[];
-  /**
-   * Minimum width for the final image.
-   */
   minWidth?: number;
-  /**
-   * Minimum height for the final image.
-   */
   minHeight?: number;
+  encoding?: "base64" | "plain" | "none";
 }): HTMLCanvasElement {
   const encodedMessages = messages.map(convertStringToBase64);
   const messageLength =
     encodedMessages.length +
-    encodedMessages.reduce<number>((agg, message) => agg + message.length, 0);
+    encodedMessages.reduce<number>((agg, message) => agg + message.length, 0) +
+    8 * 8 * 4;
 
   const { canvas, context } = createCanvasAndContextForImageWithMinimums({
     source,
@@ -58,7 +53,19 @@ export function encode({
   // Getting image data of original image
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  // Add metadata before encoding messages
+  const metadata: StegaMetadataString = {
+    type: StegaContentType.STRING,
+    messageCount: messages.length,
+    encoding,
+  };
+
+  encodeMetadata(imageData, metadata);
+
+  const indexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height
+  );
 
   const tmpMessages = [...encodedMessages];
   let message = tmpMessages.shift() || "";
@@ -110,9 +117,6 @@ export function encode({
 export function decode({
   source,
 }: {
-  /**
-   * The image with message inside it.
-   */
   source: HTMLImageElement | HTMLCanvasElement;
 }) {
   const relativeWidth =
@@ -128,12 +132,21 @@ export function decode({
   context.drawImage(source, 0, 0);
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
+  // Decode metadata first
+  const metadata = decodeMetadata(imageData);
+
+  if (metadata.type !== StegaContentType.STRING) {
+    throw new Error("Invalid image type - expected string encoding");
+  }
+
   // The decoded messages
   const messages: string[] = [];
   let message: string[] = [];
 
-  // A function to get us info from an index
-  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  const indexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height
+  );
 
   // Stepping through the image data
   for (let i = 0; i < imageData.data.length; i++) {
@@ -165,8 +178,12 @@ export function decode({
   if (string.length) {
     messages.push(string);
   }
-  console.log(messages);
-  return messages.map(convertBase64ToString);
+
+  const decodedMessages = messages.map((msg) =>
+    metadata.encoding === "base64" ? convertBase64ToString(msg) : msg
+  );
+
+  return decodedMessages;
 }
 
 /**
