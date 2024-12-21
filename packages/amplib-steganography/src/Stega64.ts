@@ -27,13 +27,11 @@ export function encode({
   messages,
   minWidth = 0,
   minHeight = 0,
-  encoding = "base64", // Add default encoding option
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   messages: string[];
   minWidth?: number;
   minHeight?: number;
-  encoding?: "base64" | "plain" | "none";
 }): HTMLCanvasElement {
   const encodedMessages = messages.map(convertStringToBase64);
   const messageLength =
@@ -52,15 +50,6 @@ export function encode({
 
   // Getting image data of original image
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-  // Add metadata before encoding messages
-  const metadata: StegaMetadataString = {
-    type: StegaContentType.STRING,
-    messageCount: messages.length,
-    encoding,
-  };
-
-  encodeMetadata(imageData, metadata);
 
   const indexData = skippedAndIndicesFromIndexGenerator(
     canvas.width,
@@ -132,13 +121,6 @@ export function decode({
   context.drawImage(source, 0, 0);
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-  // Decode metadata first
-  const metadata = decodeMetadata(imageData);
-
-  if (metadata.type !== StegaContentType.STRING) {
-    throw new Error("Invalid image type - expected string encoding");
-  }
-
   // The decoded messages
   const messages: string[] = [];
   let message: string[] = [];
@@ -179,9 +161,7 @@ export function decode({
     messages.push(string);
   }
 
-  const decodedMessages = messages.map((msg) =>
-    metadata.encoding === "base64" ? convertBase64ToString(msg) : msg
-  );
+  const decodedMessages = messages.map((msg) => convertBase64ToString(msg));
 
   return decodedMessages;
 }

@@ -433,13 +433,21 @@ export function skippedAndIndicesFromIndexGenerator(
 
   return (i: number, data: Uint8ClampedArray) => {
     const pxIndex = Math.floor(i / 4);
-    const row = Math.floor(pxIndex / width);
-    const col = pxIndex % width;
+    const x = pxIndex % width;
+    const y = Math.floor(pxIndex / width);
 
-    // Check if this pixel is in the metadata region
-    const isMetadata = isMetadataPixel(col, row, width, height);
+    // If it's in a metadata region, handle it separately
+    const isMetadata = isMetadataPixel(x, y, width, height);
+    if (isMetadata) {
+      return {
+        isSkipped: true, // Always skip in main encoding
+        encodedIndex: i,
+        sourceIndex: i,
+        isMetadata: true,
+      };
+    }
 
-    const evenRowCheck = widthIsOdd || row % 2 === 0;
+    const evenRowCheck = widthIsOdd || y % 2 === 0;
     const nextI = i + 4;
     const isOpaque = data[pxIndex * 4 + 3] === 255;
     const isOpaqueNext = data[pxIndex * 4 + 7] === 255;
@@ -448,24 +456,14 @@ export function skippedAndIndicesFromIndexGenerator(
     const sourceIndex = evenRowCheck ? nextI : i;
     const encodedIndex = evenRowCheck ? i : nextI;
 
-    // Skipping pixels that are:
-    // - in metadata regions
-    // - set in prior loop
-    // - not opaque
-    // - next pixel not opaque
-    // - or last col for odd width images
     const isSkipped =
-      isMetadata ||
-      !isOpaque ||
-      !isOpaqueNext ||
-      pxIndex % 2 !== 0 ||
-      (i + 1) % 4 === 0;
+      !isOpaque || !isOpaqueNext || pxIndex % 2 !== 0 || (i + 1) % 4 === 0;
 
     return {
       isSkipped,
       encodedIndex,
       sourceIndex,
-      isMetadata, // Added to help consumers know why a pixel was skipped
+      isMetadata: false,
     };
   };
 }

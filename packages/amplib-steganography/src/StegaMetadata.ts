@@ -1,3 +1,5 @@
+// Constants for protected metadata regions
+export const METADATA_EDGE_SIZE = 4; // Number of pixels to reserve on each edge
 // Metadata format version
 const METADATA_VERSION = 1;
 
@@ -21,7 +23,7 @@ export interface StegaMetadataAudio {
 export interface StegaMetadataString {
   type: StegaContentType.STRING;
   messageCount: number;
-  encoding: "base64" | "plain" | "none";
+  encoding: "base64" | "none";
 }
 
 export interface StegaMetadataRobust {
@@ -100,13 +102,7 @@ export function encodeMetadata(
     // Encode string-specific metadata
     headerData.push(
       ...numberToQuantizedValues(metadata.messageCount, 2),
-      QUANTIZED_VALUES[
-        metadata.encoding === "base64"
-          ? 1
-          : metadata.encoding === "plain"
-          ? 2
-          : 0
-      ] // encoding type
+      QUANTIZED_VALUES[metadata.encoding === "base64" ? 1 : 0] // encoding type
     );
   }
 
@@ -114,12 +110,13 @@ export function encodeMetadata(
   const checksum = calculateChecksum(headerData);
   headerData.push(QUANTIZED_VALUES[checksum & 0x03]);
 
-  // Write header to all four corners
   const writeCornerHeader = (offsetX: number, offsetY: number) => {
     headerData.forEach((value, i) => {
       const x = offsetX + (i % METADATA_EDGE_SIZE);
       const y = offsetY + Math.floor(i / METADATA_EDGE_SIZE);
       const pixelIndex = (y * width + x) * 4;
+
+      // Write all channels with the same value
       data[pixelIndex] = value; // R
       data[pixelIndex + 1] = value; // G
       data[pixelIndex + 2] = value; // B
@@ -147,7 +144,7 @@ export function decodeMetadata(imageData: ImageData): StegaMetadata {
     return Array.from({ length: 8 }, (_, i) => {
       const x = offsetX + (i % METADATA_EDGE_SIZE);
       const y = offsetY + Math.floor(i / METADATA_EDGE_SIZE);
-      return data[(y * width + x) * 4];
+      return data[(y * width + x) * 4]; // Just read the R channel
     });
   };
 
@@ -221,18 +218,10 @@ export function decodeMetadata(imageData: ImageData): StegaMetadata {
     return {
       type: StegaContentType.STRING,
       messageCount,
-      encoding:
-        headerValues[4] === QUANTIZED_VALUES[1]
-          ? "base64"
-          : headerValues[4] === QUANTIZED_VALUES[2]
-          ? "plain"
-          : "none",
+      encoding: headerValues[4] === QUANTIZED_VALUES[1] ? "base64" : "none",
     };
   }
 }
-
-// Constants for protected metadata regions
-const METADATA_EDGE_SIZE = 8; // Number of pixels to reserve on each edge
 
 // Helper to determine if a pixel position is part of the metadata regions
 export function isMetadataPixel(
