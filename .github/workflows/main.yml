@@ -32,30 +32,30 @@ jobs:
         uses: actions/checkout@v3
 
       # compiling docs which is our homepage
-      - run: npm ci
+      - run: npm i
       - run: npm run build
         working-directory: docs
 
       # compiling lexicon-standoff
-      - run: npm ci
+      - run: npm i
         working-directory: machines/lexicon-standoff
       - run: npm run build
         working-directory: machines/lexicon-standoff
 
       # compiling mindmeld
-      - run: npm ci
+      - run: npm i
         working-directory: machines/mindmeld
       - run: npm run build
         working-directory: machines/mindmeld
 
       # compiling modulo
-      - run: npm ci
+      - run: npm i
         working-directory: machines/modulo
       - run: npm run build
         working-directory: machines/modulo
 
       # compiling sonic-pixels
-      - run: npm ci
+      - run: npm i
         working-directory: machines/sonic-pixels
       - run: npm run build
         working-directory: machines/sonic-pixels
