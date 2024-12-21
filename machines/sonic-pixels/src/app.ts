@@ -77,6 +77,7 @@ buttonConvert.addEventListener("click", async () => {
     const result = StegaCassette.encode({
       source: imageValue,
       audioBuffers,
+      sampleRate,
       aspectRatio,
       bitDepth,
     });
@@ -91,13 +92,9 @@ buttonPlay.addEventListener("click", async () => {
   const imageResult = divResult.querySelector<
     HTMLCanvasElement | HTMLImageElement
   >("canvas, img");
-  const stereo = selectMonoStereo.value === "stereo";
-  const bitDepth = getBitDepth();
   if (imageResult) {
     const audioBuffers = StegaCassette.decode({
       source: imageResult,
-      stereo,
-      bitDepth,
     });
     const stop = await playDecodedAudioBuffers({
       audioBuffers,
