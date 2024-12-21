@@ -67,17 +67,18 @@ Stega64.encode({
         <h2>StegaCassette encodes and decodes audio in image pixels.</h2>
         <p>
           <code
-            >StegaCassette.encode({ source: HTMLImageElement; audioBuffer:
-            Float32Array; }): HTMLCanvasElement</code
+            >StegaCassette.encode({ source: HTMLImageElement; audioBuffers:
+            Float32Array[]; }): HTMLCanvasElement</code
           >
         </p>
-        <pre><code>const audioBuffer = await loadAudioBufferFromAudioUrl({
+        <pre><code>const audioBuffers = await loadAudioBuffersFromAudioUrl({
   url: "./example.mp3",
-  audioContext
+  audioContext,
+  stereo: true
 });
 const result = StegaCassette.encode({
   source,
-  audioBuffer,
+  audioBuffers,
 });</code></pre>
         <aside>
           <button id="encode-audio">Encode audio into image</button>
@@ -90,12 +91,12 @@ const result = StegaCassette.encode({
         <p>
           <code
             >StegaCassette.decode({ source: HTMLImageElement |
-            HTMLCanvasElement; }): Float32Array</code
+            HTMLCanvasElement; stereo?: boolean }): Float32Array[]</code
           >
         </p>
-        <pre><code>const audioBuffer = StegaCassette.decode({ source: result });
-const stop = await playDecodedAudioBuffer({ 
-  audioBuffer,
+        <pre><code>const audioBuffers = StegaCassette.decode({ source: result });
+const stop = await playDecodedAudioBuffers({ 
+  audioBuffers,
   audioContext
 });</code></pre>
       </section>
@@ -181,13 +182,13 @@ createFileReader({
         <h2>Load an audio buffer from a url string</h2>
         <p>
           <code
-            >async loadAudioBufferFromAudioUrl({ url: string; audioContext:
+            >async loadAudioBuffersFromAudioUrl({ url: string; audioContext:
             AudioContext; sampleRate?: number; }):
             Promise&lt;Float32Array></code
           >
         </p>
         <pre><code>const audioContext = new AudioContext();
-const audioBuffer = await loadAudioBufferFromAudioUrl({
+const audioBuffer = await loadAudioBuffersFromAudioUrl({
   url: "./example.mp3",
   audioContext,
   sampleRate: audioContext.sampleRate,
@@ -211,13 +212,13 @@ const audioBuffer = await loadAudioBufferFromAudioUrl({
         <h2>Play a decoded audio buffer</h2>
         <p>
           <code
-            >async playDecodedAudioBuffer({ audioBuffer: Float32Array;
+            >async playDecodedAudioBuffers({ audioBuffers: Float32Array[];
             audioContext: AudioContext; sampleRate?: number; }):
             Promise&lt;AudioBufferSourceNode></code
           >
         </p>
-        <pre><code>const source = await playDecodedAudioBuffer({
-  audioBuffer,
+        <pre><code>const source = await playDecodedAudioBuffers({
+  audioBuffers,
   audioContext,
   sampleRate: audioContext.sampleRate,
 });
@@ -230,9 +231,9 @@ source.stop();</code></pre>
         Stega64,
         StegaCassette,
         StegaAnimator,
-        loadAudioBufferFromAudioUrl,
+        loadAudioBuffersFromAudioUrl,
         loadImageFromImageUrl,
-        playDecodedAudioBuffer,
+        playDecodedAudioBuffers,
       } from "../../../packages/amplib-steganography/src";
 
       example1();
@@ -296,7 +297,7 @@ source.stop();</code></pre>
           .querySelector("img");
 
         const audioContext = new AudioContext();
-        let audioBufferArray;
+        let audioBuffers;
         let stop;
 
         button.addEventListener("click", async () => {
@@ -304,8 +305,8 @@ source.stop();</code></pre>
             if (button.getAttribute("data-play") === "play") {
               button.setAttribute("data-play", "stop");
               button.innerText = "Stop audio playback";
-              const source = await playDecodedAudioBuffer({
-                audioBuffer: audioBufferArray,
+              const source = await playDecodedAudioBuffers({
+                audioBuffers,
                 audioContext,
               });
               stop = () => source.stop();
@@ -314,18 +315,17 @@ source.stop();</code></pre>
               button.parentNode.remove();
             }
           } else {
-            const audioBuffer = await loadAudioBufferFromAudioUrl({
-              url: audio.getAttribute("src"),
-              audioContext,
-            });
             const result = StegaCassette.encode({
               source,
-              audioBuffer,
+              audioBuffers: await loadAudioBuffersFromAudioUrl({
+                url: audio.getAttribute("src"),
+                audioContext,
+              }),
             });
             output.appendChild(result);
             button.setAttribute("data-play", "play");
             button.innerText = "Play image as audio";
-            audioBufferArray = StegaCassette.decode({ source: result });
+            audioBuffers = StegaCassette.decode({ source: result });
           }
         });
       }
