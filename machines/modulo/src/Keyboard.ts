@@ -51,7 +51,7 @@ export class Keyboard {
   }: {
     mixer: Mixer;
   } & KeyboardParams) {
-    this.main.initialize({ ...main, mixer, voices: 1 });
+    this.main.initialize({ ...main, mixer });
     this.ghosts.initialize({ ...ghosts, mixer });
   }
 

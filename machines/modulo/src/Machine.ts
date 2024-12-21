@@ -108,7 +108,7 @@ export class Machine {
       theme: keys.theme,
       notes: this.notes,
       main: new Synths(keys.main, 1),
-      ghosts: new Synths(keys.ghosts, 1),
+      ghosts: new Synths(keys.ghosts, keys.ghosts.voices),
       octave: keys.octave,
     });
 
@@ -187,10 +187,10 @@ export class Machine {
     createDropReader({
       element: document.body,
       onFailure: console.log,
-      onSuccess: ({imageElements}) => {
+      onSuccess: ({ imageElements }) => {
         try {
           if (imageElements[0]) {
-            const [decoded] = Stega64.decode({ source:imageElements[0] });
+            const [decoded] = Stega64.decode({ source: imageElements[0] });
             const settings = JSON.parse(decoded || "") as MachineParams;
             this.update(settings);
           }
