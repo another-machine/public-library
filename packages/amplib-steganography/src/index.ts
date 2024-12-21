@@ -1,9 +1,9 @@
 export {
   createDropReader,
   createFileReader,
-  loadAudioBufferFromAudioUrl,
+  loadAudioBuffersFromAudioUrl,
   loadImageFromImageUrl,
-  playDecodedAudioBuffer,
+  playDecodedAudioBuffers,
 } from "./utilities";
 export * as Stega64 from "./Stega64";
 export * from "./StegaAnimator";

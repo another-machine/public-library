@@ -1,8 +1,8 @@
 import {
   createDropReader,
   createFileReader,
-  loadAudioBufferFromAudioUrl,
-  playDecodedAudioBuffer,
+  loadAudioBuffersFromAudioUrl,
+  playDecodedAudioBuffers,
   StegaCassette,
 } from "../../../packages/amplib-steganography/src";
 
@@ -12,18 +12,54 @@ const audio = document.getElementById("audio")!;
 
 const inputAudio = document.getElementById("input-audio") as HTMLInputElement;
 const inputImage = document.getElementById("input-image") as HTMLInputElement;
+const inputEncoded = document.getElementById(
+  "input-encoded"
+) as HTMLInputElement;
 
 const inputSampleRate = document.getElementById(
   "sample-rate"
 ) as HTMLInputElement;
 const buttonConvert = document.getElementById("convert") as HTMLButtonElement;
 const buttonPlay = document.getElementById("play") as HTMLButtonElement;
+const selectAspectRatio = document.getElementById(
+  "aspect-ratio"
+) as HTMLSelectElement;
+const selectBitDepth = document.getElementById(
+  "bit-depth"
+) as HTMLSelectElement;
+const selectMonoStereo = document.getElementById(
+  "mono-stereo"
+) as HTMLSelectElement;
 const divResult = document.getElementById("result") as HTMLDivElement;
 buttonPlay.disabled = true;
+
+function getAspectRatio() {
+  const value = selectAspectRatio.value;
+  if (value === "natural") {
+    return undefined;
+  }
+  return parseFloat(value);
+}
+
+function getBitDepth(): 8 | 16 | 24 | undefined {
+  switch (selectBitDepth.value) {
+    case "8":
+      return 8;
+    case "16":
+      return 16;
+    case "24":
+      return 24;
+    default:
+      return undefined;
+  }
+}
 
 buttonConvert.addEventListener("click", async () => {
   const imageValue = image.querySelector("img");
   const audioValue = audio.querySelector("audio");
+  const stereo = selectMonoStereo.value === "stereo";
+  const aspectRatio = getAspectRatio();
+  const bitDepth = getBitDepth();
   if (imageValue && audioValue) {
     const audioContext = new AudioContext();
     const sampleRate = parseInt(inputSampleRate.value);
@@ -32,14 +68,17 @@ buttonConvert.addEventListener("click", async () => {
       return;
     }
     buttonPlay.disabled = false;
-    const audioBuffer = await loadAudioBufferFromAudioUrl({
+    const audioBuffers = await loadAudioBuffersFromAudioUrl({
       url,
       sampleRate,
       audioContext,
+      stereo,
     });
     const result = StegaCassette.encode({
       source: imageValue,
-      audioBuffer,
+      audioBuffers,
+      aspectRatio,
+      bitDepth,
     });
     divResult.innerHTML = "";
     divResult.appendChild(result);
@@ -49,11 +88,19 @@ buttonConvert.addEventListener("click", async () => {
 buttonPlay.addEventListener("click", async () => {
   const audioContext = new AudioContext();
   const sampleRate = parseInt(inputSampleRate.value);
-  const imageResult = divResult.querySelector("canvas");
+  const imageResult = divResult.querySelector<
+    HTMLCanvasElement | HTMLImageElement
+  >("canvas, img");
+  const stereo = selectMonoStereo.value === "stereo";
+  const bitDepth = getBitDepth();
   if (imageResult) {
-    const audioBuffer = StegaCassette.decode({ source: imageResult });
-    const stop = await playDecodedAudioBuffer({
-      audioBuffer,
+    const audioBuffers = StegaCassette.decode({
+      source: imageResult,
+      stereo,
+      bitDepth,
+    });
+    const stop = await playDecodedAudioBuffers({
+      audioBuffers,
       audioContext,
       sampleRate,
     });
@@ -88,7 +135,17 @@ createDropReader({
 });
 
 createFileReader({
+  element: inputEncoded,
+  types: ["image/png"],
+  onSuccess: (result) => {
+    buttonPlay.disabled = false;
+    divResult.innerHTML = "";
+    divResult.appendChild(result);
+  },
+});
+createFileReader({
   element: inputImage,
+  types: ["image/*"],
   onSuccess: (result) => {
     image.innerHTML = "";
     image.appendChild(result);
@@ -96,6 +153,7 @@ createFileReader({
 });
 createFileReader({
   element: inputAudio,
+  types: ["audio/*"],
   onSuccess: (result) => {
     audio.innerHTML = "";
     audio.appendChild(result);

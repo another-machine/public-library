@@ -68,7 +68,7 @@ Stega64.encode({
         <p>
           <code
             >StegaCassette.encode({ source: HTMLImageElement; audioBuffers:
-            Float32Array[]; }): HTMLCanvasElement</code
+            Float32Array[]; bitDepth?: 8 | 16 | 24 }): HTMLCanvasElement</code
           >
         </p>
         <pre><code>const audioBuffers = await loadAudioBuffersFromAudioUrl({
@@ -79,6 +79,7 @@ Stega64.encode({
 const result = StegaCassette.encode({
   source,
   audioBuffers,
+  bitDepth: 8
 });</code></pre>
         <aside>
           <button id="encode-audio">Encode audio into image</button>
@@ -321,6 +322,7 @@ source.stop();</code></pre>
                 url: audio.getAttribute("src"),
                 audioContext,
               }),
+              bitDepth: 8,
             });
             output.appendChild(result);
             button.setAttribute("data-play", "play");

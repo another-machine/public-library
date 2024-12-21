@@ -40,9 +40,9 @@
       import {
         createDropReader,
         createFileReader,
-        loadAudioBufferFromAudioUrl,
+        loadAudioBuffersFromAudioUrl,
         loadImageFromImageUrl,
-        playDecodedAudioBuffer,
+        playDecodedAudioBuffers,
         StegaAnimator,
         Stega64,
         StegaCassette,
@@ -87,14 +87,14 @@
           // const sampleRate = 41000;
           const sampleRate = 30000;
           // Resize image and encode audio into pixels
-          const audioBuffer = await loadAudioBufferFromAudioUrl({
+          const audioBuffers = await loadAudioBuffersFromAudioUrl({
             url: audio.getAttribute("src"),
             audioContext,
             sampleRate,
           });
           output.src = StegaCassette.encode({
             source: input,
-            audioBuffer,
+            audioBuffers,
           }).toDataURL();
 
           input.style.display = "none";
@@ -103,9 +103,9 @@
           if (!initialized) {
             initialized = true;
             output.addEventListener("click", () => {
-              const audioBuffer = StegaCassette.decode({ source: output });
-              playDecodedAudioBuffer({
-                audioBuffer,
+              const audioBuffers = StegaCassette.decode({ source: output });
+              playDecodedAudioBuffers({
+                audioBuffers,
                 audioContext,
                 sampleRate,
               });

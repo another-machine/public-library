@@ -29,31 +29,25 @@
 
         > div {
           flex: 1;
-
         }
-        
+
         > section {
           width: 100%;
         }
-        
+
         img,
         canvas {
+          image-rendering: pixelated;
           height: auto;
+          max-width: 30rem;
           width: 100%;
         }
       }
 
-      @media (min-width: 600px) {
-        main {
-          flex-direction: row;
-          flex-wrap: wrap;
-
-          > div {
-            flex-basis: calc(50% - 0.5rem);
-            flex-shrink: 0;
-            width: calc(50% - 0.5rem);
-          }
-        }
+      section {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
       }
 
       label {
@@ -68,11 +62,13 @@
         justify-content: center;
         outline: none;
         padding: 0.5rem 1rem;
-        width: 50%;
       }
 
       input[type="file"] {
         display: none;
+      }
+      #result {
+        width: 100%;
       }
     </style>
   </head>
@@ -81,19 +77,56 @@
       <section>
         <label tabindex="0" role="button" for="input-image">
           <input id="input-image" type="file" />
-          Choose Image
+          Source Image
         </label>
         <label tabindex="0" role="button" for="input-audio">
           <input id="input-audio" type="file" />
-          Choose Audio
+          Source Audio
+        </label>
+        <label tabindex="0" role="button" for="input-encoded">
+          <input id="input-encoded" type="file" />
+          Encoded Image
         </label>
       </section>
-      <div id="image"></div>
-      <div id="audio"></div>
       <section>
-        <input id="sample-rate" type="range" min="3000" max="48000" />
-        <button id="convert">Convert</button>
-        <button id="play">Play</button>
+        <div id="image"></div>
+        <div id="audio"></div>
+      </section>
+      <section>
+        <div>
+          <div>
+            <input
+              id="sample-rate"
+              type="range"
+              min="3000"
+              max="48000"
+              value="48000"
+            />
+            Sample rate (3kHz - 48kHz)
+          </div>
+          <select id="mono-stereo">
+            <option value="stereo" selected>Stereo</option>
+            <option value="mono">Mono</option>
+          </select>
+          <select id="bit-depth">
+            <option value="8" selected>8-bit</option>
+            <option value="16">16-bit</option>
+            <option value="24" selected>24-bit</option>
+          </select>
+          <select id="aspect-ratio">
+            <option value="natural">Natural</option>
+            <option value="1" selected>1:1</option>
+            <option value="1.3334">4:3</option>
+            <option value="1.7778">16:9</option>
+            <option value="0.75">3:4</option>
+            <option value="0.5625">9:16</option>
+          </select>
+          <button id="convert">Convert</button>
+        </div>
+
+        <div>
+          <button id="play">Play</button>
+        </div>
         <div id="result"></div>
       </section>
     </main>

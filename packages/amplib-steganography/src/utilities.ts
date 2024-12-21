@@ -20,6 +20,9 @@ export function createCanvasAndContext(
 /**
  * Drawing a source at a size considering minimum pixel count, width, and height, as well as an aspect ratio.
  */
+/**
+ * Drawing a source at a size considering minimum pixel count, width, and height, as well as an aspect ratio.
+ */
 export function createCanvasAndContextForImageWithMinimums({
   source,
   messageLength,
@@ -39,42 +42,83 @@ export function createCanvasAndContextForImageWithMinimums({
   const sourceHeight = imageOrCanvasIsImage(source)
     ? source.naturalHeight
     : source.height;
-  const sourceAspectRatio = sourceHeight / sourceWidth;
+
+  // Use provided aspect ratio, or if undefined use the source image's natural ratio
+  const targetAspectRatio =
+    aspectRatio === undefined ? sourceWidth / sourceHeight : aspectRatio;
+
   const sourceTransparency = getTransparencyRatio({
     source,
     sourceWidth,
     sourceHeight,
   });
 
+  // Get canvas dimensions that respect the target aspect ratio
   const sourceDimensions = canvasWidthAndHeight({
     minWidth,
     minHeight,
     minPixelCount:
       2 * Math.ceil(messageLength / 3) * (1 / (1 - sourceTransparency)),
-    aspectRatio: aspectRatio || sourceAspectRatio,
+    aspectRatio: targetAspectRatio,
   });
 
   const { canvas, context } = createCanvasAndContext(
     sourceDimensions.width,
     sourceDimensions.height
   );
-  context.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+  // Calculate dimensions for background-size: cover behavior
+  const scale = Math.max(
+    canvas.width / sourceWidth,
+    canvas.height / sourceHeight
+  );
+
+  const scaledWidth = sourceWidth * scale;
+  const scaledHeight = sourceHeight * scale;
+
+  // Center the image (background-position: center)
+  const x = (canvas.width - scaledWidth) / 2;
+  const y = (canvas.height - scaledHeight) / 2;
+
+  context.drawImage(source, x, y, scaledWidth, scaledHeight);
+
   const preciseTransparency = getTransparencyRatio({
     source: canvas,
     sourceHeight: canvas.height,
     sourceWidth: canvas.width,
   });
+
   const preciseDimensions = canvasWidthAndHeight({
     minWidth,
     minHeight,
     minPixelCount:
       2 * Math.ceil(messageLength / 3) * (1 / (1 - preciseTransparency)),
-    aspectRatio: aspectRatio || sourceAspectRatio,
+    aspectRatio: targetAspectRatio,
   });
-  canvas.height = preciseDimensions.height;
+
   canvas.width = preciseDimensions.width;
-  context.drawImage(source, 0, 0, canvas.width, canvas.height);
-  console.log(sourceTransparency, preciseTransparency);
+  canvas.height = preciseDimensions.height;
+
+  // Apply the same cover/center behavior to final dimensions
+  const finalScale = Math.max(
+    canvas.width / sourceWidth,
+    canvas.height / sourceHeight
+  );
+
+  const finalScaledWidth = sourceWidth * finalScale;
+  const finalScaledHeight = sourceHeight * finalScale;
+
+  const finalX = (canvas.width - finalScaledWidth) / 2;
+  const finalY = (canvas.height - finalScaledHeight) / 2;
+
+  context.drawImage(
+    source,
+    finalX,
+    finalY,
+    finalScaledWidth,
+    finalScaledHeight
+  );
+
   return { canvas, context };
 }
 
@@ -91,16 +135,16 @@ function canvasWidthAndHeight({
   minHeight: number;
   minPixelCount: number;
   /**
-   * Expressed as height / width
+   * Expressed as width / height
    */
   aspectRatio: number;
 }) {
-  let width = Math.max(minWidth, Math.sqrt(minPixelCount / aspectRatio));
-  let height = width * aspectRatio;
+  let width = Math.max(minWidth, Math.sqrt(minPixelCount * aspectRatio));
+  let height = width / aspectRatio;
 
   if (height < minHeight) {
     height = minHeight;
-    width = height / aspectRatio;
+    width = height * aspectRatio;
   }
 
   return {
@@ -108,7 +152,6 @@ function canvasWidthAndHeight({
     height: Math.ceil(height),
   };
 }
-
 /**
  * Calculate what percentage of an image is transparent
  */
@@ -177,7 +220,6 @@ export function createDropReader({
     element.addEventListener(
       "dragenter",
       (event) => {
-        console.log("in the enter");
         event.preventDefault();
         event.stopPropagation();
         onDragEnter();
@@ -353,12 +395,14 @@ export function imageOrCanvasIsImage(
   return imageOrCanvas.tagName === "IMAGE";
 }
 
-export async function loadAudioBufferFromAudioUrl({
+export async function loadAudioBuffersFromAudioUrl({
   url,
   audioContext,
+  stereo = false,
   sampleRate = audioContext.sampleRate,
 }: {
   url: string;
+  stereo: boolean;
   audioContext: AudioContext;
   sampleRate?: number;
 }) {
@@ -366,8 +410,14 @@ export async function loadAudioBufferFromAudioUrl({
   const audioData = await response.arrayBuffer();
   const audioBuffer = await audioContext.decodeAudioData(audioData);
   // Resample the audio to sample rate
-  const resampledBuffer = await resampleAudioBuffer(audioBuffer, sampleRate);
-  return resampledBuffer.getChannelData(0);
+  const resampledBuffer = await resampleAudioBuffer(
+    audioBuffer,
+    sampleRate,
+    stereo
+  );
+  return stereo
+    ? [resampledBuffer.getChannelData(0), resampledBuffer.getChannelData(1)]
+    : [resampledBuffer.getChannelData(0)];
 }
 
 /**
@@ -414,41 +464,48 @@ export function loadImageFromImageUrl({
   });
 }
 
-export async function playDecodedAudioBuffer({
-  audioBuffer,
+/**
+ * Playback an array of audio buffers (1 = mono, 2 = L/R stereo)
+ */
+export async function playDecodedAudioBuffers({
+  audioBuffers,
   audioContext,
   sampleRate = audioContext.sampleRate,
 }: {
-  audioBuffer: Float32Array;
+  audioBuffers: Float32Array[];
   audioContext: AudioContext;
   sampleRate?: number;
 }) {
-  // Resume the AudioContext if it was suspended
   await audioContext.resume();
-  // Create an AudioBuffer with 1 channel, length of decoded audio, and sample rate
+
+  const maxLength = Math.max(...audioBuffers.map((buffer) => buffer.length));
+
   const decodedBuffer = audioContext.createBuffer(
-    1,
-    audioBuffer.length,
+    audioBuffers.length,
+    maxLength,
     sampleRate
   );
-  // Copy the decoded audio data into the buffer
-  decodedBuffer.getChannelData(0).set(audioBuffer);
-  // Create a BufferSourceNode
+
+  audioBuffers.forEach((audioBuffer, index) => {
+    decodedBuffer.getChannelData(index).set(audioBuffer);
+  });
+
   const source = audioContext.createBufferSource();
   source.buffer = decodedBuffer;
-  // Connect the source to the AudioContext's destination (speakers)
+
   source.connect(audioContext.destination);
-  // Start playing the audio
+
   source.start();
   return source;
 }
 
 async function resampleAudioBuffer(
   audioBuffer: AudioBuffer,
-  sampleRate: number
+  sampleRate: number,
+  stereo: boolean
 ) {
   const offlineCtx = new OfflineAudioContext(
-    1,
+    stereo ? 2 : 1,
     audioBuffer.duration * sampleRate,
     sampleRate
   );
