@@ -163,7 +163,6 @@ export function decode({
     messages.push(string);
   }
 
-  console.log(messages);
   const decodedMessages = messages.map((msg) => convertBase64ToString(msg));
 
   return decodedMessages;

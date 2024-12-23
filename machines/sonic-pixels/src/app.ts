@@ -104,7 +104,6 @@ buttonPlay.addEventListener("click", async () => {
   >("canvas, img");
   if (imageResult) {
     const metadata = StegaMetadata.decode({ source: imageResult });
-    console.log(metadata);
     if (!metadata || metadata.type === StegaMetadata.StegaContentType.AUDIO) {
       const audioBuffers = StegaCassette.decode({
         source: imageResult,

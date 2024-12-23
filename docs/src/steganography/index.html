@@ -300,7 +300,6 @@ source.stop();</code></pre>
 
         async function outputResult(source) {
           const decode = document.querySelector('[data-output="decode"]');
-          console.log(StegaMetadata.decode({ source }));
           decode.innerHTML = JSON.stringify(
             Stega64.decode({ source }),
             null,
@@ -324,7 +323,7 @@ source.stop();</code></pre>
           bitDepth: 24,
           channels: 2,
           sampleRate: audioContext.sampleRate,
-          encoding: "additive",
+          encoding: "midpoint",
         };
 
         button.addEventListener("click", async () => {
@@ -334,7 +333,6 @@ source.stop();</code></pre>
               button.innerText = "Stop audio playback";
               const source = output.querySelector("canvas");
               const metadata = StegaMetadata.decode({ source }) || {};
-              console.log(metadata);
               const audioBuffers = StegaCassette.decode({
                 source,
                 bitDepth: metadata.bitDepth || defaults.bitDepth,
