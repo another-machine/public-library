@@ -4,6 +4,7 @@ import {
   loadAudioBuffersFromAudioUrl,
   playDecodedAudioBuffers,
   StegaCassette,
+  StegaMetadata,
 } from "../../../packages/amplib-steganography/src";
 
 const main = document.querySelector("main")!;
@@ -41,7 +42,7 @@ function getAspectRatio() {
   return parseFloat(value);
 }
 
-function getBitDepth(): 8 | 16 | 24 | undefined {
+function getBitDepth(): 8 | 16 | 24 {
   switch (selectBitDepth.value) {
     case "8":
       return 8;
@@ -50,7 +51,7 @@ function getBitDepth(): 8 | 16 | 24 | undefined {
     case "24":
       return 24;
     default:
-      return undefined;
+      return 8;
   }
 }
 
@@ -68,39 +69,56 @@ buttonConvert.addEventListener("click", async () => {
       return;
     }
     buttonPlay.disabled = false;
+    const metadata: StegaMetadata.StegaMetadataAudio = {
+      type: StegaMetadata.StegaContentType.AUDIO,
+      sampleRate,
+      bitDepth,
+      encoding: "additive",
+      channels: stereo ? 2 : 1,
+    };
     const audioBuffers = await loadAudioBuffersFromAudioUrl({
       url,
       sampleRate,
       audioContext,
       stereo,
     });
-    const result = StegaCassette.encode({
+    const source = StegaCassette.encode({
       source: imageValue,
       audioBuffers,
       sampleRate,
       aspectRatio,
       bitDepth,
+      encoding: "additive",
     });
     divResult.innerHTML = "";
+    const result = StegaMetadata.encode({ source, metadata });
     divResult.appendChild(result);
+    // divResult.appendChild(source);
   }
 });
 
 buttonPlay.addEventListener("click", async () => {
   const audioContext = new AudioContext();
-  const sampleRate = parseInt(inputSampleRate.value);
   const imageResult = divResult.querySelector<
     HTMLCanvasElement | HTMLImageElement
   >("canvas, img");
   if (imageResult) {
-    const audioBuffers = StegaCassette.decode({
-      source: imageResult,
-    });
-    const stop = await playDecodedAudioBuffers({
-      audioBuffers,
-      audioContext,
-      sampleRate,
-    });
+    const metadata = StegaMetadata.decode({ source: imageResult });
+    console.log(metadata);
+    if (!metadata || metadata.type === StegaMetadata.StegaContentType.AUDIO) {
+      const audioBuffers = StegaCassette.decode({
+        source: imageResult,
+        bitDepth: metadata?.bitDepth || getBitDepth(),
+        channels:
+          metadata?.channels || selectMonoStereo.value === "stereo" ? 2 : 1,
+        encoding: metadata?.encoding || "additive",
+      });
+      const stop = await playDecodedAudioBuffers({
+        audioBuffers,
+        audioContext,
+        sampleRate: metadata?.sampleRate || parseInt(inputSampleRate.value),
+      });
+    }
   }
 });
 

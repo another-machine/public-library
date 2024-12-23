@@ -1,5 +1,3 @@
-import { isMetadataPixel } from "./StegaMetadata";
-
 /**
  * Creating a canvas and context.
  */
@@ -22,9 +20,6 @@ export function createCanvasAndContext(
 /**
  * Drawing a source at a size considering minimum pixel count, width, and height, as well as an aspect ratio.
  */
-/**
- * Drawing a source at a size considering minimum pixel count, width, and height, as well as an aspect ratio.
- */
 export function createCanvasAndContextForImageWithMinimums({
   source,
   messageLength,
@@ -38,12 +33,8 @@ export function createCanvasAndContextForImageWithMinimums({
   minHeight: number;
   aspectRatio?: number;
 }) {
-  const sourceWidth = imageOrCanvasIsImage(source)
-    ? source.naturalWidth
-    : source.width;
-  const sourceHeight = imageOrCanvasIsImage(source)
-    ? source.naturalHeight
-    : source.height;
+  const { width: sourceWidth, height: sourceHeight } =
+    dimensionsFromSource(source);
 
   // Use provided aspect ratio, or if undefined use the source image's natural ratio
   const targetAspectRatio =
@@ -375,17 +366,30 @@ function handleImageFile({
 export function fillCanvasWithImage(
   canvas: HTMLCanvasElement,
   context: CanvasRenderingContext2D,
-  image: HTMLImageElement | HTMLCanvasElement
+  source: HTMLImageElement | HTMLCanvasElement
 ) {
-  const imageRatio = image.height / image.width;
+  const { width, height } = dimensionsFromSource(source);
+  const sourceRatio = height / width;
   const canvasRatio = canvas.height / canvas.width;
-  if (imageRatio > canvasRatio) {
-    const h = canvas.width * imageRatio;
-    context.drawImage(image, 0, (canvas.height - h) / 2, canvas.width, h);
+  if (sourceRatio > canvasRatio) {
+    const h = canvas.width * sourceRatio;
+    context.drawImage(source, 0, (canvas.height - h) / 2, canvas.width, h);
   } else {
-    const w = (canvas.width * canvasRatio) / imageRatio;
-    context.drawImage(image, (canvas.width - w) / 2, 0, w, canvas.height);
+    const w = (canvas.width * canvasRatio) / sourceRatio;
+    context.drawImage(source, (canvas.width - w) / 2, 0, w, canvas.height);
   }
+}
+
+/**
+ * Get dimensions from an image or canvas element.
+ */
+export function dimensionsFromSource(
+  source: HTMLImageElement | HTMLCanvasElement
+) {
+  const isImage = imageOrCanvasIsImage(source);
+  const width = isImage ? source.naturalWidth : source.width;
+  const height = isImage ? source.naturalHeight : source.height;
+  return { width, height };
 }
 
 /**
@@ -425,27 +429,12 @@ export async function loadAudioBuffersFromAudioUrl({
 /**
  * Generates a function that returns information about how to handle an image data index
  */
-export function skippedAndIndicesFromIndexGenerator(
-  width: number,
-  height: number
-) {
+export function skippedAndIndicesFromIndexGenerator(width: number) {
   const widthIsOdd = width % 2 !== 0;
 
   return (i: number, data: Uint8ClampedArray) => {
     const pxIndex = Math.floor(i / 4);
-    const x = pxIndex % width;
     const y = Math.floor(pxIndex / width);
-
-    // If it's in a metadata region, handle it separately
-    const isMetadata = isMetadataPixel(x, y, width, height);
-    if (isMetadata) {
-      return {
-        isSkipped: true, // Always skip in main encoding
-        encodedIndex: i,
-        sourceIndex: i,
-        isMetadata: true,
-      };
-    }
 
     const evenRowCheck = widthIsOdd || y % 2 === 0;
     const nextI = i + 4;

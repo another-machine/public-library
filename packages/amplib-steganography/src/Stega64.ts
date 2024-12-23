@@ -1,9 +1,4 @@
-import {
-  decodeMetadata,
-  encodeMetadata,
-  StegaContentType,
-  StegaMetadataString,
-} from "./StegaMetadata";
+import * as StegaMetadata from "./StegaMetadata";
 import {
   createCanvasAndContext,
   createCanvasAndContextForImageWithMinimums,
@@ -19,54 +14,67 @@ const STEGA64_CHARACTER_STRING =
 // Splitting messages with this character
 const STEGA64_MESSAGE_BREAK_CHARACTER = "=";
 
+export type Stega64Encoding = "base64" | "none";
+
 /**
  * Encode messages into an image.
  */
 export function encode({
   source,
   messages,
+  encoding,
+  encodeMetadata,
   minWidth = 0,
   minHeight = 0,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   messages: string[];
+  encoding: Stega64Encoding;
+  encodeMetadata: boolean;
   minWidth?: number;
   minHeight?: number;
 }): HTMLCanvasElement {
   const encodedMessages = messages.map(convertStringToBase64);
   const messageLength =
     encodedMessages.length +
-    encodedMessages.reduce<number>((agg, message) => agg + message.length, 0) +
-    8 * 8 * 4;
+    encodedMessages.reduce<number>((agg, message) => agg + message.length, 0);
 
-  const { canvas, context } = createCanvasAndContextForImageWithMinimums({
+  minWidth = Math.max(minWidth || 0, StegaMetadata.PATTERN_LENGTH);
+  const initialCanvas = createCanvasAndContextForImageWithMinimums({
     source,
     messageLength,
     minWidth,
     minHeight,
   });
 
-  fillCanvasWithImage(canvas, context, source);
+  fillCanvasWithImage(initialCanvas.canvas, initialCanvas.context, source);
 
-  // Getting image data of original image
+  const canvas = encodeMetadata
+    ? StegaMetadata.encode({
+        source: initialCanvas.canvas,
+        metadata: {
+          type: StegaMetadata.StegaContentType.STRING,
+          messageCount: messages.length,
+          encoding,
+        },
+      })
+    : initialCanvas.canvas;
+  const context = canvas.getContext("2d")!;
+
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-  const indexData = skippedAndIndicesFromIndexGenerator(
-    canvas.width,
-    canvas.height
-  );
+  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
 
   const tmpMessages = [...encodedMessages];
   let message = tmpMessages.shift() || "";
 
-  // Stepping through the image data
   for (let i = 0, j = 0; i < imageData.data.length; i++) {
     const { isSkipped, encodedIndex, sourceIndex } = indexData(
       i,
       imageData.data
     );
+
     if (!isSkipped) {
-      // Processing the current message
       if (j < message.length) {
         const char = message.charAt(j);
         const value = convertBase64CharToInt(char);
@@ -77,7 +85,6 @@ export function encode({
         imageData.data[encodedIndex] = encodedValue;
         j++;
       } else {
-        // Moving to the next message
         message = tmpMessages.shift() || "";
         j = 0;
         const value = convertBase64CharToInt(STEGA64_MESSAGE_BREAK_CHARACTER);
@@ -90,7 +97,6 @@ export function encode({
     }
   }
 
-  // The final image data
   const { canvas: canvasOutput, context: contextOutput } =
     createCanvasAndContext();
   canvasOutput.width = canvas.width;
@@ -105,8 +111,10 @@ export function encode({
  */
 export function decode({
   source,
+  encoding,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
+  encoding: Stega64Encoding;
 }) {
   const relativeWidth =
     "naturalWidth" in source ? source.naturalWidth : source.width;
@@ -121,22 +129,16 @@ export function decode({
   context.drawImage(source, 0, 0);
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-  // The decoded messages
   const messages: string[] = [];
   let message: string[] = [];
 
-  const indexData = skippedAndIndicesFromIndexGenerator(
-    canvas.width,
-    canvas.height
-  );
+  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
 
-  // Stepping through the image data
   for (let i = 0; i < imageData.data.length; i++) {
     const { isSkipped, encodedIndex, sourceIndex } = indexData(
       i,
       imageData.data
     );
-
     if ((i + 1) % 4 !== 0) {
       if (!isSkipped) {
         const decodedValue = decode64ValueForKeyValue(
@@ -161,6 +163,7 @@ export function decode({
     messages.push(string);
   }
 
+  console.log(messages);
   const decodedMessages = messages.map((msg) => convertBase64ToString(msg));
 
   return decodedMessages;

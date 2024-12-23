@@ -1,36 +1,39 @@
-import {
-  decodeMetadata,
-  encodeMetadata,
-  StegaContentType,
-  StegaMetadataAudio,
-} from "./StegaMetadata";
+import * as StegaMetadata from "./StegaMetadata";
 import {
   createCanvasAndContext,
   createCanvasAndContextForImageWithMinimums,
   skippedAndIndicesFromIndexGenerator,
 } from "./utilities";
 
-type BitDepth = 8 | 16 | 24;
-const defaultBitDepth: BitDepth = 8;
+export type StegaCassetteBitDepth = 8 | 16 | 24;
+export type StegaCassetteEncoding = "additive" | "midpoint";
+export type StegaCassetteChannels = 1 | 2;
 
 interface EncodeOptions {
   source: HTMLImageElement;
   audioBuffers: Float32Array[];
   sampleRate: number;
-  bitDepth?: BitDepth;
+  bitDepth: StegaCassetteBitDepth;
+  encoding: StegaCassetteEncoding;
+  encodeMetadata?: boolean;
   aspectRatio?: number;
 }
 
-interface DecodeOptions {
+export interface DecodeOptions {
   source: HTMLImageElement | HTMLCanvasElement;
+  bitDepth: StegaCassetteBitDepth;
+  channels: StegaCassetteChannels;
+  encoding: StegaCassetteEncoding;
 }
 
 export function encode({
   source,
   audioBuffers,
-  aspectRatio,
   sampleRate,
-  bitDepth = defaultBitDepth,
+  bitDepth,
+  encoding,
+  encodeMetadata,
+  aspectRatio,
 }: EncodeOptions) {
   const stereo = audioBuffers.length > 1;
   const leftChannel = audioBuffers[0];
@@ -43,7 +46,7 @@ export function encode({
       : leftChannel.length) *
     (bitDepth / 8);
 
-  const { canvas, context } = createCanvasAndContextForImageWithMinimums({
+  const initialCanvas = createCanvasAndContextForImageWithMinimums({
     source,
     messageLength,
     minHeight: 0,
@@ -51,16 +54,22 @@ export function encode({
     aspectRatio,
   });
 
+  const canvas = encodeMetadata
+    ? StegaMetadata.encode({
+        source: initialCanvas.canvas,
+        metadata: {
+          type: StegaMetadata.StegaContentType.AUDIO,
+          sampleRate,
+          bitDepth,
+          channels: stereo ? 2 : 1,
+          encoding,
+        },
+      })
+    : initialCanvas.canvas;
+
+  const context = canvas.getContext("2d")!;
+
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-
-  const metadata: StegaMetadataAudio = {
-    type: StegaContentType.AUDIO,
-    sampleRate,
-    bitDepth,
-    channels: stereo ? 2 : 1,
-  };
-
-  encodeMetadata(imageData, metadata);
 
   const data = imageData.data;
   let leftAudioIndex = 0;
@@ -70,10 +79,7 @@ export function encode({
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
 
-  const indexData = skippedAndIndicesFromIndexGenerator(
-    canvas.width,
-    canvas.height
-  );
+  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
 
   for (let i = 0; i < data.length; i += 4) {
     const isBottomHalf = stereo && i >= midPoint;
@@ -141,7 +147,12 @@ export function encode({
   return canvas;
 }
 
-export function decode({ source }: DecodeOptions) {
+export function decode({
+  source,
+  encoding,
+  bitDepth,
+  channels = 1,
+}: DecodeOptions) {
   const relativeWidth =
     "naturalWidth" in source ? source.naturalWidth : source.width;
   const relativeHeight =
@@ -155,16 +166,7 @@ export function decode({ source }: DecodeOptions) {
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-  const metadata = decodeMetadata(imageData);
-
-  console.log(metadata);
-
-  if (metadata.type !== StegaContentType.AUDIO) {
-    throw new Error("Invalid image type - expected audio encoding");
-  }
-
-  const bitDepth = metadata.bitDepth || defaultBitDepth;
-  const stereo = metadata.channels === 2 || false;
+  const stereo = channels === 2;
 
   const data = imageData.data;
   const leftSamples: number[] = [];
@@ -173,14 +175,7 @@ export function decode({ source }: DecodeOptions) {
   const midPoint = stereo
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
-  const indexData = skippedAndIndicesFromIndexGenerator(
-    canvas.width,
-    canvas.height
-  );
-  const bottomIndexData = skippedAndIndicesFromIndexGenerator(
-    canvas.width,
-    canvas.height
-  );
+  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
 
   let leftSampleIndex = 0;
   let rightSampleIndex = 0;
@@ -188,7 +183,7 @@ export function decode({ source }: DecodeOptions) {
   for (let i = 0; i < data.length; i += 4) {
     const isBottomHalf = stereo && i >= midPoint;
     const { isSkipped, encodedIndex } = isBottomHalf
-      ? bottomIndexData(i - midPoint, data)
+      ? indexData(i - midPoint, data)
       : indexData(i, data);
     const currentSamples = isBottomHalf ? rightSamples : leftSamples;
     const currentIndex = isBottomHalf ? rightSampleIndex : leftSampleIndex;

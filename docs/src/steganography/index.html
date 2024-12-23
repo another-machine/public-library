@@ -42,10 +42,11 @@ Stega64.encode({
             <input id="message" type="text" value="Message Here" /> messages
           </label>
           <label for="min-width">
-            <input id="min-width" type="number" value="10" min="0" /> minWidth
+            <input id="min-width" type="number" value="16" min="16" /> minWidth
           </label>
           <label for="min-height">
-            <input id="min-height" type="number" value="10" min="0" /> minHeight
+            <input id="min-height" type="number" value="8" min="2" />
+            minHeight
           </label>
         </aside>
 
@@ -68,20 +69,24 @@ Stega64.encode({
         <p>
           <code
             >StegaCassette.encode({ source: HTMLImageElement; audioBuffers:
-            Float32Array[]; sampleRate: number; bitDepth?: 8 | 16 | 24 }):
+            Float32Array[]; sampleRate: number; bitDepth: StegaCassetteBitDepth;
+            encoding: StegaCassetteEncoding; aspectRatio?: number; }):
             HTMLCanvasElement</code
           >
         </p>
-        <pre><code>const audioBuffers = await loadAudioBuffersFromAudioUrl({
-  url: "./example.mp3",
-  audioContext,
-  stereo: true
-});
-const result = StegaCassette.encode({
+        <pre><code>const result = StegaCassette.encode({
   source,
-  audioBuffers,
-  sampleRate: audioContext.sampleRate,
-  bitDepth: 8
+  audioBuffers: await loadAudioBuffersFromAudioUrl({
+    url: "./example.mp3",
+    audioContext,
+    stereo: channels > 1,
+    sampleRate,
+  }),
+  sampleRate,
+  bitDepth,
+  encoding: "additive",
+  encodeMetadata: false,
+  aspectRatio: undefined,
 });</code></pre>
         <aside>
           <button id="encode-audio">Encode audio into image</button>
@@ -94,13 +99,22 @@ const result = StegaCassette.encode({
         <p>
           <code
             >StegaCassette.decode({ source: HTMLImageElement |
-            HTMLCanvasElement; stereo?: boolean }): Float32Array[]</code
+            HTMLCanvasElement; bitDepth: StegaCassetteBitDepth; channels:
+            StegaCassetteChannels; encoding: StegaCassetteEncoding; }):
+            Float32Array[]</code
           >
         </p>
-        <pre><code>const audioBuffers = StegaCassette.decode({ source: result });
-const stop = await playDecodedAudioBuffers({ 
+        <pre><code>const metadata = StegaMetadata.decode({ source }) || {};
+const audioBuffers = StegaCassette.decode({
+  source,
+  bitDepth: metadata.bitDepth || 8,
+  channels: metadata.channels || 1,
+  encoding: metadata.encoding || "additive",
+});
+const audio = await playDecodedAudioBuffers({
   audioBuffers,
-  audioContext
+  audioContext,
+  sampleRate: metadata.sampleRate || 48000,
 });</code></pre>
       </section>
 
@@ -234,6 +248,7 @@ source.stop();</code></pre>
         Stega64,
         StegaCassette,
         StegaAnimator,
+        StegaMetadata,
         loadAudioBuffersFromAudioUrl,
         loadImageFromImageUrl,
         playDecodedAudioBuffers,
@@ -256,6 +271,8 @@ source.stop();</code></pre>
             messages: [message.value],
             minHeight: minHeight.value,
             minWidth: minWidth.value,
+            encoding: "base64",
+            encodeMetadata: true,
           });
           output.innerHTML = "";
           output.appendChild(result);
@@ -283,6 +300,7 @@ source.stop();</code></pre>
 
         async function outputResult(source) {
           const decode = document.querySelector('[data-output="decode"]');
+          console.log(StegaMetadata.decode({ source }));
           decode.innerHTML = JSON.stringify(
             Stega64.decode({ source }),
             null,
@@ -300,37 +318,58 @@ source.stop();</code></pre>
           .querySelector("img");
 
         const audioContext = new AudioContext();
-        let audioBuffers;
         let stop;
+
+        const defaults = {
+          bitDepth: 24,
+          channels: 2,
+          sampleRate: audioContext.sampleRate,
+          encoding: "additive",
+        };
 
         button.addEventListener("click", async () => {
           if (button.getAttribute("data-play")) {
             if (button.getAttribute("data-play") === "play") {
               button.setAttribute("data-play", "stop");
               button.innerText = "Stop audio playback";
-              const source = await playDecodedAudioBuffers({
+              const source = output.querySelector("canvas");
+              const metadata = StegaMetadata.decode({ source }) || {};
+              console.log(metadata);
+              const audioBuffers = StegaCassette.decode({
+                source,
+                bitDepth: metadata.bitDepth || defaults.bitDepth,
+                channels: metadata.channels || defaults.channels,
+                encoding: metadata.encoding || defaults.encoding,
+              });
+              const audio = await playDecodedAudioBuffers({
                 audioBuffers,
                 audioContext,
+                sampleRate: metadata.sampleRate || audioContext.sampleRate,
               });
-              stop = () => source.stop();
+              stop = () => audio.stop();
             } else {
               stop();
               button.parentNode.remove();
             }
           } else {
+            const sampleRate = audioContext.sampleRate;
             const result = StegaCassette.encode({
               source,
               audioBuffers: await loadAudioBuffersFromAudioUrl({
                 url: audio.getAttribute("src"),
                 audioContext,
+                stereo: defaults.channels > 1,
+                sampleRate,
               }),
-              sampleRate: audioContext.sampleRate,
-              bitDepth: 8,
+              sampleRate,
+              bitDepth: defaults.bitDepth,
+              encoding: defaults.encoding,
+              encodeMetadata: true,
+              aspectRatio: undefined,
             });
             output.appendChild(result);
             button.setAttribute("data-play", "play");
             button.innerText = "Play image as audio";
-            audioBuffers = StegaCassette.decode({ source: result });
           }
         });
       }

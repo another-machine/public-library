@@ -1,253 +1,260 @@
-// Constants for protected metadata regions
-export const METADATA_EDGE_SIZE = 4; // Number of pixels to reserve on each edge
-// Metadata format version
-const METADATA_VERSION = 1;
+import { Stega64Encoding } from "./Stega64.ts";
+import {
+  StegaCassetteBitDepth,
+  StegaCassetteChannels,
+  StegaCassetteEncoding,
+} from "./StegaCassette.ts";
+import { createCanvasAndContext, dimensionsFromSource } from "./utilities.ts";
 
-// Content type identifiers
+export const METADATA_VERSION = 1;
+export const PATTERN_LENGTH = 16;
+const METADATA_ALPHA = 250;
+
 export enum StegaContentType {
   AUDIO = 0,
   STRING = 1,
   ROBUST = 2,
 }
 
-// Quantized values for robust storage
-const QUANTIZED_VALUES = [0, 85, 170, 255] as const;
-
 export interface StegaMetadataAudio {
   type: StegaContentType.AUDIO;
   sampleRate: number;
-  bitDepth: 8 | 16 | 24;
-  channels: 1 | 2;
+  bitDepth: StegaCassetteBitDepth;
+  channels: StegaCassetteChannels;
+  encoding: StegaCassetteEncoding;
 }
+
+const metadataAudioBitDepth: StegaMetadataAudio["bitDepth"][] = [8, 16, 24];
+const metadataAudioChannels: StegaMetadataAudio["channels"][] = [1, 2];
+const metadataAudioEncoding: StegaMetadataAudio["encoding"][] = [
+  "additive",
+  "midpoint",
+];
 
 export interface StegaMetadataString {
   type: StegaContentType.STRING;
   messageCount: number;
-  encoding: "base64" | "none";
+  encoding: Stega64Encoding;
 }
+
+const metadataStringEncoding: StegaMetadataString["encoding"][] = [
+  "none",
+  "base64",
+];
 
 export interface StegaMetadataRobust {
   type: StegaContentType.ROBUST;
-  blockSize: 2 | 4; // Size of encoding blocks
-  redundancyLevel: number; // How much error correction to use
-  encoding: "hex" | "base16"; // Using smaller character sets
+  redundancyLevel: number;
   messageCount: number;
+  blockSize: 2 | 4;
+  encoding: "hex" | "base16";
 }
+
+const metadataRobustBlockSize: StegaMetadataRobust["blockSize"][] = [2, 4];
+const metadataRobustEncoding: StegaMetadataRobust["encoding"][] = [
+  "hex",
+  "base16",
+];
 
 export type StegaMetadata =
   | StegaMetadataAudio
   | StegaMetadataString
   | StegaMetadataRobust;
 
-// Convert a number to a series of quantized values
-function numberToQuantizedValues(num: number, byteCount: number): number[] {
-  const values: number[] = [];
-  for (let i = 0; i < byteCount; i++) {
-    const byte = (num >> (i * 8)) & 0xff;
-    const quantized = QUANTIZED_VALUES[Math.floor((byte / 256) * 4)];
-    values.push(quantized);
-  }
-  return values;
-}
+function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
+  const sequence: number[] = [];
 
-// Convert a series of quantized values back to a number
-function quantizedValuesToNumber(values: number[]): number {
-  let result = 0;
-  for (let i = 0; i < values.length; i++) {
-    const quantizedIndex = QUANTIZED_VALUES.findIndex(
-      (v) => Math.abs(v - values[i]) < 43
-    );
-    if (quantizedIndex === -1) throw new Error("Invalid quantized value");
-    const byte = Math.floor((quantizedIndex * 256) / 4);
-    result |= byte << (i * 8);
-  }
-  return result;
-}
+  // First byte: version and type
+  sequence.push((METADATA_VERSION << 4) | metadata.type);
 
-// Calculate a simple checksum for verification
-function calculateChecksum(data: number[]): number {
-  return data.reduce((sum, val) => (sum + val) & 0xff, 0);
-}
+  switch (metadata.type) {
+    case StegaContentType.AUDIO: {
+      // Sample rate (3 bytes)
+      sequence.push((metadata.sampleRate >> 16) & 0xff);
+      sequence.push((metadata.sampleRate >> 8) & 0xff);
+      sequence.push(metadata.sampleRate & 0xff);
+      // Bit depth (1 byte)
+      sequence.push(metadataAudioBitDepth.indexOf(metadata.bitDepth));
+      // Channels (1 byte)
+      sequence.push(metadataAudioChannels.indexOf(metadata.channels));
+      // Encoding (1 byte)
+      sequence.push(metadataAudioEncoding.indexOf(metadata.encoding));
+      break;
+    }
 
-export function encodeMetadata(
-  imageData: ImageData,
-  metadata: StegaMetadata
-): ImageData {
-  const { width, height, data } = imageData;
+    case StegaContentType.STRING: {
+      // Message count (2 bytes)
+      sequence.push((metadata.messageCount >> 8) & 0xff);
+      sequence.push(metadata.messageCount & 0xff);
+      // Encoding (1 byte)
+      sequence.push(metadataStringEncoding.indexOf(metadata.encoding));
+      break;
+    }
 
-  // Convert metadata to quantized values
-  const headerData: number[] = [
-    QUANTIZED_VALUES[METADATA_VERSION], // Version
-    QUANTIZED_VALUES[metadata.type], // Content type
-  ];
-
-  if (metadata.type === StegaContentType.AUDIO) {
-    // Encode audio-specific metadata
-    headerData.push(
-      ...numberToQuantizedValues(metadata.sampleRate, 3),
-      QUANTIZED_VALUES[
-        metadata.bitDepth === 24 ? 3 : metadata.bitDepth === 16 ? 2 : 1
-      ],
-      QUANTIZED_VALUES[metadata.channels]
-    );
-  } else if (metadata.type === StegaContentType.ROBUST) {
-    // Encode robust-specific metadata
-    headerData.push(
-      ...numberToQuantizedValues(metadata.messageCount, 2),
-      QUANTIZED_VALUES[metadata.blockSize === 4 ? 1 : 0], // blockSize (2 or 4)
-      QUANTIZED_VALUES[Math.min(3, Math.floor(metadata.redundancyLevel))], // redundancyLevel (0-3)
-      QUANTIZED_VALUES[metadata.encoding === "base16" ? 1 : 0] // encoding type
-    );
-  } else {
-    // Encode string-specific metadata
-    headerData.push(
-      ...numberToQuantizedValues(metadata.messageCount, 2),
-      QUANTIZED_VALUES[metadata.encoding === "base64" ? 1 : 0] // encoding type
-    );
-  }
-
-  // Add checksum
-  const checksum = calculateChecksum(headerData);
-  headerData.push(QUANTIZED_VALUES[checksum & 0x03]);
-
-  const writeCornerHeader = (offsetX: number, offsetY: number) => {
-    headerData.forEach((value, i) => {
-      const x = offsetX + (i % METADATA_EDGE_SIZE);
-      const y = offsetY + Math.floor(i / METADATA_EDGE_SIZE);
-      const pixelIndex = (y * width + x) * 4;
-
-      // Write all channels with the same value
-      data[pixelIndex] = value; // R
-      data[pixelIndex + 1] = value; // G
-      data[pixelIndex + 2] = value; // B
-      data[pixelIndex + 3] = 255; // A
-    });
-  };
-
-  // Top-left
-  writeCornerHeader(0, 0);
-  // Top-right
-  writeCornerHeader(width - METADATA_EDGE_SIZE, 0);
-  // Bottom-left
-  writeCornerHeader(0, height - METADATA_EDGE_SIZE);
-  // Bottom-right
-  writeCornerHeader(width - METADATA_EDGE_SIZE, height - METADATA_EDGE_SIZE);
-
-  return imageData;
-}
-
-export function decodeMetadata(imageData: ImageData): StegaMetadata {
-  const { width, height, data } = imageData;
-
-  // Try to read header from each corner
-  const readCornerHeader = (offsetX: number, offsetY: number) => {
-    return Array.from({ length: 8 }, (_, i) => {
-      const x = offsetX + (i % METADATA_EDGE_SIZE);
-      const y = offsetY + Math.floor(i / METADATA_EDGE_SIZE);
-      return data[(y * width + x) * 4]; // Just read the R channel
-    });
-  };
-
-  // Read all corners
-  const topLeft = readCornerHeader(0, 0);
-  const topRight = readCornerHeader(width - METADATA_EDGE_SIZE, 0);
-  const bottomLeft = readCornerHeader(0, height - METADATA_EDGE_SIZE);
-  const bottomRight = readCornerHeader(
-    width - METADATA_EDGE_SIZE,
-    height - METADATA_EDGE_SIZE
-  );
-
-  // Use the first valid header we find
-  const headers = [topLeft, topRight, bottomLeft, bottomRight];
-  let headerValues: number[] | null = null;
-
-  for (const header of headers) {
-    try {
-      const checksum = calculateChecksum(header.slice(0, -1));
-      const checksumQuantized = QUANTIZED_VALUES[checksum & 0x03];
-      if (Math.abs(header[header.length - 1] - checksumQuantized) < 43) {
-        headerValues = header;
-        break;
-      }
-    } catch (e) {
-      continue;
+    case StegaContentType.ROBUST: {
+      // Redundancy level (1 byte)
+      sequence.push(metadata.redundancyLevel);
+      // Message count (2 bytes)
+      sequence.push((metadata.messageCount >> 8) & 0xff);
+      sequence.push(metadata.messageCount & 0xff);
+      // Block size (1 byte)
+      sequence.push(metadataRobustBlockSize.indexOf(metadata.blockSize));
+      // Encoding (1 byte)
+      sequence.push(metadataRobustEncoding.indexOf(metadata.encoding));
+      break;
     }
   }
 
-  if (!headerValues) {
-    throw new Error("Could not find valid metadata in any corner");
+  // Pad remaining bytes
+  while (sequence.length < PATTERN_LENGTH) {
+    sequence.push(0);
   }
 
-  // Parse version and content type
-  const version = Math.floor((headerValues[0] / 256) * 4);
+  return sequence;
+}
+
+function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
+  if (sequence.length < PATTERN_LENGTH) {
+    throw new Error("Invalid sequence length");
+  }
+
+  const version = sequence[0] >> 4;
   if (version !== METADATA_VERSION) {
-    throw new Error(`Unsupported metadata version: ${version}`);
+    throw new Error("Unsupported metadata version");
   }
 
-  const contentType = Math.floor(
-    (headerValues[1] / 256) * 4
-  ) as StegaContentType;
+  const type = sequence[0] & 0x0f;
 
-  if (contentType === StegaContentType.AUDIO) {
-    const sampleRate = quantizedValuesToNumber(headerValues.slice(2, 5));
-    const bitDepthIndex = Math.floor((headerValues[5] / 256) * 4);
-    const bitDepth = bitDepthIndex === 3 ? 24 : bitDepthIndex === 2 ? 16 : 8;
-    const channels = Math.floor((headerValues[6] / 256) * 4) as 1 | 2;
+  switch (type) {
+    case StegaContentType.AUDIO: {
+      const sampleRate = (sequence[1] << 16) | (sequence[2] << 8) | sequence[3];
+      const bitDepth = metadataAudioBitDepth[sequence[4]];
+      const channels = metadataAudioChannels[sequence[5]];
+      const encoding = metadataAudioEncoding[sequence[6]];
 
-    return {
-      type: StegaContentType.AUDIO,
-      sampleRate,
-      bitDepth: bitDepth as 8 | 16 | 24,
-      channels,
-    };
-  } else if (contentType === StegaContentType.ROBUST) {
-    const messageCount = quantizedValuesToNumber(headerValues.slice(2, 4));
-    const blockSize = Math.floor((headerValues[4] / 256) * 4) === 1 ? 4 : 2;
-    const redundancyLevel = Math.floor((headerValues[5] / 256) * 4);
-    const encoding = headerValues[6] === QUANTIZED_VALUES[1] ? "base16" : "hex";
+      if (!bitDepth || !channels || !encoding) {
+        throw new Error("Invalid audio metadata values");
+      }
 
-    return {
-      type: StegaContentType.ROBUST,
-      messageCount,
-      blockSize: blockSize as 2 | 4,
-      redundancyLevel,
-      encoding,
-    };
-  } else {
-    const messageCount = quantizedValuesToNumber(headerValues.slice(2, 4));
-    return {
-      type: StegaContentType.STRING,
-      messageCount,
-      encoding: headerValues[4] === QUANTIZED_VALUES[1] ? "base64" : "none",
-    };
+      return {
+        type: StegaContentType.AUDIO,
+        sampleRate,
+        bitDepth,
+        channels,
+        encoding,
+      };
+    }
+
+    case StegaContentType.STRING: {
+      const messageCount = (sequence[1] << 8) | sequence[2];
+      const encoding = metadataStringEncoding[sequence[3]];
+
+      if (!encoding) {
+        throw new Error("Invalid string metadata values");
+      }
+
+      return {
+        type: StegaContentType.STRING,
+        messageCount,
+        encoding,
+      };
+    }
+
+    case StegaContentType.ROBUST: {
+      const redundancyLevel = sequence[1];
+      const messageCount = (sequence[2] << 8) | sequence[3];
+      const blockSize = metadataRobustBlockSize[sequence[4]];
+      const encoding = metadataRobustEncoding[sequence[5]];
+
+      if (!blockSize || !encoding) {
+        throw new Error("Invalid robust metadata values");
+      }
+
+      return {
+        type: StegaContentType.ROBUST,
+        redundancyLevel,
+        messageCount,
+        blockSize,
+        encoding,
+      };
+    }
+
+    default:
+      throw new Error("Invalid metadata type");
   }
 }
 
-// Helper to determine if a pixel position is part of the metadata regions
-export function isMetadataPixel(
-  x: number,
-  y: number,
-  width: number,
-  height: number
-): boolean {
-  // Top or bottom edge
-  if (y < METADATA_EDGE_SIZE || y >= height - METADATA_EDGE_SIZE) {
-    return x < METADATA_EDGE_SIZE || x >= width - METADATA_EDGE_SIZE;
+/**
+ * Adding a row to the bottom of the image with stega metadata
+ * encoded in the alpha channel
+ */
+export function encode({
+  source,
+  metadata,
+}: {
+  source: HTMLCanvasElement;
+  metadata: StegaMetadata;
+}): HTMLCanvasElement {
+  const { width, height } = source;
+
+  /**
+   * Getting source image data. We have to be careful not to lose data in transfer.
+   */
+  const sourceContext = source.getContext("2d", {
+    willReadFrequently: true,
+    alpha: true,
+  })!;
+  const sourceData = sourceContext.getImageData(0, 0, width, height);
+
+  /**
+   * Setting up a new canvas and context with extra line for metadata
+   */
+  const { canvas, context } = createCanvasAndContext();
+  canvas.width = source.width;
+  canvas.height = source.height + 1;
+
+  /**
+   * Copy new data over and also prefill last line with color
+   */
+  const newImageData = context.createImageData(width, height);
+  newImageData.data.set(sourceData.data);
+  context.putImageData(newImageData, 0, 1);
+  context.putImageData(newImageData, 0, 0);
+
+  /**
+   * Get the metadata and set it in the last row's alpha
+   */
+  const sequence = convertMetadataToNumericSequence(metadata);
+  const metadataRow = context.getImageData(0, height, width, 1);
+  for (let i = 0; i < PATTERN_LENGTH; i++) {
+    const pixelIndex = i * 4;
+    metadataRow.data[pixelIndex + 3] = METADATA_ALPHA - sequence[i];
   }
-  // Left or right edge
-  if (x < METADATA_EDGE_SIZE || x >= width - METADATA_EDGE_SIZE) {
-    return y < METADATA_EDGE_SIZE || y >= height - METADATA_EDGE_SIZE;
-  }
-  return false;
+  context.putImageData(metadataRow, 0, height);
+
+  return canvas;
 }
 
-// For array index version
-export function isMetadataPixelFromIndex(
-  index: number,
-  width: number,
-  height: number
-): boolean {
-  const x = (index / 4) % width;
-  const y = Math.floor(index / 4 / width);
-  return isMetadataPixel(x, y, width, height);
+export function decode({
+  source,
+}: {
+  source: HTMLCanvasElement | HTMLImageElement;
+}): StegaMetadata | null {
+  const { width, height } = dimensionsFromSource(source);
+  const { canvas, context } = createCanvasAndContext();
+  canvas.width = width;
+  canvas.height = height;
+
+  context.drawImage(source, 0, 0);
+  const imageData = context.getImageData(0, height - 1, PATTERN_LENGTH, 1);
+  const rawAlpha = Array.from(imageData.data)
+    .filter((_, i) => i % 4 === 3)
+    .map((n) => METADATA_ALPHA - n);
+  const sequence: number[] = rawAlpha;
+
+  try {
+    return convertNumericSequenceToMetadata(sequence);
+  } catch (error) {
+    return null;
+  }
 }

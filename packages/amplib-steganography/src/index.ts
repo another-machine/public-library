@@ -5,6 +5,7 @@ export {
   loadImageFromImageUrl,
   playDecodedAudioBuffers,
 } from "./utilities";
-export * as Stega64 from "./Stega64";
 export * from "./StegaAnimator";
+export * as Stega64 from "./Stega64";
+export * as StegaMetadata from "./StegaMetadata";
 export * as StegaCassette from "./StegaCassette";
