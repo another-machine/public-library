@@ -241,3 +241,14 @@ export function decode({
     ? [new Float32Array(leftSamples), new Float32Array(rightSamples)]
     : [new Float32Array(leftSamples)];
 }
+
+function encodeMidpoint(baseValue: number, sample: number): number {
+  const normalizedSample = (sample + 1) / 2;
+  const targetMidpoint = normalizedSample * 255;
+  return Math.min(Math.max(0, Math.round(2 * targetMidpoint - baseValue)), 255);
+}
+
+function decodeMidpoint(value1: number, value2: number): number {
+  const midpoint = (value1 + value2) / 2;
+  return 2 * (midpoint / 255) - 1;
+}
