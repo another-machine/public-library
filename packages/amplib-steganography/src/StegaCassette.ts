@@ -308,7 +308,7 @@ export function decode({
       encodedIndexNext,
       sourceIndex,
       sourceIndexNext,
-    } = isBottomHalf ? indexData(i - midPoint, data) : indexData(i, data);
+    } = indexData(i, data);
     const currentSamples = isBottomHalf ? rightSamples : leftSamples;
 
     if (!isSkipped && data[encodedIndex + 3] === 255) {
