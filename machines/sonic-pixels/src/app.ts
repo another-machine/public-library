@@ -28,9 +28,7 @@ const selectAspectRatio = document.getElementById(
 const selectBitDepth = document.getElementById(
   "bit-depth"
 ) as HTMLSelectElement;
-const selectMonoStereo = document.getElementById(
-  "mono-stereo"
-) as HTMLSelectElement;
+const selectChannels = document.getElementById("channels") as HTMLSelectElement;
 const divResult = document.getElementById("result") as HTMLDivElement;
 buttonPlay.disabled = true;
 
@@ -58,7 +56,7 @@ function getBitDepth(): 8 | 16 | 24 {
 buttonConvert.addEventListener("click", async () => {
   const imageValue = image.querySelector("img");
   const audioValue = audio.querySelector("audio");
-  const stereo = selectMonoStereo.value === "stereo";
+  const channels = parseInt(selectChannels.value) as 1 | 2;
   const aspectRatio = getAspectRatio();
   const bitDepth = getBitDepth();
   if (imageValue && audioValue) {
@@ -74,7 +72,7 @@ buttonConvert.addEventListener("click", async () => {
       sampleRate,
       bitDepth,
       encoding: "additive",
-      channels: stereo ? 2 : 1,
+      channels,
     };
     const audioBuffers = await loadAudioBuffersFromAudioUrl({
       url,
@@ -92,8 +90,9 @@ buttonConvert.addEventListener("click", async () => {
     });
     divResult.innerHTML = "";
     const result = StegaMetadata.encode({ source, metadata });
-    divResult.appendChild(result);
-    // divResult.appendChild(source);
+    const image = new Image();
+    image.src = result.toDataURL();
+    divResult.appendChild(image);
   }
 });
 
@@ -109,7 +108,7 @@ buttonPlay.addEventListener("click", async () => {
         source: imageResult,
         bitDepth: metadata?.bitDepth || getBitDepth(),
         channels:
-          metadata?.channels || selectMonoStereo.value === "stereo" ? 2 : 1,
+          metadata?.channels || (parseInt(selectChannels.value) as 2 | 1),
         encoding: metadata?.encoding || "additive",
       });
       const stop = await playDecodedAudioBuffers({

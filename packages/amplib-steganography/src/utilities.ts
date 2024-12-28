@@ -207,7 +207,6 @@ export function createDropReader({
     event.stopPropagation();
   });
   if (onDragEnter) {
-    console.log("IN THE CONDITIONAL");
     element.addEventListener(
       "dragenter",
       (event) => {

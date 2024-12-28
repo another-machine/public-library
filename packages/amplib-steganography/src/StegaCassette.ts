@@ -40,7 +40,7 @@ export function encode({
   const rightChannel = stereo ? audioBuffers[1] : audioBuffers[0];
 
   const messageLength =
-    (stereo ? 2 : 1) *
+    audioBuffers.length *
     (stereo
       ? Math.max(...audioBuffers.map((a) => a.length))
       : leftChannel.length) *

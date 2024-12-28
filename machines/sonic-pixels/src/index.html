@@ -11,44 +11,52 @@
   <body>
     <main>
       <section>
+        <div id="result"></div>
+      </section>
+
+      <section>
         <label tabindex="0" role="button" for="input-image">
           <input id="input-image" type="file" />
-          Source Image
+          Load Image
         </label>
         <label tabindex="0" role="button" for="input-audio">
           <input id="input-audio" type="file" />
-          Source Audio
+          Load Audio
         </label>
         <label tabindex="0" role="button" for="input-encoded">
           <input id="input-encoded" type="file" />
-          Encoded Image
+          Load Encoded
         </label>
-      </section>
-      <section>
-        <div id="image"></div>
+
         <div id="audio"></div>
-      </section>
-      <section>
+        <div id="image"></div>
+
         <div>
-          <div>
-            <input
-              id="sample-rate"
-              type="range"
-              min="3000"
-              max="48000"
-              value="48000"
-            />
-            Sample rate (3kHz - 48kHz)
-          </div>
-          <select id="mono-stereo">
-            <option value="stereo" selected>Stereo</option>
-            <option value="mono">Mono</option>
+          <input
+            id="sample-rate"
+            type="range"
+            min="3000"
+            max="48000"
+            value="48000"
+          />
+          Sample rate (3kHz - 48kHz)
+        </div>
+        <div>
+          <select id="channels">
+            <option value="2" selected>Stereo</option>
+            <option value="1">Mono</option>
           </select>
+          Channels
+        </div>
+        <div>
           <select id="bit-depth">
             <option value="8" selected>8-bit</option>
             <option value="16">16-bit</option>
             <option value="24" selected>24-bit</option>
           </select>
+          Bit Depth
+        </div>
+        <div>
           <select id="aspect-ratio">
             <option value="natural">Natural</option>
             <option value="1" selected>1:1</option>
@@ -57,13 +65,11 @@
             <option value="0.75">3:4</option>
             <option value="0.5625">9:16</option>
           </select>
-          <button id="convert">Convert</button>
+          Aspect Ratio
         </div>
 
-        <div>
-          <button id="play">Play</button>
-        </div>
-        <div id="result"></div>
+        <button id="convert">Convert</button>
+        <button id="play">Play</button>
       </section>
     </main>
     <script type="module">
