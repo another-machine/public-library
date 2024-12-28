@@ -78,17 +78,17 @@ buttonConvert.addEventListener("click", async () => {
     };
     const audioBuffers = await loadAudioBuffersFromAudioUrl({
       url,
-      sampleRate,
+      sampleRate: metadata.sampleRate,
       audioContext,
-      stereo,
+      channels: metadata.channels,
     });
     const source = StegaCassette.encode({
       source: imageValue,
       audioBuffers,
-      sampleRate,
+      sampleRate: metadata.sampleRate,
       aspectRatio,
-      bitDepth,
-      encoding: "additive",
+      bitDepth: metadata.bitDepth,
+      encoding: metadata.encoding,
     });
     divResult.innerHTML = "";
     const result = StegaMetadata.encode({ source, metadata });

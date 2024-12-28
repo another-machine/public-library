@@ -1,53 +1,51 @@
 import { Stega64 } from "../../../packages/amplib-steganography/src";
+import { createForm } from "../createForm";
+
+type FormData = {
+  message: string;
+  minHeight: number;
+  minWidth: number;
+};
 
 export default async function example({
   onResult,
 }: {
   onResult: (canvas: HTMLCanvasElement) => void;
 }) {
-  const output = document.getElementById("image-two")!;
-  const source = document.getElementById("image-one")!.querySelector("img")!;
-  const message = document.querySelector<HTMLInputElement>("#message")!;
-  const minWidth = document.querySelector<HTMLInputElement>("#min-width")!;
-  const minHeight = document.querySelector<HTMLInputElement>("#min-height")!;
+  const section = document.getElementById("example-stega64")!;
+  const source = section
+    .querySelector("figure:nth-of-type(1)")!
+    .querySelector("img")!;
+  const output = section.querySelector("figure:nth-of-type(2)")!;
+  const form = section.querySelector("form")!;
 
-  const encode = () => {
+  const values = createForm<FormData>({
+    form,
+    inputs: {
+      message: { name: "message", type: "text", value: "Hello world" },
+      minWidth: { name: "minWidth", type: "number", value: 16, min: 16 },
+      minHeight: { name: "minHeight", type: "number", value: 10, min: 10 },
+    },
+    onInput: run,
+    actions: [],
+  });
+  source.onload = () => run(values);
+
+  function run(data: FormData) {
     const result = Stega64.encode({
       source,
-      messages: [message.value],
-      minHeight: parseInt(minHeight.value),
-      minWidth: parseInt(minWidth.value),
+      messages: [data.message],
+      minHeight: data.minHeight,
+      minWidth: data.minWidth,
       encoding: "base64",
       encodeMetadata: true,
     });
     output.innerHTML = "";
     output.appendChild(result);
-    outputResult(result);
     onResult(result);
-  };
-  let timeout;
-  [message, minWidth, minHeight].forEach((item) => {
-    const update = () => {
-      document
-        .querySelectorAll<HTMLElement>(`[data-value="${item.id}"]`)
-        .forEach((a) => (a.innerText = item.value));
-    };
-    item.addEventListener("input", () => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        update();
-        encode();
-      }, 500);
-    });
-    update();
-  });
-
-  source.onload = () => encode();
-
-  async function outputResult(source: HTMLCanvasElement) {
     const decode = document.querySelector('[data-output="decode"]')!;
     decode.innerHTML = JSON.stringify(
-      Stega64.decode({ source, encoding: "base64" }),
+      Stega64.decode({ source: result, encoding: "base64" }),
       null,
       2
     );

@@ -163,7 +163,8 @@ section {
     color: var(--color-accent);
   }
 
-  aside {
+  aside,
+  form {
     display: flex;
     flex-direction: column;
     gap: var(--gap);
@@ -194,6 +195,11 @@ section {
       font-family: var(--font-monospace);
     }
 
+    span {
+      flex: 1;
+      order: 2;
+    }
+
     input,
     select {
       border: 1px solid var(--color-text);
@@ -217,6 +223,13 @@ section {
     min-width: var(--pre-width);
     overflow: auto;
     padding: var(--gap);
+
+    a {
+      color: var(--color-accent);
+      font-style: italic;
+      font-weight: bold;
+      text-decoration: none;
+    }
 
     [data-value] {
       color: var(--color-accent);

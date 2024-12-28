@@ -1,17 +1,15 @@
+import { StegaCassetteChannels } from "./StegaCassette";
+
 /**
  * Creating a canvas and context.
  */
-export function createCanvasAndContext(
-  width?: number,
-  height?: number,
-  willReadFrequently?: boolean
-) {
+export function createCanvasAndContext(width?: number, height?: number) {
   const canvas = document.createElement("canvas");
   canvas.width = width || 0;
   canvas.height = height || 0;
   const context = canvas.getContext("2d", {
     colorSpace: "display-p3",
-    willReadFrequently,
+    willReadFrequently: true,
   }) as CanvasRenderingContext2D;
   context.imageSmoothingEnabled = false;
   return { canvas, context };
@@ -404,11 +402,11 @@ export function imageOrCanvasIsImage(
 export async function loadAudioBuffersFromAudioUrl({
   url,
   audioContext,
-  stereo = false,
+  channels = 1,
   sampleRate = audioContext.sampleRate,
 }: {
   url: string;
-  stereo: boolean;
+  channels: StegaCassetteChannels;
   audioContext: AudioContext;
   sampleRate?: number;
 }) {
@@ -419,9 +417,9 @@ export async function loadAudioBuffersFromAudioUrl({
   const resampledBuffer = await resampleAudioBuffer(
     audioBuffer,
     sampleRate,
-    stereo
+    channels
   );
-  return stereo
+  return channels === 2
     ? [resampledBuffer.getChannelData(0), resampledBuffer.getChannelData(1)]
     : [resampledBuffer.getChannelData(0)];
 }
@@ -512,10 +510,10 @@ export async function playDecodedAudioBuffers({
 async function resampleAudioBuffer(
   audioBuffer: AudioBuffer,
   sampleRate: number,
-  stereo: boolean
+  channels: StegaCassetteChannels
 ) {
   const offlineCtx = new OfflineAudioContext(
-    stereo ? 2 : 1,
+    channels,
     audioBuffer.duration * sampleRate,
     sampleRate
   );

@@ -20,7 +20,7 @@
     </header>
 
     <main>
-      <section>
+      <section id="example-stega64">
         <h2>Stega64 encodes and decodes messages in image pixels.</h2>
         <p>
           <code
@@ -29,29 +29,20 @@
             HTMLCanvasElement</code
           >
         </p>
-        <pre><code>const source = await loadImageFromImageUrl({ url: "./example.jpg" });
+        <pre><code>const source = await <a href="#load-image-from-image-url">loadImageFromImageUrl</a>({
+  url: "./example.jpg" 
+});
 Stega64.encode({
   source,
   messages: ["<span data-value="message"></span>"],
-  minWidth: <span data-value="min-width"></span>,
-  minHeight: <span data-value="min-height"></span>
+  minWidth: <span data-value="minWidth"></span>,
+  minHeight: <span data-value="minHeight"></span>
 })</code></pre>
 
-        <aside>
-          <label for="message">
-            <input id="message" type="text" value="Message Here" /> messages
-          </label>
-          <label for="min-width">
-            <input id="min-width" type="number" value="16" min="16" /> minWidth
-          </label>
-          <label for="min-height">
-            <input id="min-height" type="number" value="8" min="2" />
-            minHeight
-          </label>
-        </aside>
+        <form></form>
 
-        <figure id="image-one"><img src="./example.jpg" /></figure>
-        <figure id="image-two"></figure>
+        <figure><img src="./example.jpg" /></figure>
+        <figure></figure>
 
         <p>
           <code
@@ -64,37 +55,38 @@ Stega64.encode({
 <span data-output="decode"></span></code></pre>
       </section>
 
-      <section>
+      <section id="example-stega-cassette">
         <h2>StegaCassette encodes and decodes audio in image pixels.</h2>
         <p>
           <code
             >StegaCassette.encode({ source: HTMLImageElement; audioBuffers:
             Float32Array[]; sampleRate: number; bitDepth: StegaCassetteBitDepth;
-            encoding: StegaCassetteEncoding; aspectRatio?: number; }):
-            HTMLCanvasElement</code
+            encoding: StegaCassetteEncoding; encodeMetadata?: boolean;
+            aspectRatio?: number; }): HTMLCanvasElement</code
           >
         </p>
-        <pre><code>const result = StegaCassette.encode({
+        <p></p>
+        <pre><code>const audioBuffers = await <a href="#load-audio-buffers-from-audio-url">loadAudioBuffersFromAudioUrl</a>({
+  url: "./example.mp3",
+  audioContext,
+  channels: <span data-value="channels"></span>,
+  sampleRate: <span data-value="sampleRate"></span>,
+});
+const result = StegaCassette.encode({
   source,
-  audioBuffers: await loadAudioBuffersFromAudioUrl({
-    url: "./example.mp3",
-    audioContext,
-    stereo: channels > 1,
-    sampleRate,
-  }),
-  sampleRate,
-  bitDepth,
-  encoding: "additive",
-  encodeMetadata: false,
-  aspectRatio: undefined,
+  audioBuffers,
+  sampleRate: <span data-value="sampleRate"></span>,
+  bitDepth: <span data-value="bitDepth"></span>,
+  encoding: "<span data-value="encoding"></span>",
+  encodeMetadata: <span data-value="encodeMetadata"></span>,
+  aspectRatio: <span data-value="aspectRatio"></span>,
 });</code></pre>
-        <aside>
-          <button id="encode-audio">Encode audio into image</button>
-        </aside>
 
-        <figure id="image-three"><img src="./example.jpg" /></figure>
-        <figure id="image-four"></figure>
-        <audio id="audio-src" src="./example.mp3"></audio>
+        <form></form>
+
+        <figure><img src="./example.jpg" /></figure>
+        <figure></figure>
+        <audio src="./example.mp3"></audio>
 
         <p>
           <code
@@ -104,18 +96,67 @@ Stega64.encode({
             Float32Array[]</code
           >
         </p>
-        <pre><code>const metadata = StegaMetadata.decode({ source }) || {};
+        <pre><code>const metadata = <a href="#stega-metadata">StegaMetadata</a>.decode({ source }) || {};
 const audioBuffers = StegaCassette.decode({
   source,
-  bitDepth: metadata.bitDepth || 8,
-  channels: metadata.channels || 1,
-  encoding: metadata.encoding || "additive",
+  bitDepth: metadata.bitDepth || <span data-value="bitDepth"></span>,
+  channels: metadata.channels || <span data-value="channels"></span>,
+  encoding: metadata.encoding || "<span data-value="encoding"></span>",
 });
-const audio = await playDecodedAudioBuffers({
+const audio = await <a href="#play-decoded-audio-buffers">playDecodedAudioBuffers</a>({
   audioBuffers,
   audioContext,
-  sampleRate: metadata.sampleRate || 48000,
+  sampleRate: metadata.sampleRate || <span data-value="sampleRate"></span>,
 });</code></pre>
+      </section>
+
+      <section id="stega-metadata">
+        <h2>StegaMetadata can be optionally encoded inside of stega images.</h2>
+        <p>
+          <code
+            >StegaMetadata.encode({ source: HTMLCanvasElement; metadata:
+            StegaMetadata }): HTMLCanvasElement</code
+          >
+        </p>
+        <p>
+          <code
+            >StegaMetadata.decode({ source: HTMLCanvasElement; }): StegaMetadata
+            | null</code
+          >
+        </p>
+
+        <pre><code>enum StegaContentType {
+  AUDIO = 0,
+  STRING = 1,
+  ROBUST = 2,
+}
+
+type StegaMetadata =
+  | StegaMetadataAudio
+  | StegaMetadataString
+  | StegaMetadataRobust;
+
+interface StegaMetadataAudio {
+  type: StegaContentType.AUDIO;
+  sampleRate: number;
+  bitDepth: StegaCassetteBitDepth;
+  channels: StegaCassetteChannels;
+  encoding: StegaCassetteEncoding;
+}
+
+interface StegaMetadataString {
+  type: StegaContentType.STRING;
+  messageCount: number;
+  encoding: Stega64Encoding;
+}
+
+interface StegaMetadataRobust {
+  type: StegaContentType.ROBUST;
+  redundancyLevel: number;
+  messageCount: number;
+  blockSize: 2 | 4;
+  encoding: "hex" | "base16";
+}</code></pre>
       </section>
 
       <section>
@@ -154,8 +195,55 @@ killLoop();</code></pre>
         <figure id="image-five"></figure>
       </section>
 
+      <section id="load-audio-buffers-from-audio-url">
+        <h2>Load an audio buffer from a url string</h2>
+        <p>
+          <code
+            >async loadAudioBuffersFromAudioUrl({ url: string; audioContext:
+            AudioContext; channels: StegaCassetteChannels; sampleRate?: number;
+            }): Promise&lt;Float32Array[]></code
+          >
+        </p>
+        <pre><code>const audioContext = new AudioContext();
+const audioBuffer = await loadAudioBuffersFromAudioUrl({
+  url: "./example.mp3",
+  audioContext,
+  sampleRate: audioContext.sampleRate,
+});</code></pre>
+      </section>
+
+      <section id="load-image-from-image-url">
+        <h2>Load an image from a url string</h2>
+        <p>
+          <code
+            >async loadImageFromImageUrl({ url: string }):
+            Promise&lt;HTMLImageElement></code
+          >
+        </p>
+        <pre><code>const audioBuffer = await loadImageFromImageUrl({
+  url: "./example.jpg"
+});</code></pre>
+      </section>
+
+      <section id="play-decoded-audio-buffers">
+        <h2>Play decoded audio buffers</h2>
+        <p>
+          <code
+            >async playDecodedAudioBuffers({ audioBuffers: Float32Array[];
+            audioContext: AudioContext; sampleRate?: number; }):
+            Promise&lt;AudioBufferSourceNode></code
+          >
+        </p>
+        <pre><code>const source = await playDecodedAudioBuffers({
+  audioBuffers,
+  audioContext,
+  sampleRate: audioContext.sampleRate,
+});
+source.stop();</code></pre>
+      </section>
+
       <section>
-        <h2>Turn an HTML element into a file drop area for images</h2>
+        <h2>Turn an HTML element into a file drop area</h2>
         <p>
           <code
             >createDropReader({ element: HTMLElement; onSuccess: (element:
@@ -178,7 +266,7 @@ createDropReader({
       </section>
 
       <section>
-        <h2>Turn an input into a file input</h2>
+        <h2>Turn an HTML input into a file input</h2>
         <p>
           <code
             >createFileReader({ element: HTMLInputElement; onSuccess: (element:
@@ -193,53 +281,6 @@ createFileReader({
   onFailure: (message) => console.error(message),
   types: ["image/*"]
 });</code></pre>
-      </section>
-
-      <section>
-        <h2>Load an audio buffer from a url string</h2>
-        <p>
-          <code
-            >async loadAudioBuffersFromAudioUrl({ url: string; audioContext:
-            AudioContext; sampleRate?: number; }):
-            Promise&lt;Float32Array></code
-          >
-        </p>
-        <pre><code>const audioContext = new AudioContext();
-const audioBuffer = await loadAudioBuffersFromAudioUrl({
-  url: "./example.mp3",
-  audioContext,
-  sampleRate: audioContext.sampleRate,
-});</code></pre>
-      </section>
-
-      <section>
-        <h2>Load an image from a url string</h2>
-        <p>
-          <code
-            >async loadImageFromImageUrl({ url: string }):
-            Promise&lt;HTMLImageElement></code
-          >
-        </p>
-        <pre><code>const audioBuffer = await loadImageFromImageUrl({
-  url: "./example.jpg"
-});</code></pre>
-      </section>
-
-      <section>
-        <h2>Play a decoded audio buffer</h2>
-        <p>
-          <code
-            >async playDecodedAudioBuffers({ audioBuffers: Float32Array[];
-            audioContext: AudioContext; sampleRate?: number; }):
-            Promise&lt;AudioBufferSourceNode></code
-          >
-        </p>
-        <pre><code>const source = await playDecodedAudioBuffers({
-  audioBuffers,
-  audioContext,
-  sampleRate: audioContext.sampleRate,
-});
-source.stop();</code></pre>
       </section>
     </main>
 

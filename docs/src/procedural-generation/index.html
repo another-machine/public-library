@@ -20,7 +20,7 @@
     </header>
 
     <main>
-      <section>
+      <section id="instantiate">
         <h2>Instantiate a RandomEngine.</h2>
         <p><code>new RandomEngine({ seed: string; size: number })</code></p>
         <pre><code>const engine = new RandomEngine({ 
@@ -28,7 +28,7 @@
   size: <span data-value="size"></span>
 });</code></pre>
 
-        <aside>
+        <form>
           <label for="seed">
             <input id="seed" type="text" value="Seed Here" /> seed
           </label>
@@ -36,7 +36,7 @@
           <label for="size">
             <input id="size" type="number" min="1" max="10" value="5" /> size
           </label>
-        </aside>
+        </form>
       </section>
 
       <section>
@@ -47,12 +47,12 @@ engine.random(<span data-value="random"></span>);
 <span data-output="1-1"></span>
 engine.position = <span data-output="1-2"></span></code></pre>
 
-        <aside>
+        <form>
           <label for="random">
             <input id="random" type="number" min="-100" max="100" value="10" />
             direction
           </label>
-        </aside>
+        </form>
       </section>
 
       <section>
@@ -63,12 +63,12 @@ engine.move(<span data-value="move"></span>);
 <span data-output="2-1"></span>
 engine.position = <span data-output="2-2"></span></code></pre>
 
-        <aside>
+        <form>
           <label for="move">
             <input id="move" type="number" min="0" max="1000" value="100" />
             position
           </label>
-        </aside>
+        </form>
       </section>
 
       <section>
@@ -78,7 +78,7 @@ engine.position = <span data-output="2-2"></span></code></pre>
         </p>
         <pre><code>engine.perlin(<span data-value="perlinX"></span>, <span data-value="perlinY"></span>, <span data-value="perlinZ"></span>)
 <span data-output="3-0"></span></code></pre>
-        <aside>
+        <form>
           <label for="perlinX">
             <input
               id="perlinX"
@@ -112,7 +112,7 @@ engine.position = <span data-output="2-2"></span></code></pre>
             />
             z
           </label>
-        </aside>
+        </form>
       </section>
 
       <section>
@@ -137,7 +137,7 @@ engine.position = <span data-output="2-2"></span></code></pre>
   seed: "<span data-value="seed"></span>", 
 });
 generator() = <span data-output="4-0"></span></code></pre>
-        <aside>
+        <form>
           <label for="length">
             <input id="length" type="number" min="1" max="10" value="5" />
             length
@@ -147,12 +147,18 @@ generator() = <span data-output="4-0"></span></code></pre>
             <input id="seconds" type="number" min="1" max="60" value="5" />
             seconds
           </label>
-        </aside>
+        </form>
       </section>
     </main>
 
     <script type="module">
       import { RandomEngine } from "../../../packages/amplib-procedural-generation/src";
+
+      document
+        .querySelectorAll("form")
+        .forEach((form) =>
+          form.addEventListener("submit", (e) => e.preventDefault())
+        );
 
       const perlin = { x: 0, y: 0, z: 0 };
 
