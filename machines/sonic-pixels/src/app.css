@@ -121,7 +121,7 @@ section:has(#result:empty) ~ section #play {
 #image:empty {
   display: none;
 
-  ~ * {
+  ~ *:not(#play) {
     display: none;
   }
 }
