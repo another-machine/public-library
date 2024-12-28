@@ -149,7 +149,7 @@ createDropReader({
 
 createFileReader({
   element: inputEncoded,
-  types: ["image/png"],
+  types: ["image/*"],
   onSuccess: (result) => {
     buttonPlay.disabled = false;
     divResult.innerHTML = "";
