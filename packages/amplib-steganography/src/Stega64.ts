@@ -34,7 +34,13 @@ export function encode({
   minWidth?: number;
   minHeight?: number;
 }): HTMLCanvasElement {
-  const encodedMessages = messages.map(convertStringToBase64);
+  const encodedMessages =
+    encoding === "base64"
+      ? messages.map(convertStringToBase64)
+      : messages.map(convertStringToRaw);
+
+  console.log({ encoding });
+
   const messageLength =
     encodedMessages.length +
     encodedMessages.reduce<number>((agg, message) => agg + message.length, 0);
@@ -77,22 +83,35 @@ export function encode({
     if (!isSkipped) {
       if (j < message.length) {
         const char = message.charAt(j);
-        const value = convertBase64CharToInt(char);
-        const encodedValue = encode64ValueForKeyValue(
-          value,
-          imageData.data[sourceIndex]
-        );
-        imageData.data[encodedIndex] = encodedValue;
+        if (encoding === "base64") {
+          const value = convertBase64CharToInt(char);
+          const encodedValue = encode64ValueForKeyValue(
+            value,
+            imageData.data[sourceIndex]
+          );
+          imageData.data[encodedIndex] = encodedValue;
+        } else {
+          const encodedValue = encodeRawValue(
+            char,
+            imageData.data[sourceIndex]
+          );
+          imageData.data[encodedIndex] = encodedValue;
+        }
         j++;
       } else {
         message = tmpMessages.shift() || "";
         j = 0;
-        const value = convertBase64CharToInt(STEGA64_MESSAGE_BREAK_CHARACTER);
-        const encodedValue = encode64ValueForKeyValue(
-          value,
-          imageData.data[sourceIndex]
-        );
-        imageData.data[encodedIndex] = encodedValue;
+        if (encoding === "base64") {
+          const value = convertBase64CharToInt("=");
+          const encodedValue = encode64ValueForKeyValue(
+            value,
+            imageData.data[sourceIndex]
+          );
+          imageData.data[encodedIndex] = encodedValue;
+        } else {
+          const encodedValue = encodeRawValue(",", imageData.data[sourceIndex]);
+          imageData.data[encodedIndex] = encodedValue;
+        }
       }
     }
   }
@@ -141,31 +160,66 @@ export function decode({
     );
     if ((i + 1) % 4 !== 0) {
       if (!isSkipped) {
-        const decodedValue = decode64ValueForKeyValue(
-          imageData.data[encodedIndex],
-          imageData.data[sourceIndex]
-        );
-        const value = convertIntToBase64Char(decodedValue);
-        if (value === STEGA64_MESSAGE_BREAK_CHARACTER) {
-          const string = message.join("").trim();
-          if (string.length) {
-            messages.push(string);
-            message = [];
+        if (encoding === "base64") {
+          const decodedValue = decode64ValueForKeyValue(
+            imageData.data[encodedIndex],
+            imageData.data[sourceIndex]
+          );
+          const value = convertIntToBase64Char(decodedValue);
+          if (value === "=") {
+            const string = message.join("").trim();
+            if (string.length) {
+              messages.push(string);
+              message = [];
+            }
+          } else if (value !== null) {
+            message.push(value);
           }
-        } else if (value !== null) {
-          message.push(value);
+        } else {
+          const decodedValue = decodeRawValue(
+            imageData.data[encodedIndex],
+            imageData.data[sourceIndex]
+          );
+          const value = convertRawChar(decodedValue);
+          if (value === ",") {
+            const string = message.join("").trim();
+            if (string.length) {
+              messages.push(string);
+              message = [];
+            }
+          } else {
+            message.push(value);
+          }
         }
       }
     }
   }
+
   const string = message.join("").trim();
   if (string.length) {
     messages.push(string);
   }
 
-  const decodedMessages = messages.map((msg) => convertBase64ToString(msg));
+  const decodedMessages =
+    encoding === "base64"
+      ? messages.map((msg) => convertBase64ToString(msg))
+      : messages.map((msg) => convertRawToString(msg));
 
   return decodedMessages;
+}
+
+/**
+ * Convert a string to a raw encoded string.
+ */
+function convertStringToRaw(string: string) {
+  return string;
+}
+
+/**
+ * Convert a raw encoded string to a string.
+ */
+function convertRawToString(raw: string) {
+  return raw;
 }
 
 /**
@@ -184,6 +238,19 @@ function convertBase64ToString(base64: string) {
   } catch (e) {
     console.log({ base64 });
   }
+}
+
+function encodeRawValue(char: string, keyValue: number) {
+  const value = char.charCodeAt(0);
+  return (value + keyValue) % 256;
+}
+
+function decodeRawValue(encodedValue: number, keyValue: number) {
+  return (encodedValue - keyValue + 256) % 256;
+}
+
+function convertRawChar(value: number) {
+  return String.fromCharCode(value);
 }
 
 /**

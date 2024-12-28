@@ -1,7 +1,13 @@
-import { Stega64 } from "../../../packages/amplib-steganography/src";
+import {
+  Stega64,
+  StegaMetadata,
+} from "../../../packages/amplib-steganography/src";
+import { Stega64Encoding } from "../../../packages/amplib-steganography/src/Stega64";
 import { createForm } from "../createForm";
 
 type FormData = {
+  encoding: Stega64Encoding;
+  encodeMetadata: string;
   message: string;
   minHeight: number;
   minWidth: number;
@@ -25,6 +31,18 @@ export default async function example({
       message: { name: "message", type: "text", value: "Hello world" },
       minWidth: { name: "minWidth", type: "number", value: 16, min: 16 },
       minHeight: { name: "minHeight", type: "number", value: 10, min: 10 },
+      encoding: {
+        name: "encoding",
+        type: "select",
+        value: "base64",
+        options: ["base64", "none"],
+      },
+      encodeMetadata: {
+        type: "select",
+        options: ["true", "false"],
+        value: "true",
+        name: "encodeMetadata",
+      },
     },
     onInput: run,
     actions: [],
@@ -37,17 +55,23 @@ export default async function example({
       messages: [data.message],
       minHeight: data.minHeight,
       minWidth: data.minWidth,
-      encoding: "base64",
-      encodeMetadata: true,
+      encoding: data.encoding,
+      encodeMetadata: data.encodeMetadata === "true",
     });
     output.innerHTML = "";
     output.appendChild(result);
     onResult(result);
     const decode = document.querySelector('[data-output="decode"]')!;
-    decode.innerHTML = JSON.stringify(
-      Stega64.decode({ source: result, encoding: "base64" }),
-      null,
-      2
-    );
+    const meta = StegaMetadata.decode({ source: result });
+    if (!meta || meta.type === StegaMetadata.StegaContentType.STRING) {
+      decode.innerHTML = JSON.stringify(
+        Stega64.decode({
+          source: result,
+          encoding: meta?.encoding || data.encoding,
+        }),
+        null,
+        2
+      );
+    }
   }
 }
