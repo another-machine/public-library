@@ -14,8 +14,8 @@
 
 @media screen and (min-width: 600px) {
   :root {
-    --pre-width: calc(75% - var(--gap) / 2);
-    --form-width: calc(25% - var(--gap) / 2);
+    --pre-width: calc(50% - var(--gap) / 2);
+    --form-width: calc(50% - var(--gap) / 2);
   }
 }
 @media screen and (min-width: 800px) {

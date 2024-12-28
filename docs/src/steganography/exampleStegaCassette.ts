@@ -90,19 +90,22 @@ export default async function example() {
             element.innerText = "Stop Audio";
             element.setAttribute("data-playing", "true");
             const source = output.querySelector("canvas")!;
-            const metadata: Partial<StegaMetadata.StegaMetadata> =
-              StegaMetadata.decode({ source }) || {};
-            if (metadata.type === StegaMetadata.StegaContentType.AUDIO) {
+            const metadata: StegaMetadata.StegaMetadata | null =
+              StegaMetadata.decode({ source });
+            if (
+              !metadata ||
+              metadata.type === StegaMetadata.StegaContentType.AUDIO
+            ) {
               const audioBuffers = StegaCassette.decode({
                 source,
-                bitDepth: metadata.bitDepth || defaults.bitDepth,
-                channels: metadata.channels || defaults.channels,
-                encoding: metadata.encoding || defaults.encoding,
+                bitDepth: metadata?.bitDepth || defaults.bitDepth,
+                channels: metadata?.channels || defaults.channels,
+                encoding: metadata?.encoding || defaults.encoding,
               });
               const audio = await playDecodedAudioBuffers({
                 audioBuffers,
                 audioContext,
-                sampleRate: metadata.sampleRate || audioContext.sampleRate,
+                sampleRate: metadata?.sampleRate || defaults.sampleRate,
               });
               stop = () => audio.stop();
             }
@@ -116,6 +119,16 @@ export default async function example() {
 
   async function run(values: FormData) {
     const sampleRate = values.sampleRate;
+    for (let key in values) {
+      defaults[key] =
+        typeof defaults[key] === "number"
+          ? parseInt(values[key])
+          : typeof defaults[key] === "string"
+          ? values[key]
+          : values[key] === "undefined"
+          ? undefined
+          : values[key] === "true";
+    }
     const result = StegaCassette.encode({
       source,
       audioBuffers: await loadAudioBuffersFromAudioUrl({

@@ -445,11 +445,20 @@ export function skippedAndIndicesFromIndexGenerator(width: number) {
     const isSkipped =
       !isOpaque || !isOpaqueNext || pxIndex % 2 !== 0 || (i + 1) % 4 === 0;
 
+    const pxIndexNext = Math.floor((i + 8) / 4);
+    const yNext = Math.floor(pxIndexNext / width);
+    const evenRowCheckNext = widthIsOdd || yNext % 2 === 0;
+    const nextINext = i + 12;
+
+    const sourceIndexNext = evenRowCheckNext ? nextINext : i + 8;
+    const encodedIndexNext = evenRowCheckNext ? i + 8 : nextINext;
+
     return {
       isSkipped,
       encodedIndex,
       sourceIndex,
-      isMetadata: false,
+      encodedIndexNext,
+      sourceIndexNext,
     };
   };
 }
