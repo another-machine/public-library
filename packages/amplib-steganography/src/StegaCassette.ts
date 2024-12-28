@@ -39,10 +39,9 @@ export function encode({
   const leftChannel = audioBuffers[0];
   const rightChannel = stereo ? audioBuffers[1] : audioBuffers[0];
 
-  const messageLength =
-    audioBuffers.length *
-    Math.max(...audioBuffers.map((a) => a.length)) *
-    (bitDepth / 8);
+  const samples =
+    audioBuffers.length * Math.max(...audioBuffers.map((a) => a.length));
+  const messageLength = samples * (bitDepth / 8);
 
   const initialCanvas = createCanvasAndContextForImageWithMinimums({
     source,
@@ -78,9 +77,9 @@ export function encode({
     : data.length;
 
   const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
-  const increment = bitDepth === 16 ? 8 : 4;
-
   const encoder = encoding === "additive" ? encodeAdditive : encodeMidpoint;
+
+  const increment = bitDepth === 16 ? 16 : 4;
 
   for (let i = 0; i < data.length; i += increment) {
     const isBottomHalf = stereo && i >= midPoint;
@@ -126,9 +125,9 @@ export function encode({
         const sample2 = currentBuffer[currentIndex + 1] || 0;
         const sample3 = currentBuffer[currentIndex + 2] || 0;
 
-        const value1 = sample1 && Math.floor((sample1 + 1) * 32767.5);
-        const value2 = sample2 && Math.floor((sample2 + 1) * 32767.5);
-        const value3 = sample3 && Math.floor((sample3 + 1) * 32767.5);
+        const value1 = Math.floor((sample1 + 1) * 32767.5);
+        const value2 = Math.floor((sample2 + 1) * 32767.5);
+        const value3 = Math.floor((sample3 + 1) * 32767.5);
 
         /**
          * Four pixels, twelve total channels (6 encode, 6 decode).
@@ -154,24 +153,24 @@ export function encode({
           encoder(
             data[encodedIndex],
             data[sourceIndex],
-            Math.floor(value1 / 255)
+            Math.floor(value1 / 256)
           ),
-          encoder(data[encodedIndex + 1], data[sourceIndex + 1], value1 % 255),
+          encoder(data[encodedIndex + 1], data[sourceIndex + 1], value1 % 256),
           encoder(
             data[encodedIndex + 2],
             data[sourceIndex + 2],
-            Math.floor(value2 / 255)
+            Math.floor(value2 / 256)
           ),
-          encoder(data[encodedIndexNext], data[sourceIndexNext], value2 % 255),
+          encoder(data[encodedIndexNext], data[sourceIndexNext], value2 % 256),
           encoder(
             data[encodedIndexNext + 1],
             data[sourceIndexNext + 1],
-            Math.floor(value3 / 255)
+            Math.floor(value3 / 256)
           ),
           encoder(
             data[encodedIndexNext + 2],
             data[sourceIndexNext + 2],
-            value3 % 255
+            value3 % 256
           ),
         ];
 
@@ -294,13 +293,14 @@ export function decode({
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
   const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  const decoder = encoding === "additive" ? decodeAdditive : decodeMidpoint;
 
   let leftSampleIndex = 0;
   let rightSampleIndex = 0;
 
-  const decoder = encoding === "additive" ? decodeAdditive : decodeMidpoint;
+  const increment = bitDepth === 16 ? 16 : 4;
 
-  for (let i = 0; i < data.length; i += 4) {
+  for (let i = 0; i < data.length; i += increment) {
     const isBottomHalf = stereo && i >= midPoint;
     const {
       isSkipped,
@@ -328,11 +328,11 @@ export function decode({
          * Decoding three values from four pixels.
          */
         const samples = [
-          decoder(data[encodedIndex], data[sourceIndex]) * 255 +
+          decoder(data[encodedIndex], data[sourceIndex]) * 256 +
             decoder(data[encodedIndex + 1], data[sourceIndex + 1]),
-          decoder(data[encodedIndex + 2], data[sourceIndex + 2]) * 255 +
+          decoder(data[encodedIndex + 2], data[sourceIndex + 2]) * 256 +
             decoder(data[encodedIndexNext], data[sourceIndexNext]),
-          decoder(data[encodedIndexNext + 1], data[sourceIndexNext + 1]) * 255 +
+          decoder(data[encodedIndexNext + 1], data[sourceIndexNext + 1]) * 256 +
             decoder(data[encodedIndexNext + 2], data[sourceIndexNext + 2]),
         ].map((value) => value / 32767.5 - 1);
         currentSamples.push(...samples);
