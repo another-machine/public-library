@@ -174,38 +174,6 @@ export function decode({
   return decodedMessages;
 }
 
-// encoders encode new line or value
-function encodeBase64(character: string | null, sourceValue: number) {
-  return encode64ValueForKeyValue(
-    convertBase64CharToInt(
-      character !== null ? character : MESSAGE_BREAK_CHARACTER_BASE64
-    ),
-    sourceValue
-  );
-}
-function encodeRaw(character: string | null, sourceValue: number) {
-  return encodeRawValue(
-    character !== null ? character : MESSAGE_BREAK_CHARACTER_RAW,
-    sourceValue
-  );
-}
-
-// decoders return null for end of line
-function decodeBase64(
-  encodedValue: number,
-  sourceValue: number
-): string | null {
-  const decodedValue = decode64ValueForKeyValue(encodedValue, sourceValue);
-  const value = convertIntToBase64Char(decodedValue);
-  return value === MESSAGE_BREAK_CHARACTER_BASE64 ? null : value;
-}
-function decodeRaw(encodedValue: number, sourceValue: number): string | null {
-  const decodedValue = decodeRawValue(encodedValue, sourceValue);
-  const value = convertRawChar(decodedValue);
-  // TODO: this is not right. we need a newline char or only single message
-  return value === MESSAGE_BREAK_CHARACTER_RAW ? null : value;
-}
-
 function stringEncoderFromEncoding(encoding: Stega64Encoding) {
   switch (encoding) {
     case "base64":
@@ -233,6 +201,105 @@ function initialStringFormatterForEncoding(encoding: Stega64Encoding) {
     case "none":
     default:
       return formatInitialStringForRaw;
+  }
+}
+
+/**
+ * Encoders encode new line or value based on a source value.
+ * If character is null, it returns a string for a new line.
+ */
+
+// Base64 Encoder
+function encodeBase64(character: string | null, sourceValue: number) {
+  return encode64ValueForKeyValue(
+    convertBase64CharToInt(
+      character !== null ? character : MESSAGE_BREAK_CHARACTER_BASE64
+    ),
+    sourceValue
+  );
+
+  /**
+   * Returns the encoded value for the value and the key value.
+   * Value must be between 0 and 64
+   */
+  function encode64ValueForKeyValue(value: number, keyValue: number) {
+    // return (keyValue + value * 4) % 256;
+    // if (keyValue > 128) return keyValue  - value;
+    if (keyValue > 170) return keyValue - value;
+    if (keyValue > 85) return keyValue + (value - 32);
+    return keyValue + value;
+  }
+
+  /**
+   * Gets the Stega64 integer value for a Base64 character.
+   */
+  function convertBase64CharToInt(character?: string) {
+    return character ? CHARACTER_STRING_BASE64.indexOf(character) : 0;
+  }
+}
+
+// Raw Encoder
+function encodeRaw(character: string | null, sourceValue: number) {
+  return encodeRawValue(
+    character !== null ? character : MESSAGE_BREAK_CHARACTER_RAW,
+    sourceValue
+  );
+
+  function encodeRawValue(char: string, keyValue: number) {
+    const value = char.charCodeAt(0);
+    return (value + keyValue) % 256;
+  }
+}
+
+/**
+ * Decoders decode string or null for a new line
+ */
+
+// Base64 Decoder
+function decodeBase64(
+  encodedValue: number,
+  sourceValue: number
+): string | null {
+  const decodedValue = decode64ValueForKeyValue(encodedValue, sourceValue);
+  const value = convertIntToBase64Char(decodedValue);
+  return value === MESSAGE_BREAK_CHARACTER_BASE64 ? null : value;
+
+  /**
+   * Returns the decoded value for the encoded value and the key value.
+   * Value must be between 0 and 64
+   */
+  function decode64ValueForKeyValue(encodedValue: number, keyValue: number) {
+    // return Math.floor(((encodedValue - keyValue + 256) % 256) / 4);
+    // if (keyValue > 128) return keyValue - encodedValue;
+    if (keyValue > 170) return keyValue - encodedValue;
+    if (keyValue > 85) return encodedValue + 32 - keyValue;
+    return encodedValue - keyValue;
+  }
+
+  /**
+   * Gets the Base64 character for a Stega64 integer.
+   * @param character
+   * @returns index of character
+   */
+  function convertIntToBase64Char(int: number) {
+    return int === CHARACTER_STRING_BASE64.length
+      ? null
+      : CHARACTER_STRING_BASE64.charAt(int);
+  }
+}
+
+// Raw Decoder
+function decodeRaw(encodedValue: number, sourceValue: number): string | null {
+  const decodedValue = decodeRawValue(encodedValue, sourceValue);
+  const value = convertRawChar(decodedValue);
+  return value === MESSAGE_BREAK_CHARACTER_RAW ? null : value;
+
+  function decodeRawValue(encodedValue: number, keyValue: number) {
+    return (encodedValue - keyValue + 256) % 256;
+  }
+
+  function convertRawChar(value: number) {
+    return String.fromCharCode(value);
   }
 }
 
@@ -266,59 +333,4 @@ function convertBase64ToString(base64: string) {
   } catch (e) {
     console.log({ base64 });
   }
-}
-
-function encodeRawValue(char: string, keyValue: number) {
-  const value = char.charCodeAt(0);
-  return (value + keyValue) % 256;
-}
-
-function decodeRawValue(encodedValue: number, keyValue: number) {
-  return (encodedValue - keyValue + 256) % 256;
-}
-
-function convertRawChar(value: number) {
-  return String.fromCharCode(value);
-}
-
-/**
- * Gets the Stega64 integer value for a Base64 character.
- */
-function convertBase64CharToInt(character?: string) {
-  return character ? CHARACTER_STRING_BASE64.indexOf(character) : 0;
-}
-
-/**
- * Gets the Base64 character for a Stega64 integer.
- * @param character
- * @returns index of character
- */
-function convertIntToBase64Char(int: number) {
-  return int === CHARACTER_STRING_BASE64.length
-    ? null
-    : CHARACTER_STRING_BASE64.charAt(int);
-}
-
-/**
- * Returns the encoded value for the value and the key value.
- * Value must be between 0 and 64
- */
-function encode64ValueForKeyValue(value: number, keyValue: number) {
-  // return (keyValue + value * 4) % 256;
-  // if (keyValue > 128) return keyValue  - value;
-  if (keyValue > 170) return keyValue - value;
-  if (keyValue > 85) return keyValue + (value - 32);
-  return keyValue + value;
-}
-
-/**
- * Returns the decoded value for the encoded value and the key value.
- * Value must be between 0 and 64
- */
-function decode64ValueForKeyValue(encodedValue: number, keyValue: number) {
-  // return Math.floor(((encodedValue - keyValue + 256) % 256) / 4);
-  // if (keyValue > 128) return keyValue - encodedValue;
-  if (keyValue > 170) return keyValue - encodedValue;
-  if (keyValue > 85) return encodedValue + 32 - keyValue;
-  return encodedValue - keyValue;
 }

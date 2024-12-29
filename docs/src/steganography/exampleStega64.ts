@@ -52,13 +52,7 @@ export default async function example({
   function run(data: FormData) {
     const result = Stega64.encode({
       source,
-      messages: [
-        data.message,
-        data.message,
-        data.message,
-        data.message,
-        data.message,
-      ],
+      messages: [data.message],
       minHeight: data.minHeight,
       minWidth: data.minWidth,
       encoding: data.encoding,
