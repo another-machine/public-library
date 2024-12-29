@@ -11,6 +11,7 @@ type FormData = {
   message: string;
   minHeight: number;
   minWidth: number;
+  borderWidth: number;
 };
 
 export default async function example({
@@ -30,7 +31,8 @@ export default async function example({
     inputs: {
       message: { name: "message", type: "text", value: "Hello world" },
       minWidth: { name: "minWidth", type: "number", value: 16, min: 16 },
-      minHeight: { name: "minHeight", type: "number", value: 10, min: 10 },
+      minHeight: { name: "minHeight", type: "number", value: 16, min: 16 },
+      borderWidth: { name: "borderWidth", type: "number", value: 0, min: 0 },
       encoding: {
         name: "encoding",
         type: "select",
@@ -55,6 +57,7 @@ export default async function example({
       messages: [data.message],
       minHeight: data.minHeight,
       minWidth: data.minWidth,
+      borderWidth: data.borderWidth,
       encoding: data.encoding,
       encodeMetadata: data.encodeMetadata === "true",
     });
@@ -68,6 +71,7 @@ export default async function example({
         Stega64.decode({
           source: result,
           encoding: meta?.encoding || data.encoding,
+          borderWidth: meta?.borderWidth || data.borderWidth,
         }),
         null,
         2

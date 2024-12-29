@@ -18,18 +18,21 @@ export function createCanvasAndContext(width?: number, height?: number) {
 /**
  * Drawing a source at a size considering minimum pixel count, width, and height, as well as an aspect ratio.
  */
+
 export function createCanvasAndContextForImageWithMinimums({
   source,
   messageLength,
   minWidth,
   minHeight,
   aspectRatio,
+  borderWidth = 0,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   messageLength: number;
   minWidth: number;
   minHeight: number;
   aspectRatio?: number;
+  borderWidth?: number;
 }) {
   const { width: sourceWidth, height: sourceHeight } =
     dimensionsFromSource(source);
@@ -51,6 +54,7 @@ export function createCanvasAndContextForImageWithMinimums({
     minPixelCount:
       2 * Math.ceil(messageLength / 3) * (1 / (1 - sourceTransparency)),
     aspectRatio: targetAspectRatio,
+    borderWidth,
   });
 
   const { canvas, context } = createCanvasAndContext(
@@ -85,6 +89,7 @@ export function createCanvasAndContextForImageWithMinimums({
     minPixelCount:
       2 * Math.ceil(messageLength / 3) * (1 / (1 - preciseTransparency)),
     aspectRatio: targetAspectRatio,
+    borderWidth,
   });
 
   canvas.width = preciseDimensions.width;
@@ -121,6 +126,7 @@ function canvasWidthAndHeight({
   minHeight,
   minPixelCount,
   aspectRatio,
+  borderWidth = 0,
 }: {
   minWidth: number;
   minHeight: number;
@@ -129,20 +135,62 @@ function canvasWidthAndHeight({
    * Expressed as width / height
    */
   aspectRatio: number;
+  borderWidth?: number;
 }) {
-  let width = Math.max(minWidth, Math.sqrt(minPixelCount * aspectRatio));
-  let height = width / aspectRatio;
+  // First calculate base dimensions without border
+  let baseWidth = Math.max(minWidth, Math.sqrt(minPixelCount * aspectRatio));
+  let baseHeight = baseWidth / aspectRatio;
 
-  if (height < minHeight) {
-    height = minHeight;
-    width = height * aspectRatio;
+  if (baseHeight < minHeight) {
+    baseHeight = minHeight;
+    baseWidth = baseHeight * aspectRatio;
   }
 
+  const targetArea = baseWidth * baseHeight;
+
+  /**
+   * To maintain aspect ratio while achieving target area:
+   * If width = height * aspectRatio, then:
+   * width * height = targetArea
+   * (height * aspectRatio) * height = targetArea
+   * height² * aspectRatio = targetArea
+   * height = sqrt(targetArea / aspectRatio)
+   */
+
+  // Calculate initial dimensions that would give us the target area
+  let height = Math.sqrt(targetArea / aspectRatio);
+  let width = height * aspectRatio;
+
+  /**
+   *
+   * Now we need to scale these up to accommodate the border while maintaining aspect ratio
+   * The usable area needs to be at least targetArea:
+   * (width - 2b)(height - 2b) >= targetArea
+   * (ar*h - 2b)(h - 2b) >= targetArea
+   * ar*h² - 2b*ar*h - 2b*h + 4b² >= targetArea
+   * ar*h² - 2b*h(ar + 1) + 4b² - targetArea >= 0
+   */
+
+  const a = aspectRatio;
+  const b = -2 * borderWidth * (aspectRatio + 1);
+  const c = 4 * borderWidth * borderWidth - targetArea;
+
+  // Quadratic formula: (-b + √(b² - 4ac)) / (2a)
+  const discriminant = b * b - 4 * a * c;
+  height = (-b + Math.sqrt(discriminant)) / (2 * a);
+  width = height * aspectRatio;
+
+  // Ensure we meet minimum dimensions with border
+  const finalHeight = Math.max(height, minHeight + borderWidth * 2);
+  const finalWidth = finalHeight * aspectRatio;
+
+  // Return rounded dimensions
   return {
-    width: Math.ceil(width),
-    height: Math.ceil(height),
+    width: Math.round(finalWidth),
+    height: Math.round(finalHeight),
   };
 }
+
 /**
  * Calculate what percentage of an image is transparent
  */
@@ -426,24 +474,39 @@ export async function loadAudioBuffersFromAudioUrl({
 /**
  * Generates a function that returns information about how to handle an image data index
  */
-export function skippedAndIndicesFromIndexGenerator(width: number) {
-  const widthIsOdd = width % 2 !== 0;
+export function skippedAndIndicesFromIndexGenerator(
+  width: number,
+  height: number,
+  borderWidth: number
+) {
+  const widthIsOdd = (width - borderWidth * 2) % 2 !== 0;
 
   return (i: number, data: Uint8ClampedArray) => {
     const pxIndex = Math.floor(i / 4);
     const y = Math.floor(pxIndex / width);
+    const x = pxIndex % width;
 
     const evenRowCheck = widthIsOdd || y % 2 === 0;
     const nextI = i + 4;
     const isOpaque = data[pxIndex * 4 + 3] === 255;
     const isOpaqueNext = data[pxIndex * 4 + 7] === 255;
 
+    const isBorder =
+      y < borderWidth ||
+      y >= height - borderWidth ||
+      x < borderWidth ||
+      x >= width - borderWidth;
+
     // Skipped pixels contain the saved data, and are set in a prior loop.
     const sourceIndex = evenRowCheck ? nextI : i;
     const encodedIndex = evenRowCheck ? i : nextI;
 
     const isSkipped =
-      !isOpaque || !isOpaqueNext || pxIndex % 2 !== 0 || (i + 1) % 4 === 0;
+      isBorder ||
+      !isOpaque ||
+      !isOpaqueNext ||
+      pxIndex % 2 !== 0 ||
+      (i + 1) % 4 === 0;
 
     const pxIndexNext = Math.floor((i + 8) / 4);
     const yNext = Math.floor(pxIndexNext / width);

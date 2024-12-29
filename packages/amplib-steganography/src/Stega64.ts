@@ -28,6 +28,7 @@ export function encode({
   encodeMetadata,
   minWidth = 0,
   minHeight = 0,
+  borderWidth = 10,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   messages: string[];
@@ -35,21 +36,26 @@ export function encode({
   encodeMetadata: boolean;
   minWidth?: number;
   minHeight?: number;
+  borderWidth?: number;
 }): HTMLCanvasElement {
   const encodedMessages = messages.map(
     initialStringFormatterForEncoding(encoding)
   );
+  const messageCount = encodedMessages.length;
 
   const messageLength =
-    encodedMessages.length +
+    messageCount +
     encodedMessages.reduce<number>((agg, message) => agg + message.length, 0);
 
-  minWidth = Math.max(minWidth || 0, StegaMetadata.PATTERN_LENGTH);
+  minWidth = Math.max(minWidth, StegaMetadata.PATTERN_LENGTH);
+  minHeight = Math.max(minHeight, StegaMetadata.PATTERN_LENGTH);
+
   const initialCanvas = createCanvasAndContextForImageWithMinimums({
     source,
     messageLength,
     minWidth,
     minHeight,
+    borderWidth,
   });
 
   fillCanvasWithImage(initialCanvas.canvas, initialCanvas.context, source);
@@ -59,8 +65,9 @@ export function encode({
         source: initialCanvas.canvas,
         metadata: {
           type: StegaMetadata.StegaContentType.STRING,
-          messageCount: messages.length,
+          messageCount,
           encoding,
+          borderWidth,
         },
       })
     : initialCanvas.canvas;
@@ -68,14 +75,20 @@ export function encode({
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
-  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  const indexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height,
+    borderWidth
+  );
 
   const tmpMessages = [...encodedMessages];
   let message = tmpMessages.shift() || "";
 
   const encoder = stringEncoderFromEncoding(encoding);
 
-  for (let i = 0, j = 0; i < imageData.data.length; i++) {
+  const channelCount = imageData.data.length;
+  let j = 0;
+  for (let i = 0; i < channelCount; i++) {
     const { isSkipped, encodedIndex, sourceIndex } = indexData(
       i,
       imageData.data
@@ -99,6 +112,9 @@ export function encode({
       }
     }
   }
+  if (j < message.length) {
+    throw new Error("Image not large enough to fit message");
+  }
 
   const { canvas: canvasOutput, context: contextOutput } =
     createCanvasAndContext();
@@ -115,9 +131,11 @@ export function encode({
 export function decode({
   source,
   encoding,
+  borderWidth = 10,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   encoding: Stega64Encoding;
+  borderWidth?: number;
 }) {
   const relativeWidth =
     "naturalWidth" in source ? source.naturalWidth : source.width;
@@ -135,7 +153,11 @@ export function decode({
   const messages: string[] = [];
   let message: string[] = [];
 
-  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  const indexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height,
+    borderWidth
+  );
 
   const decoder = stringDecoderFromEncoding(encoding);
 
@@ -331,6 +353,6 @@ function convertBase64ToString(base64: string) {
   try {
     return decodeURIComponent(atob(base64.replace(/=+$/, "")));
   } catch (e) {
-    console.log({ base64 });
+    console.log(e, { base64 });
   }
 }

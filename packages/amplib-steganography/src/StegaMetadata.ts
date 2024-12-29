@@ -35,6 +35,7 @@ export interface StegaMetadataString {
   type: StegaContentType.STRING;
   messageCount: number;
   encoding: Stega64Encoding;
+  borderWidth: number;
 }
 
 const metadataStringEncoding: StegaMetadataString["encoding"][] = [
@@ -88,6 +89,8 @@ function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
       sequence.push(metadata.messageCount & 0xff);
       // Encoding (1 byte)
       sequence.push(metadataStringEncoding.indexOf(metadata.encoding));
+      // Border width (2 bytes)
+      sequence.push((metadata.messageCount >> 8) & 0xff);
       break;
     }
 
@@ -148,6 +151,7 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
     case StegaContentType.STRING: {
       const messageCount = (sequence[1] << 8) | sequence[2];
       const encoding = metadataStringEncoding[sequence[3]];
+      const borderWidth = (sequence[4] << 8) | sequence[5];
 
       if (!encoding) {
         throw new Error("Invalid string metadata values");
@@ -157,6 +161,7 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
         type: StegaContentType.STRING,
         messageCount,
         encoding,
+        borderWidth,
       };
     }
 
