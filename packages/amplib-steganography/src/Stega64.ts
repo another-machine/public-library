@@ -28,7 +28,7 @@ export function encode({
   encodeMetadata,
   minWidth = 0,
   minHeight = 0,
-  borderWidth = 10,
+  borderWidth = 0,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   messages: string[];
@@ -131,7 +131,7 @@ export function encode({
 export function decode({
   source,
   encoding,
-  borderWidth = 10,
+  borderWidth = 0,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   encoding: Stega64Encoding;
