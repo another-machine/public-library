@@ -8,11 +8,13 @@ import {
 
 // This mixed order is very important. A-Za-z0-9 translates to a visible difference.
 // First char being an = is important as it will be for the trailing pixels
-const STEGA64_CHARACTER_STRING =
+const CHARACTER_STRING_BASE64 =
   "=+/Aa1Bb2Cc3Dd4Ee5Ff6Gg7Hh8Ii9Jj0KkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz";
 
-// Splitting messages with this character
-const STEGA64_MESSAGE_BREAK_CHARACTER = "=";
+// Splitting messages with these characters
+const MESSAGE_BREAK_CHARACTER_BASE64 = "=";
+// NULL non printing character
+const MESSAGE_BREAK_CHARACTER_RAW = String.fromCharCode(0);
 
 export type Stega64Encoding = "base64" | "none";
 
@@ -34,12 +36,9 @@ export function encode({
   minWidth?: number;
   minHeight?: number;
 }): HTMLCanvasElement {
-  const encodedMessages =
-    encoding === "base64"
-      ? messages.map(convertStringToBase64)
-      : messages.map(convertStringToRaw);
-
-  console.log({ encoding });
+  const encodedMessages = messages.map(
+    initialStringFormatterForEncoding(encoding)
+  );
 
   const messageLength =
     encodedMessages.length +
@@ -74,6 +73,8 @@ export function encode({
   const tmpMessages = [...encodedMessages];
   let message = tmpMessages.shift() || "";
 
+  const encoder = stringEncoderFromEncoding(encoding);
+
   for (let i = 0, j = 0; i < imageData.data.length; i++) {
     const { isSkipped, encodedIndex, sourceIndex } = indexData(
       i,
@@ -83,35 +84,18 @@ export function encode({
     if (!isSkipped) {
       if (j < message.length) {
         const char = message.charAt(j);
-        if (encoding === "base64") {
-          const value = convertBase64CharToInt(char);
-          const encodedValue = encode64ValueForKeyValue(
-            value,
-            imageData.data[sourceIndex]
-          );
-          imageData.data[encodedIndex] = encodedValue;
-        } else {
-          const encodedValue = encodeRawValue(
-            char,
-            imageData.data[sourceIndex]
-          );
-          imageData.data[encodedIndex] = encodedValue;
-        }
+        imageData.data[encodedIndex] = encoder(
+          char,
+          imageData.data[sourceIndex]
+        );
         j++;
       } else {
         message = tmpMessages.shift() || "";
         j = 0;
-        if (encoding === "base64") {
-          const value = convertBase64CharToInt("=");
-          const encodedValue = encode64ValueForKeyValue(
-            value,
-            imageData.data[sourceIndex]
-          );
-          imageData.data[encodedIndex] = encodedValue;
-        } else {
-          const encodedValue = encodeRawValue(",", imageData.data[sourceIndex]);
-          imageData.data[encodedIndex] = encodedValue;
-        }
+        imageData.data[encodedIndex] = encoder(
+          null,
+          imageData.data[sourceIndex]
+        );
       }
     }
   }
@@ -153,43 +137,25 @@ export function decode({
 
   const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
 
+  const decoder = stringDecoderFromEncoding(encoding);
+
   for (let i = 0; i < imageData.data.length; i++) {
     const { isSkipped, encodedIndex, sourceIndex } = indexData(
       i,
       imageData.data
     );
-    if ((i + 1) % 4 !== 0) {
-      if (!isSkipped) {
-        if (encoding === "base64") {
-          const decodedValue = decode64ValueForKeyValue(
-            imageData.data[encodedIndex],
-            imageData.data[sourceIndex]
-          );
-          const value = convertIntToBase64Char(decodedValue);
-          if (value === "=") {
-            const string = message.join("").trim();
-            if (string.length) {
-              messages.push(string);
-              message = [];
-            }
-          } else if (value !== null) {
-            message.push(value);
-          }
-        } else {
-          const decodedValue = decodeRawValue(
-            imageData.data[encodedIndex],
-            imageData.data[sourceIndex]
-          );
-          const value = convertRawChar(decodedValue);
-          if (value === ",") {
-            const string = message.join("").trim();
-            if (string.length) {
-              messages.push(string);
-              message = [];
-            }
-          } else {
-            message.push(value);
-          }
+    if ((i + 1) % 4 !== 0 && !isSkipped) {
+      const value = decoder(
+        imageData.data[encodedIndex],
+        imageData.data[sourceIndex]
+      );
+      if (value) {
+        message.push(value);
+      } else {
+        const string = message.join("").trim();
+        if (string.length) {
+          messages.push(string);
+          message = [];
         }
       }
     }
@@ -208,10 +174,72 @@ export function decode({
   return decodedMessages;
 }
 
+// encoders encode new line or value
+function encodeBase64(character: string | null, sourceValue: number) {
+  return encode64ValueForKeyValue(
+    convertBase64CharToInt(
+      character !== null ? character : MESSAGE_BREAK_CHARACTER_BASE64
+    ),
+    sourceValue
+  );
+}
+function encodeRaw(character: string | null, sourceValue: number) {
+  return encodeRawValue(
+    character !== null ? character : MESSAGE_BREAK_CHARACTER_RAW,
+    sourceValue
+  );
+}
+
+// decoders return null for end of line
+function decodeBase64(
+  encodedValue: number,
+  sourceValue: number
+): string | null {
+  const decodedValue = decode64ValueForKeyValue(encodedValue, sourceValue);
+  const value = convertIntToBase64Char(decodedValue);
+  return value === MESSAGE_BREAK_CHARACTER_BASE64 ? null : value;
+}
+function decodeRaw(encodedValue: number, sourceValue: number): string | null {
+  const decodedValue = decodeRawValue(encodedValue, sourceValue);
+  const value = convertRawChar(decodedValue);
+  // TODO: this is not right. we need a newline char or only single message
+  return value === MESSAGE_BREAK_CHARACTER_RAW ? null : value;
+}
+
+function stringEncoderFromEncoding(encoding: Stega64Encoding) {
+  switch (encoding) {
+    case "base64":
+      return encodeBase64;
+    case "none":
+    default:
+      return encodeRaw;
+  }
+}
+
+function stringDecoderFromEncoding(encoding: Stega64Encoding) {
+  switch (encoding) {
+    case "base64":
+      return decodeBase64;
+    case "none":
+    default:
+      return decodeRaw;
+  }
+}
+
+function initialStringFormatterForEncoding(encoding: Stega64Encoding) {
+  switch (encoding) {
+    case "base64":
+      return formatInitialStringForBase64;
+    case "none":
+    default:
+      return formatInitialStringForRaw;
+  }
+}
+
 /**
- * Convert a string to a raw encoded string.
+ * Format a string for a raw encoding.
  */
-function convertStringToRaw(string: string) {
+function formatInitialStringForRaw(string: string) {
   return string;
 }
 
@@ -225,7 +253,7 @@ function convertRawToString(raw: string) {
 /**
  * Convert a string to a safe base64 encoded string.
  */
-function convertStringToBase64(string: string) {
+function formatInitialStringForBase64(string: string) {
   return btoa(encodeURIComponent(string));
 }
 
@@ -257,7 +285,7 @@ function convertRawChar(value: number) {
  * Gets the Stega64 integer value for a Base64 character.
  */
 function convertBase64CharToInt(character?: string) {
-  return character ? STEGA64_CHARACTER_STRING.indexOf(character) : 0;
+  return character ? CHARACTER_STRING_BASE64.indexOf(character) : 0;
 }
 
 /**
@@ -266,9 +294,9 @@ function convertBase64CharToInt(character?: string) {
  * @returns index of character
  */
 function convertIntToBase64Char(int: number) {
-  return int === STEGA64_CHARACTER_STRING.length
+  return int === CHARACTER_STRING_BASE64.length
     ? null
-    : STEGA64_CHARACTER_STRING.charAt(int);
+    : CHARACTER_STRING_BASE64.charAt(int);
 }
 
 /**
