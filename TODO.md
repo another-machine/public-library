@@ -8,3 +8,4 @@
   - 8px border repeating pattern
   - 8x8px center
 - encode on top of qr?
+- gifs?

@@ -25,8 +25,9 @@
         <p>
           <code
             >Stega64.encode({ source: HTMLImageElement | HTMLCanvasElement;
-            messages: string[]; minWidth?: number; minHeight?: number }):
-            HTMLCanvasElement</code
+            messages: string[]; encoding: Stega64Encoding; encodeMetadata:
+            boolean; minWidth?: number; minHeight?: number; borderWidth?:
+            number; }): HTMLCanvasElement</code
           >
         </p>
         <pre><code>const source = await <a href="#load-image-from-image-url">loadImageFromImageUrl</a>({
@@ -49,8 +50,8 @@ Stega64.encode({
 
         <p>
           <code
-            >Stega64.decode({ source: HTMLImageElement | HTMLCanvasElement; }):
-            String</code
+            >Stega64.decode({ source: HTMLImageElement | HTMLCanvasElement;
+            encoding: Stega64Encoding; borderWidth?: number; }): String</code
           >
         </p>
 
@@ -65,7 +66,8 @@ Stega64.encode({
             >StegaCassette.encode({ source: HTMLImageElement; audioBuffers:
             Float32Array[]; sampleRate: number; bitDepth: StegaCassetteBitDepth;
             encoding: StegaCassetteEncoding; encodeMetadata?: boolean;
-            aspectRatio?: number; }): HTMLCanvasElement</code
+            aspectRatio?: number; borderWidth?: number; }):
+            HTMLCanvasElement</code
           >
         </p>
         <p></p>
@@ -96,8 +98,8 @@ const result = StegaCassette.encode({
           <code
             >StegaCassette.decode({ source: HTMLImageElement |
             HTMLCanvasElement; bitDepth: StegaCassetteBitDepth; channels:
-            StegaCassetteChannels; encoding: StegaCassetteEncoding; }):
-            Float32Array[]</code
+            StegaCassetteChannels; encoding: StegaCassetteEncoding;
+            borderWidth?: number; }): Float32Array[]</code
           >
         </p>
         <pre><code>const metadata = <a href="#stega-metadata">StegaMetadata</a>.decode({ source }) || {};
@@ -146,12 +148,14 @@ interface StegaMetadataAudio {
   bitDepth: StegaCassetteBitDepth;
   channels: StegaCassetteChannels;
   encoding: StegaCassetteEncoding;
+  borderWidth: number;
 }
 
 interface StegaMetadataString {
   type: StegaContentType.STRING;
   messageCount: number;
   encoding: Stega64Encoding;
+  borderWidth: number;
 }
 
 interface StegaMetadataRobust {
@@ -163,18 +167,19 @@ interface StegaMetadataRobust {
 }</code></pre>
       </section>
 
-      <section>
+      <section id="stega-animator">
         <h2>Animate stegonographic image</h2>
         <p>
           <code
             >new StegaAnimator({ resolution: number; source: HTMLImageElement |
-            HTMLCanvasElement; })</code
+            HTMLCanvasElement; fadeAmount?: number; })</code
           >
         </p>
 
         <pre><code>const animator = new StegaAnimator({
   source,
-  resolution: 100,
+  resolution: <span data-value="resolution"></span>,
+  fadeAmount: <span data-value="fadeAmount"></span>
 });
 document.body.appendChild(animator.canvas);
 await animator.animate({
@@ -196,7 +201,9 @@ const killLoop = animator.animationLoop([
 ]);
 killLoop();</code></pre>
 
-        <figure id="image-five"></figure>
+        <form></form>
+
+        <figure></figure>
       </section>
 
       <section id="load-audio-buffers-from-audio-url">

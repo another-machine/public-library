@@ -1,12 +1,14 @@
 import {
   createCanvasAndContext,
+  dimensionsFromSource,
+  fillCanvasWithImage,
   getContext,
-  imageOrCanvasIsImage,
 } from "./utilities";
 
 export interface StegaAnimatorParams {
   resolution: number;
   source: HTMLImageElement | HTMLCanvasElement;
+  fadeAmount?: number;
 }
 
 export interface StegaAnimatorTransform {
@@ -28,18 +30,21 @@ export class StegaAnimator {
   context = getContext(this.canvas);
   resolution: number;
   source: HTMLImageElement | HTMLCanvasElement;
-  sourceHeight: number;
-  sourceWidth: number;
+  sourceAspectRatio: number;
+  fadeAmount: number;
 
-  constructor({ source, resolution }: StegaAnimatorParams) {
+  constructor({ source, resolution, fadeAmount = 0 }: StegaAnimatorParams) {
     this.resolution = resolution;
-    this.source = source;
-    this.sourceHeight = imageOrCanvasIsImage(this.source)
-      ? this.source.naturalHeight
-      : this.source.height;
-    this.sourceWidth = imageOrCanvasIsImage(this.source)
-      ? this.source.naturalWidth
-      : this.source.width;
+    const { width, height } = dimensionsFromSource(source);
+    this.sourceAspectRatio = width / height;
+    const newWidth = Math.ceil(resolution);
+    const newHeight = Math.ceil(resolution / this.sourceAspectRatio);
+    const { canvas, context } = createCanvasAndContext(newWidth, newHeight);
+    fillCanvasWithImage(canvas, context, source);
+    this.source = canvas;
+    this.canvas.width = newWidth;
+    this.canvas.height = newHeight;
+    this.fadeAmount = fadeAmount;
   }
 
   animationLoop(sequences: StegaAnimatorAnimateParams[]) {
@@ -67,15 +72,16 @@ export class StegaAnimator {
     easing = (x: number) => x,
   }: StegaAnimatorAnimateParams) {
     return new Promise<HTMLImageElement | HTMLCanvasElement>((resolve) => {
-      const sizeStart = this.resolution * from.scale;
-      const sizeEnd = this.resolution * to.scale;
-      const sizeDiff = sizeEnd - sizeStart;
+      const sizeWidthStart = this.canvas.width * from.scale;
+      const sizeWidthEnd = this.canvas.width * to.scale;
+      const sizeWidthDiff = sizeWidthEnd - sizeWidthStart;
+      const sizeHeightStart = this.canvas.height * from.scale;
+      const sizeHeightEnd = this.canvas.height * to.scale;
+      const sizeHeightDiff = sizeHeightEnd - sizeHeightStart;
       const rotationStart = from.rotation;
       const rotationEnd = to.rotation;
       const rotationDiff = rotationEnd - rotationStart;
       const rotationOffset = Math.PI * 0.5 + (rotationEnd % Math.PI) * 2;
-      const sourceDiameter = Math.min(this.sourceWidth, this.sourceHeight);
-      this.canvas.width = this.canvas.height = this.resolution;
       let position = 0;
 
       const animate = () => {
@@ -93,14 +99,14 @@ export class StegaAnimator {
         canvas.width = this.canvas.width;
         context.drawImage(this.canvas, 0, 0);
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.context.globalAlpha = 0.7;
+        this.context.globalAlpha = this.fadeAmount;
         this.context.drawImage(canvas, 0, 0);
         this.context.globalAlpha = 1;
 
         const centerX = this.canvas.width / 2;
         const centerY = this.canvas.height / 2;
-        const diameter = sizeStart + sizeDiff * progress;
-        const radius = diameter / 2;
+        const diameterWidth = sizeWidthStart + sizeWidthDiff * progress;
+        const diameterHeight = sizeHeightStart + sizeHeightDiff * progress;
         const rotation = progress * rotationDiff + rotationStart;
         const axisX = Math.cos(rotation + rotationOffset);
         const axisY = Math.sin(rotation + rotationOffset);
@@ -123,12 +129,12 @@ export class StegaAnimator {
           this.source,
           0,
           0,
-          sourceDiameter,
-          sourceDiameter,
-          -radius,
-          -radius,
-          diameter,
-          diameter
+          this.canvas.width,
+          this.canvas.height,
+          diameterWidth / -2,
+          diameterHeight / -2,
+          diameterWidth,
+          diameterHeight
         );
 
         if (position >= 1) {

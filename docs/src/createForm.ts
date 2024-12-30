@@ -131,7 +131,7 @@ export function createForm<T extends Record<string, string | number>>({
         "input",
         createDebouncedHandler(
           inputKey,
-          () => parseInt(element.value) as T[typeof inputKey]
+          () => parseFloat(element.value) as T[typeof inputKey]
         )
       );
       label.appendChild(element);
