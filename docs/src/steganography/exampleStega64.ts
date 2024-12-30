@@ -32,7 +32,7 @@ export default async function example({
       message: { name: "message", type: "text", value: "Hello world" },
       minWidth: { name: "minWidth", type: "number", value: 16, min: 16 },
       minHeight: { name: "minHeight", type: "number", value: 16, min: 16 },
-      borderWidth: { name: "borderWidth", type: "number", value: 0, min: 0 },
+      borderWidth: { name: "borderWidth", type: "number", value: 1, min: 0 },
       encoding: {
         name: "encoding",
         type: "select",

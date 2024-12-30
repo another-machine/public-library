@@ -3,6 +3,7 @@ import {
   createCanvasAndContext,
   createCanvasAndContextForImageWithMinimums,
   fillCanvasWithImage,
+  getContext,
   skippedAndIndicesFromIndexGenerator,
 } from "./utilities";
 
@@ -38,6 +39,14 @@ export function encode({
   minHeight?: number;
   borderWidth?: number;
 }): HTMLCanvasElement {
+  if (encodeMetadata) {
+    if (borderWidth === 0) {
+      console.warn(
+        "Border width must be at least 1 if encoding metadata. Setting to 1"
+      );
+      borderWidth = 1;
+    }
+  }
   const encodedMessages = messages.map(
     initialStringFormatterForEncoding(encoding)
   );
@@ -71,7 +80,8 @@ export function encode({
         },
       })
     : initialCanvas.canvas;
-  const context = canvas.getContext("2d")!;
+
+  const context = getContext(canvas);
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
@@ -113,6 +123,7 @@ export function encode({
     }
   }
   if (j < message.length) {
+    console.log(message.length - j, message.length);
     throw new Error("Image not large enough to fit message");
   }
 

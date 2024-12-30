@@ -12,6 +12,7 @@ type FormData = {
   encoding: StegaMetadata.StegaMetadataAudio["encoding"];
   encodeMetadata: string;
   aspectRatio: string;
+  borderWidth: number;
   channels: "1" | "2";
 };
 
@@ -30,6 +31,7 @@ export default async function example() {
     type: StegaMetadata.StegaContentType.AUDIO,
     bitDepth: 24,
     channels: 2,
+    borderWidth: 1,
     sampleRate: audioContext.sampleRate,
     encoding: "additive",
   };
@@ -70,6 +72,7 @@ export default async function example() {
         value: "undefined",
         name: "aspectRatio",
       },
+      borderWidth: { name: "borderWidth", type: "number", value: 1, min: 0 },
       channels: {
         type: "select",
         options: ["2", "1"],
@@ -101,6 +104,7 @@ export default async function example() {
                 bitDepth: metadata?.bitDepth || defaults.bitDepth,
                 channels: metadata?.channels || defaults.channels,
                 encoding: metadata?.encoding || defaults.encoding,
+                borderWidth: metadata?.borderWidth || defaults.borderWidth,
               });
               const audio = await playDecodedAudioBuffers({
                 audioBuffers,
@@ -139,6 +143,7 @@ export default async function example() {
       }),
       sampleRate,
       bitDepth: parseInt(values.bitDepth) as 8 | 16 | 24,
+      borderWidth: values.borderWidth,
       encoding: values.encoding,
       encodeMetadata: values.encodeMetadata === "true",
       aspectRatio:

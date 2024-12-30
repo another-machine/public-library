@@ -1,5 +1,12 @@
 import { StegaCassetteChannels } from "./StegaCassette";
 
+export function getContext(canvas: HTMLCanvasElement) {
+  return canvas.getContext("2d", {
+    colorSpace: "display-p3",
+    willReadFrequently: true,
+  })!;
+}
+
 /**
  * Creating a canvas and context.
  */
@@ -7,10 +14,7 @@ export function createCanvasAndContext(width?: number, height?: number) {
   const canvas = document.createElement("canvas");
   canvas.width = width || 0;
   canvas.height = height || 0;
-  const context = canvas.getContext("2d", {
-    colorSpace: "display-p3",
-    willReadFrequently: true,
-  }) as CanvasRenderingContext2D;
+  const context = getContext(canvas);
   context.imageSmoothingEnabled = false;
   return { canvas, context };
 }
@@ -87,7 +91,8 @@ export function createCanvasAndContextForImageWithMinimums({
     minWidth,
     minHeight,
     minPixelCount:
-      2 * Math.ceil(messageLength / 3) * (1 / (1 - preciseTransparency)),
+      2 *
+      Math.ceil(Math.ceil(messageLength / 3) * (1 / (1 - preciseTransparency))),
     aspectRatio: targetAspectRatio,
     borderWidth,
   });
@@ -122,6 +127,64 @@ export function createCanvasAndContextForImageWithMinimums({
  * Getting a precise width and height filling minimum requirements.
  */
 function canvasWidthAndHeight({
+  minWidth,
+  minHeight,
+  minPixelCount,
+  aspectRatio,
+  borderWidth = 0,
+}: {
+  minWidth: number;
+  minHeight: number;
+  minPixelCount: number;
+  aspectRatio: number;
+  borderWidth?: number;
+}) {
+  const SAFETY_FACTOR = 1.0;
+  const targetArea = minPixelCount * SAFETY_FACTOR;
+
+  const a = aspectRatio;
+  const b = -2 * borderWidth * (aspectRatio + 1);
+  const c = 4 * borderWidth * borderWidth - targetArea;
+
+  const discriminant = b * b - 4 * a * c;
+  let height = (-b + Math.sqrt(discriminant)) / (2 * a);
+  let width = height * aspectRatio;
+
+  // Verify and adjust if needed
+  const getUsableArea = (w: number, h: number) =>
+    (w - 2 * borderWidth) * (h - 2 * borderWidth);
+
+  // Adjust for minimum dimensions
+  height = Math.max(height, minHeight);
+  width = height * aspectRatio;
+  width = Math.max(width, minWidth);
+  height = width / aspectRatio;
+
+  // Basically when we add a border, that disqualifies a subset of pixels at the end of the x axis since their next pixel is in the border.
+  // We want to increase min pixel count conditionally based on our height.
+  const heightMinPixelFactor = 1.5;
+  if (borderWidth > 0) {
+    minPixelCount += height * heightMinPixelFactor;
+  }
+
+  // Double-check usable area meets minimum
+  while (getUsableArea(width, height) < minPixelCount) {
+    // Decreasing minPixelCount by old height
+    minPixelCount -= height * heightMinPixelFactor;
+    // Increasing height
+    height += 0.1;
+    // Setting width
+    width = height * aspectRatio;
+    // Increasing minPixelCount by new height
+    minPixelCount += height * heightMinPixelFactor;
+  }
+
+  return {
+    width: Math.ceil(width),
+    height: Math.ceil(height),
+  };
+}
+function canvasWidthAndHeight2({
   minWidth,
   minHeight,
   minPixelCount,
@@ -496,6 +559,7 @@ export function skippedAndIndicesFromIndexGenerator(
       y >= height - borderWidth ||
       x < borderWidth ||
       x >= width - borderWidth;
+    const isBorderNext = x >= width - borderWidth - 1;
 
     // Skipped pixels contain the saved data, and are set in a prior loop.
     const sourceIndex = evenRowCheck ? nextI : i;
@@ -503,6 +567,7 @@ export function skippedAndIndicesFromIndexGenerator(
 
     const isSkipped =
       isBorder ||
+      isBorderNext ||
       !isOpaque ||
       !isOpaqueNext ||
       pxIndex % 2 !== 0 ||

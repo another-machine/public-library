@@ -4,11 +4,14 @@ import {
   StegaCassetteChannels,
   StegaCassetteEncoding,
 } from "./StegaCassette.ts";
-import { createCanvasAndContext, dimensionsFromSource } from "./utilities.ts";
+import {
+  createCanvasAndContext,
+  dimensionsFromSource,
+  getContext,
+} from "./utilities.ts";
 
 export const METADATA_VERSION = 1;
-export const PATTERN_LENGTH = 16;
-const METADATA_ALPHA = 250;
+export const PATTERN_LENGTH = 32;
 
 export enum StegaContentType {
   AUDIO = 0,
@@ -22,6 +25,7 @@ export interface StegaMetadataAudio {
   bitDepth: StegaCassetteBitDepth;
   channels: StegaCassetteChannels;
   encoding: StegaCassetteEncoding;
+  borderWidth: number;
 }
 
 const metadataAudioBitDepth: StegaMetadataAudio["bitDepth"][] = [8, 16, 24];
@@ -80,6 +84,9 @@ function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
       sequence.push(metadataAudioChannels.indexOf(metadata.channels));
       // Encoding (1 byte)
       sequence.push(metadataAudioEncoding.indexOf(metadata.encoding));
+      // Border width (2 bytes)
+      sequence.push((metadata.borderWidth >> 8) & 0xff);
+      sequence.push(metadata.borderWidth & 0xff);
       break;
     }
 
@@ -90,7 +97,8 @@ function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
       // Encoding (1 byte)
       sequence.push(metadataStringEncoding.indexOf(metadata.encoding));
       // Border width (2 bytes)
-      sequence.push((metadata.messageCount >> 8) & 0xff);
+      sequence.push((metadata.borderWidth >> 8) & 0xff);
+      sequence.push(metadata.borderWidth & 0xff);
       break;
     }
 
@@ -134,6 +142,7 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
       const bitDepth = metadataAudioBitDepth[sequence[4]];
       const channels = metadataAudioChannels[sequence[5]];
       const encoding = metadataAudioEncoding[sequence[6]];
+      const borderWidth = (sequence[7] << 8) | sequence[8];
 
       if (!bitDepth || !channels || !encoding) {
         throw new Error("Invalid audio metadata values");
@@ -145,6 +154,7 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
         bitDepth,
         channels,
         encoding,
+        borderWidth,
       };
     }
 
@@ -200,42 +210,55 @@ export function encode({
   source: HTMLCanvasElement;
   metadata: StegaMetadata;
 }): HTMLCanvasElement {
+  /**
+   * We assume we have at least a 1px border around the encoded content
+   * otherwise this data will be overridden.
+   */
   const { width, height } = source;
 
   /**
    * Getting source image data. We have to be careful not to lose data in transfer.
    */
-  const sourceContext = source.getContext("2d", {
-    willReadFrequently: true,
-    alpha: true,
-  })!;
+  const sourceContext = getContext(source);
   const sourceData = sourceContext.getImageData(0, 0, width, height);
 
   /**
    * Setting up a new canvas and context with extra line for metadata
    */
-  const { canvas, context } = createCanvasAndContext();
-  canvas.width = source.width;
-  canvas.height = source.height + 1;
+  const { canvas, context } = createCanvasAndContext(
+    source.width,
+    source.height
+  );
 
   /**
-   * Copy new data over and also prefill last line with color
+   * Copy new data over.
    */
   const newImageData = context.createImageData(width, height);
   newImageData.data.set(sourceData.data);
-  context.putImageData(newImageData, 0, 1);
   context.putImageData(newImageData, 0, 0);
 
   /**
-   * Get the metadata and set it in the last row's alpha
+   * Get the writeable pixels
    */
+  const pixels = writeablePixelsForDimensions(width, height);
+
+  /**
+   * Get the metadata and set it alternating across the pixels
+   */
+  const metadataImageData = context.getImageData(0, 0, width, height);
   const sequence = convertMetadataToNumericSequence(metadata);
-  const metadataRow = context.getImageData(0, height, width, 1);
-  for (let i = 0; i < PATTERN_LENGTH; i++) {
-    const pixelIndex = i * 4;
-    metadataRow.data[pixelIndex + 3] = METADATA_ALPHA - sequence[i];
-  }
-  context.putImageData(metadataRow, 0, height);
+  pixels.forEach(([pixelX, pixelY], index) => {
+    const pixelIndex = (pixelX + pixelY * width) * 4;
+    const sequenceValue = sequence[index % PATTERN_LENGTH];
+    metadataImageData.data[pixelIndex + 0] = sequenceValue;
+    metadataImageData.data[pixelIndex + 1] = sequenceValue;
+    metadataImageData.data[pixelIndex + 2] = sequenceValue;
+  });
+
+  /**
+   * Write the modified image data to the canvas
+   */
+  context.putImageData(metadataImageData, 0, 0);
 
   return canvas;
 }
@@ -246,20 +269,45 @@ export function decode({
   source: HTMLCanvasElement | HTMLImageElement;
 }): StegaMetadata | null {
   const { width, height } = dimensionsFromSource(source);
-  const { canvas, context } = createCanvasAndContext();
-  canvas.width = width;
-  canvas.height = height;
-
+  const { canvas, context } = createCanvasAndContext(width, height);
   context.drawImage(source, 0, 0);
-  const imageData = context.getImageData(0, height - 1, PATTERN_LENGTH, 1);
-  const rawAlpha = Array.from(imageData.data)
-    .filter((_, i) => i % 4 === 3)
-    .map((n) => METADATA_ALPHA - n);
-  const sequence: number[] = rawAlpha;
+
+  const pixels = writeablePixelsForDimensions(width, height);
+  const metadataImageData = context.getImageData(0, 0, width, height);
+  const sequences: number[] = [];
+
+  pixels.forEach(([pixelX, pixelY], index) => {
+    const pixelIndex = (pixelX + pixelY * width) * 4;
+    sequences.push(metadataImageData.data[pixelIndex + 0]);
+  });
+
+  const sequence = sequences.slice(0, PATTERN_LENGTH);
 
   try {
     return convertNumericSequenceToMetadata(sequence);
   } catch (error) {
     return null;
   }
+}
+
+/**
+ * Given a width and a height, get all pixels we write and read metadata from in order
+ */
+function writeablePixelsForDimensions(width: number, height: number) {
+  const pixelsTopRight: [number, number][] = [];
+  const pixelsBottomLeft: [number, number][] = [];
+  for (let x = 0; x < width; x++) {
+    pixelsTopRight.push([x, 0]);
+    if (x) {
+      pixelsBottomLeft.push([width - x - 1, height - 1]);
+    }
+  }
+  for (let y = 1; y < height; y++) {
+    pixelsTopRight.push([width - 1, y]);
+    if (y < height - 1) {
+      pixelsBottomLeft.push([0, height - y - 1]);
+    }
+  }
+
+  return pixelsTopRight.concat(pixelsBottomLeft);
 }

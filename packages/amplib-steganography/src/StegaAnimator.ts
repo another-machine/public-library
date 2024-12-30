@@ -1,4 +1,8 @@
-import { imageOrCanvasIsImage } from "./utilities";
+import {
+  createCanvasAndContext,
+  getContext,
+  imageOrCanvasIsImage,
+} from "./utilities";
 
 export interface StegaAnimatorParams {
   resolution: number;
@@ -21,7 +25,7 @@ export interface StegaAnimatorAnimateParams {
 
 export class StegaAnimator {
   canvas = document.createElement("canvas");
-  context = this.canvas.getContext("2d") as CanvasRenderingContext2D;
+  context = getContext(this.canvas);
   resolution: number;
   source: HTMLImageElement | HTMLCanvasElement;
   sourceHeight: number;
@@ -84,10 +88,10 @@ export class StegaAnimator {
           d: 1,
           f: 0,
         });
-        const canvas = document.createElement("canvas");
+        const { canvas, context } = createCanvasAndContext();
         canvas.height = this.canvas.height;
         canvas.width = this.canvas.width;
-        canvas.getContext("2d")?.drawImage(this.canvas, 0, 0);
+        context.drawImage(this.canvas, 0, 0);
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.context.globalAlpha = 0.7;
         this.context.drawImage(canvas, 0, 0);

@@ -2,6 +2,7 @@ import * as StegaMetadata from "./StegaMetadata";
 import {
   createCanvasAndContext,
   createCanvasAndContextForImageWithMinimums,
+  getContext,
   skippedAndIndicesFromIndexGenerator,
 } from "./utilities";
 
@@ -17,6 +18,7 @@ interface EncodeOptions {
   encoding: StegaCassetteEncoding;
   encodeMetadata?: boolean;
   aspectRatio?: number;
+  borderWidth?: number;
 }
 
 export interface DecodeOptions {
@@ -24,6 +26,7 @@ export interface DecodeOptions {
   bitDepth: StegaCassetteBitDepth;
   channels: StegaCassetteChannels;
   encoding: StegaCassetteEncoding;
+  borderWidth?: number;
 }
 
 export function encode({
@@ -34,6 +37,7 @@ export function encode({
   encoding,
   encodeMetadata,
   aspectRatio,
+  borderWidth = 0,
 }: EncodeOptions) {
   const stereo = audioBuffers.length > 1;
   const leftChannel = audioBuffers[0];
@@ -49,6 +53,7 @@ export function encode({
     minHeight: 0,
     minWidth: 0,
     aspectRatio,
+    borderWidth,
   });
 
   const canvas = encodeMetadata
@@ -60,11 +65,12 @@ export function encode({
           bitDepth,
           channels: stereo ? 2 : 1,
           encoding,
+          borderWidth,
         },
       })
     : initialCanvas.canvas;
 
-  const context = canvas.getContext("2d")!;
+  const context = getContext(canvas);
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 
@@ -76,7 +82,11 @@ export function encode({
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
 
-  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  const indexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height,
+    borderWidth
+  );
   const encoder = encoding === "additive" ? encodeAdditive : encodeMidpoint;
 
   const increment = bitDepth === 16 ? 16 : 4;
@@ -269,6 +279,7 @@ export function decode({
   encoding,
   bitDepth,
   channels = 1,
+  borderWidth = 0,
 }: DecodeOptions) {
   const relativeWidth =
     "naturalWidth" in source ? source.naturalWidth : source.width;
@@ -292,7 +303,11 @@ export function decode({
   const midPoint = stereo
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
-  const indexData = skippedAndIndicesFromIndexGenerator(canvas.width);
+  const indexData = skippedAndIndicesFromIndexGenerator(
+    canvas.width,
+    canvas.height,
+    borderWidth
+  );
   const decoder = encoding === "additive" ? decodeAdditive : decodeMidpoint;
 
   let leftSampleIndex = 0;
