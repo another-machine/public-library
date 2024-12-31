@@ -40,7 +40,8 @@ Stega64.encode({
   messages: ["<span data-value="message"></span>"],
   minWidth: <span data-value="minWidth"></span>,
   minHeight: <span data-value="minHeight"></span>,
-  borderWidth: <span data-value="borderWidth"></span>
+  borderWidth: <span data-value="borderWidth"></span>,
+  aspectRatio: <span data-value="aspectRatio"></span>
 })</code></pre>
 
         <form></form>
@@ -191,12 +192,12 @@ const killLoop = animator.animationLoop([
   {
     from: { rotation: 0, scale: 0.5, x: 0.5, y: 0.5, },
     to: { rotation: Math.PI * 1, scale: 0.6, x: 0.5, y: 0.5, },
-    rate: 0.01,
+    rate: <span data-value="rate"></span>,
   },
   {
     from: { rotation: Math.PI * 1, scale: 0.6, x: 0.5, y: 0.5, },
     to: { rotation: Math.PI * 2, scale: 0.5, x: 0.5, y: 0.5, },
-    rate: 0.01,
+    rate: <span data-value="rate"></span>,
   },
 ]);
 killLoop();</code></pre>

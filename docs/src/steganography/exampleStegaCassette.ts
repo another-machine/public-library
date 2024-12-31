@@ -68,7 +68,7 @@ export default async function example() {
       },
       aspectRatio: {
         type: "select",
-        options: ["undefined", "1", "1.7778"],
+        options: ["undefined", "1", "1.7778", "1.3334"],
         value: "undefined",
         name: "aspectRatio",
       },

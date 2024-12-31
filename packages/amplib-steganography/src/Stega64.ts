@@ -17,7 +17,7 @@ const MESSAGE_BREAK_CHARACTER_BASE64 = "=";
 // NULL non printing character
 const MESSAGE_BREAK_CHARACTER_RAW = String.fromCharCode(0);
 
-export type Stega64Encoding = "base64" | "none";
+export type Stega64Encoding = "base64" | "raw";
 
 /**
  * Encode messages into an image.
@@ -30,6 +30,7 @@ export function encode({
   minWidth = 0,
   minHeight = 0,
   borderWidth = 0,
+  aspectRatio,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   messages: string[];
@@ -38,6 +39,7 @@ export function encode({
   minWidth?: number;
   minHeight?: number;
   borderWidth?: number;
+  aspectRatio?: number;
 }): HTMLCanvasElement {
   if (encodeMetadata) {
     if (borderWidth === 0) {
@@ -65,6 +67,7 @@ export function encode({
     minWidth,
     minHeight,
     borderWidth,
+    aspectRatio,
   });
 
   fillCanvasWithImage(initialCanvas.canvas, initialCanvas.context, source);
@@ -211,7 +214,7 @@ function stringEncoderFromEncoding(encoding: Stega64Encoding) {
   switch (encoding) {
     case "base64":
       return encodeBase64;
-    case "none":
+    case "raw":
     default:
       return encodeRaw;
   }
@@ -221,7 +224,7 @@ function stringDecoderFromEncoding(encoding: Stega64Encoding) {
   switch (encoding) {
     case "base64":
       return decodeBase64;
-    case "none":
+    case "raw":
     default:
       return decodeRaw;
   }
@@ -231,7 +234,7 @@ function initialStringFormatterForEncoding(encoding: Stega64Encoding) {
   switch (encoding) {
     case "base64":
       return formatInitialStringForBase64;
-    case "none":
+    case "raw":
     default:
       return formatInitialStringForRaw;
   }

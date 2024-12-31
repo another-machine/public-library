@@ -60,7 +60,8 @@ export function createForm<T extends Record<string, string | number>>({
 
   function createDebouncedHandler<K extends keyof T>(
     inputKey: K,
-    getValue: () => T[K]
+    getValue: () => T[K],
+    milliseconds = 500
   ) {
     return () => {
       const existingTimeout = timeouts.get(inputKey);
@@ -73,7 +74,7 @@ export function createForm<T extends Record<string, string | number>>({
         updateDataAttributes(String(inputKey), values[inputKey]);
         onInput(values, [inputKey]);
         timeouts.delete(inputKey);
-      }, 500);
+      }, milliseconds);
 
       timeouts.set(inputKey, timeout);
     };
@@ -146,7 +147,8 @@ export function createForm<T extends Record<string, string | number>>({
         "change",
         createDebouncedHandler(
           inputKey,
-          () => element.value as T[typeof inputKey]
+          () => element.value as T[typeof inputKey],
+          0
         )
       );
       label.appendChild(element);

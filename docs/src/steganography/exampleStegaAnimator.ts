@@ -2,6 +2,7 @@ import { StegaAnimator } from "../../../packages/amplib-steganography/src";
 import { createForm } from "../createForm";
 
 type FormData = {
+  rate: number;
   resolution: number;
   fadeAmount: number;
 };
@@ -19,10 +20,19 @@ export default async function example(source) {
       resolution: { name: "resolution", type: "number", value: 100, min: 10 },
       fadeAmount: {
         name: "fadeAmount",
-        type: "number",
+        type: "range",
         value: 0,
+        min: 0,
         max: 1,
         step: 0.01,
+      },
+      rate: {
+        name: "rate",
+        type: "range",
+        value: 0.01,
+        min: 0.001,
+        max: 0.05,
+        step: 0.001,
       },
     },
     onInput: run,
@@ -55,7 +65,7 @@ export default async function example(source) {
           x: 0.5,
           y: 0.5,
         },
-        rate: 0.01,
+        rate: data.rate,
       },
       {
         from: {
@@ -70,7 +80,7 @@ export default async function example(source) {
           x: 0.5,
           y: 0.5,
         },
-        rate: 0.01,
+        rate: data.rate,
       },
     ]);
   }

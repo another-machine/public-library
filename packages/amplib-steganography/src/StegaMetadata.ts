@@ -43,7 +43,7 @@ export interface StegaMetadataString {
 }
 
 const metadataStringEncoding: StegaMetadataString["encoding"][] = [
-  "none",
+  "raw",
   "base64",
 ];
 
