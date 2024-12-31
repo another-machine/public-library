@@ -297,7 +297,7 @@ export class MIDI {
   outputs: { [k: string]: MIDIPort };
   onEvent: (event: MIDIEvent) => void;
 
-  constructor(onEvent = (_event: MIDIEvent) => {}) {
+  constructor({ onEvent }: { onEvent: (_event: MIDIEvent) => void }) {
     this.inputs = {};
     this.outputs = {};
     this.onEvent = onEvent;

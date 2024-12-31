@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Devices | a(nother) machine</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        <a href="/">a(nother) machine</a> Devices
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-devices"
+          >GitHub</a
+        >
+      </h1>
+    </header>
+
+    <main>
+      <section id="example-orientation">
+        <h2>DeviceOrientation</h2>
+        <p>
+          <code
+            >new DeviceOrientation({ handler: (args: DeviceOrientationEventArgs)
+            => void; });
+          </code>
+        </p>
+        <p>
+          <code
+            >interface DeviceOrientationEventArgs { absolute: boolean; alpha:
+            number | null; beta: number | null; gamma: number | null; }
+          </code>
+        </p>
+        <pre><code>new DeviceOrientation({
+  handler: (params) => {
+    result.innerHTML = JSON.stringify(params, null, 2);
+  }
+}).initialize();</code></pre>
+
+        <form></form>
+
+        <pre><code><span data-output="orientation-result">// Waiting for initialization...</span></code></pre>
+      </section>
+
+      <section id="example-movement">
+        <h2>DeviceMovement</h2>
+        <p>
+          <code
+            >new DeviceMovement({ handler: (args: DeviceMovementEventArgs) =>
+            void; });
+          </code>
+        </p>
+        <p>
+          <code
+            >interface DeviceMovementEventArgs { acceleration:
+            DeviceMotionEventAcceleration | null; accelerationIncludingGravity:
+            DeviceMotionEventAcceleration | null; rotationRate:
+            DeviceMotionEventRotationRate | null; interval: number; }
+          </code>
+        </p>
+        <pre><code>new DeviceMovement({
+  handler: (params) => {
+    result.innerHTML = JSON.stringify(params, null, 2);
+  }
+}).initialize();</code></pre>
+
+        <form></form>
+
+        <pre><code><span data-output="movement-result">// Waiting for initialization...</span></code></pre>
+      </section>
+
+      <section id="example-midi">
+        <h2>MIDI</h2>
+        <p>
+          <code>new MIDI({ onEvent: (event: MIDIEvent) => void; }); </code>
+        </p>
+        <p>
+          <code
+            >MIDIEvent { channel: number | null; device: Partial&lt;MIDIPort>;
+            a: EventData | null; b: EventData | null; type: string; }
+          </code>
+        </p>
+        <pre><code>new MIDI({
+  onEvent: (params) => {
+    result.innerHTML = JSON.stringify(params, null, 2);
+  }
+}).initialize();</code></pre>
+
+        <form></form>
+
+        <pre><code><span data-output="midi-result">// Waiting for initialization...</span></code></pre>
+      </section>
+
+      <section id="example-userMediaStream">
+        <h2>UserMediaStream</h2>
+        <p>
+          <code>new UserMediaStream(); </code>
+        </p>
+        <p>
+          <code
+            >start(MediaStreamConstraints: { audio?: boolean |
+            MediaTrackConstraints; peerIdentity?: string; preferCurrentTab?:
+            boolean; video?: boolean | MediaTrackConstraints; })
+          </code>
+        </p>
+        <pre><code>const stream = new UserMediaStream();
+const video = document.createElement("video");
+video.srcObject = await stream.start({ audio: true, video: true });
+video.autoplay = true;
+video.controls = true;
+result.appendChild(video);</code></pre>
+
+        <form></form>
+
+        <figure></figure>
+      </section>
+    </main>
+
+    <script type="module">
+      import { example } from "./app.ts";
+      example();
+    </script>
+  </body>
+</html>

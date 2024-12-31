@@ -59,7 +59,7 @@ export class Machine {
     register();
     this.element = initialParams.element;
     this.mixer = new Mixer();
-    this.midi = new MIDI(this.onMidiEvent.bind(this));
+    this.midi = new MIDI({ onEvent: this.onMidiEvent.bind(this) });
     this.update(initialParams, true);
     this.setup();
   }
@@ -190,7 +190,10 @@ export class Machine {
       onSuccess: ({ imageElements }) => {
         try {
           if (imageElements[0]) {
-            const [decoded] = Stega64.decode({ source: imageElements[0] });
+            const [decoded] = Stega64.decode({
+              source: imageElements[0],
+              encoding: "base64",
+            });
             const settings = JSON.parse(decoded || "") as MachineParams;
             this.update(settings);
           }
@@ -251,6 +254,8 @@ export class Machine {
       const canvas = Stega64.encode({
         source: this.renderer.snapshot(),
         messages: [JSON.stringify(this.exportParams())],
+        encoding: "base64",
+        encodeMetadata: true,
       });
       canvas.className = "export";
       canvas.addEventListener("click", (e) => canvas.remove());

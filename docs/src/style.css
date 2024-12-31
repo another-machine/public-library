@@ -60,6 +60,9 @@ input,
 select,
 button {
   appearance: none;
+  &:disabled {
+    opacity: 0.7;
+  }
 }
 
 input[type="range"] {
