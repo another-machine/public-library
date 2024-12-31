@@ -106,7 +106,7 @@ export async function example() {
           video.controls = true;
           outputUserMediaStream.appendChild(video);
         },
-        name: "initialize()",
+        name: "await start()",
       },
     ],
   });
