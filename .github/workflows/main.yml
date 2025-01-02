@@ -33,6 +33,8 @@ jobs:
 
       # compiling docs which is our homepage
       - run: npm i
+        working-directory: packages/amplib-sound-transformation
+      - run: npm i
       - run: npm run build
         working-directory: docs
 
