@@ -14,6 +14,7 @@
     "pack": "node scripts/pack.js"
   },
   "devDependencies": {
+    "@parcel/transformer-worklet": "^2.12.0",
     "parcel": "^2.12.0",
     "tsup": "^8.2.4",
     "typescript": "^5.5.4"

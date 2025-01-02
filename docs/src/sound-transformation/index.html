@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sound Transformation | a(nother) machine</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        <a href="/">a(nother) machine</a> Sound Transformation
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-sound-transformation"
+          >GitHub</a
+        >
+      </h1>
+    </header>
+
+    <main>
+      <section>
+        <h2>SoundTransformation manipulates an audio buffer source node.</h2>
+        <p>
+          <code
+            >SoundTransformation({ audioContext: AudioContext }): { initialize({
+            audioBuffer: AudioBufferSourceNode; processorJSPath?: string;
+            processorScriptTag?: HTMLScriptElement; }): void}</code
+          >
+        </p>
+
+        <pre><code>const transformation = new SoundTransformation({
+  audioContext
+});
+transformation.initialize({ 
+  audioBuffer,
+  processorJSPath: "./path/to/processor"
+});
+transformation.updateSpeed(<span data-value="speed"></span>);
+transformation.updatePitch(<span data-value="pitch"></span>);</code></pre>
+
+        <form></form>
+
+        <audio style="display: none" src="./example.mp3" controls></audio>
+      </section>
+    </main>
+
+    <script type="module">
+      import "./app.ts";
+    </script>
+  </body>
+</html>

@@ -73,6 +73,7 @@ buttonConvert.addEventListener("click", async () => {
       bitDepth,
       encoding: "additive",
       channels,
+      borderWidth: 1,
     };
     const audioBuffers = await loadAudioBuffersFromAudioUrl({
       url,
