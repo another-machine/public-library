@@ -27,6 +27,7 @@
   "license": "MIT",
   "type": "module",
   "dependencies": {
-    "fft.js": "^4.0.4"
+    "fft.js": "^4.0.4",
+    "web-audio-beat-detector": "^8.2.19"
   }
 }

@@ -50,7 +50,7 @@ export function createForm<T extends Record<string, string | number>>({
   inputs: FormInputMap<T>;
   onInput: (values: T, changed: (keyof T)[]) => void;
   actions?: { name: string; action: (element: HTMLButtonElement) => void }[];
-}) {
+}): { values: T; setValue: (k: keyof T, value: string | number) => void } {
   form.addEventListener("submit", (e) => e.preventDefault());
   const values = Object.fromEntries(
     Object.entries(inputs).map(([key, input]) => [key, input.value])
@@ -105,6 +105,7 @@ export function createForm<T extends Record<string, string | number>>({
     if (input.type === "text") {
       const element = document.createElement("input");
       element.id = id;
+      element.name = input.name;
       element.value = input.value;
       element.addEventListener(
         "input",
@@ -117,6 +118,7 @@ export function createForm<T extends Record<string, string | number>>({
     } else if (input.type === "number" || input.type === "range") {
       const element = document.createElement("input");
       element.id = id;
+      element.name = input.name;
       element.type = input.type;
       if (input.min !== undefined) {
         element.setAttribute("min", input.min.toString());
@@ -139,6 +141,7 @@ export function createForm<T extends Record<string, string | number>>({
     } else if (input.type === "select") {
       const element = document.createElement("select");
       element.id = id;
+      element.name = input.name;
       element.innerHTML = input.options
         .map((option) => `<option value="${option}">${option}</option>`)
         .join("");
@@ -163,5 +166,17 @@ export function createForm<T extends Record<string, string | number>>({
     form.appendChild(element);
   });
 
-  return values;
+  return { values, setValue };
+
+  function setValue(key: keyof T, value: string | number) {
+    // @ts-ignore
+    values[key] = value;
+    inputs[key].value = value;
+    const element = form.querySelector(`[name="${String(key)}"]`);
+    if (element && "value" in element) {
+      element.value = value;
+    }
+    updateDataAttributes(String(key), values[key]);
+    onInput(values, [key]);
+  }
 }

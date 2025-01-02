@@ -4,8 +4,8 @@ import { SoundTransformation } from "../../../packages/amplib-sound-transformati
 import { createForm } from "../createForm";
 
 type FormData = {
-  pitch: number;
-  speed: number;
+  bpm: number;
+  semitones: number;
 };
 
 example();
@@ -13,25 +13,26 @@ example();
 async function example() {
   const section = document.querySelector("section")!;
   const audio = document.querySelector("audio")!;
+  const form = section.querySelector("form")!;
 
-  createForm<FormData>({
-    form: section.querySelector("form")!,
+  const { setValue } = createForm<FormData>({
+    form,
     inputs: {
-      pitch: {
+      bpm: {
         type: "range",
-        step: 0.001,
-        min: 0,
-        max: 3,
-        value: 1,
-        name: "pitch",
+        step: 0.1,
+        min: 60,
+        max: 240,
+        value: 0,
+        name: "bpm",
       },
-      speed: {
+      semitones: {
         type: "range",
-        step: 0.001,
-        min: 0,
-        max: 3,
-        value: 1,
-        name: "speed",
+        step: 1,
+        min: -24,
+        max: 24,
+        value: 0,
+        name: "semitones",
       },
     },
     onInput,
@@ -39,11 +40,11 @@ async function example() {
   });
 
   let audioContext: AudioContext;
-  let transformationA: SoundTransformation;
+  let transformation: SoundTransformation;
   let source: AudioBufferSourceNode;
   let audioBuffer: AudioBuffer;
   let playing = false;
-  const settings: FormData = { pitch: 1, speed: 1 };
+  const settings: FormData = { bpm: 0, semitones: 0 };
 
   async function toggle(button) {
     if (!audioContext) {
@@ -66,11 +67,13 @@ async function example() {
         playing = false;
         button.innerText = "Play";
       };
-      transformationA = new SoundTransformation({ audioContext });
-      await transformationA.initialize({
+      transformation = new SoundTransformation({ audioContext });
+      await transformation.initialize({
         audioBuffer: source,
         processorJSPath: processor,
       });
+      settings.bpm = transformation.bpm;
+      setValue("bpm", transformation.bpm);
       updateTransformations();
       source.start();
     }
@@ -84,10 +87,10 @@ async function example() {
   }
 
   function updateTransformations() {
-    if (!transformationA) {
+    if (!transformation) {
       return;
     }
-    transformationA.updatePitch(settings.pitch);
-    transformationA.updateSpeed(settings.speed);
+    transformation.adjustSpeedToBPM(settings.bpm);
+    transformation.adjustPitchBySemitones(settings.semitones);
   }
 }
