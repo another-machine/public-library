@@ -24,10 +24,11 @@ export default async function example({
   const source = section
     .querySelector("figure:nth-of-type(1)")!
     .querySelector("img")!;
+
   const output = section.querySelector("figure:nth-of-type(2)")!;
   const form = section.querySelector("form")!;
 
-  const values = createForm<FormData>({
+  const { values } = createForm<FormData>({
     form,
     inputs: {
       message: { name: "message", type: "text", value: "Hello world" },

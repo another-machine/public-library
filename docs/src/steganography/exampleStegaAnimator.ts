@@ -14,7 +14,7 @@ export default async function example(source) {
   const output = section.querySelector("figure")!;
   const form = section.querySelector("form")!;
 
-  const values = createForm<FormData>({
+  const { values } = createForm<FormData>({
     form,
     inputs: {
       resolution: { name: "resolution", type: "number", value: 100, min: 10 },

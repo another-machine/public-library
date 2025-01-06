@@ -38,7 +38,7 @@ export default async function example() {
 
   let stop;
 
-  const values = createForm<FormData>({
+  const { values } = createForm<FormData>({
     form,
     inputs: {
       sampleRate: {
