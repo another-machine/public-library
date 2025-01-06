@@ -13,6 +13,7 @@ export default async function example(source) {
   const section = document.querySelector("#stega-animator")!;
   const output = section.querySelector("figure")!;
   const form = section.querySelector("form")!;
+  form.innerHTML = "";
 
   const { values } = createForm<FormData>({
     form,
