@@ -23,6 +23,7 @@ import { Synths } from "./Synths";
 import { MIDI, type MIDIEvent } from "../../../packages/amplib-devices/src";
 import {
   Stega64,
+  StegaMetadata,
   createDropReader,
 } from "../../../packages/amplib-steganography/src";
 import register from "./prompt/register";
@@ -190,12 +191,19 @@ export class Machine {
       onSuccess: ({ imageElements }) => {
         try {
           if (imageElements[0]) {
-            const [decoded] = Stega64.decode({
-              source: imageElements[0],
-              encoding: "base64",
-            });
-            const settings = JSON.parse(decoded || "") as MachineParams;
-            this.update(settings);
+            const metadata = StegaMetadata.decode({ source: imageElements[0] });
+            if (
+              !metadata ||
+              metadata.type === StegaMetadata.StegaContentType.STRING
+            ) {
+              const [decoded] = Stega64.decode({
+                source: imageElements[0],
+                encoding: metadata?.encoding || "base64",
+                borderWidth: metadata?.borderWidth,
+              });
+              const settings = JSON.parse(decoded || "") as MachineParams;
+              this.update(settings);
+            }
           }
         } catch (e) {
           console.log(e);
