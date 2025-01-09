@@ -91,7 +91,7 @@ const result = StegaCassette.encode({
 
         <form></form>
 
-        <figure><img src="./example.jpg" /></figure>
+        <figure><img src="./lovetakesmiles.jpg" /></figure>
         <figure></figure>
         <audio src="./example.mp3"></audio>
 
@@ -104,6 +104,8 @@ const result = StegaCassette.encode({
           >
         </p>
         <pre><code>const metadata = <a href="#stega-metadata">StegaMetadata</a>.decode({ source }) || {};
+<span data-output="metadata">...</span>
+
 const audioBuffers = StegaCassette.decode({
   source,
   bitDepth: metadata.bitDepth || <span data-value="bitDepth"></span>,

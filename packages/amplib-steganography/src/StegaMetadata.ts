@@ -1,14 +1,14 @@
-import { Stega64Encoding } from "./Stega64.ts";
+import { Stega64Encoding } from "./Stega64";
 import {
   StegaCassetteBitDepth,
   StegaCassetteChannels,
   StegaCassetteEncoding,
-} from "./StegaCassette.ts";
+} from "./StegaCassette";
 import {
   createCanvasAndContext,
   dimensionsFromSource,
   getContext,
-} from "./utilities.ts";
+} from "./utilities";
 
 export const METADATA_VERSION = 1;
 export const PATTERN_LENGTH = 32;
@@ -32,7 +32,9 @@ const metadataAudioBitDepth: StegaMetadataAudio["bitDepth"][] = [8, 16, 24];
 const metadataAudioChannels: StegaMetadataAudio["channels"][] = [1, 2];
 const metadataAudioEncoding: StegaMetadataAudio["encoding"][] = [
   "additive",
-  "midpoint",
+  "subtractive",
+  "difference",
+  "noise",
 ];
 
 export interface StegaMetadataString {

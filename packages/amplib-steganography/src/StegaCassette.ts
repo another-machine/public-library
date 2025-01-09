@@ -7,7 +7,11 @@ import {
 } from "./utilities";
 
 export type StegaCassetteBitDepth = 8 | 16 | 24;
-export type StegaCassetteEncoding = "additive" | "midpoint";
+export type StegaCassetteEncoding =
+  | "additive"
+  | "subtractive"
+  | "difference"
+  | "noise";
 export type StegaCassetteChannels = 1 | 2;
 
 interface EncodeOptions {
@@ -87,7 +91,14 @@ export function encode({
     canvas.height,
     borderWidth
   );
-  const encoder = encoding === "additive" ? encodeAdditive : encodeMidpoint;
+  const encoder =
+    encoding === "additive"
+      ? encodeAdditive
+      : encoding === "subtractive"
+      ? encodeSubtractive
+      : encoding === "difference"
+      ? encodeDifference
+      : encodeNoise;
 
   const increment = bitDepth === 16 ? 16 : 4;
 
@@ -308,7 +319,14 @@ export function decode({
     canvas.height,
     borderWidth
   );
-  const decoder = encoding === "additive" ? decodeAdditive : decodeMidpoint;
+  const decoder =
+    encoding === "additive"
+      ? decodeAdditive
+      : encoding === "subtractive"
+      ? decodeSubtractive
+      : encoding === "difference"
+      ? decodeDifference
+      : decodeNoise;
 
   let leftSampleIndex = 0;
   let rightSampleIndex = 0;
@@ -398,25 +416,63 @@ function decodeAdditive(byteEncode: number, byteSource: number): number {
   return byteEncode - byteSource;
 }
 
+function encodeSubtractive(
+  _byteEncode: number,
+  byteSource: number,
+  value: number
+): [number, number] {
+  return [(byteSource - value + 256) % 256, byteSource];
+}
+
+function decodeSubtractive(byteEncode: number, byteSource: number): number {
+  if (byteEncode < byteSource) {
+    return byteEncode + 256 - byteSource;
+  }
+  return byteEncode - byteSource;
+}
+
 /**
  * Using existing values to travel the least distance,
  * return values for each byte where the mid point is the value 0-255.
  */
-function encodeMidpoint(
+function encodeDifference(
   byteEncode: number,
   byteSource: number,
   value: number
 ): [number, number] {
-  const middle =
-    Math.abs(byteEncode - byteSource) / 2 + Math.min(byteEncode, byteSource);
-  const distanceA = Math.ceil(value * 0.5);
-  const distanceB = Math.floor(value * 0.5);
+  if (byteSource < byteEncode) {
+    byteSource += 256;
+  }
+  const middle = Math.round((byteSource - byteEncode) / 2 + byteEncode);
+  const distanceA = Math.ceil(value / 2);
+  const distanceB = Math.floor(value / 2);
+
   return [(middle - distanceA + 256) % 256, (middle + distanceB) % 256];
 }
 
-function decodeMidpoint(byteEncode: number, byteSource: number): number {
+function decodeDifference(byteEncode: number, byteSource: number): number {
   if (byteSource < byteEncode) {
-    return Math.abs(byteSource + 256 - byteEncode);
+    return byteSource + 256 - byteEncode;
   }
-  return Math.abs(byteSource - byteEncode);
+  return byteSource - byteEncode;
+}
+
+/**
+ * Using source image as input for noise generation
+ */
+function encodeNoise(
+  byteEncode: number,
+  byteSource: number,
+  value: number
+): [number, number] {
+  const space = Math.abs(byteEncode - byteSource);
+  const stepA = Math.ceil(space * 0.5);
+  const stepB = Math.floor(space * 0.5);
+  return [(value - stepA + 256) % 256, (value + stepB) % 256];
+}
+
+function decodeNoise(byteEncode: number, byteSource: number): number {
+  return Math.round(
+    Math.abs(byteEncode - byteSource) / 2 + Math.min(byteEncode, byteSource)
+  );
 }

@@ -56,7 +56,7 @@ export default async function example() {
       },
       encoding: {
         type: "select",
-        options: ["additive", "midpoint"],
+        options: ["additive", "subtractive", "difference", "noise"],
         value: `${defaults.encoding}`,
         name: "encoding",
       },
@@ -95,6 +95,8 @@ export default async function example() {
             const source = output.querySelector("canvas")!;
             const metadata: StegaMetadata.StegaMetadata | null =
               StegaMetadata.decode({ source });
+            section.querySelector(`[data-output="metadata"]`)!.innerHTML =
+              JSON.stringify(metadata || {}, null, 2);
             if (
               !metadata ||
               metadata.type === StegaMetadata.StegaContentType.AUDIO
