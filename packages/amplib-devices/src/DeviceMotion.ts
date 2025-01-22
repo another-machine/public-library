@@ -16,7 +16,7 @@ export class DeviceMovement {
     this.handler = handler;
   }
 
-  initialize() {
+  async initialize() {
     // @ts-ignore
     if (typeof DeviceMotionEvent.requestPermission === "function") {
       // @ts-ignore
