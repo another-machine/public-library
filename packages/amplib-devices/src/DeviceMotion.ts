@@ -17,22 +17,29 @@ export class DeviceMovement {
   }
 
   initialize() {
-    window.addEventListener(
-      "devicemotion",
-      ({
-        acceleration,
-        accelerationIncludingGravity,
-        rotationRate,
-        interval,
-      }) => {
-        this.handler({
-          acceleration,
-          accelerationIncludingGravity,
-          rotationRate,
-          interval,
-        });
-      },
-      true
-    );
+    // @ts-ignore
+    if (typeof DeviceMotionEvent.requestPermission === "function") {
+      // @ts-ignore
+      const permissionState = await DeviceMotionEvent.requestPermission();
+      if (permissionState === "granted") {
+        window.addEventListener(
+          "devicemotion",
+          ({
+            acceleration,
+            accelerationIncludingGravity,
+            rotationRate,
+            interval,
+          }) => {
+            this.handler({
+              acceleration,
+              accelerationIncludingGravity,
+              rotationRate,
+              interval,
+            });
+          },
+          true
+        );
+      }
+    }
   }
 }

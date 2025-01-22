@@ -16,12 +16,19 @@ export class DeviceOrientation {
     this.handler = handler;
   }
 
-  initialize() {
-    window.addEventListener(
-      "deviceorientation",
-      ({ absolute, alpha, beta, gamma }) =>
-        this.handler({ absolute, alpha, beta, gamma }),
-      true
-    );
+  async initialize() {
+    // @ts-ignore
+    if (typeof DeviceOrientationEvent.requestPermission === "function") {
+      // @ts-ignore
+      const permissionState = await DeviceOrientationEvent.requestPermission();
+      if (permissionState === "granted") {
+        window.addEventListener(
+          "deviceorientation",
+          ({ absolute, alpha, beta, gamma }) =>
+            this.handler({ absolute, alpha, beta, gamma }),
+          true
+        );
+      }
+    }
   }
 }
