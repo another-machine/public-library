@@ -71,9 +71,9 @@ buttonConvert.addEventListener("click", async () => {
       type: StegaMetadata.StegaContentType.AUDIO,
       sampleRate,
       bitDepth,
-      encoding: "additive",
+      encoding: "noise",
       channels,
-      borderWidth: 1,
+      borderWidth: 100,
     };
     const audioBuffers = await loadAudioBuffersFromAudioUrl({
       url,
@@ -88,6 +88,7 @@ buttonConvert.addEventListener("click", async () => {
       aspectRatio,
       bitDepth: metadata.bitDepth,
       encoding: metadata.encoding,
+      borderWidth: metadata.borderWidth,
     });
     divResult.innerHTML = "";
     const result = StegaMetadata.encode({ source, metadata });
@@ -111,6 +112,7 @@ buttonPlay.addEventListener("click", async () => {
         channels:
           metadata?.channels || (parseInt(selectChannels.value) as 2 | 1),
         encoding: metadata?.encoding || "additive",
+        borderWidth: metadata?.borderWidth,
       });
       const stop = await playDecodedAudioBuffers({
         audioBuffers,
