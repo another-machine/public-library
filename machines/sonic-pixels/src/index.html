@@ -42,6 +42,19 @@
           Sample rate (3kHz - 48kHz)
         </div>
         <div>
+          <input id="border" type="range" min="1" max="500" value="1" />
+          Border
+        </div>
+        <div>
+          <select id="encoding">
+            <option value="additive" selected>Additive</option>
+            <option value="subtractive">Subtractive</option>
+            <option value="difference">Difference</option>
+            <option value="noise">Noise</option>
+          </select>
+          Encoding
+        </div>
+        <div>
           <select id="channels">
             <option value="2" selected>Stereo</option>
             <option value="1">Mono</option>

@@ -6,6 +6,11 @@ import {
   StegaCassette,
   StegaMetadata,
 } from "../../../packages/amplib-steganography/src";
+import {
+  StegaCassetteBitDepth,
+  StegaCassetteChannels,
+  StegaCassetteEncoding,
+} from "../../../packages/amplib-steganography/src/StegaCassette";
 
 const main = document.querySelector("main")!;
 const image = document.getElementById("image")!;
@@ -16,6 +21,8 @@ const inputImage = document.getElementById("input-image") as HTMLInputElement;
 const inputEncoded = document.getElementById(
   "input-encoded"
 ) as HTMLInputElement;
+const selectEncoding = document.getElementById("encoding") as HTMLSelectElement;
+const inputBorder = document.getElementById("border") as HTMLInputElement;
 
 const inputSampleRate = document.getElementById(
   "sample-rate"
@@ -40,7 +47,7 @@ function getAspectRatio() {
   return parseFloat(value);
 }
 
-function getBitDepth(): 8 | 16 | 24 {
+function getBitDepth(): StegaCassetteBitDepth {
   switch (selectBitDepth.value) {
     case "8":
       return 8;
@@ -56,12 +63,14 @@ function getBitDepth(): 8 | 16 | 24 {
 buttonConvert.addEventListener("click", async () => {
   const imageValue = image.querySelector("img");
   const audioValue = audio.querySelector("audio");
-  const channels = parseInt(selectChannels.value) as 1 | 2;
+  const channels = parseInt(selectChannels.value) as StegaCassetteChannels;
+  const encoding = selectEncoding.value as StegaCassetteEncoding;
   const aspectRatio = getAspectRatio();
   const bitDepth = getBitDepth();
   if (imageValue && audioValue) {
     const audioContext = new AudioContext();
     const sampleRate = parseInt(inputSampleRate.value);
+    const borderWidth = parseInt(inputBorder.value);
     const url = audioValue.getAttribute("src");
     if (!url) {
       return;
@@ -71,9 +80,9 @@ buttonConvert.addEventListener("click", async () => {
       type: StegaMetadata.StegaContentType.AUDIO,
       sampleRate,
       bitDepth,
-      encoding: "noise",
+      encoding,
       channels,
-      borderWidth: 100,
+      borderWidth,
     };
     const audioBuffers = await loadAudioBuffersFromAudioUrl({
       url,
@@ -110,7 +119,8 @@ buttonPlay.addEventListener("click", async () => {
         source: imageResult,
         bitDepth: metadata?.bitDepth || getBitDepth(),
         channels:
-          metadata?.channels || (parseInt(selectChannels.value) as 2 | 1),
+          metadata?.channels ||
+          (parseInt(selectChannels.value) as StegaCassetteChannels),
         encoding: metadata?.encoding || "additive",
         borderWidth: metadata?.borderWidth,
       });
