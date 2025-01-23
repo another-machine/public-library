@@ -3,6 +3,7 @@ import {
   createFileReader,
   loadAudioBuffersFromAudioUrl,
   playDecodedAudioBuffers,
+  StegaAnimator,
   StegaCassette,
   StegaMetadata,
 } from "../../../packages/amplib-steganography/src";
@@ -163,10 +164,65 @@ createDropReader({
 createFileReader({
   element: inputEncoded,
   types: ["image/*"],
-  onSuccess: (result) => {
+  onSuccess: async (result) => {
     buttonPlay.disabled = false;
     divResult.innerHTML = "";
+    const animator = new StegaAnimator({
+      source: result as HTMLImageElement,
+      resolution: 500,
+      fadeAmount: 0.9,
+    });
     divResult.appendChild(result);
+    result.style.display = "none";
+    divResult.appendChild(animator.canvas);
+
+    await animator.animate({
+      from: {
+        rotation: Math.PI * -1,
+        scale: 0,
+        x: 0.5,
+        y: 0,
+      },
+      to: {
+        rotation: 0,
+        scale: 0.5,
+        x: 0.5,
+        y: 0.5,
+      },
+      rate: 0.008,
+    });
+    animator.animationLoop([
+      {
+        from: {
+          rotation: 0,
+          scale: 0.5,
+          x: 0.5,
+          y: 0.5,
+        },
+        to: {
+          rotation: Math.PI * 1,
+          scale: 0.6,
+          x: 0.5,
+          y: 0.5,
+        },
+        rate: 0.008,
+      },
+      {
+        from: {
+          rotation: Math.PI * 1,
+          scale: 0.6,
+          x: 0.5,
+          y: 0.5,
+        },
+        to: {
+          rotation: Math.PI * 2,
+          scale: 0.5,
+          x: 0.5,
+          y: 0.5,
+        },
+        rate: 0.008,
+      },
+    ]);
   },
 });
 createFileReader({
