@@ -55,6 +55,7 @@ const searchParams = new URLSearchParams(window.location.search);
 const savedSeed = searchParams.get("seed");
 const savedPlayerCount = searchParams.get("player-count");
 const savedPlayerIndex = searchParams.get("player-index");
+const savedPlayerScore = searchParams.get("player-score");
 
 class Lexicon {
   $buttonSync = document.getElementById("sync") as HTMLButtonElement;
@@ -64,6 +65,9 @@ class Lexicon {
   $formLobby = document.getElementById("lobby") as HTMLFormElement;
   $inputPlayerCount = document.getElementById(
     "player-count"
+  ) as HTMLInputElement;
+  $inputPlayerScore = document.getElementById(
+    "player-score"
   ) as HTMLInputElement;
   $inputSeed = document.getElementById("seed") as HTMLInputElement;
   prompts: string[] = [];
@@ -117,6 +121,14 @@ class Lexicon {
     }
   }
 
+  private handlePlayerScoreChange() {
+    const playerScore = parseInt(this.$inputPlayerScore.value);
+    if (!isNaN(playerScore)) {
+      searchParams.set("player-score", playerScore.toString());
+      this.saveSearchParams();
+    }
+  }
+
   private initializeUI() {
     if (savedSeed) {
       this.$inputSeed.value = savedSeed;
@@ -132,6 +144,12 @@ class Lexicon {
         this.$buttonSync.classList.add("alternate");
       }
     });
+    this.$inputPlayerScore.addEventListener(
+      "input",
+      this.handlePlayerScoreChange.bind(this)
+    );
+    this.$inputPlayerScore.value = savedPlayerScore || "0";
+    this.handlePlayerScoreChange();
     this.$inputPlayerCount.addEventListener(
       "input",
       this.handlePlayerCountChange.bind(this)
@@ -155,6 +173,19 @@ class Lexicon {
     });
   }
 
+  private saveSearchParams() {
+    const { protocol, host, pathname } = window.location;
+    const path = [
+      protocol,
+      "//",
+      host,
+      pathname,
+      "?",
+      searchParams.toString(),
+    ].join("");
+    window.history.replaceState({ path }, "", path);
+  }
+
   private performRound({
     playerIndex,
     playerCount,
@@ -167,17 +198,7 @@ class Lexicon {
     searchParams.set("seed", seed);
     searchParams.set("player-count", playerCount.toString());
     searchParams.set("player-index", playerIndex.toString());
-
-    const { protocol, host, pathname } = window.location;
-    const path = [
-      protocol,
-      "//",
-      host,
-      pathname,
-      "?",
-      searchParams.toString(),
-    ].join("");
-    window.history.replaceState({ path }, "", path);
+    this.saveSearchParams();
     const imposterCount = Math.floor(playerCount / 3);
     const topicCount = 3 * 2; // two randoms per topic
     const promptCount = 1;
@@ -332,8 +353,6 @@ class Lexicon {
         $elementMain.querySelector<HTMLButtonElement>("footer > button")!;
       $button.addEventListener("click", () => reset());
     }
-
-    console.log(topics, prompt, imposterIndices, playerIndex, playerCount);
   }
 
   static shuffle(array: string[]) {

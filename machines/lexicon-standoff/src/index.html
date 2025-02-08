@@ -26,10 +26,22 @@
           />
           Player count
         </label>
+        <label class="text" for="player-score">
+          <input
+            class="unselected"
+            id="player-score"
+            min="0"
+            step="1"
+            name="player-score"
+            type="number"
+            value="0"
+          />
+          Your score
+        </label>
       </div>
-      <div class="group" id="player"></div>
-      <div class="group">
-        <label class="text">You</label>
+      <div class="group player-list" id="player"></div>
+      <div class="group no-margin">
+        <label class="text">Your character</label>
       </div>
       <div class="group">
         <label class="text" for="seed">

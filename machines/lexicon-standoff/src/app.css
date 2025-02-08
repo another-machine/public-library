@@ -122,7 +122,7 @@ input {
   }
 }
 
-#player {
+.player-list {
   flex-wrap: wrap;
 
   label {
@@ -171,8 +171,11 @@ div.group {
 div.group > * + * {
   margin-left: 0.5rem;
 }
-div.group + div.group {
+div.group + div.group:not(.no-margin) {
   margin-top: 2rem;
+}
+div.group + div.no-margin {
+  margin-top: 0.5rem;
 }
 
 ul {
