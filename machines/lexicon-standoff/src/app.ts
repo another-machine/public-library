@@ -210,8 +210,11 @@ class Lexicon {
     const imposterIndices: number[] = [];
     for (let i = 0; i < imposterCount; i++) {
       imposterIndices.push(
-        playerIndices[Math.floor(randoms[randomIndex] * playerIndices.length)]
-      )[0];
+        playerIndices.splice(
+          Math.floor(randoms[randomIndex] * playerIndices.length),
+          1
+        )[0]
+      );
       randomIndex++;
     }
 
