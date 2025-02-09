@@ -14,12 +14,13 @@ async function example() {
   const section = document.querySelector("section")!;
   const audio = document.querySelector("audio")!;
   const form = section.querySelector("form")!;
+  let semitones = 0;
 
   const { setValue } = createForm<FormData>({
     form,
     inputs: {
       bpm: {
-        type: "range",
+        type: "number",
         step: 0.1,
         min: 60,
         max: 240,
@@ -27,11 +28,11 @@ async function example() {
         name: "bpm",
       },
       semitones: {
-        type: "range",
+        type: "number",
         step: 1,
         min: -24,
         max: 24,
-        value: 0,
+        value: semitones,
         name: "semitones",
       },
     },
@@ -59,6 +60,7 @@ async function example() {
       playing = false;
       button.innerText = "Play";
     } else {
+      semitones = 0;
       playing = true;
       source = audioContext.createBufferSource();
       source.buffer = audioBuffer;
@@ -91,6 +93,8 @@ async function example() {
       return;
     }
     transformation.adjustSpeedToBPM(settings.bpm);
+    transformation.adjustPitchBySemitones(semitones * -1);
+    semitones = settings.semitones;
     transformation.adjustPitchBySemitones(settings.semitones);
   }
 }
