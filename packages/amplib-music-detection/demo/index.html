@@ -8,7 +8,7 @@
   <body>
     <pre></pre>
     <script type="module">
-      import { Detector } from "../dist/index.js";
+      import { DetectTones } from "../dist/index.js";
       import { UserMediaStream } from "../../amplib-devices/dist/index.js";
 
       const userMediaStream = new UserMediaStream();
@@ -17,16 +17,14 @@
         const stream1 = await userMediaStream.start({
           audio: true,
         });
-        console.log(userMediaStream.audioInputDevices);
         const stream2 = await userMediaStream.start({
           audio: userMediaStream.audioInputDevices[0],
         });
-        console.log(stream2);
 
         const audioContext = new AudioContext();
-        const detector = new Detector(audioContext);
-
-        await detector.start(stream2);
+        const detector = new DetectTones({ audioContext });
+        const source = audioContext.createMediaStreamSource(stream2);
+        await detector.initialize(source);
         detectLoop();
 
         function detectLoop() {

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Detection | a(nother) machine</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        <a href="/">a(nother) machine</a> Music Detection
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-music-detection"
+          >GitHub</a
+        >
+      </h1>
+    </header>
+
+    <main>
+      <section>
+        <h2>DetectTones detects notes and possible chords in real time.</h2>
+        <p>
+          <code
+            >DetectTones({ audioContext: AudioContext }): { async initialize({
+            source: | AudioBufferSourceNode | MediaElementAudioSourceNode |
+            MediaStreamAudioSourceNode }): void; tick(): { change: boolean;
+            label: string; guess: { chord: Chord; key: string; presence: number;
+            }; notes: DetectTonesChordTracking[];} }</code
+          >
+        </p>
+
+        <pre><code>const detector = new DetectTones({ audioContext });
+detector.initialize({ source });
+loop();
+
+function loop() {
+  requestAnimationFrame(loop);
+  detector.tick();
+}
+<span data-output="tone-output"></span>;</code></pre>
+
+        <form></form>
+
+        <audio style="display: none" src="./example.mp3" controls></audio>
+      </section>
+    </main>
+
+    <script type="module">
+      import "./app.ts";
+    </script>
+  </body>
+</html>
