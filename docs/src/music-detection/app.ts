@@ -3,7 +3,7 @@ import { createForm } from "../createForm";
 import { UserMediaStream } from "../../../packages/amplib-devices/src";
 import { Note } from "../../../packages/amplib-music-theory/src";
 import {
-  DetectTones,
+  DetectTone,
   DetectBPM,
 } from "../../../packages/amplib-music-detection/src";
 
@@ -37,7 +37,7 @@ async function example() {
 
   let audioContext: AudioContext;
   let playing = false;
-  let detector: DetectTones;
+  let detector: DetectTone;
 
   function initialize() {
     playing = true;
@@ -45,7 +45,7 @@ async function example() {
     if (!audioContext) {
       audioContext = new AudioContext();
     }
-    detector = new DetectTones({ audioContext });
+    detector = new DetectTone({ audioContext });
   }
 
   function loop() {

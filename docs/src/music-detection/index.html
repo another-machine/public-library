@@ -21,18 +21,18 @@
 
     <main>
       <section>
-        <h2>DetectTones detects notes and possible chords in real time.</h2>
+        <h2>DetectTone detects notes and possible chords in real time.</h2>
         <p>
           <code
-            >DetectTones({ audioContext: AudioContext }): { async initialize({
+            >DetectTone({ audioContext: AudioContext }): { async initialize({
             source: | AudioBufferSourceNode | MediaElementAudioSourceNode |
             MediaStreamAudioSourceNode }): void; tick(): { change: boolean;
             label: string; guess: { chord: Chord; key: string; presence: number;
-            }; notes: DetectTonesChordTracking[];} }</code
+            }; notes: DetectToneChordTracking[];} }</code
           >
         </p>
 
-        <pre><code>const detector = new DetectTones({ audioContext });
+        <pre><code>const detector = new DetectTone({ audioContext });
 detector.initialize({ source });
 loop();
 

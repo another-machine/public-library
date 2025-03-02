@@ -1,2 +1,2 @@
-export { DetectBPM } from "./DetectBPM";
-export { DetectTones } from "./DetectTones";
+export * from "./DetectBPM";
+export * from "./DetectTone";

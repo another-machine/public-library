@@ -5,7 +5,7 @@ import {
   type Notation,
 } from "../../amplib-music-theory/src/index";
 
-interface DetectTonesChordTracking {
+interface DetectToneChordTracking {
   value: number;
   octaves: number;
   prominence: number;
@@ -14,7 +14,7 @@ interface DetectTonesChordTracking {
   ratio: number;
 }
 
-export class DetectTones {
+export class DetectTone {
   audioContext: AudioContext;
   analyser: AnalyserNode;
   frequencyData: Uint8Array;
@@ -65,7 +65,7 @@ export class DetectTones {
   tick() {
     this.analyser.getByteFrequencyData(this.frequencyData);
     const tracking: {
-      [notation in Notation]?: Partial<DetectTonesChordTracking>;
+      [notation in Notation]?: Partial<DetectToneChordTracking>;
     } = {};
     this.notes.forEach(({ notation }, i) => {
       // const items = [1, 2, 13, 14, 25, 26, -1, -2, -13, -14, -25, -26];
@@ -102,14 +102,14 @@ export class DetectTones {
 
     const entries = Object.entries(tracking) as [
       Notation,
-      DetectTonesChordTracking
+      DetectToneChordTracking
     ][];
     const total = entries.reduce((a, b) => a + b[1].value, 0);
     const noteData = entries.map(([notation, { octaves, value }]) => {
       const prominence = value ? value / total : 0;
       const index = Note.notations.indexOf(notation);
       const ratio = value / octaves;
-      const result: DetectTonesChordTracking = {
+      const result: DetectToneChordTracking = {
         octaves,
         value,
         notation,
@@ -125,7 +125,7 @@ export class DetectTones {
       (a, b) => b.prominence - a.prominence
     );
     // combinations of prominent notes to check for chords
-    const combos: DetectTonesChordTracking[][] = [
+    const combos: DetectToneChordTracking[][] = [
       [sorted[0], sorted[1], sorted[2], sorted[3]],
       [sorted[1], sorted[0], sorted[2], sorted[3]],
       [sorted[0], sorted[1], sorted[2]],
