@@ -1,11 +1,11 @@
 // @ts-ignore
 import { createForm } from "../createForm";
-import { UserMediaStream } from "../../../packages/amplib-devices";
-import { Note } from "../../../packages/amplib-music-theory";
+import { UserMediaStream } from "../../../packages/amplib-devices/src";
+import { Note } from "../../../packages/amplib-music-theory/src";
 import {
   DetectTones,
   DetectBPM,
-} from "../../../packages/amplib-music-detection";
+} from "../../../packages/amplib-music-detection/src";
 
 type FormData = {};
 
