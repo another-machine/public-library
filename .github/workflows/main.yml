@@ -56,12 +56,6 @@ jobs:
       - run: npm run build
         working-directory: machines/modulo
 
-      # compiling music-detection
-      - run: npm i
-        working-directory: machines/music-detection
-      - run: npm run build
-        working-directory: machines/music-detection
-
       # compiling sonic-pixels
       - run: npm i
         working-directory: machines/sonic-pixels
@@ -76,8 +70,6 @@ jobs:
       - run: mv ./machines/mindmeld/dist ./site/mindmeld
       # moving modulo into site
       - run: mv ./machines/modulo/dist ./site/modulo
-      # moving music-detection into site
-      - run: mv ./machines/music-detection/dist ./site/music-detection
       # moving sonic-pixels into site
       - run: mv ./machines/sonic-pixels/dist ./site/sonic-pixels
 
