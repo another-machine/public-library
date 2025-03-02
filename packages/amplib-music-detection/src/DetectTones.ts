@@ -14,12 +14,6 @@ interface DetectTonesChordTracking {
   ratio: number;
 }
 
-interface DetectTonesNoteTracking {
-  value: number;
-  max: number;
-  octaves: number;
-}
-
 export class DetectTones {
   audioContext: AudioContext;
   analyser: AnalyserNode;
@@ -60,7 +54,8 @@ export class DetectTones {
   ) {
     try {
       source.connect(this.analyser);
-      this.analyser.fftSize = 8192 * 2 * 2;
+      this.analyser.fftSize = 32768;
+      this.analyser.smoothingTimeConstant = 0.95;
       this.analyser.getByteFrequencyData(this.frequencyData);
     } catch (e) {
       throw e;
@@ -73,8 +68,8 @@ export class DetectTones {
       [notation in Notation]?: Partial<DetectTonesChordTracking>;
     } = {};
     this.notes.forEach(({ notation }, i) => {
-      const items = [1, 2, 13, 14, 25, 26, -1, -2, -13, -14, -25, -26];
-      // const items = [1, 2, 13, 14, -1, -2, -13, -14];
+      // const items = [1, 2, 13, 14, 25, 26, -1, -2, -13, -14, -25, -26];
+      const items = [1, 2, 13, 14, -1, -2, -13, -14];
       const neighbors = items.map((item) => item + i);
       const self = this.frequencyData[this.frequencyIndices[i]];
 
@@ -132,8 +127,11 @@ export class DetectTones {
     // combinations of prominent notes to check for chords
     const combos: DetectTonesChordTracking[][] = [
       [sorted[0], sorted[1], sorted[2], sorted[3]],
+      [sorted[1], sorted[0], sorted[2], sorted[3]],
       [sorted[0], sorted[1], sorted[2]],
+      [sorted[1], sorted[0], sorted[2]],
       [sorted[0], sorted[1], sorted[3]],
+      [sorted[1], sorted[0], sorted[3]],
     ];
     // chord combinations sorted by avg prominence to determine which is most likely
     const chordOptions = combos
@@ -162,63 +160,17 @@ export class DetectTones {
       (a, b) => b.prominence - a.prominence
     );
 
+    const tones = Array.from(this.notes).map((a, i) => ({
+      ...a,
+      prominence: this.frequencyValues[i],
+    }));
+
     return {
       change,
       label: option.chord ? option.chord.label : option.key,
       guess: option,
       notes,
+      tones,
     };
   }
 }
-
-// TODO: This is older detection code i dont want to lose.
-// private _tickOld() {
-//   this.analyser.getByteFrequencyData(this.frequencyData);
-//   const notationDataMap: {
-//     [K in Notation]?: DetectTonesNoteTracking;
-//   } = {};
-//   this.notes.forEach(({ notation }, i) => {
-//     const rawFrequency = this.frequencyData[this.frequencyIndices[i]];
-//     const valuePrevious = this.frequencyValues[i];
-//     const valueCurrent = Math.pow(Math.min(1, rawFrequency / 128), 50);
-//     const valueEasingFactor =
-//       valueCurrent < valuePrevious ? 0.0625 : 0.015625;
-//     const valueEased =
-//       valuePrevious + (valueCurrent - valuePrevious) * valueEasingFactor;
-//     const notationData: DetectTonesNoteTracking = notationDataMap[
-//       notation
-//     ] || {
-//       value: 0,
-//       max: 0,
-//       octaves: 0,
-//     };
-//     notationData.octaves++;
-//     notationData.value += valueEased;
-//     notationData.max = Math.max(notationData.max, valueEased);
-//     notationDataMap[notation] = notationData;
-//     this.frequencyValues[i] = valueEased;
-//   });
-
-//   const notationDataMapAsEntries = Object.entries(notationDataMap);
-//   const totalAllValues = notationDataMapAsEntries.reduce(
-//     (a, b) => a + b[1].value,
-//     0
-//   );
-//   const noteData = notationDataMapAsEntries.map(
-//     ([notationRaw, { octaves, value, max }]) => {
-//       const notation = notationRaw as Notation;
-//       const prominence = value / totalAllValues;
-//       const index = Note.notations.indexOf(notation);
-//       const ratio = value / octaves;
-//       return { notation, value, index, max, prominence, ratio };
-//     }
-//   );
-//   // array of notes sorted by prominence
-//   const notes = Array.from(noteData).sort(
-//     (a, b) => b.prominence - a.prominence
-//   );
-
-//   return {
-//     notes,
-//   };
-// }
