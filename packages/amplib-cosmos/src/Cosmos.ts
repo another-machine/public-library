@@ -513,7 +513,7 @@ function getPlanetsInfo(
         timestamp
       );
 
-      details[planet] = {
+      details[planet.toLowerCase()] = {
         isVisible: createBooleanValue(
           visibility.isVisible,
           visibility.isVisible
