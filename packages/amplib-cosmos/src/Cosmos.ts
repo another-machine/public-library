@@ -138,6 +138,16 @@ export function formatDate(date: Date | null): string {
   return date.toLocaleString();
 }
 
+interface PlanetInfo {
+  name: StringValue;
+  isVisible: BooleanValue;
+  altitude: NumberValue;
+  azimuth: NumberValue;
+  magnitude: NumberValue;
+  angularDiameter: NumberValue;
+  phase: NumberValue | null;
+}
+
 /**
  * Main astronomical report interface
  */
@@ -179,14 +189,7 @@ export interface AstronomicalReport {
     tidalForce: NumberValue;
   };
   planets: {
-    [key: string]: {
-      isVisible: BooleanValue;
-      altitude: NumberValue;
-      azimuth: NumberValue;
-      magnitude: NumberValue;
-      angularDiameter: NumberValue;
-      phase: NumberValue | null; // Only for inner planets
-    };
+    [key: string]: PlanetInfo;
   };
   deepSpace: {
     milkyWayVisibility: NumberValue; // 0-1 scale
@@ -474,14 +477,7 @@ function getPlanetsInfo(
   longitude: number,
   timestamp: number
 ): {
-  [key: string]: {
-    isVisible: BooleanValue;
-    altitude: NumberValue;
-    azimuth: NumberValue;
-    magnitude: NumberValue;
-    angularDiameter: NumberValue;
-    phase: NumberValue | null;
-  };
+  [key: string]: PlanetInfo;
 } {
   const planetNames = [
     "Mercury",
@@ -494,14 +490,7 @@ function getPlanetsInfo(
   ];
 
   const details: {
-    [key: string]: {
-      isVisible: BooleanValue;
-      altitude: NumberValue;
-      azimuth: NumberValue;
-      magnitude: NumberValue;
-      angularDiameter: NumberValue;
-      phase: NumberValue | null;
-    };
+    [key: string]: PlanetInfo;
   } = {};
 
   for (const planet of planetNames) {
@@ -514,6 +503,7 @@ function getPlanetsInfo(
       );
 
       details[planet.toLowerCase()] = {
+        name: createStringValue(planet, `The name of the planet is ${planet}`),
         isVisible: createBooleanValue(
           visibility.isVisible,
           visibility.isVisible
@@ -693,8 +683,8 @@ function getObservingConditionsInfo(
 
   // Recommend best targets
   const planetInfo = getPlanetsInfo(latitude, longitude, timestamp);
-  const visiblePlanets = Object.values(planetInfo).filter(
-    (planet) => planet.isVisible
+  const visiblePlanets = Object.values(planetInfo).flatMap((planet) =>
+    planet.isVisible.value ? planet.name.value : []
   );
 
   let recommendation = "";

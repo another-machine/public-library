@@ -17,6 +17,7 @@ export async function example() {
   const section = document.querySelector("section")!;
   const form = section.querySelector("form")!;
   const output = section.querySelector('[data-output="report-output"]')!;
+  const date = section.querySelector('[data-output="date-output"]')!;
   form.innerHTML = "";
 
   const { values, setValue } = createForm<FormData>({
@@ -45,8 +46,10 @@ export async function example() {
 
   function loop() {
     requestAnimationFrame(loop);
+    const now = Date.now();
+    date.innerHTML = now.toString();
     output.innerHTML = JSON.stringify(
-      getAstronomicalReport({ ...data, date: Date.now() }),
+      getAstronomicalReport({ ...data, date: now }),
       null,
       2
     );
