@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cosmos | a(nother) machine</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        <a href="/">a(nother) machine</a> Cosmos
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-cosmos"
+          >GitHub</a
+        >
+      </h1>
+    </header>
+
+    <main>
+      <section>
+        <h2>
+          getAstronomicalReport gets astronomical data for a time and location.
+        </h2>
+        <p>
+          <code
+            >getAstronomicalReport({ latitude: number; longitude: number; date:
+            DateInput; }): AstronomicalReport</code
+          >
+        </p>
+
+        <pre><code>const report = getAstronomicalReport({ 
+  latitude: <span data-value="latitude"></span>, 
+  longitude: <span data-value="longitude"></span>, 
+  date: <span data-value="date"></span> 
+});
+<span data-output="report-output"></span></code></pre>
+
+        <form></form>
+      </section>
+    </main>
+
+    <script type="module">
+      import { example } from "./app.ts";
+      example();
+    </script>
+  </body>
+</html>
