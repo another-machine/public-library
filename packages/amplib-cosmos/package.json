@@ -1,6 +1,6 @@
 {
   "name": "@amplib/cosmos",
-  "description": "Calculations about the relationship between the earth, moon, and sun.",
+  "description": "Calculations about the relationship between the earth, moon, sun, planets, and more.",
   "version": "0.0.0",
   "main": "dist/index.js",
   "private": "false",
