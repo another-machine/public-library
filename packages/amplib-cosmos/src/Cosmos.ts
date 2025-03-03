@@ -179,16 +179,13 @@ export interface AstronomicalReport {
     tidalForce: NumberValue;
   };
   planets: {
-    visible: StringValue[];
-    details: {
-      [key: string]: {
-        isVisible: BooleanValue;
-        altitude: NumberValue;
-        azimuth: NumberValue;
-        magnitude: NumberValue;
-        angularDiameter: NumberValue;
-        phase: NumberValue | null; // Only for inner planets
-      };
+    [key: string]: {
+      isVisible: BooleanValue;
+      altitude: NumberValue;
+      azimuth: NumberValue;
+      magnitude: NumberValue;
+      angularDiameter: NumberValue;
+      phase: NumberValue | null; // Only for inner planets
     };
   };
   deepSpace: {
@@ -477,16 +474,13 @@ function getPlanetsInfo(
   longitude: number,
   timestamp: number
 ): {
-  visible: StringValue[];
-  details: {
-    [key: string]: {
-      isVisible: BooleanValue;
-      altitude: NumberValue;
-      azimuth: NumberValue;
-      magnitude: NumberValue;
-      angularDiameter: NumberValue;
-      phase: NumberValue | null;
-    };
+  [key: string]: {
+    isVisible: BooleanValue;
+    altitude: NumberValue;
+    azimuth: NumberValue;
+    magnitude: NumberValue;
+    angularDiameter: NumberValue;
+    phase: NumberValue | null;
   };
 } {
   const planetNames = [
@@ -499,7 +493,6 @@ function getPlanetsInfo(
     "Neptune",
   ];
 
-  const visibleList: StringValue[] = [];
   const details: {
     [key: string]: {
       isVisible: BooleanValue;
@@ -557,24 +550,12 @@ function getPlanetsInfo(
               )
             : null,
       };
-
-      if (visibility.isVisible) {
-        visibleList.push(
-          createStringValue(
-            planet,
-            `${planet} is visible, magnitude ${visibility.magnitude.toFixed(1)}`
-          )
-        );
-      }
     } catch (error) {
       console.error(`Error calculating visibility for ${planet}:`, error);
     }
   }
 
-  return {
-    visible: visibleList,
-    details: details,
-  };
+  return details;
 }
 
 /**
@@ -712,7 +693,9 @@ function getObservingConditionsInfo(
 
   // Recommend best targets
   const planetInfo = getPlanetsInfo(latitude, longitude, timestamp);
-  const visiblePlanets = planetInfo.visible.map((planet) => planet.value);
+  const visiblePlanets = Object.values(planetInfo).filter(
+    (planet) => planet.isVisible
+  );
 
   let recommendation = "";
 
