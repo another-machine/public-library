@@ -9,9 +9,12 @@ export interface AstronomicalValue<T> {
 }
 
 // Specialized types for common value types
-export type NumberValue = AstronomicalValue<number>;
+export type NumberValue = AstronomicalValue<number> & {
+  unitRange: number; // 0 to 1 scale
+  bipolarRange?: number; // -1 to 1 scale when applicable
+};
 export type StringValue = AstronomicalValue<string>;
-export type DateValue = AstronomicalValue<Date | null>;
+export type DateValue = AstronomicalValue<number> & { date: Date | null };
 export type BooleanValue = AstronomicalValue<boolean>;
 export type Position3DValue = AstronomicalValue<{
   x: number;
@@ -65,58 +68,58 @@ export const J2000_EPOCH = new Date("2000-01-01T12:00:00Z").getTime();
 
 // Stellar and galactic constants
 const SPEED_OF_LIGHT = 299792.458; // km/s
-const PARSEC_IN_KM = 3.0857e13; // km
-const LIGHT_YEAR_IN_KM = 9.461e12; // km
 const ASTRONOMICAL_UNIT_IN_KM = 149597870.7; // km (1 AU)
 const SOLAR_MASS = 1.989e30; // kg
-const SOLAR_LUMINOSITY = 3.828e26; // watts
-const SOLAR_RADIUS = 695700; // km
 
 // Milky Way constants
 const MILKY_WAY_CENTER_DISTANCE = 8.178; // kpc (kiloparsecs)
 const MILKY_WAY_ORBITAL_PERIOD = 225e6; // years
 const MILKY_WAY_ROTATION_VELOCITY = 220; // km/s
 
-// Universe constants
-const HUBBLE_CONSTANT = 67.4; // (km/s)/Mpc
-const UNIVERSE_AGE = 13.787e9; // years
-
 /**
  * Helper functions for creating value objects with descriptions
  */
-export function createNumberValue(
-  value: number,
-  description: string
-): NumberValue {
-  return { value, description };
+export function createNumberValue({
+  value,
+  description,
+  unitRange,
+  bipolarRange,
+}: {
+  value: number;
+  description: string;
+  unitRange: number;
+  bipolarRange?: number;
+}): NumberValue {
+  return { description, value, unitRange, bipolarRange };
 }
 
 export function createStringValue(
   value: string,
   description: string
 ): StringValue {
-  return { value, description };
+  return { description, value };
 }
 
 export function createDateValue(
-  value: Date | null,
+  value: number,
+  date: Date | null,
   description: string
 ): DateValue {
-  return { value, description };
+  return { description, value, date };
 }
 
 export function createBooleanValue(
   value: boolean,
   description: string
 ): BooleanValue {
-  return { value, description };
+  return { description, value };
 }
 
 export function createPosition3DValue(
   value: { x: number; y: number; z: number },
   description: string
 ): Position3DValue {
-  return { value, description };
+  return { description, value };
 }
 
 /**
@@ -138,74 +141,6 @@ export function formatDate(date: Date | null): string {
   return date.toLocaleString();
 }
 
-interface PlanetInfo {
-  name: StringValue;
-  isVisible: BooleanValue;
-  altitude: NumberValue;
-  azimuth: NumberValue;
-  magnitude: NumberValue;
-  angularDiameter: NumberValue;
-  phase: NumberValue | null;
-}
-
-/**
- * Main astronomical report interface
- */
-export interface AstronomicalReport {
-  timestamp: NumberValue;
-  date: StringValue;
-  observer: {
-    latitude: NumberValue;
-    longitude: NumberValue;
-    localTime: StringValue;
-    siderealTime: NumberValue;
-  };
-  earth: {
-    rotationAngle: NumberValue;
-    orbitalPosition: NumberValue;
-    distanceFromSun: NumberValue;
-    season: StringValue;
-    orbitalVelocity: NumberValue;
-  };
-  sun: {
-    elevation: NumberValue;
-    azimuth: NumberValue;
-    angularDiameter: NumberValue;
-    sunrise: DateValue;
-    sunset: DateValue;
-    dayLength: NumberValue;
-  };
-  moon: {
-    phase: NumberValue;
-    phaseDescription: StringValue;
-    illuminationPercent: NumberValue;
-    age: NumberValue; // Days since new moon
-    distance: NumberValue;
-    angularDiameter: NumberValue;
-    altitude: NumberValue;
-    azimuth: NumberValue;
-    nextFullMoon: DateValue;
-    nextNewMoon: DateValue;
-    tidalForce: NumberValue;
-  };
-  planets: {
-    [key: string]: PlanetInfo;
-  };
-  deepSpace: {
-    milkyWayVisibility: NumberValue; // 0-1 scale
-    galacticPosition: NumberValue;
-    relativisticEffects: {
-      earthTimeDilation: NumberValue;
-      gravitationalTimeDilation: NumberValue;
-    };
-  };
-  observingConditions: {
-    skyBrightness: NumberValue;
-    moonInterference: NumberValue;
-    bestTargets: StringValue;
-  };
-}
-
 /**
  * Main function to generate a comprehensive astronomical report
  */
@@ -217,31 +152,37 @@ export function getAstronomicalReport({
   latitude: number;
   longitude: number;
   date: DateInput;
-}): AstronomicalReport {
+}) {
   const timestamp = date instanceof Date ? date.getTime() : date;
-  const dateObj = new Date(timestamp);
 
   // Create the report
-  const report: AstronomicalReport = {
-    timestamp: createNumberValue(timestamp, "Unix timestamp in milliseconds"),
-    date: createStringValue(
-      dateObj.toISOString(),
-      "ISO 8601 formatted date and time"
-    ),
+  return {
     observer: getObserverInfo(latitude, longitude, timestamp),
     earth: getEarthInfo(timestamp, latitude),
     sun: getSunInfo(latitude, longitude, timestamp),
     moon: getMoonInfo(latitude, longitude, timestamp),
     planets: getPlanetsInfo(latitude, longitude, timestamp),
-    deepSpace: getDeepSpaceInfo(timestamp, latitude),
-    observingConditions: getObservingConditionsInfo(
-      latitude,
-      longitude,
-      timestamp
-    ),
   };
+}
 
-  return report;
+/**
+ * Calculate local time for a given longitude based on UTC timestamp
+ * @param timestamp - UTC timestamp in milliseconds
+ * @param longitude - Longitude in degrees
+ * @returns Local date object and timezone offset in hours
+ */
+function getLocalTimeFromLongitude(
+  timestamp: number,
+  longitude: number
+): { localTime: Date; offsetHours: number } {
+  // Calculate offset in milliseconds
+  const offsetHours = longitude / 15;
+  const offsetMillis = offsetHours * 60 * 60 * 1000;
+
+  // Apply offset to timestamp and create new date
+  const localTime = new Date(timestamp + offsetMillis);
+
+  return { localTime, offsetHours };
 }
 
 /**
@@ -251,66 +192,105 @@ function getObserverInfo(
   latitude: number,
   longitude: number,
   timestamp: number
-): {
-  latitude: NumberValue;
-  longitude: NumberValue;
-  localTime: StringValue;
-  siderealTime: NumberValue;
-} {
-  const dateObj = new Date(timestamp);
+) {
+  const dateObj = getLocalTimeFromLongitude(timestamp, longitude);
+  const rotationalVelocity = getEarthRotationalVelocity(latitude);
+  const siderealTime = getSiderealTime(timestamp) + longitude / 15;
 
   return {
-    latitude: createNumberValue(
-      latitude,
-      `Observer's latitude: ${formatWithUnits(latitude, "degrees")}`
-    ),
-    longitude: createNumberValue(
-      longitude,
-      `Observer's longitude: ${formatWithUnits(longitude, "degrees")}`
-    ),
-    localTime: createStringValue(
-      dateObj.toLocaleString(),
+    latitude: createNumberValue({
+      value: latitude,
+      unitRange: (latitude + 90) / 180,
+      bipolarRange: latitude / 90,
+      description: `Observer's latitude: ${formatWithUnits(
+        latitude,
+        "degrees"
+      )}`,
+    }),
+    longitude: createNumberValue({
+      value: longitude,
+      unitRange: (longitude + 180) / 360,
+      bipolarRange: longitude / 180,
+      description: `Observer's longitude: ${formatWithUnits(
+        longitude,
+        "degrees"
+      )}`,
+    }),
+    localTime: createDateValue(
+      dateObj.localTime.getMilliseconds(),
+      dateObj.localTime,
       "Local time at observer's location"
     ),
-    siderealTime: createNumberValue(
-      getSiderealTime(timestamp) + longitude / 15,
-      `Local sidereal time: ${formatWithUnits(
-        (getSiderealTime(timestamp) + longitude / 15) % 24,
+    rotationalVelocity: createNumberValue({
+      value: rotationalVelocity,
+      unitRange: rotationalVelocity / 1674, // Normalized to equatorial max of ~1674 km/h
+      description: `Rotational velocity at this latitude: ${formatWithUnits(
+        rotationalVelocity,
+        "km/h"
+      )}`,
+    }),
+    siderealTime: createNumberValue({
+      value: siderealTime % 24,
+      unitRange: (siderealTime % 24) / 24,
+      description: `Local sidereal time: ${formatWithUnits(
+        siderealTime % 24,
         "hours"
-      )}`
-    ),
+      )}`,
+    }),
   };
+}
+
+/**
+ * Calculate the rotational velocity at a specific latitude
+ * @param latitude - Latitude in degrees
+ * @returns Rotational velocity in km/h
+ */
+function getEarthRotationalVelocity(latitude) {
+  // Earth's equatorial circumference in km
+  const earthCircumference = 2 * Math.PI * EARTH_RADIUS_KM;
+
+  // Time for one rotation in hours
+  const rotationTime = EARTH_ROTATION_PERIOD;
+
+  // Velocity at equator in km/h
+  const equatorialVelocity = earthCircumference / rotationTime;
+
+  // Velocity at given latitude (decreases with the cosine of latitude)
+  const latitudeRad = (latitude * Math.PI) / 180;
+  const velocityAtLatitude = equatorialVelocity * Math.cos(latitudeRad);
+
+  return velocityAtLatitude;
 }
 
 /**
  * Get Earth-related information
  */
-function getEarthInfo(
-  timestamp: number,
-  latitude: number
-): {
-  rotationAngle: NumberValue;
-  orbitalPosition: NumberValue;
-  distanceFromSun: NumberValue;
-  season: StringValue;
-  orbitalVelocity: NumberValue;
-} {
+function getEarthInfo(timestamp: number, latitude: number) {
+  const rotationAngle = getEarthRotationAngle(timestamp);
+  const orbitalPosition = getEarthOrbitalPosition(timestamp);
+  const distanceFromSun = getEarthSunDistance(timestamp);
+  const orbitalVelocity = getEarthOrbitalVelocity(timestamp);
+
   return {
-    rotationAngle: createNumberValue(
-      getEarthRotationAngle(timestamp),
-      "Earth's rotation angle in degrees (0-360)"
-    ),
-    orbitalPosition: createNumberValue(
-      getEarthOrbitalPosition(timestamp),
-      "Earth's position in its orbit as angle from perihelion in degrees"
-    ),
-    distanceFromSun: createNumberValue(
-      getEarthSunDistance(timestamp),
-      `Distance from Earth to Sun: ${formatWithUnits(
-        getEarthSunDistance(timestamp) / 1000000,
+    rotationAngle: createNumberValue({
+      value: rotationAngle,
+      unitRange: rotationAngle / 360,
+      description: "Earth's rotation angle in degrees (0-360)",
+    }),
+    orbitalPosition: createNumberValue({
+      value: orbitalPosition,
+      unitRange: orbitalPosition / 360,
+      description:
+        "Earth's position in its orbit as angle from perihelion in degrees",
+    }),
+    distanceFromSun: createNumberValue({
+      value: distanceFromSun,
+      unitRange: (distanceFromSun - 147000000) / (152000000 - 147000000),
+      description: `Distance from Earth to Sun: ${formatWithUnits(
+        distanceFromSun / 1000000,
         "million km"
-      )}`
-    ),
+      )}`,
+    }),
     season: createStringValue(
       latitude >= 0
         ? getNorthernHemisphereSeason(timestamp)
@@ -319,153 +299,153 @@ function getEarthInfo(
         latitude >= 0 ? "Northern" : "Southern"
       } Hemisphere`
     ),
-    orbitalVelocity: createNumberValue(
-      getEarthOrbitalVelocity(timestamp),
-      `Earth's orbital velocity: ${formatWithUnits(
-        getEarthOrbitalVelocity(timestamp),
+    orbitalVelocity: createNumberValue({
+      value: orbitalVelocity,
+      unitRange: (orbitalVelocity - 29.29) / (30.29 - 29.29), // Normalize between min/max velocities
+      description: `Earth's orbital velocity: ${formatWithUnits(
+        orbitalVelocity,
         "km/s"
-      )}`
-    ),
+      )}`,
+    }),
   };
 }
 
 /**
  * Get Sun-related information
  */
-function getSunInfo(
-  latitude: number,
-  longitude: number,
-  timestamp: number
-): {
-  elevation: NumberValue;
-  azimuth: NumberValue;
-  angularDiameter: NumberValue;
-  sunrise: DateValue;
-  sunset: DateValue;
-  dayLength: NumberValue;
-} {
+function getSunInfo(latitude: number, longitude: number, timestamp: number) {
+  const elevation = getSolarElevation(latitude, longitude, timestamp);
+  const azimuth = getSolarAzimuth(latitude, longitude, timestamp);
+  const angularDiameter = getSolarAngularDiameter(timestamp);
+  const sunrise = getSunrise(latitude, longitude, timestamp);
+  const sunset = getSunset(latitude, longitude, timestamp);
+  const dayLength = getDayLength(latitude, longitude, timestamp) || 0;
+
   return {
-    elevation: createNumberValue(
-      getSolarElevation(latitude, longitude, timestamp),
-      `Solar elevation angle: ${formatWithUnits(
-        getSolarElevation(latitude, longitude, timestamp),
+    elevation: createNumberValue({
+      value: elevation,
+      unitRange: Math.max(0, (elevation + 90) / 180), // 0-1 scale
+      bipolarRange: elevation / 90, // -1 to 1 scale (-90° to +90°)
+      description: `Solar elevation angle: ${formatWithUnits(
+        elevation,
         "degrees"
-      )}`
-    ),
-    azimuth: createNumberValue(
-      getSolarAzimuth(latitude, longitude, timestamp),
-      `Solar azimuth angle: ${formatWithUnits(
-        getSolarAzimuth(latitude, longitude, timestamp),
+      )}`,
+    }),
+    azimuth: createNumberValue({
+      value: azimuth,
+      unitRange: azimuth / 360, // Normalize 0-360 range to 0-1
+      description: `Solar azimuth angle: ${formatWithUnits(
+        azimuth,
         "degrees"
-      )}`
-    ),
-    angularDiameter: createNumberValue(
-      getSolarAngularDiameter(timestamp),
-      `Solar angular diameter: ${formatWithUnits(
-        getSolarAngularDiameter(timestamp),
+      )}`,
+    }),
+    angularDiameter: createNumberValue({
+      value: angularDiameter,
+      unitRange: (angularDiameter - 0.524) / (0.542 - 0.524), // Normalize using min/max values
+      description: `Solar angular diameter: ${formatWithUnits(
+        angularDiameter,
         "degrees"
-      )}`
-    ),
+      )}`,
+    }),
     sunrise: createDateValue(
-      getSunrise(latitude, longitude, timestamp),
-      `Sunrise time: ${formatDate(getSunrise(latitude, longitude, timestamp))}`
+      sunrise ? sunrise.getTime() : 0,
+      sunrise,
+      `Sunrise time: ${formatDate(sunrise)}`
     ),
     sunset: createDateValue(
-      getSunset(latitude, longitude, timestamp),
-      `Sunset time: ${formatDate(getSunset(latitude, longitude, timestamp))}`
+      sunset ? sunset.getTime() : 0,
+      sunset,
+      `Sunset time: ${formatDate(sunset)}`
     ),
-    dayLength: createNumberValue(
-      getDayLength(latitude, longitude, timestamp) || 0,
-      `Day length: ${formatWithUnits(
-        getDayLength(latitude, longitude, timestamp) || 0,
-        "hours"
-      )}`
-    ),
+    dayLength: createNumberValue({
+      value: dayLength,
+      unitRange: dayLength / 24, // Normalize as fraction of a day
+      description: `Day length: ${formatWithUnits(dayLength, "hours")}`,
+    }),
   };
 }
 
 /**
  * Get Moon-related information
  */
-function getMoonInfo(
-  latitude: number,
-  longitude: number,
-  timestamp: number
-): {
-  phase: NumberValue;
-  phaseDescription: StringValue;
-  illuminationPercent: NumberValue;
-  age: NumberValue;
-  distance: NumberValue;
-  angularDiameter: NumberValue;
-  altitude: NumberValue;
-  azimuth: NumberValue;
-  nextFullMoon: DateValue;
-  nextNewMoon: DateValue;
-  tidalForce: NumberValue;
-} {
+function getMoonInfo(latitude: number, longitude: number, timestamp: number) {
+  const phase = getMoonPhase(timestamp);
+  const phaseDescription = getMoonPhaseDescription(timestamp);
+  const illumination = getMoonIllumination(timestamp);
+  const age = phase * MOON_SYNODIC_PERIOD;
+  const distance = getMoonDistance(timestamp);
+  const angularDiameter = getLunarAngularDiameter(timestamp);
+  const altitude = getMoonAltitude(latitude, longitude, timestamp);
+  const azimuth = getMoonAzimuth(latitude, longitude, timestamp);
+  const nextFullMoon = getNextFullMoon(timestamp);
+  const nextNewMoon = getNextNewMoon(timestamp);
+  const tidalForce = getLunarTidalForce(latitude, longitude, timestamp);
+
   return {
-    phase: createNumberValue(
-      getMoonPhase(timestamp),
-      "Moon phase value (0-1, where 0=new moon, 0.5=full moon)"
-    ),
+    phase: createNumberValue({
+      value: phase,
+      unitRange: phase, // Already unitRange 0-1
+      description: "Moon phase value (0-1, where 0=new moon, 0.5=full moon)",
+    }),
     phaseDescription: createStringValue(
-      getMoonPhaseDescription(timestamp),
+      phaseDescription,
       "Descriptive name of the current moon phase"
     ),
-    illuminationPercent: createNumberValue(
-      getMoonIllumination(timestamp),
-      `Percentage of Moon illuminated: ${formatWithUnits(
-        getMoonIllumination(timestamp),
+    illuminationPercent: createNumberValue({
+      value: illumination,
+      unitRange: illumination / 100, // Normalize percentage to 0-1
+      description: `Percentage of Moon illuminated: ${formatWithUnits(
+        illumination,
         "%"
-      )}`
-    ),
-    age: createNumberValue(
-      getMoonPhase(timestamp) * MOON_SYNODIC_PERIOD,
-      `Moon age: ${(getMoonPhase(timestamp) * MOON_SYNODIC_PERIOD).toFixed(
-        1
-      )} days since new moon`
-    ),
-    distance: createNumberValue(
-      getMoonDistance(timestamp),
-      `Distance from Earth to Moon: ${formatWithUnits(
-        getMoonDistance(timestamp),
+      )}`,
+    }),
+    age: createNumberValue({
+      value: age,
+      unitRange: age / MOON_SYNODIC_PERIOD, // Normalize age to fraction of cycle (same as phase)
+      description: `Moon age: ${age.toFixed(1)} days since new moon`,
+    }),
+    distance: createNumberValue({
+      value: distance,
+      unitRange: (distance - 356400) / (406700 - 356400), // Normalize using min/max values
+      description: `Distance from Earth to Moon: ${formatWithUnits(
+        distance,
         "km"
-      )}`
-    ),
-    angularDiameter: createNumberValue(
-      getLunarAngularDiameter(timestamp),
-      `Moon's apparent diameter in sky: ${formatWithUnits(
-        getLunarAngularDiameter(timestamp),
+      )}`,
+    }),
+    angularDiameter: createNumberValue({
+      value: angularDiameter,
+      unitRange: (angularDiameter - 0.29) / (0.34 - 0.29), // Normalize using min/max values
+      description: `Moon's apparent diameter in sky: ${formatWithUnits(
+        angularDiameter,
         "degrees"
-      )}`
-    ),
-    altitude: createNumberValue(
-      getMoonAltitude(latitude, longitude, timestamp),
-      `Moon's altitude: ${formatWithUnits(
-        getMoonAltitude(latitude, longitude, timestamp),
-        "degrees"
-      )}`
-    ),
-    azimuth: createNumberValue(
-      getMoonAzimuth(latitude, longitude, timestamp),
-      `Moon's azimuth: ${formatWithUnits(
-        getMoonAzimuth(latitude, longitude, timestamp),
-        "degrees"
-      )}`
-    ),
+      )}`,
+    }),
+    altitude: createNumberValue({
+      value: altitude,
+      unitRange: Math.max(0, (altitude + 90) / 180), // 0-1 scale
+      bipolarRange: altitude / 90, // -1 to 1 scale (-90° to +90°)
+      description: `Moon's altitude: ${formatWithUnits(altitude, "degrees")}`,
+    }),
+    azimuth: createNumberValue({
+      value: azimuth,
+      unitRange: azimuth / 360, // Normalize 0-360 range to 0-1
+      description: `Moon's azimuth: ${formatWithUnits(azimuth, "degrees")}`,
+    }),
     nextFullMoon: createDateValue(
-      getNextFullMoon(timestamp),
-      `Next full moon: ${formatDate(getNextFullMoon(timestamp))}`
+      nextFullMoon.getTime(),
+      nextFullMoon,
+      `Next full moon: ${formatDate(nextFullMoon)}`
     ),
     nextNewMoon: createDateValue(
-      getNextNewMoon(timestamp),
-      `Next new moon: ${formatDate(getNextNewMoon(timestamp))}`
+      nextNewMoon.getTime(),
+      nextNewMoon,
+      `Next new moon: ${formatDate(nextNewMoon)}`
     ),
-    tidalForce: createNumberValue(
-      getLunarTidalForce(latitude, longitude, timestamp),
-      "Relative lunar tidal force (0-1 scale)"
-    ),
+    tidalForce: createNumberValue({
+      value: tidalForce,
+      unitRange: tidalForce, // Already unitRange 0-1
+      description: "Relative lunar tidal force (0-1 scale)",
+    }),
   };
 }
 
@@ -477,7 +457,15 @@ function getPlanetsInfo(
   longitude: number,
   timestamp: number
 ): {
-  [key: string]: PlanetInfo;
+  [k: string]: {
+    name: StringValue;
+    isVisible: BooleanValue;
+    altitude: NumberValue;
+    azimuth: NumberValue;
+    magnitude: NumberValue;
+    angularDiameter: NumberValue;
+    phase: NumberValue | null;
+  };
 } {
   const planetNames = [
     "Mercury",
@@ -489,9 +477,7 @@ function getPlanetsInfo(
     "Neptune",
   ];
 
-  const details: {
-    [key: string]: PlanetInfo;
-  } = {};
+  const details = {};
 
   for (const planet of planetNames) {
     try {
@@ -510,34 +496,48 @@ function getPlanetsInfo(
             ? `${planet} is visible`
             : `${planet} is not visible`
         ),
-        altitude: createNumberValue(
-          visibility.altitude,
-          `Altitude above horizon: ${formatWithUnits(
+        altitude: createNumberValue({
+          value: visibility.altitude,
+          unitRange: Math.max(0, (visibility.altitude + 90) / 180), // 0-1 scale
+          bipolarRange: visibility.altitude / 90, // -1 to 1 scale (-90° to +90°)
+          description: `Altitude above horizon: ${formatWithUnits(
             visibility.altitude,
             "degrees"
-          )}`
-        ),
-        azimuth: createNumberValue(
-          visibility.azimuth,
-          `Azimuth: ${formatWithUnits(visibility.azimuth, "degrees")}`
-        ),
-        magnitude: createNumberValue(
-          visibility.magnitude,
-          `Apparent magnitude: ${visibility.magnitude.toFixed(1)}`
-        ),
-        angularDiameter: createNumberValue(
-          visibility.angularDiameter,
-          `Angular diameter: ${formatWithUnits(
+          )}`,
+        }),
+        azimuth: createNumberValue({
+          value: visibility.azimuth,
+          unitRange: visibility.azimuth / 360, // Normalize 0-360 range to 0-1
+          description: `Azimuth: ${formatWithUnits(
+            visibility.azimuth,
+            "degrees"
+          )}`,
+        }),
+        magnitude: createNumberValue({
+          value: visibility.magnitude,
+          // Normalize magnitude (typical visible range is -27 to 6, where lower is brighter)
+          // Map -27 to 0 and 6 to 1
+          unitRange: (visibility.magnitude + 27) / 33,
+          description: `Apparent magnitude: ${visibility.magnitude.toFixed(1)}`,
+        }),
+        angularDiameter: createNumberValue({
+          value: visibility.angularDiameter,
+          // Normalize using typical range of 0 to 50 arcseconds
+          unitRange: visibility.angularDiameter / 50,
+          description: `Angular diameter: ${formatWithUnits(
             visibility.angularDiameter,
             "arcseconds"
-          )}`
-        ),
+          )}`,
+        }),
         phase:
           planet === "Mercury" || planet === "Venus"
-            ? createNumberValue(
-                visibility.phase,
-                `Illuminated fraction: ${(visibility.phase * 100).toFixed(0)}%`
-              )
+            ? createNumberValue({
+                value: visibility.phase,
+                unitRange: visibility.phase, // Already unitRange 0-1
+                description: `Illuminated fraction: ${(
+                  visibility.phase * 100
+                ).toFixed(0)}%`,
+              })
             : null,
       };
     } catch (error) {
@@ -546,209 +546,6 @@ function getPlanetsInfo(
   }
 
   return details;
-}
-
-/**
- * Get deep space related information
- */
-function getDeepSpaceInfo(
-  timestamp: number,
-  latitude: number
-): {
-  milkyWayVisibility: NumberValue;
-  galacticPosition: NumberValue;
-  relativisticEffects: {
-    earthTimeDilation: NumberValue;
-    gravitationalTimeDilation: NumberValue;
-  };
-} {
-  const dateObj = new Date(timestamp);
-  const earthOrbitalVelocity = getEarthOrbitalVelocity(timestamp);
-
-  // Calculate Milky Way visibility based on date and location
-  const month = dateObj.getMonth(); // 0-11
-  let seasonFactor = 0;
-
-  if (latitude >= 0) {
-    // Northern Hemisphere
-    if (month >= 4 && month <= 9) {
-      // Summer months
-      seasonFactor = 1.0;
-    } else if (month === 3 || month === 10) {
-      // Spring/Fall
-      seasonFactor = 0.7;
-    } else {
-      // Winter
-      seasonFactor = 0.3;
-    }
-  } else {
-    // Southern Hemisphere (inverted seasons)
-    if (month >= 10 || month <= 3) {
-      // Summer months
-      seasonFactor = 1.0;
-    } else if (month === 4 || month === 9) {
-      // Spring/Fall
-      seasonFactor = 0.7;
-    } else {
-      // Winter
-      seasonFactor = 0.3;
-    }
-  }
-
-  const skyBrightness = calculateSkyBrightness(latitude, timestamp);
-  const visibilityFactor = (1 - skyBrightness) * seasonFactor;
-
-  let milkyWayDescription = "";
-  if (visibilityFactor > 0.7) {
-    milkyWayDescription =
-      "Excellent Milky Way visibility, with detailed structure visible";
-  } else if (visibilityFactor > 0.4) {
-    milkyWayDescription = "Milky Way should be visible with good contrast";
-  } else if (visibilityFactor > 0.2) {
-    milkyWayDescription =
-      "Milky Way may be faintly visible under good conditions";
-  } else {
-    milkyWayDescription =
-      "Milky Way unlikely to be visible due to sky conditions or season";
-  }
-
-  return {
-    milkyWayVisibility: createNumberValue(
-      visibilityFactor,
-      milkyWayDescription
-    ),
-    galacticPosition: createNumberValue(
-      getGalacticYearProgress(timestamp),
-      `Progress through current galactic year: ${(
-        getGalacticYearProgress(timestamp) * 100
-      ).toFixed(4)}%`
-    ),
-    relativisticEffects: {
-      earthTimeDilation: createNumberValue(
-        getRelativisticTimeDilation(earthOrbitalVelocity),
-        `Relativistic time dilation due to Earth's orbital velocity: ${formatWithUnits(
-          (getRelativisticTimeDilation(earthOrbitalVelocity) - 1) * 1e9,
-          "nanoseconds per second"
-        )}`
-      ),
-      gravitationalTimeDilation: createNumberValue(
-        getGravitationalTimeDilation(1, 150e6),
-        `Gravitational time dilation at Earth's distance from the Sun: ${(
-          (1 - getGravitationalTimeDilation(1, 150e6)) *
-          1e9
-        ).toFixed(2)} nanoseconds per second`
-      ),
-    },
-  };
-}
-
-/**
- * Get observing conditions information
- */
-function getObservingConditionsInfo(
-  latitude: number,
-  longitude: number,
-  timestamp: number
-): {
-  skyBrightness: NumberValue;
-  moonInterference: NumberValue;
-  bestTargets: StringValue;
-} {
-  const moonPhase = getMoonPhase(timestamp);
-  const moonAltitude = getMoonAltitude(latitude, longitude, timestamp);
-  const moonUp = moonAltitude > 0;
-
-  // Calculate sky brightness
-  const skyBrightness = calculateSkyBrightness(latitude, timestamp);
-
-  // Calculate moon interference
-  let interference = 0;
-  if (moonUp) {
-    // Moon above horizon causes interference based on phase
-    interference = moonPhase * 0.8 + 0.2;
-  } else {
-    // Moon below horizon causes minimal interference
-    interference = 0.1;
-  }
-
-  let interferenceDescription = "";
-  if (interference > 0.7) {
-    interferenceDescription =
-      "Significant moonlight interference with deep sky observing";
-  } else if (interference > 0.4) {
-    interferenceDescription = "Moderate moonlight affecting dimmer objects";
-  } else {
-    interferenceDescription = "Minimal moon interference with observing";
-  }
-
-  // Recommend best targets
-  const planetInfo = getPlanetsInfo(latitude, longitude, timestamp);
-  const visiblePlanets = Object.values(planetInfo).flatMap((planet) =>
-    planet.isVisible.value ? planet.name.value : []
-  );
-
-  let recommendation = "";
-
-  // Add planet recommendations
-  if (visiblePlanets.length > 0) {
-    recommendation += `Planets: ${visiblePlanets.join(", ")}. `;
-  }
-
-  // Add deep sky recommendations based on sky brightness
-  if (skyBrightness < 0.3) {
-    recommendation +=
-      "Excellent conditions for deep sky observing. Consider galaxies, nebulae, and globular clusters. ";
-  } else if (skyBrightness < 0.6) {
-    recommendation +=
-      "Good conditions for brighter deep sky objects like the Orion Nebula, Andromeda Galaxy, and bright star clusters. ";
-  } else {
-    recommendation +=
-      "Limited deep sky visibility. Focus on bright targets like open clusters, double stars, and planets. ";
-  }
-
-  return {
-    skyBrightness: createNumberValue(
-      skyBrightness,
-      skyBrightness < 0.3
-        ? "Excellent dark sky conditions"
-        : skyBrightness < 0.6
-        ? "Moderate sky brightness"
-        : "Bright skies limit deep sky observing"
-    ),
-    moonInterference: createNumberValue(interference, interferenceDescription),
-    bestTargets: createStringValue(
-      recommendation,
-      "Recommended observing targets"
-    ),
-  };
-}
-
-/**
- * Calculate sky brightness (0-1 scale)
- */
-function calculateSkyBrightness(latitude: number, timestamp: number): number {
-  const dateObj = new Date(timestamp);
-  const moonPhase = getMoonPhase(timestamp);
-  const sunAltitude = getSolarElevation(latitude, 0, timestamp);
-  const moonAltitude = getMoonAltitude(latitude, 0, timestamp);
-
-  let skyBrightness = 0;
-
-  if (sunAltitude > -12) {
-    // Twilight or daytime
-    skyBrightness = Math.max(0, Math.min(1, (sunAltitude + 18) / 18));
-  } else {
-    // Night time - moon is the primary factor
-    if (moonAltitude > 0) {
-      // Moon is up - calculate brightness based on phase and altitude
-      skyBrightness = moonPhase * (moonAltitude / 90) * 0.7;
-    } else {
-      // Moon is down - darkest skies
-      skyBrightness = 0.05; // Light pollution minimum
-    }
-  }
-
-  return skyBrightness;
 }
 
 /**
@@ -819,16 +616,17 @@ function getEarthOrbitalPosition(date: DateInput): number {
  * Calculate Earth-Sun distance at a given time
  */
 function getEarthSunDistance(date: DateInput): number {
-  const timestamp = date instanceof Date ? date.getTime() : date;
-  const orbitalPosition = (getEarthOrbitalPosition(timestamp) * Math.PI) / 180; // Convert to radians
+  const meanAnomaly = (getEarthOrbitalPosition(date) * Math.PI) / 180;
+  // Add equation of center (approximate)
+  const equationOfCenter =
+    2 * EARTH_ORBITAL_ECCENTRICITY * Math.sin(meanAnomaly);
+  const trueAnomaly = meanAnomaly + equationOfCenter;
 
-  // Use the orbital equation to calculate distance
-  const distance =
+  return (
     (EARTH_SUN_MEAN_DISTANCE_KM *
       (1 - EARTH_ORBITAL_ECCENTRICITY * EARTH_ORBITAL_ECCENTRICITY)) /
-    (1 + EARTH_ORBITAL_ECCENTRICITY * Math.cos(orbitalPosition));
-
-  return distance;
+    (1 + EARTH_ORBITAL_ECCENTRICITY * Math.cos(trueAnomaly))
+  );
 }
 
 /**
@@ -1101,10 +899,15 @@ function getMoonPhase(date: DateInput): number {
   // Days since first new moon of J2000.0 epoch
   const daysSinceNewMoon = julianDay - 2451550.1;
 
-  // Calculate the moon phase using the synodic period
-  const phase = (daysSinceNewMoon % MOON_SYNODIC_PERIOD) / MOON_SYNODIC_PERIOD;
+  // Calculate mean phase
+  const meanPhase =
+    (daysSinceNewMoon % MOON_SYNODIC_PERIOD) / MOON_SYNODIC_PERIOD;
 
-  return phase;
+  // Add first-order correction for elliptical orbit
+  const phaseAngle = meanPhase * 2 * Math.PI;
+  const correction = 0.0167 * Math.sin(phaseAngle); // Eccentricity-based correction
+
+  return (meanPhase + correction / (2 * Math.PI)) % 1.0;
 }
 
 /**
@@ -1138,31 +941,6 @@ function getMoonIllumination(date: DateInput): number {
   const illumination = 50 * (1 - Math.cos(2 * Math.PI * phase));
 
   return illumination;
-}
-
-/**
- * Calculate approximate moon distance from Earth
- * @param date - JavaScript Date object or timestamp
- * @return Distance in kilometers
- */
-function getMoonDistance(date: DateInput): number {
-  const timestamp = date instanceof Date ? date.getTime() : date;
-  const julianDay = getJulianDay(timestamp);
-
-  // Days since J2000.0 epoch
-  const T = (julianDay - 2451545.0) / 36525;
-
-  // Mean longitude of the Moon
-  const L = 218.316 + 13.176396 * (julianDay - 2451545.0);
-
-  // Mean anomaly of the Moon
-  const M = 134.963 + 13.064993 * (julianDay - 2451545.0);
-
-  // Mean distance
-  const distance =
-    MOON_MEAN_DISTANCE_KM * (1 - 0.054 * Math.cos((M * Math.PI) / 180));
-
-  return distance;
 }
 
 /**
@@ -1266,107 +1044,11 @@ function getEarthOrbitalVelocity(date: DateInput): number {
 }
 
 /**
- * Calculate Moon's altitude
- * @param latitude - Latitude in degrees
- * @param longitude - Longitude in degrees
- * @param date - JavaScript Date object or timestamp
- * @return Moon's altitude in degrees
- */
-function getMoonAltitude(
-  latitude: number,
-  longitude: number,
-  date: DateInput
-): number {
-  const timestamp = date instanceof Date ? date.getTime() : date;
-  const dateObj = new Date(timestamp);
-
-  // This is a simplified approximation
-  // Calculate moon's approximate equatorial coordinates
-  const moonPhase = getMoonPhase(timestamp);
-  const moonOrbitalPos = moonPhase * 2 * Math.PI;
-
-  // Approximate declination and right ascension based on phase
-  const moonDec = 23.4 * Math.sin(moonOrbitalPos); // Max declination approximately Earth's axial tilt
-  const moonRa = (moonPhase * 24 + 12) % 24; // Full cycle of right ascension through the lunar month
-
-  // Convert to horizontal coordinates
-  const siderealTime = getSiderealTime(timestamp) + longitude / 15;
-  const localSiderealTime = siderealTime % 24;
-
-  // Calculate hour angle (local sidereal time - right ascension)
-  const hourAngle = ((localSiderealTime - moonRa) * 15 * Math.PI) / 180;
-
-  // Convert to radians
-  const latRad = (latitude * Math.PI) / 180;
-  const decRad = (moonDec * Math.PI) / 180;
-
-  // Calculate altitude
-  const sinAlt =
-    Math.sin(latRad) * Math.sin(decRad) +
-    Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngle);
-
-  return (Math.asin(sinAlt) * 180) / Math.PI;
-}
-
-/**
- * Calculate Moon's azimuth
- * @param latitude - Latitude in degrees
- * @param longitude - Longitude in degrees
- * @param date - JavaScript Date object or timestamp
- * @return Moon's azimuth in degrees
- */
-function getMoonAzimuth(
-  latitude: number,
-  longitude: number,
-  date: DateInput
-): number {
-  const timestamp = date instanceof Date ? date.getTime() : date;
-  const dateObj = new Date(timestamp);
-
-  // This is a simplified approximation
-  // Calculate moon's approximate equatorial coordinates
-  const moonPhase = getMoonPhase(timestamp);
-  const moonOrbitalPos = moonPhase * 2 * Math.PI;
-
-  // Approximate declination and right ascension based on phase
-  const moonDec = 23.4 * Math.sin(moonOrbitalPos); // Max declination approximately Earth's axial tilt
-  const moonRa = (moonPhase * 24 + 12) % 24; // Full cycle of right ascension through the lunar month
-
-  // Convert to horizontal coordinates
-  const siderealTime = getSiderealTime(timestamp) + longitude / 15;
-  const localSiderealTime = siderealTime % 24;
-
-  // Calculate hour angle (local sidereal time - right ascension)
-  const hourAngle = ((localSiderealTime - moonRa) * 15 * Math.PI) / 180;
-
-  // Convert to radians
-  const latRad = (latitude * Math.PI) / 180;
-  const decRad = (moonDec * Math.PI) / 180;
-
-  // Calculate altitude (needed for azimuth calculation)
-  const sinAlt =
-    Math.sin(latRad) * Math.sin(decRad) +
-    Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngle);
-  const altitude = Math.asin(sinAlt);
-
-  // Calculate azimuth
-  const cosAz =
-    (Math.sin(decRad) - Math.sin(latRad) * sinAlt) /
-    (Math.cos(latRad) * Math.cos(altitude));
-  const sinAz = (-Math.sin(hourAngle) * Math.cos(decRad)) / Math.cos(altitude);
-
-  let azimuth = (Math.atan2(sinAz, cosAz) * 180) / Math.PI;
-  azimuth = (azimuth + 360) % 360;
-
-  return azimuth;
-}
-
-/**
  * Calculate tidal force at a given location due to the Moon
  * @param latitude - Latitude in degrees
  * @param longitude - Longitude in degrees
  * @param date - JavaScript Date object or timestamp
- * @return Relative tidal force (normalized between 0-1)
+ * @return Relative tidal force (unitRange between 0-1)
  */
 function getLunarTidalForce(
   latitude: number,
@@ -1407,23 +1089,33 @@ function getSiderealTime(date: DateInput): number {
   // Centuries since J2000.0
   const T = (julianDay - 2451545.0) / 36525;
 
-  // Greenwich Mean Sidereal Time at 0h UTC
+  // Greenwich Mean Sidereal Time at 0h UTC with improved coefficients
   const GMST0h =
     100.46061837 +
     36000.770053608 * T +
     0.000387933 * T ** 2 -
     T ** 3 / 38710000;
 
-  // Adjust for time of day
+  // Adjust for time of day using Earth's precise rotation period
   const hoursUTC =
     dateObj.getUTCHours() +
     dateObj.getUTCMinutes() / 60 +
     dateObj.getUTCSeconds() / 3600;
 
-  // Sidereal time increases at a rate of about 1.0027379 compared to solar time
-  const siderealTimeHours = (GMST0h / 15 + hoursUTC * 1.0027379) % 24;
+  // Ratio of sidereal day to solar day is precisely:
+  // solar day / sidereal day = 1.00273781191135448
+  // This is equivalent to: EARTH_MEAN_SOLAR_DAY / EARTH_ROTATION_PERIOD
+  const siderealFactor = EARTH_MEAN_SOLAR_DAY / EARTH_ROTATION_PERIOD;
 
-  return siderealTimeHours;
+  // Sidereal time increases at a more precise rate compared to solar time
+  const siderealTimeHours = (GMST0h / 15 + hoursUTC * siderealFactor) % 24;
+
+  // Add nutation correction (simplified)
+  const omega = 125.04 - 1934.136 * T;
+  const L0 = 280.47 + 36000.77 * T;
+  const nutationCorrection = -0.00017 * Math.sin((omega * Math.PI) / 180);
+
+  return (siderealTimeHours + nutationCorrection) % 24;
 }
 
 /**
@@ -1687,4 +1379,422 @@ function getGalacticYearProgress(date: DateInput): number {
     millisecondsPerGalacticYear;
 
   return progress;
+}
+
+/**
+ * Enhanced calculation of galactic position with more context
+ * @param date - Current date
+ * @returns Object with enhanced galactic position information
+ */
+function getGalacticPosition(date) {
+  const timestamp = date instanceof Date ? date.getTime() : date;
+
+  // Basic galactic year progress (0-1)
+  const millisecondsPerGalacticYear =
+    MILKY_WAY_ORBITAL_PERIOD * 365.25 * 24 * 60 * 60 * 1000;
+
+  // Total time elapsed since J2000.0
+  const timeElapsed = timestamp - J2000_EPOCH;
+
+  // Current progress through galactic year (0-1)
+  const progress =
+    (timeElapsed % millisecondsPerGalacticYear) / millisecondsPerGalacticYear;
+
+  // Calculate how many full galactic years have passed since J2000
+  const completedYears = Math.floor(timeElapsed / millisecondsPerGalacticYear);
+
+  // Calculate how many years into the current galactic year we are
+  const yearsIntoCurrentCycle = progress * MILKY_WAY_ORBITAL_PERIOD;
+
+  // Calculate our approximate position in the galaxy relative to galactic center
+  // This is a very rough approximation assuming a circular orbit
+  const orbitalAngle = progress * 2 * Math.PI; // in radians
+
+  // Position relative to galactic center (very approximate)
+  const x = MILKY_WAY_CENTER_DISTANCE * Math.cos(orbitalAngle);
+  const y = MILKY_WAY_CENTER_DISTANCE * Math.sin(orbitalAngle);
+
+  // Galactic "seasons" based on quadrants of the orbit
+  let galacticSeason = "";
+  if (progress < 0.25) {
+    galacticSeason = "First Galactic Quadrant";
+  } else if (progress < 0.5) {
+    galacticSeason = "Second Galactic Quadrant";
+  } else if (progress < 0.75) {
+    galacticSeason = "Third Galactic Quadrant";
+  } else {
+    galacticSeason = "Fourth Galactic Quadrant";
+  }
+
+  // Current velocity relative to the galactic rest frame
+  // This combines Earth's orbital velocity, solar system's movement, etc.
+  // Very approximate calculation
+  const totalVelocity =
+    MILKY_WAY_ROTATION_VELOCITY + Math.sin(orbitalAngle) * 10; // km/s
+
+  return {
+    progress,
+    completedYears,
+    yearsIntoCurrentCycle,
+    position: { x, y },
+    galacticSeason,
+    totalVelocity,
+  };
+}
+
+/**
+ * Calculate Moon's position using a simplified version of Meeus' algorithm
+ * @param date - JavaScript Date object or timestamp
+ * @returns Object with equatorial coordinates (right ascension, declination) and distance
+ */
+function getMoonPosition(date) {
+  const timestamp = date instanceof Date ? date.getTime() : date;
+  const julianDay = getJulianDay(timestamp);
+
+  // Time in Julian centuries since J2000.0
+  const T = (julianDay - 2451545.0) / 36525;
+
+  // Simplified elements of the Moon's orbit
+  // Mean longitude of the Moon
+  const L = 218.316 + 481267.8811 * T - 0.00146 * T * T;
+
+  // Mean elongation of the Moon
+  const D = 297.8502 + 445267.1115 * T - 0.00163 * T * T;
+
+  // Mean anomaly of the Sun
+  const M = 357.5291 + 35999.0503 * T - 0.0001559 * T * T;
+
+  // Mean anomaly of the Moon
+  const Mprime = 134.9634 + 477198.8676 * T + 0.008721 * T * T;
+
+  // Moon's argument of latitude
+  const F = 93.2721 + 483202.0175 * T - 0.0034029 * T * T;
+
+  // Convert to radians for calculations
+  const Lrad = ((L % 360) * Math.PI) / 180;
+  const Drad = ((D % 360) * Math.PI) / 180;
+  const Mrad = ((M % 360) * Math.PI) / 180;
+  const Mprimerad = ((Mprime % 360) * Math.PI) / 180;
+  const Frad = ((F % 360) * Math.PI) / 180;
+
+  // Calculate periodic terms for longitude
+  let longitude =
+    L +
+    6.289 * Math.sin(Mprimerad) +
+    1.274 * Math.sin(2 * Drad - Mprimerad) +
+    0.658 * Math.sin(2 * Drad) +
+    0.214 * Math.sin(2 * Mprimerad) -
+    0.186 * Math.sin(Mrad) -
+    0.114 * Math.sin(2 * Frad);
+
+  // Calculate periodic terms for latitude
+  let latitude =
+    5.128 * Math.sin(Frad) +
+    0.28 * Math.sin(Mprimerad + Frad) +
+    0.28 * Math.sin(Mprimerad - Frad) +
+    0.23 * Math.sin(2 * Drad - Frad);
+
+  // Calculate distance in Earth radii
+  const distance =
+    60.36298 -
+    3.39968 * Math.cos(Mprimerad) -
+    0.17 * Math.cos(2 * Drad - Mprimerad) -
+    0.14 * Math.cos(2 * Drad) -
+    0.07 * Math.cos(2 * Mprimerad);
+
+  // Convert distance to kilometers
+  const distanceKm = distance * EARTH_RADIUS_KM;
+
+  // Ensure longitude is in range 0-360
+  longitude = ((longitude % 360) + 360) % 360;
+
+  // Convert ecliptic coordinates to equatorial coordinates
+  const obliquity =
+    23.439292 - 0.0130042 * T - 0.00000016 * T * T + 0.000000504 * T * T * T;
+  const obliquityRad = (obliquity * Math.PI) / 180;
+  const longitudeRad = (longitude * Math.PI) / 180;
+  const latitudeRad = (latitude * Math.PI) / 180;
+
+  // Calculate right ascension and declination
+  const rightAscension = Math.atan2(
+    Math.sin(longitudeRad) * Math.cos(obliquityRad) -
+      Math.tan(latitudeRad) * Math.sin(obliquityRad),
+    Math.cos(longitudeRad)
+  );
+
+  const declination = Math.asin(
+    Math.sin(latitudeRad) * Math.cos(obliquityRad) +
+      Math.cos(latitudeRad) * Math.sin(obliquityRad) * Math.sin(longitudeRad)
+  );
+
+  // Convert to degrees
+  const rightAscensionDeg = ((rightAscension * 180) / Math.PI + 360) % 360;
+  const declinationDeg = (declination * 180) / Math.PI;
+
+  // Convert right ascension to hours (0-24)
+  const rightAscensionHours = rightAscensionDeg / 15;
+
+  return {
+    rightAscension: rightAscensionHours,
+    declination: declinationDeg,
+    distance: distanceKm,
+    longitude: longitude,
+    latitude: latitude,
+  };
+}
+
+/**
+ * Calculate Moon's altitude and azimuth for a given location and time
+ * @param latitude - Observer's latitude in degrees
+ * @param longitude - Observer's longitude in degrees
+ * @param date - JavaScript Date object or timestamp
+ * @return Object with altitude and azimuth in degrees
+ */
+function getMoonHorizontalCoordinates(latitude, longitude, date) {
+  const timestamp = date instanceof Date ? date.getTime() : date;
+
+  // Get moon's equatorial coordinates
+  const moonPos = getMoonPosition(timestamp);
+
+  // Get local sidereal time
+  const siderealTime = getSiderealTime(timestamp) + longitude / 15;
+  const localSiderealTime = siderealTime % 24;
+
+  // Calculate hour angle (local sidereal time - right ascension)
+  const hourAngle =
+    ((localSiderealTime - moonPos.rightAscension) * 15 * Math.PI) / 180;
+
+  // Convert to radians
+  const latRad = (latitude * Math.PI) / 180;
+  const decRad = (moonPos.declination * Math.PI) / 180;
+
+  // Calculate altitude
+  const sinAlt =
+    Math.sin(latRad) * Math.sin(decRad) +
+    Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngle);
+  const altitude = (Math.asin(sinAlt) * 180) / Math.PI;
+
+  // Calculate azimuth
+  const cosAz =
+    (Math.sin(decRad) - Math.sin(latRad) * sinAlt) /
+    (Math.cos(latRad) * Math.cos(Math.asin(sinAlt)));
+
+  // Handle potential numerical instability
+  const cosAzClamped = Math.max(-1, Math.min(1, cosAz));
+
+  const sinAz =
+    (-Math.sin(hourAngle) * Math.cos(decRad)) / Math.cos(Math.asin(sinAlt));
+  let azimuth = (Math.atan2(sinAz, cosAzClamped) * 180) / Math.PI;
+
+  // Ensure azimuth is in range 0-360
+  azimuth = (azimuth + 360) % 360;
+
+  // Apply atmospheric refraction correction for objects near the horizon
+  let refractedAltitude = altitude;
+  if (altitude < 10) {
+    // Simple refraction model
+    const R =
+      0.0167 / Math.tan(((altitude + 7.31 / (altitude + 4.4)) * Math.PI) / 180);
+    refractedAltitude = altitude + R;
+  }
+
+  return {
+    altitude: refractedAltitude,
+    azimuth: azimuth,
+    distance: moonPos.distance,
+  };
+}
+
+/**
+ * Updated function to get Moon's altitude
+ * @param latitude - Latitude in degrees
+ * @param longitude - Longitude in degrees
+ * @param date - JavaScript Date object or timestamp
+ * @return Moon's altitude in degrees
+ */
+function getMoonAltitude(latitude, longitude, date) {
+  return getMoonHorizontalCoordinates(latitude, longitude, date).altitude;
+}
+
+/**
+ * Updated function to get Moon's azimuth
+ * @param latitude - Latitude in degrees
+ * @param longitude - Longitude in degrees
+ * @param date - JavaScript Date object or timestamp
+ * @return Moon's azimuth in degrees
+ */
+function getMoonAzimuth(latitude, longitude, date) {
+  return getMoonHorizontalCoordinates(latitude, longitude, date).azimuth;
+}
+
+/**
+ * Updated function to get Moon's distance
+ * @param date - JavaScript Date object or timestamp
+ * @return Distance in kilometers
+ */
+function getMoonDistance(date) {
+  return getMoonPosition(date).distance;
+}
+
+/**
+ * Calculate the topocentric (observed from Earth's surface) position of the Moon
+ * @param latitude - Observer's latitude in degrees
+ * @param longitude - Observer's longitude in degrees
+ * @param date - JavaScript Date object or timestamp
+ * @returns Object with topocentric coordinates
+ */
+function getTopocentricMoonPosition(latitude, longitude, date) {
+  const timestamp = date instanceof Date ? date.getTime() : date;
+
+  // Get geocentric position (from Earth's center)
+  const geocentricPos = getMoonPosition(timestamp);
+
+  // Convert observer's latitude and longitude to radians
+  const latRad = (latitude * Math.PI) / 180;
+  const lonRad = (longitude * Math.PI) / 180;
+
+  // Calculate the observer's position on Earth's surface
+  // in a reference frame with Earth's center as origin
+  const sinLat = Math.sin(latRad);
+  const cosLat = Math.cos(latRad);
+
+  // Earth's radius at observer's latitude (accounting for Earth's oblateness)
+  const observerRadius =
+    EARTH_RADIUS_KM * (0.998327 + 0.001673 * sinLat * sinLat);
+
+  // Get local sidereal time
+  const siderealTime = getSiderealTime(timestamp) + longitude / 15;
+  const localSiderealTimeRad = (siderealTime * 15 * Math.PI) / 180;
+
+  // Convert geocentric equatorial coordinates to rectangular coordinates
+  const raRad = (geocentricPos.rightAscension * 15 * Math.PI) / 180;
+  const decRad = (geocentricPos.declination * Math.PI) / 180;
+
+  const geocentricX =
+    geocentricPos.distance * Math.cos(decRad) * Math.cos(raRad);
+  const geocentricY =
+    geocentricPos.distance * Math.cos(decRad) * Math.sin(raRad);
+  const geocentricZ = geocentricPos.distance * Math.sin(decRad);
+
+  // Calculate the observer's position
+  const observerX = observerRadius * cosLat * Math.cos(localSiderealTimeRad);
+  const observerY = observerRadius * cosLat * Math.sin(localSiderealTimeRad);
+  const observerZ = observerRadius * sinLat;
+
+  // Calculate topocentric coordinates (from observer's position)
+  const topocentricX = geocentricX - observerX;
+  const topocentricY = geocentricY - observerY;
+  const topocentricZ = geocentricZ - observerZ;
+
+  // Convert back to spherical coordinates
+  const topocentricDistance = Math.sqrt(
+    topocentricX * topocentricX +
+      topocentricY * topocentricY +
+      topocentricZ * topocentricZ
+  );
+
+  const topocentricRA = Math.atan2(topocentricY, topocentricX);
+  const topocentricDec = Math.asin(topocentricZ / topocentricDistance);
+
+  // Convert to degrees
+  const topocentricRAHours = (topocentricRA * 180) / Math.PI / 15;
+  const topocentricDecDeg = (topocentricDec * 180) / Math.PI;
+
+  return {
+    rightAscension: (topocentricRAHours + 24) % 24,
+    declination: topocentricDecDeg,
+    distance: topocentricDistance,
+  };
+}
+
+/**
+ * Calculate next lunar events (quarter phases)
+ * @param date - JavaScript Date object or timestamp
+ * @return Object with dates of the next lunar phases
+ */
+function getLunarPhaseEvents(date) {
+  const timestamp = date instanceof Date ? date.getTime() : date;
+  const currentPhase = getMoonPhase(timestamp);
+
+  // Calculate time until upcoming major phases
+  const timeToNewMoon =
+    ((1 - currentPhase) * MOON_SYNODIC_PERIOD) % MOON_SYNODIC_PERIOD;
+  const timeToFirstQuarter =
+    ((0.25 - currentPhase + 1) % 1) * MOON_SYNODIC_PERIOD;
+  const timeToFullMoon = ((0.5 - currentPhase + 1) % 1) * MOON_SYNODIC_PERIOD;
+  const timeToLastQuarter =
+    ((0.75 - currentPhase + 1) % 1) * MOON_SYNODIC_PERIOD;
+
+  // Create Date objects for each phase
+  const nextNewMoon = new Date(
+    timestamp + timeToNewMoon * MILLISECONDS_PER_DAY
+  );
+  const nextFirstQuarter = new Date(
+    timestamp + timeToFirstQuarter * MILLISECONDS_PER_DAY
+  );
+  const nextFullMoon = new Date(
+    timestamp + timeToFullMoon * MILLISECONDS_PER_DAY
+  );
+  const nextLastQuarter = new Date(
+    timestamp + timeToLastQuarter * MILLISECONDS_PER_DAY
+  );
+
+  return {
+    newMoon: nextNewMoon,
+    firstQuarter: nextFirstQuarter,
+    fullMoon: nextFullMoon,
+    lastQuarter: nextLastQuarter,
+  };
+}
+
+/**
+ * Calculate lunar libration angles (how much of lunar hemispheres are visible from Earth)
+ * @param date - JavaScript Date object or timestamp
+ * @return Object with libration angles in longitude and latitude
+ */
+function getLunarLibration(date) {
+  const timestamp = date instanceof Date ? date.getTime() : date;
+  const julianDay = getJulianDay(timestamp);
+
+  // Time in Julian centuries since J2000.0
+  const T = (julianDay - 2451545.0) / 36525;
+
+  // Mean elements of lunar orbit
+  const L0 = 218.316 + 481267.8811 * T - 0.00146 * T * T;
+  const M = 357.529 + 35999.0503 * T - 0.0001559 * T * T; // Sun's mean anomaly
+  const Mprime = 134.963 + 477198.8676 * T + 0.008721 * T * T; // Moon's mean anomaly
+  const D = 297.85 + 445267.1115 * T - 0.00163 * T * T; // Mean elongation
+  const F = 93.272 + 483202.0175 * T - 0.0034029 * T * T; // Argument of latitude
+  const Omega = 125.045 - 1934.1362 * T + 0.002075 * T * T; // Longitude of ascending node
+
+  // Convert to radians
+  const Mrad = (M * Math.PI) / 180;
+  const Mprimerad = (Mprime * Math.PI) / 180;
+  const Drad = (D * Math.PI) / 180;
+  const Frad = (F * Math.PI) / 180;
+  const Omegarad = (Omega * Math.PI) / 180;
+
+  // Optical libration in longitude (simplified)
+  const sinOmega = Math.sin(Omegarad);
+  const cosI = Math.cos((5.145 * Math.PI) / 180); // Inclination of lunar orbit
+  const librationLongitude = (-Math.asin(sinOmega * cosI) * 180) / Math.PI;
+
+  // Optical libration in latitude (simplified)
+  const librationLatitude =
+    (Math.asin(sinOmega * Math.sin(Frad)) * 180) / Math.PI;
+
+  // Physical libration (much smaller effect, simplified)
+  const physicalLongitude =
+    -0.0297 * Math.sin(Mprimerad + Drad) -
+    0.0102 * Math.sin(2 * Drad - Mprimerad);
+  const physicalLatitude = 0.0275 * Math.sin(Mprimerad);
+
+  // Total libration
+  const totalLibrationLongitude = librationLongitude + physicalLongitude;
+  const totalLibrationLatitude = librationLatitude + physicalLatitude;
+
+  return {
+    longitude: totalLibrationLongitude,
+    latitude: totalLibrationLatitude,
+  };
 }
