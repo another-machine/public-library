@@ -4,7 +4,7 @@ import {
 } from "../../../packages/amplib-lexicon/src";
 import {
   RandomEngine,
-  type TimecodeSeedResponse,
+  Timecode,
 } from "../../../packages/amplib-procedural-generation/src";
 
 interface MindmeldStage {
@@ -44,7 +44,7 @@ class Mindmeld {
     { guesses: 3, start: 5, end: 8 },
   ]);
   sync = false;
-  timecodeGenerator: () => TimecodeSeedResponse;
+  timecode: Timecode;
   topics: string[][] = [];
 
   constructor({
@@ -79,7 +79,7 @@ class Mindmeld {
     this.constraints = [...constraints];
     this.topics = [...topics];
     this.generateEngine();
-    this.timecodeGenerator = RandomEngine.timecodeGenerator({
+    this.timecode = new Timecode({
       length: 5,
       seconds: 30,
       seed: this.currentSeed,
@@ -91,7 +91,7 @@ class Mindmeld {
     this.$inputGeneration.disabled = this.sync;
     this.$inputSeed.disabled = this.sync;
     if (this.sync) {
-      const result = this.timecodeGenerator();
+      const result = this.timecode.generate();
       this.$inputSeed.value = result.code;
       this.$elementSyncText.innerHTML = (result.expiry / 1000).toFixed(1);
     } else {

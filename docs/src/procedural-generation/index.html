@@ -20,8 +20,112 @@
     </header>
 
     <main>
+      <section>
+        <h2>
+          GoldenRatio performs deterministic procedural generation in
+          aesthetically pleasing distributions.
+        </h2>
+        <p>
+          <code>new GoldenRatio({ seed?: number })</code>
+        </p>
+        <pre><code>const generator = new GoldenRatio();</code></pre>
+
+        <h3>
+          shouldEventOccur determines if a time occurs in an organic window
+        </h3>
+        <p>
+          <code
+            >shouldEventOccur({ time: number; eventWindow?: number;
+            cycleLength?: number }): boolean</code
+          >
+        </p>
+        <pre><code>generator.shouldEventOccur({ 
+  time: <span data-output="gr-time"></span>,
+  eventWindow: 1000,
+  cycleLength: 10000
+});
+
+<span data-output="gr-1"></span></code></pre>
+
+        <h3>
+          generate returns a deterministic but seemingly random value between
+          min and max
+        </h3>
+        <p>
+          <code
+            >generate({ time: number; min?: number; max?: number }):
+            number</code
+          >
+        </p>
+        <pre><code>generator.generate({ 
+  time: <span data-output="gr-time"></span>
+});
+
+<span data-output="gr-2"></span></code></pre>
+
+        <h3>noise2d returns a noise value at coordinates x, y</h3>
+        <p>
+          <code>noise2d({ x: number; y: number }): number</code>
+        </p>
+        <pre><code>generator.noise2d({ 
+  x: <span data-output="gr-x"></span>,
+  y: <span data-output="gr-y"></span>
+});
+
+<span data-output="gr-3"></span></code></pre>
+      </section>
+
+      <section>
+        <h2>
+          HarmonicSuperposition uses sine wave superpositions to organically
+          trigger events
+        </h2>
+        <p>
+          <code
+            >new HarmonicSuperposition({ baseFrequency: number; components: {
+            amplitude: number; relativeFrequency: number; }[]; threshold:
+            number; onThresholdCrossed?: (time: number, value: number) => void;
+            })</code
+          >
+        </p>
+        <pre><code>const generator = new HarmonicSuperposition({
+  baseFrequency: 0.001,
+  threshold: 1.5,
+  components: [
+    { amplitude: 1.0, relativeFrequency: 1.0 }, 
+    { amplitude: 0.5, relativeFrequency: 2.7 }, 
+    { amplitude: 0.3, relativeFrequency: 4.1 }
+  ]
+});
+
+generator.calculate(<span data-output="hs-time"></span>);
+
+<span data-output="hs-1">...waiting for threshold to be crossed</span></code></pre>
+
+        <h3>
+          tuneForEventsPerHour returns an instance of HarmonicSuperposition
+        </h3>
+        <p>
+          <code
+            >HarmonicSuperposition.tuneForEventsPerHour({ desiredEventsPerHour:
+            number, simulationHours: number, onThresholdCrossed?: (time: number,
+            value: number) => void }): HarmonicSuperposition</code
+          >
+        </p>
+        <pre><code>const generator = HarmonicSuperposition.tuneForEventsPerHour({
+  desiredEventsPerHour: 45,
+  simulationHours: 24
+});
+
+<span data-output="hs-2-config"></span>
+
+generator.calculate(<span data-output="hs-time"></span>);
+
+<span data-output="hs-2">...waiting for threshold to be crossed</span></code></pre>
+      </section>
+
       <section id="instantiate">
-        <h2>Instantiate a RandomEngine.</h2>
+        <h2>RandomEngine manages seeded randomness.</h2>
         <p><code>new RandomEngine({ seed: string; size: number })</code></p>
         <pre><code>const engine = new RandomEngine({ 
   seed: "<span data-value="seed"></span>", 
@@ -37,10 +141,8 @@
             <input id="size" type="number" min="1" max="10" value="5" /> size
           </label>
         </form>
-      </section>
 
-      <section>
-        <h2>Progress engine and get random values.</h2>
+        <h3>Progress RandomEngine cores forward.</h3>
         <p><code>random(direction?: number): number[]</code></p>
         <pre><code>engine.position = <span data-output="1-0"></span>
 engine.random(<span data-value="random"></span>);
@@ -53,10 +155,8 @@ engine.position = <span data-output="1-2"></span></code></pre>
             direction
           </label>
         </form>
-      </section>
 
-      <section>
-        <h2>Move engine to a specific point.</h2>
+        <h3>Move RandomEngine cores to a specific position.</h3>
         <p><code>move(position: number): number[]</code></p>
         <pre><code>engine.position = <span data-output="2-0"></span>
 engine.move(<span data-value="move"></span>);
@@ -69,10 +169,8 @@ engine.position = <span data-output="2-2"></span></code></pre>
             position
           </label>
         </form>
-      </section>
 
-      <section>
-        <h2>Generate Perlin noise.</h2>
+        <h3>3d perlin noise per RandomEngine core.</h3>
         <p>
           <code>perlin(x?: number; y?: number; z?: number;): number[]</code>
         </p>
@@ -116,27 +214,22 @@ engine.position = <span data-output="2-2"></span></code></pre>
       </section>
 
       <section>
-        <h2>Create time-based seeds.</h2>
+        <h2>Timecode generates temporary Base32 codes.</h2>
         <p>
           <code
-            >RandomEngine.timecodeGenerator(settings: Settings): () =>
-            Timecode</code
-          ><br />
-          <code
-            >Settings = { length: number; seed: string; seconds: number; }</code
-          ><br />
-          <code
-            >Timecode = { code: string; expiry: number; position: number;
-            }</code
+            >new Timecode({ length: number; seed: string; seconds: number; }): {
+            generate(time?: number) => { code: string; expiry: number; position:
+            number} }</code
           >
         </p>
 
-        <pre><code>const generator = RandomEngine.timecodeGenerator({ 
+        <pre><code>const timecode = new Timecode({ 
   length: <span data-value="length"></span>,
   seconds: <span data-value="seconds"></span>,
   seed: "<span data-value="seed"></span>", 
 });
-generator() = <span data-output="4-0"></span></code></pre>
+timecode.generate()
+<span data-output="4-0"></span></code></pre>
         <form>
           <label for="length">
             <input id="length" type="number" min="1" max="10" value="5" />
@@ -152,108 +245,7 @@ generator() = <span data-output="4-0"></span></code></pre>
     </main>
 
     <script type="module">
-      import { RandomEngine } from "../../../packages/amplib-procedural-generation/src";
-
-      document
-        .querySelectorAll("form")
-        .forEach((form) =>
-          form.addEventListener("submit", (e) => e.preventDefault())
-        );
-
-      const perlin = { x: 0, y: 0, z: 0 };
-
-      run(
-        [
-          "perlinX",
-          "perlinY",
-          "perlinZ",
-          "length",
-          "seed",
-          "size",
-          "random",
-          "seconds",
-          "move",
-        ],
-        ({
-          perlinX,
-          perlinY,
-          perlinZ,
-          length,
-          seed,
-          size,
-          random,
-          seconds,
-          move,
-        }) => {
-          const values = [];
-          const engine = new RandomEngine({ seed, size });
-          values[0] = [engine.position];
-          values[1] = [engine.position];
-          values[1].push(
-            JSON.stringify(engine.random(random), null, 2),
-            engine.position
-          );
-          values[2] = [
-            engine.position,
-            JSON.stringify(engine.move(move), null, 2),
-            engine.position,
-          ];
-
-          values[3] = [
-            JSON.stringify(engine.perlin(perlinX, perlinY, perlinZ), null, 2),
-          ];
-
-          const generator = RandomEngine.timecodeGenerator({
-            length,
-            seconds,
-            seed,
-          });
-          values[4] = [JSON.stringify(generator(), null, 2)];
-
-          values.forEach((group, i) => {
-            (group || []).forEach((value, j) => {
-              document
-                .querySelectorAll(`[data-output="${i}-${j}"]`)
-                .forEach((a) => (a.innerText = value));
-            });
-          });
-        }
-      );
-
-      function run(ids, onChange) {
-        const values = {};
-        const elements = {};
-
-        ids.forEach((id) => {
-          elements[id] = document.getElementById(id);
-        });
-
-        loop();
-
-        function valueFromElement(element) {
-          if (element.type === "number") {
-            return element.value ? parseFloat(element.value) : null;
-          } else {
-            return element.value || null;
-          }
-        }
-
-        function loop() {
-          requestAnimationFrame(loop);
-
-          ids.forEach((id) => {
-            const value = valueFromElement(elements[id]);
-            if (value !== values[id]) {
-              values[id] = value;
-              document
-                .querySelectorAll(`[data-value="${id}"]`)
-                .forEach((a) => (a.innerText = value));
-            }
-          });
-
-          onChange(values);
-        }
-      }
+      import "./app.ts";
     </script>
   </body>
 </html>

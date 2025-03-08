@@ -1,4 +1,4 @@
-import { RandomEngine } from "./dist/index.js";
+import { RandomEngine, Timecode } from "./dist/index.js";
 
 const engine = new RandomEngine({
   size: 100,
@@ -65,11 +65,15 @@ function testStepDirection() {
 }
 
 function testTimecodeGenerator() {
-  const generator = RandomEngine.timecodeGenerator({
+  const timecode = new Timecode({
     length: 4,
     seed: "test",
     seconds: 30,
   });
-  const results = [generator(), generator(), generator()];
-  console.log({ test: "timecodeGenerator", results });
+  const results = [
+    timecode.generate(),
+    timecode.generate(),
+    timecode.generate(),
+  ];
+  console.log({ test: "Timecode", results });
 }

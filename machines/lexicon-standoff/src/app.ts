@@ -4,7 +4,7 @@ import {
 } from "../../../packages/amplib-lexicon/src";
 import {
   RandomEngine,
-  type TimecodeSeedResponse,
+  Timecode,
 } from "../../../packages/amplib-procedural-generation/src";
 
 type LexiconPlayerOptionKey =
@@ -73,7 +73,7 @@ class Lexicon {
   prompts: string[] = [];
   engine: RandomEngine;
   sync = !savedSeed;
-  timecodeGenerator: () => TimecodeSeedResponse;
+  timecode: Timecode;
   topics: string[][] = [];
 
   constructor({ prompts, topics }: { prompts: string[]; topics: string[][] }) {
@@ -85,7 +85,7 @@ class Lexicon {
   update({ prompts, topics }: { prompts: string[]; topics: string[][] }) {
     this.prompts = [...prompts];
     this.topics = [...topics];
-    this.timecodeGenerator = RandomEngine.timecodeGenerator({
+    this.timecode = new Timecode({
       length: 5,
       seconds: 30,
       seed: "lexicon",
@@ -96,7 +96,7 @@ class Lexicon {
     requestAnimationFrame(this.animationLoop.bind(this));
     this.$inputSeed.readOnly = this.sync;
     if (this.sync) {
-      const result = this.timecodeGenerator();
+      const result = this.timecode.generate();
       // Should we just use the timestamp?
       this.$inputSeed.value = result.code;
       // this.$inputSeed.value = (result.position / 10000).toString();
