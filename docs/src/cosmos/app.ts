@@ -15,6 +15,10 @@ const data = {
 
 export async function example() {
   const section = document.querySelector("section")!;
+  const canvas = section.querySelector("canvas")!;
+  canvas.width = 1800;
+  canvas.height = 600;
+  const context = canvas.getContext("2d")!;
   const form = section.querySelector("form")!;
   const output = section.querySelector('[data-output="report-output"]')!;
   const date = section.querySelector('[data-output="date-output"]')!;
@@ -36,6 +40,7 @@ export async function example() {
     setValue("longitude", longitude);
   }
 
+  let timestamp = Date.now();
   onInput(values);
   loop();
 
@@ -47,11 +52,11 @@ export async function example() {
   function loop() {
     requestAnimationFrame(loop);
     const now = Date.now();
-    date.innerHTML = now.toString();
-    output.innerHTML = JSON.stringify(
-      generate({ ...data, timestamp: now }),
-      null,
-      2
-    );
+    const result = generate({ ...data, timestamp });
+    date.innerHTML = timestamp.toString();
+    timestamp += 36000 * 200;
+    // visualizeSolarSystem(canvas, context, result, "top");
+
+    output.innerHTML = JSON.stringify(result, null, 2);
   }
 }

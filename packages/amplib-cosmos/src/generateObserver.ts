@@ -40,7 +40,7 @@ export function generateObserver({
       )}`,
     }),
     localTime: createDateValue(
-      dateObj.localTime.getMilliseconds(),
+      dateObj.localTime.getTime(),
       dateObj.localTime,
       "Local time at observer's location"
     ),
