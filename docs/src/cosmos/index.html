@@ -26,15 +26,15 @@
         </h2>
         <p>
           <code
-            >getAstronomicalReport({ latitude: number; longitude: number; date:
-            DateInput; }): AstronomicalReport</code
+            >generate({ latitude: number; longitude: number; timestamp: number;
+            }): AstronomicalReport</code
           >
         </p>
 
-        <pre><code>const report = getAstronomicalReport({ 
+        <pre><code>const report = generate({ 
   latitude: <span data-value="latitude"></span>, 
   longitude: <span data-value="longitude"></span>, 
-  date: <span data-output="date-output"></span> 
+  timestamp: <span data-output="date-output"></span> 
 });
 <span data-output="report-output"></span></code></pre>
 

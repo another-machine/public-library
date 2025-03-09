@@ -1,1 +1,1 @@
-export * from "./Cosmos";
+export * from "./generate";

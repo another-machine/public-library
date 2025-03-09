@@ -1,5 +1,5 @@
 import { Geolocation } from "../../../packages/amplib-devices/src";
-import { getAstronomicalReport } from "../../../packages/amplib-cosmos/src";
+import { generate } from "../../../packages/amplib-cosmos/src";
 import { createForm } from "../createForm";
 
 type FormData = {
@@ -49,7 +49,7 @@ export async function example() {
     const now = Date.now();
     date.innerHTML = now.toString();
     output.innerHTML = JSON.stringify(
-      getAstronomicalReport({ ...data, date: now }),
+      generate({ ...data, timestamp: now }),
       null,
       2
     );
