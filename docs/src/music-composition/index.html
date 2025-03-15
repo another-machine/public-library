@@ -31,7 +31,10 @@
     </main>
 
     <script type="module">
-      import { Ensemble } from "../../../packages/amplib-music-composition/src";
+      import {
+        Ensemble,
+        ProceduralMusicApp,
+      } from "../../../packages/amplib-music-composition/src";
 
       example();
 
@@ -39,8 +42,8 @@
         const output = document.querySelector('[data-output="ensemble"]');
         update();
 
-        function update() {
-          const result = Ensemble.generateEnsemble({ selector: Math.random });
+        async function update() {
+          const result = ProceduralMusicApp.generateMusic();
           output.innerHTML = JSON.stringify(result, null, 2);
         }
       }
