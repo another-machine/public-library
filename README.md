@@ -1,4 +1,4 @@
-# a(nother) machine / public library
+# another machine / public library
 
 [anothermachine.info](https://anothermachine.info)
 
