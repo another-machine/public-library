@@ -2,14 +2,12 @@ import { Instrument } from "./Instrument";
 import { ExpressionQuality } from "./Movement";
 import { weightedSelect } from "./utilities";
 
-// Rhythmic characteristics
 export type RhythmicCharacteristic =
   | "driving" // on-beat, steady
   | "syncopated" // off-beat emphasis
   | "reactive" // responds to other voices
   | "polyrhythmic"; // independent rhythmic structure
 
-// Voice archetypes
 export type VoiceArchetype =
   | "lead" // primary melodic focus
   | "accompaniment" // supporting harmony
@@ -18,7 +16,6 @@ export type VoiceArchetype =
   | "pad" // sustained textural element
   | "ornament"; // decorative musical element
 
-// Articulation
 export type ArticulationStyle =
   | "staccato" // short, detached
   | "legato" // connected, smooth
@@ -27,7 +24,6 @@ export type ArticulationStyle =
   | "trembling" // rapid variations
   | "flowing"; // natural, expressive phrasing
 
-// Harmonic function
 export type HarmonicFunction =
   | "root" // fundamental/tonic
   | "bass" // lowest voice
@@ -37,13 +33,11 @@ export type HarmonicFunction =
   | "pedal" // sustained note
   | "color"; // timbral or textural element
 
-// Dynamic level
 export type DynamicRange = {
   min: number; // 0 (silent) to 1 (maximum volume)
   max: number; // 0 to 1
 };
 
-// Voice-related constants
 export const expressionQualities: ExpressionQuality[] = [
   "confident",
   "playful",
@@ -90,7 +84,6 @@ export const voiceArchetypes: VoiceArchetype[] = [
   "ornament",
 ];
 
-// Define archetype templates for voice generation
 interface VoiceArchetypeTemplate {
   prominenceRange: { min: number; max: number };
   rhythmicActivityRange: { min: number; max: number };
@@ -102,91 +95,85 @@ interface VoiceArchetypeTemplate {
   dynamicRange: { min: number; max: number };
 }
 
-// Define template for each archetype
-export const voiceArchetypeTemplates: Record<
-  VoiceArchetype,
-  VoiceArchetypeTemplate
-> = {
-  lead: {
-    prominenceRange: { min: 0.7, max: 1.0 },
-    rhythmicActivityRange: { min: 0.5, max: 0.9 },
-    independenceRange: { min: 0.7, max: 1.0 },
-    preferredRhythmicCharacteristics: ["driving", "syncopated", "reactive"],
-    preferredArticulations: ["legato", "accented", "flowing"],
-    preferredExpressionQualities: ["confident", "playful", "agitated"],
-    preferredHarmonicFunctions: ["root", "tension", "color"],
-    dynamicRange: { min: 0.5, max: 1.0 },
-  },
+const voiceArchetypeTemplates: Record<VoiceArchetype, VoiceArchetypeTemplate> =
+  {
+    lead: {
+      prominenceRange: { min: 0.7, max: 1.0 },
+      rhythmicActivityRange: { min: 0.5, max: 0.9 },
+      independenceRange: { min: 0.7, max: 1.0 },
+      preferredRhythmicCharacteristics: ["driving", "syncopated", "reactive"],
+      preferredArticulations: ["legato", "accented", "flowing"],
+      preferredExpressionQualities: ["confident", "playful", "agitated"],
+      preferredHarmonicFunctions: ["root", "tension", "color"],
+      dynamicRange: { min: 0.5, max: 1.0 },
+    },
 
-  accompaniment: {
-    prominenceRange: { min: 0.3, max: 0.6 },
-    rhythmicActivityRange: { min: 0.3, max: 0.7 },
-    independenceRange: { min: 0.2, max: 0.5 },
-    preferredRhythmicCharacteristics: ["driving", "reactive"],
-    preferredArticulations: ["legato", "staccato", "flowing"],
-    preferredExpressionQualities: ["calm", "solemn", "contemplative"],
-    preferredHarmonicFunctions: ["chord", "extension", "pedal"],
-    dynamicRange: { min: 0.2, max: 0.7 },
-  },
+    accompaniment: {
+      prominenceRange: { min: 0.3, max: 0.6 },
+      rhythmicActivityRange: { min: 0.3, max: 0.7 },
+      independenceRange: { min: 0.2, max: 0.5 },
+      preferredRhythmicCharacteristics: ["driving", "reactive"],
+      preferredArticulations: ["legato", "staccato", "flowing"],
+      preferredExpressionQualities: ["calm", "solemn", "contemplative"],
+      preferredHarmonicFunctions: ["chord", "extension", "pedal"],
+      dynamicRange: { min: 0.2, max: 0.7 },
+    },
 
-  bass: {
-    prominenceRange: { min: 0.5, max: 0.8 },
-    rhythmicActivityRange: { min: 0.3, max: 0.7 },
-    independenceRange: { min: 0.6, max: 0.9 },
-    preferredRhythmicCharacteristics: ["driving", "syncopated"],
-    preferredArticulations: ["staccato", "legato", "accented"],
-    preferredExpressionQualities: ["confident", "solemn"],
-    preferredHarmonicFunctions: ["root", "bass"],
-    dynamicRange: { min: 0.4, max: 0.9 },
-  },
+    bass: {
+      prominenceRange: { min: 0.5, max: 0.8 },
+      rhythmicActivityRange: { min: 0.3, max: 0.7 },
+      independenceRange: { min: 0.6, max: 0.9 },
+      preferredRhythmicCharacteristics: ["driving", "syncopated"],
+      preferredArticulations: ["staccato", "legato", "accented"],
+      preferredExpressionQualities: ["confident", "solemn"],
+      preferredHarmonicFunctions: ["root", "bass"],
+      dynamicRange: { min: 0.4, max: 0.9 },
+    },
 
-  rhythm: {
-    prominenceRange: { min: 0.4, max: 0.7 },
-    rhythmicActivityRange: { min: 0.7, max: 1.0 },
-    independenceRange: { min: 0.5, max: 0.8 },
-    preferredRhythmicCharacteristics: ["driving", "syncopated", "polyrhythmic"],
-    preferredArticulations: ["staccato", "accented"],
-    preferredExpressionQualities: ["confident", "urgent", "playful"],
-    preferredHarmonicFunctions: ["root", "bass", "pedal"],
-    dynamicRange: { min: 0.3, max: 0.8 },
-  },
+    rhythm: {
+      prominenceRange: { min: 0.4, max: 0.7 },
+      rhythmicActivityRange: { min: 0.7, max: 1.0 },
+      independenceRange: { min: 0.5, max: 0.8 },
+      preferredRhythmicCharacteristics: [
+        "driving",
+        "syncopated",
+        "polyrhythmic",
+      ],
+      preferredArticulations: ["staccato", "accented"],
+      preferredExpressionQualities: ["confident", "urgent", "playful"],
+      preferredHarmonicFunctions: ["root", "bass", "pedal"],
+      dynamicRange: { min: 0.3, max: 0.8 },
+    },
 
-  pad: {
-    prominenceRange: { min: 0.1, max: 0.5 },
-    rhythmicActivityRange: { min: 0.1, max: 0.3 },
-    independenceRange: { min: 0.1, max: 0.4 },
-    preferredRhythmicCharacteristics: ["driving", "reactive"],
-    preferredArticulations: ["legato", "flowing"],
-    preferredExpressionQualities: ["calm", "contemplative", "delicate"],
-    preferredHarmonicFunctions: ["chord", "pedal", "color"],
-    dynamicRange: { min: 0.1, max: 0.6 },
-  },
+    pad: {
+      prominenceRange: { min: 0.1, max: 0.5 },
+      rhythmicActivityRange: { min: 0.1, max: 0.3 },
+      independenceRange: { min: 0.1, max: 0.4 },
+      preferredRhythmicCharacteristics: ["driving", "reactive"],
+      preferredArticulations: ["legato", "flowing"],
+      preferredExpressionQualities: ["calm", "contemplative", "delicate"],
+      preferredHarmonicFunctions: ["chord", "pedal", "color"],
+      dynamicRange: { min: 0.1, max: 0.6 },
+    },
 
-  ornament: {
-    prominenceRange: { min: 0.2, max: 0.6 },
-    rhythmicActivityRange: { min: 0.6, max: 1.0 },
-    independenceRange: { min: 0.7, max: 1.0 },
-    preferredRhythmicCharacteristics: [
-      "reactive",
-      "syncopated",
-      "polyrhythmic",
-    ],
-    preferredArticulations: ["staccato", "gliding", "trembling", "flowing"],
-    preferredExpressionQualities: ["playful", "delicate", "agitated"],
-    preferredHarmonicFunctions: ["extension", "color", "tension"],
-    dynamicRange: { min: 0.2, max: 0.7 },
-  },
-};
+    ornament: {
+      prominenceRange: { min: 0.2, max: 0.6 },
+      rhythmicActivityRange: { min: 0.6, max: 1.0 },
+      independenceRange: { min: 0.7, max: 1.0 },
+      preferredRhythmicCharacteristics: [
+        "reactive",
+        "syncopated",
+        "polyrhythmic",
+      ],
+      preferredArticulations: ["staccato", "gliding", "trembling", "flowing"],
+      preferredExpressionQualities: ["playful", "delicate", "agitated"],
+      preferredHarmonicFunctions: ["extension", "color", "tension"],
+      dynamicRange: { min: 0.2, max: 0.7 },
+    },
+  };
 
-// ----- Helper Functions -----
-
-// Helper function to select a complementary archetype
-export function selectComplementaryVoiceArchetype(
-  referenceArchetype: VoiceArchetype,
-  selector: () => number
-): VoiceArchetype {
-  // Define complementary relationships
-  const complementaryMap: Record<VoiceArchetype, VoiceArchetype[]> = {
+const complementaryVoiceArchetypeMap: Record<VoiceArchetype, VoiceArchetype[]> =
+  {
     lead: ["accompaniment", "bass", "rhythm"],
     accompaniment: ["lead", "rhythm", "ornament"],
     bass: ["lead", "rhythm", "pad"],
@@ -195,11 +182,13 @@ export function selectComplementaryVoiceArchetype(
     ornament: ["lead", "accompaniment", "pad"],
   };
 
-  const options = complementaryMap[referenceArchetype];
+export function selectComplementaryVoiceArchetype(
+  referenceArchetype: VoiceArchetype,
+  selector: () => number
+): VoiceArchetype {
+  const options = complementaryVoiceArchetypeMap[referenceArchetype];
   return options[Math.floor(selector() * options.length)];
 }
-
-// ----- Voice Class -----
 
 export class Voice {
   instrument?: Instrument;
@@ -268,15 +257,12 @@ export class Voice {
     archetype?: VoiceArchetype;
     instrument?: Instrument;
   }): Voice {
-    // If no archetype is provided, randomly select one
     const selectedArchetype =
       archetype ||
       voiceArchetypes[Math.floor(selector() * voiceArchetypes.length)];
 
-    // Get the archetype template
     const template = voiceArchetypeTemplates[selectedArchetype];
 
-    // Base properties with controlled randomization based on the archetype template
     const prominence =
       template.prominenceRange.min +
       selector() *
@@ -293,7 +279,6 @@ export class Voice {
       selector() *
         (template.independenceRange.max - template.independenceRange.min);
 
-    // Select from template's preferred characteristics with weighted probabilities
     const rhythmicCharacteristic = weightedSelect(
       template.preferredRhythmicCharacteristics,
       selector
@@ -304,7 +289,7 @@ export class Voice {
       selector
     );
 
-    // 50% chance of having a secondary articulation
+    // TODO: 50% chance of having a secondary articulation. Base this on something.
     const secondaryArticulation =
       selector() > 0.5
         ? weightedSelect(
@@ -325,7 +310,7 @@ export class Voice {
       selector
     );
 
-    // 70% chance of having a secondary function
+    // TODO: 70% chance of having a secondary function. Base this on something.
     const secondaryFunction =
       selector() > 0.3
         ? weightedSelect(
@@ -336,7 +321,6 @@ export class Voice {
           )
         : undefined;
 
-    // Create a dynamic range within the template's preferred range
     const dynamicMin =
       template.dynamicRange.min +
       selector() *
@@ -348,7 +332,6 @@ export class Voice {
       (template.dynamicRange.max - template.dynamicRange.min) *
         (0.6 + selector() * 0.4);
 
-    // If no instrument is provided but we have an archetype, generate a complementary one
     const finalInstrument =
       instrument ||
       (selectedArchetype
@@ -391,19 +374,15 @@ export class Voice {
     instrument?: Instrument;
     preferredArchetype?: VoiceArchetype;
   }): Voice {
-    // Select a complementary archetype if none is provided
     const archetype =
       preferredArchetype ||
       selectComplementaryVoiceArchetype(referenceVoice.archetype, selector);
 
-    // Create a new voice with the complementary archetype
     const voice = Voice.generateVoice({
       selector,
       archetype,
       instrument,
     });
-
-    // Adjust properties to ensure complementary relationship
 
     // If reference voice is prominent, make this one less prominent and vice versa
     if (referenceVoice.prominence > 0.6) {

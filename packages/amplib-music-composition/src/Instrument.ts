@@ -1,7 +1,6 @@
 import { weightedSelect } from "./utilities";
 import { VoiceArchetype } from "./Voice";
 
-// Envelope-based (mappable to ADSR)
 export type InstrumentEnvelopeStyle =
   | "plucked" // fast attack, quick decay, minimal sustain
   | "sustained" // moderate attack, strong sustain, slow release
@@ -9,7 +8,6 @@ export type InstrumentEnvelopeStyle =
   | "swelling" // slow attack, increasing intensity
   | "decaying"; // prominent decay phase, natural falloff
 
-// Modulation characteristics (mappable to LFO/modulation)
 export type InstrumentModulationCharacteristic =
   | "vibrato" // periodic pitch variation
   | "tremolo" // periodic amplitude variation
@@ -17,7 +15,6 @@ export type InstrumentModulationCharacteristic =
   | "breathing" // organic, irregular amplitude envelope
   | "steady"; // minimal variation over time
 
-// Physical excitation (mappable to synthesis technique)
 export type InstrumentPhysicalExcitation =
   | "blown" // air column excitation, turbulence
   | "bowed" // friction-based excitation, stick-slip
@@ -26,13 +23,9 @@ export type InstrumentPhysicalExcitation =
   | "resonant" // strong modal behavior, emphasized formants
   | "filtered"; // frequency-selective presence
 
-// Frequency range
 export type InstrumentRange = "sub-bass" | "bass" | "mid" | "treble";
-
-// Instrument roles
 export type InstrumentRole = "melodic" | "harmonic" | "rhythmic" | "textural";
 
-// Spectral profile
 export type InstrumentSpectralProfile =
   | "warm" // emphasized lower-mids, rolled-off highs
   | "bright" // emphasized upper harmonics, presence
@@ -42,14 +35,12 @@ export type InstrumentSpectralProfile =
   | "noisy" // high noise-to-signal ratio, chaotic
   | "inharmonic"; // non-integer-related partials
 
-// Texture-based (mappable to noise/grain components)
 export type InstrumentTexturalStyle =
   | "smooth" // low noise floor, few upper harmonics
   | "rough" // controlled noise component, irregular harmonics
   | "grainy" // granular synthesis, amplitude fluctuations
   | "crystalline"; // pristine highs, sparse harmonic structure
 
-// Instrument-related constants
 export const envelopeStyles: InstrumentEnvelopeStyle[] = [
   "plucked",
   "sustained",
@@ -100,6 +91,46 @@ export const texturalStyles: InstrumentTexturalStyle[] = [
   "grainy",
   "crystalline",
 ];
+
+const voiceArchetypePreferences: Record<
+  VoiceArchetype,
+  {
+    preferredRoles: InstrumentRole[];
+    preferredRanges: InstrumentRange[];
+    preferredEnvelopeStyles: InstrumentEnvelopeStyle[];
+  }
+> = {
+  lead: {
+    preferredRoles: ["melodic"],
+    preferredRanges: ["mid", "treble"],
+    preferredEnvelopeStyles: ["sustained", "plucked"],
+  },
+  accompaniment: {
+    preferredRoles: ["harmonic", "rhythmic"],
+    preferredRanges: ["mid", "bass"],
+    preferredEnvelopeStyles: ["sustained", "plucked"],
+  },
+  bass: {
+    preferredRoles: ["harmonic", "rhythmic"],
+    preferredRanges: ["bass", "sub-bass"],
+    preferredEnvelopeStyles: ["sustained", "plucked"],
+  },
+  rhythm: {
+    preferredRoles: ["rhythmic"],
+    preferredRanges: ["mid", "bass"],
+    preferredEnvelopeStyles: ["percussive", "plucked"],
+  },
+  pad: {
+    preferredRoles: ["harmonic", "textural"],
+    preferredRanges: ["mid", "treble"],
+    preferredEnvelopeStyles: ["sustained", "swelling"],
+  },
+  ornament: {
+    preferredRoles: ["melodic", "textural"],
+    preferredRanges: ["mid", "treble"],
+    preferredEnvelopeStyles: ["plucked", "percussive"],
+  },
+};
 
 export class Instrument {
   envelopeStyle: InstrumentEnvelopeStyle;
@@ -170,50 +201,8 @@ export class Instrument {
     selector(): number;
     voiceArchetype: VoiceArchetype;
   }): Instrument {
-    // Define preferred instrument characteristics for each voice archetype
-    const archetypePreferences: Record<
-      VoiceArchetype,
-      {
-        preferredRoles: InstrumentRole[];
-        preferredRanges: InstrumentRange[];
-        preferredEnvelopeStyles: InstrumentEnvelopeStyle[];
-      }
-    > = {
-      lead: {
-        preferredRoles: ["melodic"],
-        preferredRanges: ["mid", "treble"],
-        preferredEnvelopeStyles: ["sustained", "plucked"],
-      },
-      accompaniment: {
-        preferredRoles: ["harmonic", "rhythmic"],
-        preferredRanges: ["mid", "bass"],
-        preferredEnvelopeStyles: ["sustained", "plucked"],
-      },
-      bass: {
-        preferredRoles: ["harmonic", "rhythmic"],
-        preferredRanges: ["bass", "sub-bass"],
-        preferredEnvelopeStyles: ["sustained", "plucked"],
-      },
-      rhythm: {
-        preferredRoles: ["rhythmic"],
-        preferredRanges: ["mid", "bass"],
-        preferredEnvelopeStyles: ["percussive", "plucked"],
-      },
-      pad: {
-        preferredRoles: ["harmonic", "textural"],
-        preferredRanges: ["mid", "treble"],
-        preferredEnvelopeStyles: ["sustained", "swelling"],
-      },
-      ornament: {
-        preferredRoles: ["melodic", "textural"],
-        preferredRanges: ["mid", "treble"],
-        preferredEnvelopeStyles: ["plucked", "percussive"],
-      },
-    };
+    const preferences = voiceArchetypePreferences[voiceArchetype];
 
-    const preferences = archetypePreferences[voiceArchetype];
-
-    // Select preferred characteristics with some randomness
     const role = weightedSelect(preferences.preferredRoles, selector);
     const range = weightedSelect(preferences.preferredRanges, selector);
     const envelopeStyle = weightedSelect(
@@ -221,7 +210,6 @@ export class Instrument {
       selector
     );
 
-    // Other characteristics are less constrained
     return new Instrument({
       role,
       range,

@@ -9,7 +9,6 @@ export type ExpressionQuality =
   | "contemplative"
   | "delicate";
 
-// Movement interface with your core class
 export interface MovementParams {
   tempo: number; // Base tempo in BPM
   tempoVariation: number; // How much tempo can fluctuate
