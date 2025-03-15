@@ -25,17 +25,13 @@
         <p>
           <code>new VoiceGenerator({ random: () => number })</code>
         </p>
-        <pre><code>const generator = new VoiceGenerator({ random: Math.random });
-generator.createEnsemble(instruments);
+        <pre><code>Ensemble.generateEnsemble({ selector: Math.random });
 <span data-output="ensemble"></span></code></pre>
       </section>
     </main>
 
     <script type="module">
-      import {
-        VoiceGenerator,
-        Instrument,
-      } from "../../../packages/amplib-music-composition/src";
+      import { Ensemble } from "../../../packages/amplib-music-composition/src";
 
       example();
 
@@ -44,16 +40,7 @@ generator.createEnsemble(instruments);
         update();
 
         function update() {
-          const generator = new VoiceGenerator({ random: Math.random });
-          const result = generator.createEnsemble(
-            [
-              new Instrument({ timbre: [], role: "accentual", range: "bass" }),
-              new Instrument({ timbre: [], role: "harmonic", range: "mid" }),
-              new Instrument({ timbre: [], role: "drone", range: "mid" }),
-              new Instrument({ timbre: [], role: "melodic", range: "treble" }),
-            ],
-            4
-          );
+          const result = Ensemble.generateEnsemble({ selector: Math.random });
           output.innerHTML = JSON.stringify(result, null, 2);
         }
       }

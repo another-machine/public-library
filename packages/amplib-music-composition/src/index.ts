@@ -1,3 +1,2 @@
-export * from "./Instrument";
+export * from "./Ensemble";
 export * from "./Movement";
-export * from "./Voice";

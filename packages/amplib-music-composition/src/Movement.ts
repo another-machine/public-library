@@ -1,15 +1,13 @@
-import { Voice } from "./Voice";
+import { Ensemble } from "./Ensemble";
 export type ExpressionQuality =
-  | "agitated"
-  | "calm"
-  | "playful"
-  | "solemn"
-  | "urgent"
-  | "hesitant"
   | "confident"
-  | "delicate"
-  | "aggressive"
-  | "contemplative";
+  | "playful"
+  | "calm"
+  | "agitated"
+  | "urgent"
+  | "solemn"
+  | "contemplative"
+  | "delicate";
 
 // Movement interface with your core class
 export interface MovementParams {
@@ -23,15 +21,12 @@ export interface MovementParams {
 }
 
 export class Movement {
-  private voices: Voice[] = [];
+  private ensemble: Ensemble;
   private params: MovementParams;
 
-  constructor(params: MovementParams) {
+  constructor({ params }: { params: MovementParams }) {
     this.params = params;
-  }
-
-  addVoice(voice: Voice): void {
-    this.voices.push(voice);
+    this.ensemble = new Ensemble([]);
   }
 
   // Other methods would follow...
