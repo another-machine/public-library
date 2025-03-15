@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Composition | a(nother) machine</title>
+    <style>
+      @import "../style.css";
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>
+        <a href="/">a(nother) machine</a> Music Composition
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-music-composition"
+          >GitHub</a
+        >
+      </h1>
+    </header>
+
+    <main>
+      <section>
+        <h2>Create a random voice.</h2>
+        <p>
+          <code>new VoiceGenerator({ random: () => number })</code>
+        </p>
+        <pre><code>const generator = new VoiceGenerator({ random: Math.random });
+generator.createEnsemble(instruments);
+<span data-output="ensemble"></span></code></pre>
+      </section>
+    </main>
+
+    <script type="module">
+      import {
+        VoiceGenerator,
+        Instrument,
+      } from "../../../packages/amplib-music-composition/src";
+
+      example();
+
+      async function example() {
+        const output = document.querySelector('[data-output="ensemble"]');
+        update();
+
+        function update() {
+          const generator = new VoiceGenerator({ random: Math.random });
+          const result = generator.createEnsemble(
+            [
+              new Instrument({ timbre: [], role: "accentual", range: "bass" }),
+              new Instrument({ timbre: [], role: "harmonic", range: "mid" }),
+              new Instrument({ timbre: [], role: "drone", range: "mid" }),
+              new Instrument({ timbre: [], role: "melodic", range: "treble" }),
+            ],
+            4
+          );
+          output.innerHTML = JSON.stringify(result, null, 2);
+        }
+      }
+    </script>
+  </body>
+</html>

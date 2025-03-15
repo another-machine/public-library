@@ -51,10 +51,9 @@ export async function example() {
 
   function loop() {
     requestAnimationFrame(loop);
-    const now = Date.now();
+    const timestamp = Date.now();
     const result = generate({ ...data, timestamp });
     date.innerHTML = timestamp.toString();
-    timestamp += 36000 * 200;
     // visualizeSolarSystem(canvas, context, result, "top");
 
     output.innerHTML = JSON.stringify(result, null, 2);
