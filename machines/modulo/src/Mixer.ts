@@ -7,4 +7,11 @@ export class Mixer {
     this.channel = new Gain(1);
     this.channel.toDestination();
   }
+
+  dispose() {
+    if (this.channel) {
+      this.channel.dispose();
+      this.channel = undefined;
+    }
+  }
 }

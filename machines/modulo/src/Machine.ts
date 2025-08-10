@@ -68,6 +68,12 @@ export class Machine {
   update({ theme, core, keys, sequencers }: MachineParams, firstPass = false) {
     this.stop();
 
+    // Dispose and reinitialize mixer on updates to prevent audio corruption
+    if (!firstPass && this.initialized) {
+      this.mixer.dispose();
+      this.mixer.initialize();
+    }
+
     if (firstPass) {
       this.notes = new Notes(core.notes);
     } else {
