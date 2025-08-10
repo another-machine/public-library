@@ -1,16 +1,22 @@
 import { ConfigurableHat, ConfigurableKick, ConfigurableSnare } from "./Drums";
-import { Machine } from "./Machine";
+import { Machine, MachineParams } from "./Machine";
 import { Synths } from "./Synths";
 
 console.clear();
 
 const start = document.querySelector<HTMLButtonElement>("button#start")!;
+
+// Update button text based on localStorage status
+if (Machine.hasStoredState()) {
+  start.textContent = "Start Modulo";
+} else {
+  start.textContent = "Start Modulo";
+}
+
 start.addEventListener("click", () => initialize());
 
-function initialize() {
-  start.remove();
-  new Machine({
-    element: document.body,
+function getDefaultMachineParams(): Omit<MachineParams, "element"> {
+  return {
     core: {
       theme: 1,
       notes: { root: "F#", mode: "locrian" },
@@ -155,5 +161,24 @@ function initialize() {
         },
       },
     },
+  };
+}
+
+function initialize() {
+  start.remove();
+
+  // Try to load from localStorage first, fallback to defaults
+  const storedParams = Machine.loadFromLocalStorage();
+  const machineParams = storedParams || getDefaultMachineParams();
+
+  console.log(
+    storedParams
+      ? "Loaded machine state from localStorage"
+      : "Using default machine settings"
+  );
+
+  new Machine({
+    element: document.body,
+    ...machineParams,
   });
 }

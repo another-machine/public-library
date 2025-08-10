@@ -259,6 +259,24 @@ export function generateCoreDestination({
                 return { valid: true, output };
               },
             }),
+            local: new DestinationCommand({
+              description: "Save current state to localStorage.",
+              onCommand: (_command, _args, _prompt) => {
+                machine.saveToLocalStorage();
+                const output = ["Saved current state to localStorage!"];
+                return { valid: true, output };
+              },
+            }),
+            clear: new DestinationCommand({
+              description: "Clear saved state from localStorage.",
+              onCommand: (_command, _args, _prompt) => {
+                machine.resetToDefaults();
+                const output = [
+                  "Cleared localStorage. Refresh to load defaults.",
+                ];
+                return { valid: true, output };
+              },
+            }),
           },
         }),
         theme: new Destination({

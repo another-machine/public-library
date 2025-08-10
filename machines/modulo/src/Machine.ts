@@ -2,6 +2,7 @@ import { Clock, ClockParams } from "./Clock";
 import { Destinations } from "./destinations/Destinations";
 import { Drums } from "./Drums";
 import { Keyboard, KeyboardParams } from "./Keyboard";
+import { LocalStorage } from "./LocalStorage";
 import { Mixer } from "./Mixer";
 import { Notes, NotesParams } from "./Notes";
 import { Prompt } from "./prompt/Prompt";
@@ -55,6 +56,7 @@ export class Machine {
   promptInterface!: PromptInterface;
   renderer!: Renderer;
   sequencers!: Sequencer[];
+  private saveTimeout?: number;
 
   constructor(initialParams: MachineParams & { element: HTMLElement }) {
     register();
@@ -174,6 +176,11 @@ export class Machine {
       this.prompt.update({ destination: this.destinations.root });
       this.promptInterface.reset(this.element);
     }
+
+    // Auto-save state to localStorage on updates (except first initialization)
+    if (!firstPass && this.initialized) {
+      this.debouncedSaveToLocalStorage();
+    }
   }
 
   setup() {
@@ -209,6 +216,8 @@ export class Machine {
               });
               const settings = JSON.parse(decoded || "") as MachineParams;
               this.update(settings);
+              // Save the loaded settings to localStorage
+              this.saveToLocalStorage();
             }
           }
         } catch (e) {
@@ -238,6 +247,41 @@ export class Machine {
       keys: this.keys.exportParams(),
       theme: this.renderer.theme,
     };
+  }
+
+  saveToLocalStorage(): void {
+    LocalStorage.save(this.exportParams());
+  }
+
+  private debouncedSaveToLocalStorage(): void {
+    // Clear existing timeout
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+    }
+
+    // Set new timeout to save after 500ms of inactivity
+    this.saveTimeout = window.setTimeout(() => {
+      this.saveToLocalStorage();
+    }, 500);
+  }
+
+  static loadFromLocalStorage(): MachineParams | null {
+    return LocalStorage.load();
+  }
+
+  static hasStoredState(): boolean {
+    return LocalStorage.hasStoredState();
+  }
+
+  static clearStoredState(): void {
+    LocalStorage.clear();
+  }
+
+  resetToDefaults(): void {
+    // This would need the default parameters from index.ts
+    // For now, just clear localStorage - user can refresh to get defaults
+    LocalStorage.clear();
+    console.log("Cleared stored state. Refresh the page to load defaults.");
   }
 
   handleTick(position: number, time: number) {
@@ -384,6 +428,10 @@ export class Machine {
         this.keys.handleIntervalChange({ time: this.clock.time });
         this.renderer.updateKeyboard();
         this.renderer.updatePads(valueA);
+        // Save state when interval changes
+        if (this.initialized) {
+          this.debouncedSaveToLocalStorage();
+        }
       }
     } else if (type === "TAP" && location === "KEYS") {
       this.keys.handlePress({
@@ -406,6 +454,10 @@ export class Machine {
           sequencer.steps.values(valueB)[valueA],
           sequencer.steps.max
         );
+        // Save state when steps change
+        if (this.initialized) {
+          this.debouncedSaveToLocalStorage();
+        }
       }
     } else if (location === "KEYS") {
       if (type === "PRESS") {
