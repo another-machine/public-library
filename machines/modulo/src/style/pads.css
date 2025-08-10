@@ -60,10 +60,11 @@ main[stepping="true"] .sequencer {
     &::after {
       content: "";
       border-radius: var(--border-radius);
-      box-shadow: 0 0 0 calc(var(--pads-gap-y-factor) * var(--size-unit))
+      --box-shadow: 0 0 0 calc(var(--pads-gap-y-factor) * var(--size-unit))
           var(--color-text),
         inset 0 0 0 calc(var(--pads-gap-y-factor) * var(--size-unit) * 0.5)
           var(--color-text);
+      box-shadow: var(--box-shadow);
       inset: 0;
       position: absolute;
     }
