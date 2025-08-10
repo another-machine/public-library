@@ -178,10 +178,12 @@ export function generateDrumsDestinations({
   sequencers,
   machine,
   onStepChange,
+  onPropertyChange,
 }: {
   sequencers: DrumSequencer[];
   machine: Machine;
   onStepChange: () => void;
+  onPropertyChange: () => void;
 }): { [destination: string]: Destination } {
   const destinations: { [destination: string]: Destination } = {};
   sequencers.forEach((sequencer) => {

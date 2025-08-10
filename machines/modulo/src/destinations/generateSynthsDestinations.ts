@@ -24,10 +24,12 @@ export function generateSynthsDestinations({
   sequencers,
   machine,
   onStepChange,
+  onPropertyChange,
 }: {
   sequencers: SynthSequencer[];
   machine: Machine;
   onStepChange: () => void;
+  onPropertyChange: () => void;
 }): { [destination: string]: Destination } {
   const destinations: { [destination: string]: Destination } = {};
   sequencers.forEach((sequencer) => {
@@ -53,6 +55,7 @@ export function generateSynthsDestinations({
             const valid = validators.octave(value);
             if (valid) {
               sequencer.octave = parseInt(value);
+              onPropertyChange();
             }
             return { valid };
           },
@@ -146,6 +149,7 @@ export function generateSynthsDestinations({
                 const valid = validators.step(value);
                 if (valid) sequencer.steps.set(parseInt(value));
                 onStepChange();
+                onPropertyChange();
                 return { valid };
               },
             }),
@@ -219,6 +223,7 @@ export function generateSynthsDestinations({
                   delayTime: time,
                   wet: parseFloat(wet),
                 });
+                onPropertyChange();
                 return { valid };
               },
             }),
@@ -247,6 +252,7 @@ export function generateSynthsDestinations({
                   roomSize: parseFloat(size),
                   wet: parseFloat(wet),
                 });
+                onPropertyChange();
                 return { valid };
               },
             }),

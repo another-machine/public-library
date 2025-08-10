@@ -146,6 +146,7 @@ export class Machine {
       onToggleRainbow: this.onToggleRainbow.bind(this),
       onModeChange: this.onModeChange.bind(this),
       onStepChange: this.onStepChange.bind(this),
+      onPropertyChange: this.onPropertyChange.bind(this),
     });
 
     this._initialize = () => {
@@ -332,6 +333,13 @@ export class Machine {
 
   onStepChange() {
     this.renderer.handleStepsSizeChange();
+  }
+
+  onPropertyChange() {
+    // Trigger save when any property is changed via the prompt system
+    if (this.initialized) {
+      this.debouncedSaveToLocalStorage();
+    }
   }
 
   onToggleMachine() {

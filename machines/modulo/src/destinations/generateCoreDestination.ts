@@ -34,7 +34,8 @@ function propertyGeneratorLayoutRange(
 
 function lchProperty(
   initialValue: () => RendererThemeLCH,
-  onSet: (color: RendererThemeLCH) => void
+  onSet: (color: RendererThemeLCH) => void,
+  onPropertyChange: () => void
 ) {
   return new DestinationProperty({
     inputs: [
@@ -66,6 +67,7 @@ function lchProperty(
         validators.colorL(l) && validators.colorC(c) && validators.colorH(h);
       if (valid) {
         onSet({ l: parseFloat(l), c: parseFloat(c), h: parseInt(h) });
+        onPropertyChange();
       }
       return { valid };
     },
@@ -78,12 +80,14 @@ export function generateCoreDestination({
   onToggleMachine,
   onToggleRainbow,
   onModeChange,
+  onPropertyChange,
 }: {
   machine: Machine;
   onExport: (type: "image" | "json" | "url") => void;
   onToggleRainbow: () => boolean;
   onToggleMachine: () => boolean;
   onModeChange: () => void;
+  onPropertyChange: () => void;
 }): { [destination: string]: Destination } {
   const { clock, notes, sequencers, renderer } = machine;
   const commands = {
@@ -139,15 +143,18 @@ export function generateCoreDestination({
       properties: {
         a: lchProperty(
           () => machine.exportParams().theme.colors[i].a,
-          (settings) => machine.renderer.updateThemeColors(i, "a", settings)
+          (settings) => machine.renderer.updateThemeColors(i, "a", settings),
+          onPropertyChange
         ),
         b: lchProperty(
           () => machine.exportParams().theme.colors[i].b,
-          (settings) => machine.renderer.updateThemeColors(i, "b", settings)
+          (settings) => machine.renderer.updateThemeColors(i, "b", settings),
+          onPropertyChange
         ),
         c: lchProperty(
           () => machine.exportParams().theme.colors[i].c,
-          (settings) => machine.renderer.updateThemeColors(i, "c", settings)
+          (settings) => machine.renderer.updateThemeColors(i, "c", settings),
+          onPropertyChange
         ),
       },
     });
@@ -196,6 +203,7 @@ export function generateCoreDestination({
                   notes.setMode(mode);
                   notes.setRoot(root);
                   onModeChange();
+                  onPropertyChange();
                 }
                 return { valid };
               },
@@ -223,6 +231,7 @@ export function generateCoreDestination({
                 if (valid) {
                   clock.setRate(parseInt(rate));
                   clock.setSwing(parseFloat(swing));
+                  onPropertyChange();
                 }
                 return { valid };
               },
@@ -323,6 +332,7 @@ export function generateCoreDestination({
                         paddingX: parseFloat(paddingX),
                         paddingY: parseFloat(paddingY),
                       });
+                      onPropertyChange();
                     }
                     return { valid };
                   },
@@ -364,6 +374,7 @@ export function generateCoreDestination({
                         paddingY: parseFloat(paddingY),
                         width: parseFloat(width),
                       });
+                      onPropertyChange();
                     }
                     return { valid };
                   },

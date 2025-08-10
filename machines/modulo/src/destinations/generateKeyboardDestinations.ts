@@ -15,10 +15,12 @@ export function generateKeyboardDestinations({
   keys,
   machine,
   clock: _clock,
+  onPropertyChange,
 }: {
   keys: Keyboard;
   machine: Machine;
   clock: Clock;
+  onPropertyChange: () => void;
 }): { [destination: string]: Destination } {
   const destinations: { [destination: string]: Destination } = {};
   destinations.keys = new Destination({
@@ -91,6 +93,7 @@ export function generateKeyboardDestinations({
           const valid = validators.octave(value);
           if (valid) {
             keys.octave = parseInt(value);
+            onPropertyChange();
           }
           return { valid };
         },

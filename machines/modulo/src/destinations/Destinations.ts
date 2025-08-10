@@ -13,6 +13,7 @@ export class Destinations {
   onToggleRainbow: () => boolean;
   onStepChange: () => void;
   onModeChange: () => void;
+  onPropertyChange: () => void;
 
   constructor({
     machine,
@@ -21,6 +22,7 @@ export class Destinations {
     onToggleRainbow,
     onStepChange,
     onModeChange,
+    onPropertyChange,
   }: {
     machine: Machine;
     onExport: () => void;
@@ -28,6 +30,7 @@ export class Destinations {
     onToggleRainbow: () => boolean;
     onStepChange: () => void;
     onModeChange: () => void;
+    onPropertyChange: () => void;
   }) {
     this.machine = machine;
     this.onExport = onExport;
@@ -35,6 +38,7 @@ export class Destinations {
     this.onToggleRainbow = onToggleRainbow;
     this.onStepChange = onStepChange;
     this.onModeChange = onModeChange;
+    this.onPropertyChange = onPropertyChange;
     this.refresh();
   }
 
@@ -51,21 +55,25 @@ export class Destinations {
         onToggleMachine: this.onToggleMachine,
         onToggleRainbow: this.onToggleRainbow,
         onModeChange: this.onModeChange,
+        onPropertyChange: this.onPropertyChange,
       }),
       ...generateSynthsDestinations({
         sequencers: synthSequencers,
         machine: this.machine,
         onStepChange: this.onStepChange,
+        onPropertyChange: this.onPropertyChange,
       }),
       ...generateDrumsDestinations({
         sequencers: drumSequencers,
         machine: this.machine,
         onStepChange: this.onStepChange,
+        onPropertyChange: this.onPropertyChange,
       }),
       ...generateKeyboardDestinations({
         machine: this.machine,
         keys,
         clock,
+        onPropertyChange: this.onPropertyChange,
       }),
     };
     if (this.root) {
