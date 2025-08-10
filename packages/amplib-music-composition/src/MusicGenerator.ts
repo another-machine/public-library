@@ -55,7 +55,7 @@ export type ScaleType =
 export type Note = {
   pitch: number; // MIDI note number (0-127) or -1 for rest
   duration: NoteDuration;
-  velocity: number; // 0-127 for MIDI
+  velocity: number;
   isRest: boolean;
 };
 
@@ -66,20 +66,21 @@ export type Measure = {
 
 export type Phrase = {
   measures: Measure[];
-  startingDynamics: number; // 0-1
-  endingDynamics: number; // 0-1
-  tensionProfile: number[]; // 0-1 values indicating tension per measure
+  startingDynamics: number;
+  endingDynamics: number;
+  tensionProfile: number[];
 };
 
 export type Section = {
   phrases: Phrase[];
-  key: string; // e.g., "C major", "A minor"
-  tempo: number; // BPM
+  key: string;
+  tempo: number;
 };
 
 export type MusicalPiece = {
   sections: Section[];
   ensemble: Ensemble;
+  voices: Record<number, Note[][]>;
 };
 
 // Constants for scales
@@ -309,12 +310,26 @@ export class MusicGenerator {
     });
   }
 
+  generate(): MusicalPiece {
+    // Generate the abstract musical structure
+    const sections = this.generateSections();
+
+    // Generate the specific voice parts based on that structure
+    const voices = this.generateVoiceParts(sections);
+
+    // Return a complete structure with everything needed
+    return {
+      sections,
+      ensemble: this.ensemble,
+      voices,
+    };
+  }
+
   /**
-   * Generate a complete musical piece based on the movement parameters
+   * Generate a musical piece sections based on the movement parameters
    */
-  generateMusicalPiece(): MusicalPiece {
-    const { tempo, mood, complexity, coherence, tensionCurve } =
-      this.movementParams;
+  private generateSections(): Section[] {
+    const { mood, complexity, coherence, tensionCurve } = this.movementParams;
 
     // Select a key
     const rootNote = Math.floor(this.selector() * 12); // 0-11 for C through B
@@ -380,6 +395,7 @@ export class MusicGenerator {
             tensionCurve[i % tensionCurve.length]
           ),
           complexity,
+          coherence,
           index: j,
           totalPhrases: phraseCount,
         });
@@ -390,10 +406,7 @@ export class MusicGenerator {
       sections.push(section);
     }
 
-    return {
-      sections,
-      ensemble: this.ensemble,
-    };
+    return sections;
   }
 
   /**
@@ -404,6 +417,7 @@ export class MusicGenerator {
     meter,
     tensionProfile,
     complexity,
+    coherence,
     index,
     totalPhrases,
   }: {
@@ -411,22 +425,27 @@ export class MusicGenerator {
     meter: Meter;
     tensionProfile: number[];
     complexity: number;
+    coherence: number;
     index: number;
     totalPhrases: number;
   }): Phrase {
     const measureCount = tensionProfile.length;
     const measures: Measure[] = [];
 
-    // Generate each measure
+    // Use coherence to affect how similar consecutive measures are
     for (let i = 0; i < measureCount; i++) {
-      const measure = this.generateMeasure({
-        key,
-        meter,
-        tension: tensionProfile[i],
-        complexity,
-        measureIndex: i,
-        totalMeasures: measureCount,
-      });
+      // Higher coherence = more similarity between measures
+      const usePatternFromPrevious = i > 0 && this.selector() < coherence * 0.8;
+
+      const measure = usePatternFromPrevious
+        ? this.adaptMeasure(measures[i - 1], tensionProfile[i])
+        : this.generateMeasure({
+            key,
+            meter,
+            tension: tensionProfile[i],
+            complexity,
+            measureIndex: i,
+          });
 
       measures.push(measure);
     }
@@ -456,14 +475,12 @@ export class MusicGenerator {
     tension,
     complexity,
     measureIndex,
-    totalMeasures,
   }: {
     key: string;
     meter: Meter;
     tension: number;
     complexity: number;
     measureIndex: number;
-    totalMeasures: number;
   }): Measure {
     // Parse the key to get root note and scale type
     const [rootName, ...scaleTypeParts] = key.split(" ");
@@ -578,9 +595,9 @@ export class MusicGenerator {
         const midiNote = 12 * octave + pitchClass + rootNote;
 
         // Calculate velocity (volume) based on tension and position in measure
-        const baseVelocity = 64 + Math.floor(tension * 32); // 64-96
-        const rhythmicEmphasis = measureIndex % 2 === 0 ? 16 : 0; // Emphasize downbeats
-        const velocity = Math.min(127, baseVelocity + rhythmicEmphasis);
+        const baseVelocity = 0.5 + Math.floor(tension * 0.25); // 0.5-0.75
+        const rhythmicEmphasis = measureIndex % 2 === 0 ? 0.25 : 0; // Emphasize downbeats
+        const velocity = Math.min(1, baseVelocity + rhythmicEmphasis);
 
         notes.push({
           pitch: midiNote,
@@ -602,15 +619,15 @@ export class MusicGenerator {
   /**
    * Generate note patterns for each voice in the ensemble
    */
-  generateVoiceParts(musicalPiece: MusicalPiece): Record<number, Note[][]> {
+  private generateVoiceParts(sections: Section[]): Record<number, Note[][]> {
     const voiceParts: Record<number, Note[][]> = {};
 
     // Generate parts for each voice
     this.ensemble.voices.forEach((voice, voiceIndex) => {
-      const sections: Note[][] = [];
+      const voiceSections: Note[][] = []; // Renamed from 'sections' to 'voiceSections'
 
       // Generate for each section
-      musicalPiece.sections.forEach((section) => {
+      sections.forEach((section) => {
         const notes: Note[] = [];
 
         // Get the characteristics for this voice archetype
@@ -630,10 +647,10 @@ export class MusicGenerator {
           });
         });
 
-        sections.push(notes);
+        voiceSections.push(notes); // Add notes to voiceSections instead of sections
       });
 
-      voiceParts[voiceIndex] = sections;
+      voiceParts[voiceIndex] = voiceSections;
     });
 
     return voiceParts;
@@ -780,6 +797,36 @@ export class MusicGenerator {
     }
 
     return notes;
+  }
+
+  private adaptMeasure(previousMeasure: Measure, newTension: number): Measure {
+    // Create a variation of the previous measure with some adjustments
+    const adaptedNotes = previousMeasure.notes.map((note) => {
+      // Don't modify rests
+      if (note.isRest) return { ...note };
+
+      // Adjust velocity based on new tension
+      const velocityAdjustment = (newTension - 0.5) * 0.2;
+      const newVelocity = Math.max(
+        0,
+        Math.min(1, note.velocity + velocityAdjustment)
+      );
+
+      // Small chance to change pitch slightly (higher with lower coherence)
+      const changePitch = this.selector() < 0.3;
+      const pitchChange = changePitch ? Math.floor(this.selector() * 3) - 1 : 0;
+
+      return {
+        ...note,
+        velocity: newVelocity,
+        pitch: note.pitch + pitchChange,
+      };
+    });
+
+    return {
+      notes: adaptedNotes,
+      meter: previousMeasure.meter,
+    };
   }
 
   /**
