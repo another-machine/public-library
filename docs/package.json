@@ -5,5 +5,8 @@
   "scripts": {
     "start": "parcel src/*.html src/**/*.html",
     "build": "parcel build src/*.html src/**/*.html --no-cache"
+  },
+  "devDependencies": {
+    "@parcel/transformer-worklet": "^2.16.1"
   }
 }
