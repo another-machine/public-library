@@ -967,7 +967,7 @@ export class MusicGenerator {
     }
 
     // Ensure reasonable tempo range
-    return Math.max(40, Math.min(240, newTempo));
+    return Math.max(40, Math.min(240, newTempo || 0));
   }
 
   /**
