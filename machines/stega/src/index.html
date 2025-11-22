@@ -150,6 +150,70 @@
       .track:hover .track-controls {
         opacity: 1;
       }
+      /* Dual Range Slider Styles */
+      .range-slider-container {
+        position: relative;
+        height: 30px;
+        margin-bottom: 15px;
+      }
+      .range-slider-track {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 4px;
+        width: 100%;
+        background: #444;
+        border-radius: 2px;
+      }
+      .range-slider-highlight {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        height: 4px;
+        background: #fff;
+        border-radius: 2px;
+        pointer-events: none;
+      }
+      .range-slider-input {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 100%;
+        background: none;
+        pointer-events: none;
+        -webkit-appearance: none;
+        appearance: none;
+        margin: 0;
+      }
+      .range-slider-input::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        pointer-events: auto;
+        width: 16px;
+        height: 16px;
+        background: #fff;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #333;
+      }
+      .range-slider-input::-moz-range-thumb {
+        pointer-events: auto;
+        width: 16px;
+        height: 16px;
+        background: #fff;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid #333;
+      }
+      .controls-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      @media (max-width: 600px) {
+        .controls-grid {
+          grid-template-columns: 1fr;
+        }
+      }
       .track-controls {
         opacity: 0;
         transition: opacity 0.2s;
@@ -262,7 +326,31 @@
             "
           >
             <label>Trim Loop (seconds)</label>
-            <div style="display: flex; gap: 10px">
+
+            <div class="range-slider-container">
+              <div class="range-slider-track"></div>
+              <div class="range-slider-highlight" id="trim-highlight"></div>
+              <input
+                type="range"
+                class="range-slider-input"
+                id="trim-slider-start"
+                min="0"
+                max="100"
+                value="0"
+                step="0.01"
+              />
+              <input
+                type="range"
+                class="range-slider-input"
+                id="trim-slider-end"
+                min="0"
+                max="100"
+                value="100"
+                step="0.01"
+              />
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-bottom: 10px">
               <div style="flex: 1">
                 <label>Start</label>
                 <input
@@ -290,35 +378,57 @@
             </div>
           </div>
 
-          <label>BPM</label>
-          <input type="number" id="encoder-bpm" value="120" />
+          <div class="controls-grid">
+            <div>
+              <label>BPM</label>
+              <input type="number" id="encoder-bpm" value="120" />
 
-          <label>Pitch (Semitones)</label>
-          <input type="number" id="encoder-pitch" value="0" />
+              <label>Pitch (Semitones)</label>
+              <input type="number" id="encoder-pitch" value="0" />
 
-          <label
-            >Sample Rate: <span id="sample-rate-display">44100</span> Hz</label
-          >
-          <input
-            type="range"
-            id="encoder-sample-rate"
-            min="4000"
-            max="48000"
-            step="100"
-            value="44100"
-          />
+              <label
+                >Sample Rate:
+                <span id="sample-rate-display">44100</span> Hz</label
+              >
+              <input
+                type="range"
+                id="encoder-sample-rate"
+                min="4000"
+                max="48000"
+                step="100"
+                value="44100"
+              />
+            </div>
+            <div>
+              <label>Bit Depth</label>
+              <select id="encoder-bit-depth">
+                <option value="24">24-bit</option>
+                <option value="16" selected>16-bit</option>
+                <option value="8">8-bit</option>
+              </select>
 
-          <label>Bit Depth</label>
-          <select id="encoder-bit-depth">
-            <option value="24">24-bit</option>
-            <option value="16" selected>16-bit</option>
-            <option value="8">8-bit</option>
-          </select>
+              <label>Encoding Algorithm</label>
+              <select id="encoder-encoding">
+                <option value="additive" selected>Additive</option>
+                <option value="subtractive">Subtractive</option>
+                <option value="difference">Difference</option>
+                <option value="noise">Noise</option>
+              </select>
 
-          <label>Image</label>
-          <input type="file" id="encoder-image-input" accept="image/*" />
+              <label>Border Width (px)</label>
+              <input
+                type="number"
+                id="encoder-border-width"
+                value="1"
+                min="1"
+              />
 
-          <button id="encode-btn">Encode Image</button>
+              <label>Image</label>
+              <input type="file" id="encoder-image-input" accept="image/*" />
+            </div>
+          </div>
+
+          <button id="encode-btn" style="margin-top: 20px">Encode Image</button>
         </div>
 
         <div

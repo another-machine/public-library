@@ -13,6 +13,8 @@ export class Encoder {
     sampleRate: number;
     bitDepth: 8 | 16 | 24;
     channels: 1 | 2;
+    encoding: any;
+    borderWidth: number;
   } | null = null;
 
   constructor() {
@@ -51,6 +53,12 @@ export class Encoder {
     const bitDepthInput = document.getElementById(
       "encoder-bit-depth"
     ) as HTMLSelectElement;
+    const encodingInput = document.getElementById(
+      "encoder-encoding"
+    ) as HTMLSelectElement;
+    const borderWidthInput = document.getElementById(
+      "encoder-border-width"
+    ) as HTMLInputElement;
     const previewPlayBtn = document.getElementById("preview-play")!;
     const previewStopBtn = document.getElementById("preview-stop")!;
     const generatedControls = document.getElementById("generated-controls")!;
@@ -59,6 +67,66 @@ export class Encoder {
     const downloadGeneratedBtn = document.getElementById(
       "download-generated-btn"
     )!;
+
+    // Dual Range Slider Logic
+    const trimSliderStart = document.getElementById(
+      "trim-slider-start"
+    ) as HTMLInputElement;
+    const trimSliderEnd = document.getElementById(
+      "trim-slider-end"
+    ) as HTMLInputElement;
+    const trimHighlight = document.getElementById("trim-highlight")!;
+
+    const updateSliderUI = () => {
+      const min = parseFloat(trimSliderStart.min);
+      const max = parseFloat(trimSliderStart.max);
+      const valStart = parseFloat(trimSliderStart.value);
+      const valEnd = parseFloat(trimSliderEnd.value);
+
+      // Ensure start doesn't cross end
+      if (valStart > valEnd) {
+        trimSliderStart.value = valEnd.toString();
+        return;
+      }
+
+      const percentStart = ((valStart - min) / (max - min)) * 100;
+      const percentEnd = ((valEnd - min) / (max - min)) * 100;
+
+      trimHighlight.style.left = percentStart + "%";
+      trimHighlight.style.width = percentEnd - percentStart + "%";
+
+      trimStartInput.value = valStart.toFixed(2);
+      trimEndInput.value = valEnd.toFixed(2);
+    };
+
+    trimSliderStart.addEventListener("input", () => {
+      if (
+        parseFloat(trimSliderStart.value) >= parseFloat(trimSliderEnd.value)
+      ) {
+        trimSliderStart.value = trimSliderEnd.value;
+      }
+      updateSliderUI();
+    });
+
+    trimSliderEnd.addEventListener("input", () => {
+      if (
+        parseFloat(trimSliderEnd.value) <= parseFloat(trimSliderStart.value)
+      ) {
+        trimSliderEnd.value = trimSliderStart.value;
+      }
+      updateSliderUI();
+    });
+
+    // Sync number inputs back to sliders
+    trimStartInput.addEventListener("change", () => {
+      trimSliderStart.value = trimStartInput.value;
+      updateSliderUI();
+    });
+
+    trimEndInput.addEventListener("change", () => {
+      trimSliderEnd.value = trimEndInput.value;
+      updateSliderUI();
+    });
 
     sampleRateInput.addEventListener("input", () => {
       sampleRateDisplay.innerText = sampleRateInput.value;
@@ -107,6 +175,8 @@ export class Encoder {
       const end = parseFloat(trimEndInput.value);
       const targetSampleRate = parseInt(sampleRateInput.value);
       const targetBitDepth = parseInt(bitDepthInput.value) as 8 | 16 | 24;
+      const targetEncoding = encodingInput.value as any;
+      const targetBorderWidth = parseInt(borderWidthInput.value);
 
       if (!imageFile) {
         alert("Please select an image");
@@ -149,9 +219,9 @@ export class Encoder {
         audioBuffers: slicedBuffers,
         sampleRate: targetSampleRate,
         bitDepth: targetBitDepth,
-        encoding: "additive",
+        encoding: targetEncoding,
         encodeMetadata: true,
-        borderWidth: 1,
+        borderWidth: targetBorderWidth,
         music: { bpm: adjustedBpm, semitones: adjustedPitch },
       });
 
@@ -160,6 +230,8 @@ export class Encoder {
         sampleRate: targetSampleRate,
         bitDepth: targetBitDepth,
         channels: slicedBuffers.length as 1 | 2,
+        encoding: targetEncoding,
+        borderWidth: targetBorderWidth,
       };
 
       const dataUrl = encodedCanvas.toDataURL();
@@ -190,14 +262,15 @@ export class Encoder {
     if (!this.lastEncodedData) return;
     this.stopGenerated();
 
-    const { canvas, sampleRate, bitDepth, channels } = this.lastEncodedData;
+    const { canvas, sampleRate, bitDepth, channels, encoding, borderWidth } =
+      this.lastEncodedData;
 
     const decodedBuffers = StegaCassette.decode({
       source: canvas,
       bitDepth,
       channels,
-      encoding: "additive",
-      borderWidth: 1,
+      encoding,
+      borderWidth,
     });
 
     const audioBuffer = this.audioContext.createBuffer(
@@ -234,9 +307,29 @@ export class Encoder {
     const trimEndInput = document.getElementById(
       "trim-end"
     ) as HTMLInputElement;
+    const trimSliderStart = document.getElementById(
+      "trim-slider-start"
+    ) as HTMLInputElement;
+    const trimSliderEnd = document.getElementById(
+      "trim-slider-end"
+    ) as HTMLInputElement;
+    const trimHighlight = document.getElementById("trim-highlight")!;
 
+    const duration = this.fullAudioBuffer.duration;
+
+    // Update inputs
     trimStartInput.value = "0";
-    trimEndInput.value = this.fullAudioBuffer.duration.toFixed(2);
+    trimEndInput.value = duration.toFixed(2);
+
+    // Update sliders
+    trimSliderStart.max = duration.toString();
+    trimSliderEnd.max = duration.toString();
+    trimSliderStart.value = "0";
+    trimSliderEnd.value = duration.toString();
+
+    // Update highlight
+    trimHighlight.style.left = "0%";
+    trimHighlight.style.width = "100%";
 
     (document.getElementById("encoder-bpm") as HTMLInputElement).value = "120";
     (document.getElementById("encoder-pitch") as HTMLInputElement).value = "0";
