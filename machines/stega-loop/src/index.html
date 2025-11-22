@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stega Loop</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        background: #111;
+        color: #eee;
+        margin: 0;
+        padding: 20px;
+      }
+      h1 {
+        font-weight: 300;
+        margin-bottom: 20px;
+      }
+      .container {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .panel {
+        background: #222;
+        padding: 20px;
+        border-radius: 8px;
+        flex: 1;
+        min-width: 300px;
+      }
+      .drop-zone {
+        border: 2px dashed #444;
+        border-radius: 8px;
+        padding: 40px;
+        text-align: center;
+        color: #888;
+        transition: border-color 0.2s, color 0.2s;
+        cursor: pointer;
+      }
+      .drop-zone.drag-over {
+        border-color: #fff;
+        color: #fff;
+      }
+      input,
+      button,
+      select {
+        background: #333;
+        border: 1px solid #444;
+        color: #fff;
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      button {
+        cursor: pointer;
+        background: #444;
+      }
+      button:hover {
+        background: #555;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      label {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 0.9em;
+        color: #aaa;
+      }
+      #encoded-image {
+        max-width: 100%;
+        margin-top: 20px;
+        display: none;
+      }
+      .track {
+        background: #333;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .track img {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+      }
+      .track-info {
+        flex: 1;
+      }
+      .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Stega Loop</h1>
+
+    <div class="controls">
+      <button id="play-pause">Play</button>
+      <div style="flex: 1"></div>
+      <div style="width: 100px">
+        <label>Global BPM</label>
+        <input type="number" id="global-bpm" value="120" />
+      </div>
+      <div style="width: 100px">
+        <label>Global Pitch</label>
+        <input type="number" id="global-pitch" value="0" />
+      </div>
+    </div>
+
+    <div class="container">
+      <!-- Encoder Panel -->
+      <div class="panel">
+        <h2>Create Loop</h2>
+        <div class="drop-zone" id="encoder-drop">
+          Drop Audio or Click to Upload
+          <input
+            type="file"
+            id="encoder-input"
+            accept="audio/*"
+            style="display: none"
+          />
+        </div>
+
+        <div id="encoder-controls" style="display: none; margin-top: 20px">
+          <label>BPM</label>
+          <input type="number" id="encoder-bpm" value="120" />
+
+          <label>Pitch (Semitones)</label>
+          <input type="number" id="encoder-pitch" value="0" />
+
+          <label>Image</label>
+          <input type="file" id="encoder-image-input" accept="image/*" />
+
+          <button id="encode-btn">Encode Image</button>
+        </div>
+
+        <img id="encoded-image" />
+      </div>
+
+      <!-- Mixer Panel -->
+      <div class="panel">
+        <h2>Mixer</h2>
+        <div class="drop-zone" id="mixer-drop">Drop Encoded Images Here</div>
+        <div id="tracks" style="margin-top: 20px"></div>
+      </div>
+    </div>
+
+    <script type="module" src="./index.ts"></script>
+  </body>
+</html>
