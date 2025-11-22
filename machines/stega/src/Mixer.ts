@@ -251,4 +251,37 @@ export class Mixer {
       item.currentRotation = 0;
     });
   }
+
+  getBlendedImage(): HTMLCanvasElement {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d")!;
+
+    // Set size based on first image or default
+    if (this.animators.length > 0) {
+      const first = this.animators[0].animator.source as HTMLCanvasElement;
+      canvas.width = first.width;
+      canvas.height = first.height;
+    } else {
+      canvas.width = 1000;
+      canvas.height = 1000;
+    }
+
+    // Fill with black background
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.globalCompositeOperation = "screen";
+
+    this.animators.forEach(({ animator }) => {
+      ctx.drawImage(
+        animator.source as HTMLCanvasElement,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+      );
+    });
+
+    return canvas;
+  }
 }

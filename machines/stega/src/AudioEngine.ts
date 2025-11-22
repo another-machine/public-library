@@ -16,9 +16,18 @@ export class AudioEngine {
   globalBpm: number = 120;
   globalPitch: number = 0;
   isPlaying: boolean = false;
+  masterGain: GainNode;
+  mediaStreamDestination: MediaStreamAudioDestinationNode;
+  mediaRecorder: MediaRecorder | null = null;
+  recordedChunks: Blob[] = [];
 
   constructor() {
     this.audioContext = new AudioContext();
+    this.masterGain = this.audioContext.createGain();
+    this.masterGain.connect(this.audioContext.destination);
+    this.mediaStreamDestination =
+      this.audioContext.createMediaStreamDestination();
+    this.masterGain.connect(this.mediaStreamDestination);
   }
 
   async addTrack(audioBuffer: AudioBuffer, metadata: LoopMetadata) {
@@ -46,7 +55,7 @@ export class AudioEngine {
     analyserNode.fftSize = 256;
 
     gainNode.connect(analyserNode);
-    analyserNode.connect(this.audioContext.destination);
+    analyserNode.connect(this.masterGain);
 
     if (transformation.phaseVocoderNode) {
       transformation.phaseVocoderNode.disconnect();
@@ -165,5 +174,32 @@ export class AudioEngine {
       this.play();
     }
     return this.isPlaying;
+  }
+
+  startRecording() {
+    this.recordedChunks = [];
+    this.mediaRecorder = new MediaRecorder(this.mediaStreamDestination.stream);
+    this.mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        this.recordedChunks.push(e.data);
+      }
+    };
+    this.mediaRecorder.start();
+  }
+
+  async stopRecording(): Promise<Blob> {
+    return new Promise((resolve) => {
+      if (!this.mediaRecorder) {
+        resolve(new Blob());
+        return;
+      }
+
+      this.mediaRecorder.onstop = () => {
+        const blob = new Blob(this.recordedChunks, { type: "audio/webm" });
+        this.recordedChunks = [];
+        resolve(blob);
+      };
+      this.mediaRecorder.stop();
+    });
   }
 }

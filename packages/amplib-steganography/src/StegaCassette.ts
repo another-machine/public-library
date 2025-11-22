@@ -15,7 +15,7 @@ export type StegaCassetteEncoding =
 export type StegaCassetteChannels = 1 | 2;
 
 interface EncodeOptions {
-  source: HTMLImageElement;
+  source: HTMLImageElement | HTMLCanvasElement;
   audioBuffers: Float32Array[];
   sampleRate: number;
   bitDepth: StegaCassetteBitDepth;

@@ -179,7 +179,10 @@
 
       <div style="margin-top: 20px">
         <label>Playback</label>
-        <button id="play-pause">Play</button>
+        <div style="display: flex; gap: 10px">
+          <button id="play-pause">Play</button>
+          <button id="record-btn" style="background: #822">Record</button>
+        </div>
       </div>
 
       <div style="margin-top: 20px">
@@ -190,6 +193,24 @@
       <div style="margin-top: 20px">
         <label>Global Pitch</label>
         <input type="number" id="global-pitch" value="0" />
+      </div>
+
+      <div
+        style="margin-top: 20px; display: none"
+        id="recording-preview-container"
+      >
+        <label>Recording Preview</label>
+        <img
+          id="recording-preview-img"
+          style="width: 100%; margin-bottom: 10px; border: 1px solid #444"
+        />
+        <a
+          id="recording-download-link"
+          href="#"
+          download="stega-mix.png"
+          style="color: #fff; text-decoration: underline"
+          >Download Recording</a
+        >
       </div>
     </div>
 
