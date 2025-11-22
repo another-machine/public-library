@@ -10,6 +10,7 @@ export class AudioEngine {
     originalBuffer: AudioBuffer;
     speedMultiplier: number;
     octaveShift: number;
+    isReversed: boolean;
     gainNode: GainNode;
     analyserNode: AnalyserNode;
   }[] = [];
@@ -69,6 +70,7 @@ export class AudioEngine {
       originalBuffer: audioBuffer,
       speedMultiplier: 1,
       octaveShift: 0,
+      isReversed: false,
       gainNode,
       analyserNode,
     };
@@ -107,6 +109,20 @@ export class AudioEngine {
   setTrackOctaveShift(track: any, shift: number) {
     track.octaveShift = shift;
     this.syncTrack(track);
+  }
+
+  setTrackReversed(track: any, reversed: boolean) {
+    if (track.isReversed !== reversed) {
+      // Reverse the buffer in place
+      for (let i = 0; i < track.originalBuffer.numberOfChannels; i++) {
+        Array.prototype.reverse.call(track.originalBuffer.getChannelData(i));
+      }
+      track.isReversed = reversed;
+
+      if (this.isPlaying) {
+        this.play();
+      }
+    }
   }
 
   setTrackVolume(track: any, volume: number) {
