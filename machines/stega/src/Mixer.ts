@@ -44,7 +44,7 @@ export class Mixer {
 
         // Rotate based on track speed
         // Base speed 0.5 radians per second
-        item.currentRotation += 0.5 * track.speedMultiplier * delta;
+        item.currentRotation += 0.75 * track.speedMultiplier * delta;
 
         animator.renderFrame({
           scale,
@@ -174,7 +174,9 @@ export class Mixer {
     const animator = new StegaAnimator({
       source: image,
       resolution: 500,
-      fadeAmount: 0.9, // Trail effect
+      rotationMode: "2d",
+      shape: "circle",
+      fadeAmount: 0.8, // Trail effect
     });
 
     // Style the canvas

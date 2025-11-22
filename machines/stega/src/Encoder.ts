@@ -69,6 +69,14 @@ export class Encoder {
     )!;
 
     // Dual Range Slider Logic
+    const zoomSliderStart = document.getElementById(
+      "zoom-slider-start"
+    ) as HTMLInputElement;
+    const zoomSliderEnd = document.getElementById(
+      "zoom-slider-end"
+    ) as HTMLInputElement;
+    const zoomHighlight = document.getElementById("zoom-highlight")!;
+
     const trimSliderStart = document.getElementById(
       "trim-slider-start"
     ) as HTMLInputElement;
@@ -78,27 +86,84 @@ export class Encoder {
     const trimHighlight = document.getElementById("trim-highlight")!;
 
     const updateSliderUI = () => {
-      const min = parseFloat(trimSliderStart.min);
-      const max = parseFloat(trimSliderStart.max);
-      const valStart = parseFloat(trimSliderStart.value);
-      const valEnd = parseFloat(trimSliderEnd.value);
+      // Zoom Slider Logic
+      const zoomMin = parseFloat(zoomSliderStart.min);
+      const zoomMax = parseFloat(zoomSliderStart.max);
+      let zoomValStart = parseFloat(zoomSliderStart.value);
+      let zoomValEnd = parseFloat(zoomSliderEnd.value);
 
-      // Ensure start doesn't cross end
-      if (valStart > valEnd) {
-        trimSliderStart.value = valEnd.toString();
-        return;
+      if (zoomValStart > zoomValEnd) {
+        zoomSliderStart.value = zoomValEnd.toString();
+        zoomValStart = zoomValEnd;
       }
 
-      const percentStart = ((valStart - min) / (max - min)) * 100;
-      const percentEnd = ((valEnd - min) / (max - min)) * 100;
+      const zoomPercentStart =
+        ((zoomValStart - zoomMin) / (zoomMax - zoomMin)) * 100;
+      const zoomPercentEnd =
+        ((zoomValEnd - zoomMin) / (zoomMax - zoomMin)) * 100;
 
-      trimHighlight.style.left = percentStart + "%";
-      trimHighlight.style.width = percentEnd - percentStart + "%";
+      zoomHighlight.style.left = zoomPercentStart + "%";
+      zoomHighlight.style.width = zoomPercentEnd - zoomPercentStart + "%";
 
-      trimStartInput.value = valStart.toFixed(2);
-      trimEndInput.value = valEnd.toFixed(2);
+      // Trim Slider Logic (Relative to Zoom)
+      const trimMin = parseFloat(trimSliderStart.min);
+      const trimMax = parseFloat(trimSliderStart.max);
+      let trimValStart = parseFloat(trimSliderStart.value);
+      let trimValEnd = parseFloat(trimSliderEnd.value);
+
+      if (trimValStart > trimValEnd) {
+        trimSliderStart.value = trimValEnd.toString();
+        trimValStart = trimValEnd;
+      }
+
+      const trimPercentStart =
+        ((trimValStart - trimMin) / (trimMax - trimMin)) * 100;
+      const trimPercentEnd =
+        ((trimValEnd - trimMin) / (trimMax - trimMin)) * 100;
+
+      trimHighlight.style.left = trimPercentStart + "%";
+      trimHighlight.style.width = trimPercentEnd - trimPercentStart + "%";
+
+      // Calculate Absolute Times
+      if (this.fullAudioBuffer) {
+        const duration = this.fullAudioBuffer.duration;
+
+        // Zoom Window (Absolute Times)
+        const zoomWindowStart = duration * (zoomPercentStart / 100);
+        const zoomWindowEnd = duration * (zoomPercentEnd / 100);
+        const zoomWindowDuration = zoomWindowEnd - zoomWindowStart;
+
+        // Trim Times (Absolute, based on Zoom Window)
+        const absoluteStart =
+          zoomWindowStart + zoomWindowDuration * (trimPercentStart / 100);
+        const absoluteEnd =
+          zoomWindowStart + zoomWindowDuration * (trimPercentEnd / 100);
+
+        trimStartInput.value = absoluteStart.toFixed(3);
+        trimEndInput.value = absoluteEnd.toFixed(3);
+      }
     };
 
+    // Zoom Listeners
+    zoomSliderStart.addEventListener("input", () => {
+      if (
+        parseFloat(zoomSliderStart.value) >= parseFloat(zoomSliderEnd.value)
+      ) {
+        zoomSliderStart.value = zoomSliderEnd.value;
+      }
+      updateSliderUI();
+    });
+
+    zoomSliderEnd.addEventListener("input", () => {
+      if (
+        parseFloat(zoomSliderEnd.value) <= parseFloat(zoomSliderStart.value)
+      ) {
+        zoomSliderEnd.value = zoomSliderStart.value;
+      }
+      updateSliderUI();
+    });
+
+    // Trim Listeners
     trimSliderStart.addEventListener("input", () => {
       if (
         parseFloat(trimSliderStart.value) >= parseFloat(trimSliderEnd.value)
@@ -117,16 +182,34 @@ export class Encoder {
       updateSliderUI();
     });
 
-    // Sync number inputs back to sliders
-    trimStartInput.addEventListener("change", () => {
-      trimSliderStart.value = trimStartInput.value;
-      updateSliderUI();
-    });
+    // Sync number inputs back to sliders (Complex due to relative zoom)
+    // For now, let's reset zoom to full if user manually types time, to keep it simple
+    const handleManualInput = () => {
+      if (!this.fullAudioBuffer) return;
+      const duration = this.fullAudioBuffer.duration;
+      let start = parseFloat(trimStartInput.value);
+      let end = parseFloat(trimEndInput.value);
 
-    trimEndInput.addEventListener("change", () => {
-      trimSliderEnd.value = trimEndInput.value;
+      if (start < 0) start = 0;
+      if (end > duration) end = duration;
+      if (start > end) start = end;
+
+      // Reset Zoom to 0-100
+      zoomSliderStart.value = "0";
+      zoomSliderEnd.value = "100";
+
+      // Set Trim relative to full duration
+      const startPercent = (start / duration) * 100;
+      const endPercent = (end / duration) * 100;
+
+      trimSliderStart.value = startPercent.toString();
+      trimSliderEnd.value = endPercent.toString();
+
       updateSliderUI();
-    });
+    };
+
+    trimStartInput.addEventListener("change", handleManualInput);
+    trimEndInput.addEventListener("change", handleManualInput);
 
     sampleRateInput.addEventListener("input", () => {
       sampleRateDisplay.innerText = sampleRateInput.value;
@@ -307,6 +390,15 @@ export class Encoder {
     const trimEndInput = document.getElementById(
       "trim-end"
     ) as HTMLInputElement;
+
+    const zoomSliderStart = document.getElementById(
+      "zoom-slider-start"
+    ) as HTMLInputElement;
+    const zoomSliderEnd = document.getElementById(
+      "zoom-slider-end"
+    ) as HTMLInputElement;
+    const zoomHighlight = document.getElementById("zoom-highlight")!;
+
     const trimSliderStart = document.getElementById(
       "trim-slider-start"
     ) as HTMLInputElement;
@@ -319,15 +411,17 @@ export class Encoder {
 
     // Update inputs
     trimStartInput.value = "0";
-    trimEndInput.value = duration.toFixed(2);
+    trimEndInput.value = duration.toFixed(3);
 
-    // Update sliders
-    trimSliderStart.max = duration.toString();
-    trimSliderEnd.max = duration.toString();
+    // Reset Zoom Sliders (0-100%)
+    zoomSliderStart.value = "0";
+    zoomSliderEnd.value = "100";
+    zoomHighlight.style.left = "0%";
+    zoomHighlight.style.width = "100%";
+
+    // Reset Trim Sliders (0-100% of Zoom Window)
     trimSliderStart.value = "0";
-    trimSliderEnd.value = duration.toString();
-
-    // Update highlight
+    trimSliderEnd.value = "100";
     trimHighlight.style.left = "0%";
     trimHighlight.style.width = "100%";
 

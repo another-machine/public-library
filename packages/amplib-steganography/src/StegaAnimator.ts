@@ -9,6 +9,8 @@ export interface StegaAnimatorParams {
   resolution: number;
   source: HTMLImageElement | HTMLCanvasElement;
   fadeAmount?: number;
+  rotationMode?: "2d" | "3d";
+  shape?: "circle" | "square" | "implicit";
 }
 
 export interface StegaAnimatorTransform {
@@ -32,13 +34,29 @@ export class StegaAnimator {
   source: HTMLImageElement | HTMLCanvasElement;
   sourceAspectRatio: number;
   fadeAmount: number;
+  rotationMode: "2d" | "3d";
+  shape: "circle" | "square" | "implicit";
 
-  constructor({ source, resolution, fadeAmount = 0 }: StegaAnimatorParams) {
+  constructor({
+    source,
+    resolution,
+    fadeAmount = 0,
+    rotationMode = "3d",
+    shape = "implicit",
+  }: StegaAnimatorParams) {
     this.resolution = resolution;
+    this.rotationMode = rotationMode;
+    this.shape = shape;
     const { width, height } = dimensionsFromSource(source);
     this.sourceAspectRatio = width / height;
+
+    let targetAspectRatio = this.sourceAspectRatio;
+    if (shape === "square" || shape === "circle") {
+      targetAspectRatio = 1;
+    }
+
     const newWidth = Math.ceil(resolution);
-    const newHeight = Math.ceil(resolution / this.sourceAspectRatio);
+    const newHeight = Math.ceil(resolution / targetAspectRatio);
     const { canvas, context } = createCanvasAndContext(newWidth, newHeight);
     fillCanvasWithImage(canvas, context, source);
     this.source = canvas;
@@ -66,63 +84,81 @@ export class StegaAnimator {
   }
 
   renderFrame(transform: StegaAnimatorTransform) {
-    this.context.setTransform({
-      a: 1,
-      c: 0,
-      e: 0,
-      b: 0,
-      d: 1,
-      f: 0,
-    });
-    const { canvas, context } = createCanvasAndContext();
-    canvas.height = this.canvas.height;
-    canvas.width = this.canvas.width;
-    context.drawImage(this.canvas, 0, 0);
+    // 1. Snapshot current state for trail
+    const { canvas: trailCanvas, context: trailContext } =
+      createCanvasAndContext(this.canvas.width, this.canvas.height);
+    trailContext.drawImage(this.canvas, 0, 0);
+
+    // 2. Clear main canvas
+    this.context.setTransform(1, 0, 0, 1, 0, 0);
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // 3. Draw trail
     this.context.globalAlpha = this.fadeAmount;
-    this.context.drawImage(canvas, 0, 0);
+    this.context.drawImage(trailCanvas, 0, 0);
     this.context.globalAlpha = 1;
 
-    const centerX = this.canvas.width / 2;
-    const centerY = this.canvas.height / 2;
+    // 4. Prepare new frame content
     const diameterWidth = this.canvas.width * transform.scale;
     const diameterHeight = this.canvas.height * transform.scale;
     const rotation = transform.rotation;
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
 
-    // Use a default rotation offset logic similar to animate but based on current rotation
-    // or just 0 if we want simple rotation.
-    // The original logic used rotationEnd to determine the axis.
-    // We'll use the current rotation as the "target" effectively.
-    const rotationOffset = Math.PI * 0.5 + (rotation % Math.PI) * 2;
+    // Use offscreen canvas for the new frame to apply clipping cleanly
+    const { canvas: frameCanvas, context: frameContext } =
+      createCanvasAndContext(this.canvas.width, this.canvas.height);
 
-    const axisX = Math.cos(rotation + rotationOffset);
-    const axisY = Math.sin(rotation + rotationOffset);
-    const axisLength = Math.hypot(axisX, axisY);
-    const normalizedX = axisX / axisLength;
-    const normalizedY = axisY / axisLength;
+    if (this.shape === "circle") {
+      frameContext.beginPath();
+      frameContext.arc(centerX, centerY, diameterWidth / 2, 0, Math.PI * 2);
+      frameContext.clip();
+    }
 
-    // Scale along image x to match rotation
-    const xScaling = Math.cos(rotation);
-    this.context.setTransform({
-      a: normalizedY * xScaling,
-      b: -normalizedX * xScaling,
-      c: normalizedX,
-      d: normalizedY,
-      e: centerX,
-      f: centerY,
-    });
+    if (this.rotationMode === "2d") {
+      frameContext.translate(centerX, centerY);
+      frameContext.rotate(rotation);
+      frameContext.translate(-centerX, -centerY);
+      frameContext.drawImage(
+        this.source,
+        centerX - diameterWidth / 2,
+        centerY - diameterHeight / 2,
+        diameterWidth,
+        diameterHeight
+      );
+    } else {
+      const rotationOffset = Math.PI * 0.5 + (rotation % Math.PI) * 2;
+      const axisX = Math.cos(rotation + rotationOffset);
+      const axisY = Math.sin(rotation + rotationOffset);
+      const axisLength = Math.hypot(axisX, axisY);
+      const normalizedX = axisX / axisLength;
+      const normalizedY = axisY / axisLength;
+      const xScaling = Math.cos(rotation);
 
-    this.context.drawImage(
-      this.source,
-      0,
-      0,
-      this.canvas.width,
-      this.canvas.height,
-      diameterWidth / -2,
-      diameterHeight / -2,
-      diameterWidth,
-      diameterHeight
-    );
+      frameContext.setTransform({
+        a: normalizedY * xScaling,
+        b: -normalizedX * xScaling,
+        c: normalizedX,
+        d: normalizedY,
+        e: centerX,
+        f: centerY,
+      });
+
+      frameContext.drawImage(
+        this.source,
+        0,
+        0,
+        this.canvas.width,
+        this.canvas.height,
+        diameterWidth / -2,
+        diameterHeight / -2,
+        diameterWidth,
+        diameterHeight
+      );
+    }
+
+    // 5. Composite offscreen canvas to main canvas
+    this.context.drawImage(frameCanvas, 0, 0);
   }
 
   animate({
@@ -132,70 +168,20 @@ export class StegaAnimator {
     easing = (x: number) => x,
   }: StegaAnimatorAnimateParams) {
     return new Promise<HTMLImageElement | HTMLCanvasElement>((resolve) => {
-      const sizeWidthStart = this.canvas.width * from.scale;
-      const sizeWidthEnd = this.canvas.width * to.scale;
-      const sizeWidthDiff = sizeWidthEnd - sizeWidthStart;
-      const sizeHeightStart = this.canvas.height * from.scale;
-      const sizeHeightEnd = this.canvas.height * to.scale;
-      const sizeHeightDiff = sizeHeightEnd - sizeHeightStart;
-      const rotationStart = from.rotation;
-      const rotationEnd = to.rotation;
-      const rotationDiff = rotationEnd - rotationStart;
-      const rotationOffset = Math.PI * 0.5 + (rotationEnd % Math.PI) * 2;
       let position = 0;
 
       const animate = () => {
         const progress = easing(position);
-        this.context.setTransform({
-          a: 1,
-          c: 0,
-          e: 0,
-          b: 0,
-          d: 1,
-          f: 0,
+        const currentScale = from.scale + (to.scale - from.scale) * progress;
+        const currentRotation =
+          from.rotation + (to.rotation - from.rotation) * progress;
+
+        this.renderFrame({
+          scale: currentScale,
+          rotation: currentRotation,
+          x: 0,
+          y: 0,
         });
-        const { canvas, context } = createCanvasAndContext();
-        canvas.height = this.canvas.height;
-        canvas.width = this.canvas.width;
-        context.drawImage(this.canvas, 0, 0);
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.context.globalAlpha = this.fadeAmount;
-        this.context.drawImage(canvas, 0, 0);
-        this.context.globalAlpha = 1;
-
-        const centerX = this.canvas.width / 2;
-        const centerY = this.canvas.height / 2;
-        const diameterWidth = sizeWidthStart + sizeWidthDiff * progress;
-        const diameterHeight = sizeHeightStart + sizeHeightDiff * progress;
-        const rotation = progress * rotationDiff + rotationStart;
-        const axisX = Math.cos(rotation + rotationOffset);
-        const axisY = Math.sin(rotation + rotationOffset);
-        const axisLength = Math.hypot(axisX, axisY);
-        const normalizedX = axisX / axisLength;
-        const normalizedY = axisY / axisLength;
-
-        // Scale along image x to match rotation
-        const xScaling = Math.cos(rotation);
-        this.context.setTransform({
-          a: normalizedY * xScaling,
-          b: -normalizedX * xScaling,
-          c: normalizedX,
-          d: normalizedY,
-          e: centerX,
-          f: centerY,
-        });
-
-        this.context.drawImage(
-          this.source,
-          0,
-          0,
-          this.canvas.width,
-          this.canvas.height,
-          diameterWidth / -2,
-          diameterHeight / -2,
-          diameterWidth,
-          diameterHeight
-        );
 
         if (position >= 1) {
           resolve(this.source);
