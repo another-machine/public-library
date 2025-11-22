@@ -65,6 +65,66 @@ export class StegaAnimator {
     return () => (running = false);
   }
 
+  renderFrame(transform: StegaAnimatorTransform) {
+    this.context.setTransform({
+      a: 1,
+      c: 0,
+      e: 0,
+      b: 0,
+      d: 1,
+      f: 0,
+    });
+    const { canvas, context } = createCanvasAndContext();
+    canvas.height = this.canvas.height;
+    canvas.width = this.canvas.width;
+    context.drawImage(this.canvas, 0, 0);
+    this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this.context.globalAlpha = this.fadeAmount;
+    this.context.drawImage(canvas, 0, 0);
+    this.context.globalAlpha = 1;
+
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+    const diameterWidth = this.canvas.width * transform.scale;
+    const diameterHeight = this.canvas.height * transform.scale;
+    const rotation = transform.rotation;
+
+    // Use a default rotation offset logic similar to animate but based on current rotation
+    // or just 0 if we want simple rotation.
+    // The original logic used rotationEnd to determine the axis.
+    // We'll use the current rotation as the "target" effectively.
+    const rotationOffset = Math.PI * 0.5 + (rotation % Math.PI) * 2;
+
+    const axisX = Math.cos(rotation + rotationOffset);
+    const axisY = Math.sin(rotation + rotationOffset);
+    const axisLength = Math.hypot(axisX, axisY);
+    const normalizedX = axisX / axisLength;
+    const normalizedY = axisY / axisLength;
+
+    // Scale along image x to match rotation
+    const xScaling = Math.cos(rotation);
+    this.context.setTransform({
+      a: normalizedY * xScaling,
+      b: -normalizedX * xScaling,
+      c: normalizedX,
+      d: normalizedY,
+      e: centerX,
+      f: centerY,
+    });
+
+    this.context.drawImage(
+      this.source,
+      0,
+      0,
+      this.canvas.width,
+      this.canvas.height,
+      diameterWidth / -2,
+      diameterHeight / -2,
+      diameterWidth,
+      diameterHeight
+    );
+  }
+
   animate({
     from,
     to,

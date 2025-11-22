@@ -1,11 +1,9 @@
-import {
-  StegaCassette,
-  loadAudioBuffersFromAudioUrl,
-} from "../../../packages/amplib-steganography/src";
+import { StegaCassette } from "../../../packages/amplib-steganography/src";
 
 export class Encoder {
   audioContext: AudioContext;
-  audioBuffers: Float32Array[] | null = null;
+  fullAudioBuffer: AudioBuffer | null = null;
+  previewSource: AudioBufferSourceNode | null = null;
   sampleRate: number = 44100;
 
   constructor() {
@@ -30,6 +28,15 @@ export class Encoder {
     const resultImg = document.getElementById(
       "encoded-image"
     ) as HTMLImageElement;
+
+    const trimStartInput = document.getElementById(
+      "trim-start"
+    ) as HTMLInputElement;
+    const trimEndInput = document.getElementById(
+      "trim-end"
+    ) as HTMLInputElement;
+    const previewPlayBtn = document.getElementById("preview-play")!;
+    const previewStopBtn = document.getElementById("preview-stop")!;
 
     dropZone.addEventListener("click", () => fileInput.click());
 
@@ -56,23 +63,53 @@ export class Encoder {
       }
     });
 
+    previewPlayBtn.addEventListener("click", () => {
+      const start = parseFloat(trimStartInput.value);
+      const end = parseFloat(trimEndInput.value);
+      this.playPreview(start, end);
+    });
+
+    previewStopBtn.addEventListener("click", () => this.stopPreview());
+
     encodeBtn.addEventListener("click", async () => {
-      if (!this.audioBuffers) return;
+      if (!this.fullAudioBuffer) return;
 
       const bpm = parseFloat(bpmInput.value);
       const pitch = parseFloat(pitchInput.value);
       const imageFile = imageInput.files?.[0];
+      const start = parseFloat(trimStartInput.value);
+      const end = parseFloat(trimEndInput.value);
 
       if (!imageFile) {
         alert("Please select an image");
         return;
       }
 
+      if (end <= start) {
+        alert("End time must be greater than start time");
+        return;
+      }
+
       const image = await this.loadImage(imageFile);
+
+      // Slice the buffer
+      const sampleRate = this.fullAudioBuffer.sampleRate;
+      const startSample = Math.floor(start * sampleRate);
+      const endSample = Math.floor(end * sampleRate);
+      const length = endSample - startSample;
+
+      const slicedBuffers: Float32Array[] = [];
+      for (let i = 0; i < this.fullAudioBuffer.numberOfChannels; i++) {
+        const channelData = this.fullAudioBuffer.getChannelData(i);
+        // Ensure we don't go out of bounds
+        const safeEnd = Math.min(endSample, channelData.length);
+        const safeStart = Math.min(startSample, safeEnd);
+        slicedBuffers.push(channelData.slice(safeStart, safeEnd));
+      }
 
       const encodedCanvas = StegaCassette.encode({
         source: image,
-        audioBuffers: this.audioBuffers,
+        audioBuffers: slicedBuffers,
         sampleRate: this.sampleRate,
         bitDepth: 16,
         encoding: "additive",
@@ -87,15 +124,43 @@ export class Encoder {
   }
 
   async handleAudioFile(file: File) {
-    const url = URL.createObjectURL(file);
-    this.audioBuffers = await loadAudioBuffersFromAudioUrl({
-      url,
-      audioContext: this.audioContext,
-      channels: 2,
-    });
+    const arrayBuffer = await file.arrayBuffer();
+    this.fullAudioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+
+    const trimStartInput = document.getElementById(
+      "trim-start"
+    ) as HTMLInputElement;
+    const trimEndInput = document.getElementById(
+      "trim-end"
+    ) as HTMLInputElement;
+
+    trimStartInput.value = "0";
+    trimEndInput.value = this.fullAudioBuffer.duration.toFixed(2);
 
     document.getElementById("encoder-controls")!.style.display = "block";
     document.getElementById("encoder-drop")!.innerText = `Loaded: ${file.name}`;
+  }
+
+  playPreview(start: number, end: number) {
+    if (!this.fullAudioBuffer) return;
+    this.stopPreview();
+
+    this.previewSource = this.audioContext.createBufferSource();
+    this.previewSource.buffer = this.fullAudioBuffer;
+    this.previewSource.loop = true;
+    this.previewSource.loopStart = start;
+    this.previewSource.loopEnd = end;
+    this.previewSource.connect(this.audioContext.destination);
+
+    // Start at the beginning of the loop
+    this.previewSource.start(0, start);
+  }
+
+  stopPreview() {
+    if (this.previewSource) {
+      this.previewSource.stop();
+      this.previewSource = null;
+    }
   }
 
   loadImage(file: File): Promise<HTMLImageElement> {
