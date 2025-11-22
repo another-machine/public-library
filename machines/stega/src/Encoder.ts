@@ -4,7 +4,16 @@ export class Encoder {
   audioContext: AudioContext;
   fullAudioBuffer: AudioBuffer | null = null;
   previewSource: AudioBufferSourceNode | null = null;
+  generatedSource: AudioBufferSourceNode | null = null;
   sampleRate: number = 44100;
+  baseBpm: number = 120;
+  basePitch: number = 0;
+  lastEncodedData: {
+    canvas: HTMLCanvasElement;
+    sampleRate: number;
+    bitDepth: 8 | 16 | 24;
+    channels: 1 | 2;
+  } | null = null;
 
   constructor() {
     this.audioContext = new AudioContext();
@@ -35,8 +44,22 @@ export class Encoder {
     const trimEndInput = document.getElementById(
       "trim-end"
     ) as HTMLInputElement;
+    const sampleRateInput = document.getElementById(
+      "encoder-sample-rate"
+    ) as HTMLInputElement;
+    const sampleRateDisplay = document.getElementById("sample-rate-display")!;
+    const bitDepthInput = document.getElementById(
+      "encoder-bit-depth"
+    ) as HTMLSelectElement;
     const previewPlayBtn = document.getElementById("preview-play")!;
     const previewStopBtn = document.getElementById("preview-stop")!;
+    const generatedControls = document.getElementById("generated-controls")!;
+    const playGeneratedBtn = document.getElementById("play-generated-btn")!;
+    const stopGeneratedBtn = document.getElementById("stop-generated-btn")!;
+
+    sampleRateInput.addEventListener("input", () => {
+      sampleRateDisplay.innerText = sampleRateInput.value;
+    });
 
     dropZone.addEventListener("click", () => fileInput.click());
 
@@ -79,6 +102,8 @@ export class Encoder {
       const imageFile = imageInput.files?.[0];
       const start = parseFloat(trimStartInput.value);
       const end = parseFloat(trimEndInput.value);
+      const targetSampleRate = parseInt(sampleRateInput.value);
+      const targetBitDepth = parseInt(bitDepthInput.value) as 8 | 16 | 24;
 
       if (!imageFile) {
         alert("Please select an image");
@@ -91,6 +116,15 @@ export class Encoder {
       }
 
       const image = await this.loadImage(imageFile);
+
+      // Calculate adjusted BPM and Pitch based on sample rate ratio
+      const originalSampleRate = this.fullAudioBuffer.sampleRate;
+      const ratio = targetSampleRate / originalSampleRate;
+
+      const adjustedBpm = bpm * ratio;
+      const pitchShift = 12 * Math.log2(ratio);
+      // Modulo 12 logic: ((n % m) + m) % m
+      const adjustedPitch = (((pitch + pitchShift) % 12) + 12) % 12;
 
       // Slice the buffer
       const sampleRate = this.fullAudioBuffer.sampleRate;
@@ -110,17 +144,71 @@ export class Encoder {
       const encodedCanvas = StegaCassette.encode({
         source: image,
         audioBuffers: slicedBuffers,
-        sampleRate: this.sampleRate,
-        bitDepth: 16,
+        sampleRate: targetSampleRate,
+        bitDepth: targetBitDepth,
         encoding: "additive",
         encodeMetadata: true,
         borderWidth: 1,
-        music: { bpm, semitones: pitch },
+        music: { bpm: adjustedBpm, semitones: adjustedPitch },
       });
 
+      this.lastEncodedData = {
+        canvas: encodedCanvas,
+        sampleRate: targetSampleRate,
+        bitDepth: targetBitDepth,
+        channels: slicedBuffers.length as 1 | 2,
+      };
+
       resultImg.src = encodedCanvas.toDataURL();
+      generatedControls.style.display = "block";
       resultImg.style.display = "block";
     });
+
+    playGeneratedBtn.addEventListener("click", () => {
+      this.playGenerated();
+    });
+
+    stopGeneratedBtn.addEventListener("click", () => {
+      this.stopGenerated();
+    });
+  }
+
+  playGenerated() {
+    if (!this.lastEncodedData) return;
+    this.stopGenerated();
+
+    const { canvas, sampleRate, bitDepth, channels } = this.lastEncodedData;
+
+    const decodedBuffers = StegaCassette.decode({
+      source: canvas,
+      bitDepth,
+      channels,
+      encoding: "additive",
+      borderWidth: 1,
+    });
+
+    const audioBuffer = this.audioContext.createBuffer(
+      channels,
+      decodedBuffers[0].length,
+      sampleRate
+    );
+
+    for (let i = 0; i < channels; i++) {
+      audioBuffer.copyToChannel(decodedBuffers[i], i);
+    }
+
+    this.generatedSource = this.audioContext.createBufferSource();
+    this.generatedSource.buffer = audioBuffer;
+    this.generatedSource.loop = true;
+    this.generatedSource.connect(this.audioContext.destination);
+    this.generatedSource.start();
+  }
+
+  stopGenerated() {
+    if (this.generatedSource) {
+      this.generatedSource.stop();
+      this.generatedSource = null;
+    }
   }
 
   async handleAudioFile(file: File) {
@@ -136,6 +224,13 @@ export class Encoder {
 
     trimStartInput.value = "0";
     trimEndInput.value = this.fullAudioBuffer.duration.toFixed(2);
+
+    (document.getElementById("encoder-bpm") as HTMLInputElement).value = "120";
+    (document.getElementById("encoder-pitch") as HTMLInputElement).value = "0";
+    (document.getElementById("encoder-sample-rate") as HTMLInputElement).value =
+      this.fullAudioBuffer.sampleRate.toString();
+    document.getElementById("sample-rate-display")!.innerText =
+      this.fullAudioBuffer.sampleRate.toString();
 
     document.getElementById("encoder-controls")!.style.display = "block";
     document.getElementById("encoder-drop")!.innerText = `Loaded: ${file.name}`;

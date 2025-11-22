@@ -64,6 +64,12 @@ jobs:
       - run: npm run build
         working-directory: machines/sonic-pixels
 
+        # compiling stega
+      - run: npm i
+        working-directory: machines/stega
+      - run: npm run build
+        working-directory: machines/stega
+
       # renaming docs/dist to main site directory
       - run: mv ./docs/dist ./site
       # moving lexicon-standoff into site
@@ -74,6 +80,8 @@ jobs:
       - run: mv ./machines/modulo/dist ./site/modulo
       # moving sonic-pixels into site
       - run: mv ./machines/sonic-pixels/dist ./site/sonic-pixels
+      # moving stega into site
+      - run: mv ./machines/stega/dist ./site/stega
 
       - name: Setup Pages
         uses: actions/configure-pages@v3

@@ -36,7 +36,7 @@ export default async function example() {
     encoding: "additive",
   };
 
-  let stop;
+  let stop = () => {};
 
   const { values } = createForm<FormData>({
     form,
@@ -125,16 +125,14 @@ export default async function example() {
 
   async function run(values: FormData) {
     const sampleRate = values.sampleRate;
-    for (let key in values) {
-      defaults[key] =
-        typeof defaults[key] === "number"
-          ? parseInt(values[key])
-          : typeof defaults[key] === "string"
-          ? values[key]
-          : values[key] === "undefined"
-          ? undefined
-          : values[key] === "true";
-    }
+    defaults.sampleRate = values.sampleRate;
+    defaults.bitDepth = parseInt(values.bitDepth) as 8 | 16 | 24;
+    defaults.encoding = values.encoding;
+    defaults.borderWidth = values.borderWidth;
+    defaults.channels = parseInt(values.channels) as 1 | 2;
+    // defaults.encodeMetadata = values.encodeMetadata
+    // defaults.aspectRatio = values.aspectRatio
+
     const result = StegaCassette.encode({
       source,
       audioBuffers: await loadAudioBuffersFromAudioUrl({

@@ -275,13 +275,46 @@
           <label>Pitch (Semitones)</label>
           <input type="number" id="encoder-pitch" value="0" />
 
+          <label
+            >Sample Rate: <span id="sample-rate-display">44100</span> Hz</label
+          >
+          <input
+            type="range"
+            id="encoder-sample-rate"
+            min="4000"
+            max="48000"
+            step="100"
+            value="44100"
+          />
+
+          <label>Bit Depth</label>
+          <select id="encoder-bit-depth">
+            <option value="24">24-bit</option>
+            <option value="16" selected>16-bit</option>
+            <option value="8">8-bit</option>
+          </select>
+
           <label>Image</label>
           <input type="file" id="encoder-image-input" accept="image/*" />
 
           <button id="encode-btn">Encode Image</button>
         </div>
 
-        <img id="encoded-image" />
+        <div
+          id="generated-controls"
+          style="
+            display: none;
+            margin-top: 20px;
+            border-top: 1px solid #444;
+            padding-top: 20px;
+          "
+        >
+          <div style="display: flex; gap: 10px; margin-bottom: 10px">
+            <button id="play-generated-btn">Play Generated Loop</button>
+            <button id="stop-generated-btn">Stop</button>
+          </div>
+          <img id="encoded-image" />
+        </div>
       </div>
 
       <!-- Mixer Panel -->
