@@ -23,6 +23,7 @@ interface EncodeOptions {
   encodeMetadata?: boolean;
   aspectRatio?: number;
   borderWidth?: number;
+  music?: { bpm: number; semitones: number };
 }
 
 export interface DecodeOptions {
@@ -42,6 +43,7 @@ export function encode({
   encodeMetadata,
   aspectRatio,
   borderWidth = 0,
+  music,
 }: EncodeOptions) {
   const stereo = audioBuffers.length > 1;
   const leftChannel = audioBuffers[0];
@@ -63,14 +65,25 @@ export function encode({
   const canvas = encodeMetadata
     ? StegaMetadata.encode({
         source: initialCanvas.canvas,
-        metadata: {
-          type: StegaMetadata.StegaContentType.AUDIO,
-          sampleRate,
-          bitDepth,
-          channels: stereo ? 2 : 1,
-          encoding,
-          borderWidth,
-        },
+        metadata: music
+          ? {
+              type: StegaMetadata.StegaContentType.MUSIC,
+              sampleRate,
+              bitDepth,
+              channels: stereo ? 2 : 1,
+              encoding,
+              borderWidth,
+              bpm: music.bpm,
+              semitones: music.semitones,
+            }
+          : {
+              type: StegaMetadata.StegaContentType.AUDIO,
+              sampleRate,
+              bitDepth,
+              channels: stereo ? 2 : 1,
+              encoding,
+              borderWidth,
+            },
       })
     : initialCanvas.canvas;
 

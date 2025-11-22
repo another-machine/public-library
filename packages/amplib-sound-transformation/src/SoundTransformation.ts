@@ -4,11 +4,11 @@ const SEMITONE_STEP = Math.pow(2, 1 / 12); // ≈ 1.059463
 
 export class SoundTransformation {
   audioContext: AudioContext;
-  phaseVocoderNode: AudioWorkletNode;
-  audioBuffer: AudioBufferSourceNode;
+  phaseVocoderNode: AudioWorkletNode | null = null;
+  audioBuffer: AudioBufferSourceNode | null = null;
   pitchFactor = 1.0;
   speedFactor = 1.0;
-  bpm: number;
+  bpm: number = 0;
 
   constructor({ audioContext }: { audioContext: AudioContext }) {
     this.audioContext = audioContext;
@@ -18,12 +18,18 @@ export class SoundTransformation {
     audioBuffer,
     processorJSPath,
     processorScriptTag,
+    bpm,
   }: {
     audioBuffer: AudioBufferSourceNode;
     processorJSPath?: string;
     processorScriptTag?: HTMLScriptElement;
+    bpm?: number;
   }) {
-    this.bpm = await analyze(audioBuffer.buffer as AudioBuffer);
+    if (bpm) {
+      this.bpm = bpm;
+    } else {
+      this.bpm = await analyze(audioBuffer.buffer as AudioBuffer);
+    }
     this.audioBuffer = audioBuffer;
     if (processorScriptTag) {
       const workletCode = processorScriptTag.textContent || "";
@@ -50,7 +56,7 @@ export class SoundTransformation {
   }
 
   adjustPitchBySemitones(semitones = 1) {
-    let pitchFactor = this.pitchFactor;
+    let pitchFactor = 1.0;
     if (semitones > 0) {
       while (semitones > 0) {
         pitchFactor *= SEMITONE_STEP;
@@ -68,15 +74,17 @@ export class SoundTransformation {
 
   private updateSpeed(speed: number) {
     const pitchFactorParam =
-      this.phaseVocoderNode.parameters.get("pitchFactor")!;
+      this.phaseVocoderNode?.parameters.get("pitchFactor")!;
     this.speedFactor = speed;
-    this.audioBuffer.playbackRate.value = speed;
+    if (this.audioBuffer) {
+      this.audioBuffer.playbackRate.value = speed;
+    }
     pitchFactorParam.value = (this.pitchFactor * 1) / this.speedFactor;
   }
 
   private updatePitch(pitch: number) {
     const pitchFactorParam =
-      this.phaseVocoderNode.parameters.get("pitchFactor")!;
+      this.phaseVocoderNode?.parameters.get("pitchFactor")!;
     this.pitchFactor = pitch;
     pitchFactorParam.value = (this.pitchFactor * 1) / this.speedFactor;
   }

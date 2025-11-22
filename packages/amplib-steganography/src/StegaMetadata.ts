@@ -10,13 +10,14 @@ import {
   getContext,
 } from "./utilities";
 
-export const METADATA_VERSION = 1;
+export const METADATA_VERSION = 2;
 export const PATTERN_LENGTH = 32;
 
 export enum StegaContentType {
   AUDIO = 0,
   STRING = 1,
   ROBUST = 2,
+  MUSIC = 3,
 }
 
 export interface StegaMetadataAudio {
@@ -26,6 +27,12 @@ export interface StegaMetadataAudio {
   channels: StegaCassetteChannels;
   encoding: StegaCassetteEncoding;
   borderWidth: number;
+}
+
+export interface StegaMetadataMusic extends Omit<StegaMetadataAudio, "type"> {
+  type: StegaContentType.MUSIC;
+  bpm: number;
+  semitones: number;
 }
 
 const metadataAudioBitDepth: StegaMetadataAudio["bitDepth"][] = [8, 16, 24];
@@ -66,7 +73,8 @@ const metadataRobustEncoding: StegaMetadataRobust["encoding"][] = [
 export type StegaMetadata =
   | StegaMetadataAudio
   | StegaMetadataString
-  | StegaMetadataRobust;
+  | StegaMetadataRobust
+  | StegaMetadataMusic;
 
 function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
   const sequence: number[] = [];
@@ -75,7 +83,8 @@ function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
   sequence.push((METADATA_VERSION << 4) | metadata.type);
 
   switch (metadata.type) {
-    case StegaContentType.AUDIO: {
+    case StegaContentType.AUDIO:
+    case StegaContentType.MUSIC: {
       // Sample rate (3 bytes)
       sequence.push((metadata.sampleRate >> 16) & 0xff);
       sequence.push((metadata.sampleRate >> 8) & 0xff);
@@ -89,6 +98,14 @@ function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
       // Border width (2 bytes)
       sequence.push((metadata.borderWidth >> 8) & 0xff);
       sequence.push(metadata.borderWidth & 0xff);
+
+      if (metadata.type === StegaContentType.MUSIC) {
+        // BPM (2 bytes)
+        sequence.push((metadata.bpm >> 8) & 0xff);
+        sequence.push(metadata.bpm & 0xff);
+        // Semitones (1 byte)
+        sequence.push(metadata.semitones);
+      }
       break;
     }
 
@@ -132,14 +149,15 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
   }
 
   const version = sequence[0] >> 4;
-  if (version !== METADATA_VERSION) {
-    throw new Error("Unsupported metadata version");
+  if (version > METADATA_VERSION) {
+    throw new Error(`Unsupported metadata version: ${version}`);
   }
 
   const type = sequence[0] & 0x0f;
 
   switch (type) {
-    case StegaContentType.AUDIO: {
+    case StegaContentType.AUDIO:
+    case StegaContentType.MUSIC: {
       const sampleRate = (sequence[1] << 16) | (sequence[2] << 8) | sequence[3];
       const bitDepth = metadataAudioBitDepth[sequence[4]];
       const channels = metadataAudioChannels[sequence[5]];
@@ -148,6 +166,21 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
 
       if (!bitDepth || !channels || !encoding) {
         throw new Error("Invalid audio metadata values");
+      }
+
+      if (type === StegaContentType.MUSIC) {
+        const bpm = (sequence[9] << 8) | sequence[10];
+        const semitones = sequence[11];
+        return {
+          type: StegaContentType.MUSIC,
+          sampleRate,
+          bitDepth,
+          channels,
+          encoding,
+          borderWidth,
+          bpm,
+          semitones,
+        };
       }
 
       return {
@@ -255,6 +288,7 @@ export function encode({
     metadataImageData.data[pixelIndex + 0] = sequenceValue;
     metadataImageData.data[pixelIndex + 1] = sequenceValue;
     metadataImageData.data[pixelIndex + 2] = sequenceValue;
+    metadataImageData.data[pixelIndex + 3] = 255;
   });
 
   /**
