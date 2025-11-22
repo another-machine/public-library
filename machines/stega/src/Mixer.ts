@@ -1,17 +1,16 @@
 import {
   StegaCassette,
   StegaMetadata,
-  StegaAnimator,
 } from "../../../packages/amplib-steganography/src";
 import { AudioEngine } from "./AudioEngine";
 import { LoopMetadata } from "./types";
 
 export class Mixer {
   audioEngine: AudioEngine;
-  animators: {
-    animator: StegaAnimator;
+  visuals: {
+    canvas: HTMLCanvasElement;
+    source: HTMLImageElement;
     track: any;
-    currentRotation: number;
   }[] = [];
 
   constructor(audioEngine: AudioEngine) {
@@ -27,8 +26,8 @@ export class Mixer {
       const delta = (now - lastTime) / 1000;
       lastTime = now;
 
-      this.animators.forEach((item) => {
-        const { animator, track } = item;
+      this.visuals.forEach((item) => {
+        const { canvas, track } = item;
         const dataArray = new Uint8Array(track.analyserNode.frequencyBinCount);
         track.analyserNode.getByteFrequencyData(dataArray);
 
@@ -39,19 +38,9 @@ export class Mixer {
         }
         const average = sum / dataArray.length;
 
-        // Map volume to scale (0.25 to 1 range for example)
-        const scale = 0.25 + (average / 255) * 0.75;
-
-        // Rotate based on track speed
-        // Base speed 0.5 radians per second
-        item.currentRotation += 0.75 * track.speedMultiplier * delta;
-
-        animator.renderFrame({
-          scale,
-          rotation: item.currentRotation,
-          x: 0.5,
-          y: 0.5,
-        });
+        // Map volume to opacity (0.3 to 1 range)
+        const opacity = average / 255;
+        canvas.style.setProperty("--opacity", opacity.toString());
       });
       requestAnimationFrame(loop);
     };
@@ -133,7 +122,7 @@ export class Mixer {
     }
 
     // Set global values if this is the first track
-    if (this.animators.length === 0) {
+    if (this.visuals.length === 0) {
       this.audioEngine.setGlobalBpm(loopMetadata.bpm);
       this.audioEngine.setGlobalPitch(loopMetadata.pitch);
 
@@ -170,17 +159,16 @@ export class Mixer {
     const div = document.createElement("div");
     div.className = "track";
 
-    // Create Animator
-    const animator = new StegaAnimator({
-      source: image,
-      resolution: 500,
-      rotationMode: "2d",
-      shape: "circle",
-      fadeAmount: 0.8, // Trail effect
-    });
+    // Create Canvas
+    const canvas = document.createElement("canvas");
+    const size = 500;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(image, 0, 0, size, size);
 
-    // Style the canvas
-    this.animators.push({ animator, track, currentRotation: 0 });
+    // Store visual
+    this.visuals.push({ canvas, source: image, track });
 
     // --- Create Control Panel Item ---
     const controlItem = document.createElement("div");
@@ -298,14 +286,12 @@ export class Mixer {
 
     trackControlsList.appendChild(controlItem);
 
-    div.appendChild(animator.canvas);
+    div.appendChild(canvas);
     tracksDiv.appendChild(div);
   }
 
   resetAnimations() {
-    this.animators.forEach((item) => {
-      item.currentRotation = 0;
-    });
+    // No-op
   }
 
   getBlendedImage(): HTMLCanvasElement {
@@ -313,8 +299,8 @@ export class Mixer {
     const ctx = canvas.getContext("2d")!;
 
     // Set size based on first image or default
-    if (this.animators.length > 0) {
-      const first = this.animators[0].animator.source as HTMLCanvasElement;
+    if (this.visuals.length > 0) {
+      const first = this.visuals[0].source;
       canvas.width = first.width;
       canvas.height = first.height;
     } else {
@@ -328,14 +314,8 @@ export class Mixer {
 
     ctx.globalCompositeOperation = "screen";
 
-    this.animators.forEach(({ animator }) => {
-      ctx.drawImage(
-        animator.source as HTMLCanvasElement,
-        0,
-        0,
-        canvas.width,
-        canvas.height
-      );
+    this.visuals.forEach(({ source }) => {
+      ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
     });
 
     return canvas;

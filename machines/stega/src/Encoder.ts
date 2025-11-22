@@ -1,4 +1,8 @@
 import { StegaCassette } from "../../../packages/amplib-steganography/src";
+import {
+  DetectBPM,
+  DetectTone,
+} from "../../../packages/amplib-music-detection/src";
 
 export class Encoder {
   audioContext: AudioContext;
@@ -49,7 +53,12 @@ export class Encoder {
     const sampleRateInput = document.getElementById(
       "encoder-sample-rate"
     ) as HTMLInputElement;
-    const sampleRateDisplay = document.getElementById("sample-rate-display")!;
+    const sampleRateNumberInput = document.getElementById(
+      "encoder-sample-rate-input"
+    ) as HTMLInputElement;
+    const channelsInput = document.getElementById(
+      "encoder-channels"
+    ) as HTMLSelectElement;
     const bitDepthInput = document.getElementById(
       "encoder-bit-depth"
     ) as HTMLSelectElement;
@@ -164,6 +173,14 @@ export class Encoder {
     });
 
     // Trim Listeners
+    const restartIfPlaying = () => {
+      if (this.previewSource) {
+        const start = parseFloat(trimStartInput.value);
+        const end = parseFloat(trimEndInput.value);
+        this.playPreview(start, end);
+      }
+    };
+
     trimSliderStart.addEventListener("input", () => {
       if (
         parseFloat(trimSliderStart.value) >= parseFloat(trimSliderEnd.value)
@@ -171,6 +188,7 @@ export class Encoder {
         trimSliderStart.value = trimSliderEnd.value;
       }
       updateSliderUI();
+      restartIfPlaying();
     });
 
     trimSliderEnd.addEventListener("input", () => {
@@ -180,6 +198,7 @@ export class Encoder {
         trimSliderEnd.value = trimSliderStart.value;
       }
       updateSliderUI();
+      restartIfPlaying();
     });
 
     // Sync number inputs back to sliders (Complex due to relative zoom)
@@ -212,7 +231,11 @@ export class Encoder {
     trimEndInput.addEventListener("change", handleManualInput);
 
     sampleRateInput.addEventListener("input", () => {
-      sampleRateDisplay.innerText = sampleRateInput.value;
+      sampleRateNumberInput.value = sampleRateInput.value;
+    });
+
+    sampleRateNumberInput.addEventListener("input", () => {
+      sampleRateInput.value = sampleRateNumberInput.value;
     });
 
     dropZone.addEventListener("click", () => fileInput.click());
@@ -257,6 +280,7 @@ export class Encoder {
       const start = parseFloat(trimStartInput.value);
       const end = parseFloat(trimEndInput.value);
       const targetSampleRate = parseInt(sampleRateInput.value);
+      const targetChannels = parseInt(channelsInput.value);
       const targetBitDepth = parseInt(bitDepthInput.value) as 8 | 16 | 24;
       const targetEncoding = encodingInput.value as any;
       const targetBorderWidth = parseInt(borderWidthInput.value);
@@ -286,15 +310,44 @@ export class Encoder {
       const sampleRate = this.fullAudioBuffer.sampleRate;
       const startSample = Math.floor(start * sampleRate);
       const endSample = Math.floor(end * sampleRate);
-      const length = endSample - startSample;
 
-      const slicedBuffers: Float32Array[] = [];
+      // 1. Extract raw slices from source
+      const tempBuffers: Float32Array[] = [];
       for (let i = 0; i < this.fullAudioBuffer.numberOfChannels; i++) {
         const channelData = this.fullAudioBuffer.getChannelData(i);
-        // Ensure we don't go out of bounds
         const safeEnd = Math.min(endSample, channelData.length);
         const safeStart = Math.min(startSample, safeEnd);
-        slicedBuffers.push(channelData.slice(safeStart, safeEnd));
+        tempBuffers.push(channelData.slice(safeStart, safeEnd));
+      }
+
+      // 2. Process channels based on selection
+      const slicedBuffers: Float32Array[] = [];
+
+      if (targetChannels === 1) {
+        // Mono Mixdown
+        if (tempBuffers.length > 0) {
+          const len = tempBuffers[0].length;
+          const mix = new Float32Array(len);
+          for (let i = 0; i < len; i++) {
+            let sum = 0;
+            for (let c = 0; c < tempBuffers.length; c++) {
+              sum += tempBuffers[c][i];
+            }
+            mix[i] = sum / tempBuffers.length;
+          }
+          slicedBuffers.push(mix);
+        }
+      } else {
+        // Stereo (or 2 channels)
+        if (tempBuffers.length === 1) {
+          // Mono source -> Stereo output (duplicate)
+          slicedBuffers.push(tempBuffers[0]);
+          slicedBuffers.push(new Float32Array(tempBuffers[0]));
+        } else if (tempBuffers.length >= 2) {
+          // Stereo source -> Stereo output
+          slicedBuffers.push(tempBuffers[0]);
+          slicedBuffers.push(tempBuffers[1]);
+        }
       }
 
       const encodedCanvas = StegaCassette.encode({
@@ -338,6 +391,55 @@ export class Encoder {
       link.download = `stega-loop-${Date.now()}.png`;
       link.href = this.lastEncodedData.canvas.toDataURL();
       link.click();
+    });
+
+    const detectBpmBtn = document.getElementById("detect-bpm-btn")!;
+    const detectKeyBtn = document.getElementById("detect-key-btn")!;
+
+    detectBpmBtn.addEventListener("click", async () => {
+      if (!this.fullAudioBuffer) return;
+      const originalText = detectBpmBtn.innerText;
+      detectBpmBtn.innerText = "...";
+      const detector = new DetectBPM({ audioContext: this.audioContext });
+      const bpm = await detector.analyzeBPM(this.fullAudioBuffer);
+      if (bpm > 0) {
+        bpmInput.value = bpm.toString();
+      } else {
+        alert("Could not detect BPM");
+      }
+      detectBpmBtn.innerText = originalText;
+    });
+
+    detectKeyBtn.addEventListener("click", async () => {
+      if (!this.fullAudioBuffer) return;
+      const originalText = detectKeyBtn.innerText;
+      detectKeyBtn.innerText = "...";
+      const detector = new DetectTone({ audioContext: this.audioContext });
+      const key = await detector.analyzeKey(this.fullAudioBuffer);
+      if (key) {
+        const root = key.split(" ")[0];
+        const notes = [
+          "C",
+          "C#",
+          "D",
+          "D#",
+          "E",
+          "F",
+          "F#",
+          "G",
+          "G#",
+          "A",
+          "A#",
+          "B",
+        ];
+        const index = notes.indexOf(root);
+        if (index !== -1) {
+          pitchInput.value = index.toString();
+        }
+      } else {
+        alert("Could not detect Key");
+      }
+      detectKeyBtn.innerText = originalText;
     });
   }
 
@@ -429,8 +531,11 @@ export class Encoder {
     (document.getElementById("encoder-pitch") as HTMLInputElement).value = "0";
     (document.getElementById("encoder-sample-rate") as HTMLInputElement).value =
       this.fullAudioBuffer.sampleRate.toString();
-    document.getElementById("sample-rate-display")!.innerText =
-      this.fullAudioBuffer.sampleRate.toString();
+    (
+      document.getElementById("encoder-sample-rate-input") as HTMLInputElement
+    ).value = this.fullAudioBuffer.sampleRate.toString();
+    // document.getElementById("sample-rate-display")!.innerText =
+    //   this.fullAudioBuffer.sampleRate.toString();
 
     document.getElementById("encoder-controls")!.style.display = "block";
     document.getElementById("encoder-drop")!.innerText = `Loaded: ${file.name}`;

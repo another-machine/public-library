@@ -147,5 +147,20 @@ recordBtn.addEventListener("click", async () => {
   }
 });
 
+const recordingAddBtn = document.getElementById("recording-add-btn");
+if (recordingAddBtn) {
+  recordingAddBtn.addEventListener("click", () => {
+    const src = recordingPreviewImg.src;
+    if (src) {
+      fetch(src)
+        .then((res) => res.blob())
+        .then((blob) => {
+          const file = new File([blob], "recording.png", { type: "image/png" });
+          mixer.handleImageFile(file);
+        });
+    }
+  });
+}
+
 // Set initial state
 viewMixBtn.click();

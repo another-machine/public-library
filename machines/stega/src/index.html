@@ -151,9 +151,11 @@
         position: relative;
 
         canvas {
+          image-rendering: pixelated;
           width: 100%;
           height: auto;
           max-width: 700px;
+          box-shadow: 0 0 0 1px rgba(255, 255, 255, var(--opacity, 0));
         }
       }
       .track:hover .track-controls {
@@ -367,13 +369,17 @@
           id="recording-preview-img"
           style="width: 100%; margin-bottom: 10px; border: 1px solid #444"
         />
-        <a
-          id="recording-download-link"
-          href="#"
-          download="stega-mix.png"
-          style="color: #fff; text-decoration: underline"
-          >Download Recording</a
-        >
+        <div style="display: flex; gap: 10px; margin-bottom: 10px">
+          <button id="recording-add-btn">Add to Mixer</button>
+          <a
+            id="recording-download-link"
+            href="#"
+            download="stega-mix.png"
+            class="btn"
+            style="line-height: 1.2"
+            >Download</a
+          >
+        </div>
       </div>
     </div>
 
@@ -482,15 +488,38 @@
           <div class="controls-grid">
             <div>
               <label>BPM</label>
-              <input type="number" id="encoder-bpm" value="120" />
+              <div style="display: flex; gap: 5px">
+                <input type="number" id="encoder-bpm" value="120" />
+                <button
+                  id="detect-bpm-btn"
+                  style="width: auto; padding: 0 10px; font-size: 0.8em"
+                >
+                  Detect
+                </button>
+              </div>
 
               <label>Pitch (Semitones)</label>
-              <input type="number" id="encoder-pitch" value="0" />
+              <div style="display: flex; gap: 5px">
+                <input type="number" id="encoder-pitch" value="0" />
+                <button
+                  id="detect-key-btn"
+                  style="width: auto; padding: 0 10px; font-size: 0.8em"
+                >
+                  Detect
+                </button>
+              </div>
 
-              <label
-                >Sample Rate:
-                <span id="sample-rate-display">44100</span> Hz</label
-              >
+              <label>Sample Rate (Hz)</label>
+              <div style="display: flex; gap: 5px; align-items: center">
+                <input
+                  type="number"
+                  id="encoder-sample-rate-input"
+                  value="44100"
+                  min="4000"
+                  max="48000"
+                  step="100"
+                />
+              </div>
               <input
                 type="range"
                 id="encoder-sample-rate"
@@ -501,6 +530,12 @@
               />
             </div>
             <div>
+              <label>Channels</label>
+              <select id="encoder-channels">
+                <option value="1">Mono</option>
+                <option value="2" selected>Stereo</option>
+              </select>
+
               <label>Bit Depth</label>
               <select id="encoder-bit-depth">
                 <option value="24">24-bit</option>

@@ -173,4 +173,121 @@ export class DetectTone {
       tones,
     };
   }
+
+  /**
+   * Analyze an audio buffer to estimate the Key/Chord
+   * @param buffer AudioBuffer to analyze
+   * @returns Promise resolving to the estimated Key/Chord label
+   */
+  async analyzeKey(buffer: AudioBuffer): Promise<string> {
+    try {
+      // Create an offline audio context
+      // We don't need to render the whole file at high sample rate if we just want key
+      // But let's stick to the buffer's rate for simplicity
+      const offlineCtx = new OfflineAudioContext(
+        1, // Mono is enough for key detection usually
+        buffer.length,
+        buffer.sampleRate
+      );
+
+      const source = offlineCtx.createBufferSource();
+      source.buffer = buffer;
+
+      const analyser = offlineCtx.createAnalyser();
+      analyser.fftSize = 2048;
+
+      // We need to capture frequency data.
+      // Since we can't easily get data out of OfflineContext during render without ScriptProcessor
+      // And ScriptProcessor is deprecated but works...
+      // Alternatively, we can just pick a few chunks of the buffer, create a real AudioContext (suspended),
+      // decode them, and analyze them? No, that's slow.
+
+      // Let's use the ScriptProcessor approach for now as it's the most standard way to get data from OfflineCtx
+      const scriptNode = offlineCtx.createScriptProcessor(2048, 1, 1);
+
+      source.connect(analyser);
+      analyser.connect(scriptNode);
+      scriptNode.connect(offlineCtx.destination);
+
+      const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+      const accumulatedTones = new Float32Array(this.notes.length);
+      let samplesTaken = 0;
+
+      scriptNode.onaudioprocess = () => {
+        analyser.getByteFrequencyData(frequencyData);
+
+        // Accumulate energy for each note bin
+        this.frequencyIndices.forEach((freqIndex, i) => {
+          // Simple accumulation
+          accumulatedTones[i] += frequencyData[freqIndex];
+        });
+        samplesTaken++;
+      };
+
+      source.start(0);
+      await offlineCtx.startRendering();
+
+      if (samplesTaken === 0) return "";
+
+      // Average the accumulated tones
+      const averagedTones = accumulatedTones.map((val) => val / samplesTaken);
+
+      // Now use the existing logic to find the chord/key
+      // We need to mock the internal state that detect() uses
+      this.frequencyValues = Array.from(averagedTones); // Update internal state for reuse of logic?
+      // Actually, detect() uses this.frequencyValues.
+      // But detect() also does smoothing. Here we have the average over the whole song.
+
+      // Let's adapt the logic from detect() but using our averaged values
+      const total = averagedTones.reduce((a, b) => a + b, 0);
+      if (total === 0) return "";
+
+      const noteData = this.notes.map((note, i) => {
+        const value = averagedTones[i];
+        const notation = note.notation;
+        const octaves = 1; // Simplified
+        const prominence = value / total;
+        return {
+          value,
+          octaves,
+          prominence,
+          notation,
+          index: i,
+          ratio: value,
+        } as DetectToneChordTracking;
+      });
+
+      // Sort by prominence
+      const sorted = noteData.sort((a, b) => b.prominence - a.prominence);
+
+      // Check combos (same as detect)
+      const combos: DetectToneChordTracking[][] = [
+        [sorted[0], sorted[1], sorted[2], sorted[3]],
+        [sorted[1], sorted[0], sorted[2], sorted[3]],
+        [sorted[0], sorted[1], sorted[2]],
+        [sorted[1], sorted[0], sorted[2]],
+        [sorted[0], sorted[1], sorted[3]],
+        [sorted[1], sorted[0], sorted[3]],
+      ];
+
+      const chordOptions = combos
+        .map((combo) => {
+          const key = Chord.keyFromNotations(combo.map((a) => a.notation));
+          const presence =
+            combo.reduce((a, { prominence }) => prominence + a, 0) /
+            combo.length;
+          const chord = this.chords[key];
+          return { chord, key, presence };
+        })
+        .sort((a, b) => b.presence - a.presence);
+
+      const firstChord = chordOptions.find(({ chord }) => Boolean(chord));
+      const option = firstChord || chordOptions[0];
+
+      return option.chord ? option.chord.label : option.key;
+    } catch (e) {
+      console.error("Error analyzing Key:", e);
+      return "";
+    }
+  }
 }
