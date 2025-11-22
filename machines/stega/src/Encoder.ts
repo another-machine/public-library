@@ -56,6 +56,9 @@ export class Encoder {
     const generatedControls = document.getElementById("generated-controls")!;
     const playGeneratedBtn = document.getElementById("play-generated-btn")!;
     const stopGeneratedBtn = document.getElementById("stop-generated-btn")!;
+    const downloadGeneratedBtn = document.getElementById(
+      "download-generated-btn"
+    )!;
 
     sampleRateInput.addEventListener("input", () => {
       sampleRateDisplay.innerText = sampleRateInput.value;
@@ -159,7 +162,9 @@ export class Encoder {
         channels: slicedBuffers.length as 1 | 2,
       };
 
-      resultImg.src = encodedCanvas.toDataURL();
+      const dataUrl = encodedCanvas.toDataURL();
+      resultImg.src = dataUrl;
+
       generatedControls.style.display = "block";
       resultImg.style.display = "block";
     });
@@ -170,6 +175,14 @@ export class Encoder {
 
     stopGeneratedBtn.addEventListener("click", () => {
       this.stopGenerated();
+    });
+
+    downloadGeneratedBtn.addEventListener("click", () => {
+      if (!this.lastEncodedData) return;
+      const link = document.createElement("a");
+      link.download = `stega-loop-${Date.now()}.png`;
+      link.href = this.lastEncodedData.canvas.toDataURL();
+      link.click();
     });
   }
 

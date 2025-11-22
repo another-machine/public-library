@@ -92,14 +92,28 @@
         width: 100%;
         box-sizing: border-box;
       }
-      button {
+      button,
+      .btn {
         cursor: pointer;
         background: #444;
+        border: 1px solid #444;
+        color: #fff;
+        padding: 8px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+        width: 100%;
+        box-sizing: border-box;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 13px; /* Match default button font size */
       }
-      button:hover {
+      button:hover,
+      .btn:hover {
         background: #555;
       }
-      button:disabled {
+      button:disabled,
+      .btn:disabled {
         opacity: 0.5;
         cursor: not-allowed;
       }
@@ -193,6 +207,13 @@
       <div style="margin-top: 20px">
         <label>Global Pitch</label>
         <input type="number" id="global-pitch" value="0" />
+      </div>
+
+      <div
+        style="margin-top: 20px; border-top: 1px solid #444; padding-top: 20px"
+      >
+        <label>Tracks</label>
+        <div id="track-controls-list"></div>
       </div>
 
       <div
@@ -309,9 +330,17 @@
             padding-top: 20px;
           "
         >
-          <div style="display: flex; gap: 10px; margin-bottom: 10px">
+          <div
+            style="
+              display: flex;
+              gap: 10px;
+              margin-bottom: 10px;
+              align-items: center;
+            "
+          >
             <button id="play-generated-btn">Play Generated Loop</button>
             <button id="stop-generated-btn">Stop</button>
+            <button id="download-generated-btn">Download Image</button>
           </div>
           <img id="encoded-image" />
         </div>

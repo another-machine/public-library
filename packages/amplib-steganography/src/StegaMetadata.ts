@@ -10,7 +10,7 @@ import {
   getContext,
 } from "./utilities";
 
-export const METADATA_VERSION = 2;
+export const METADATA_VERSION = 1;
 export const PATTERN_LENGTH = 32;
 
 export enum StegaContentType {

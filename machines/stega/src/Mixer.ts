@@ -132,6 +132,23 @@ export class Mixer {
       loopMetadata = { bpm: metadata.bpm, pitch: metadata.semitones };
     }
 
+    // Set global values if this is the first track
+    if (this.animators.length === 0) {
+      this.audioEngine.setGlobalBpm(loopMetadata.bpm);
+      this.audioEngine.setGlobalPitch(loopMetadata.pitch);
+
+      const globalBpmInput = document.getElementById(
+        "global-bpm"
+      ) as HTMLInputElement;
+      const globalPitchInput = document.getElementById(
+        "global-pitch"
+      ) as HTMLInputElement;
+
+      if (globalBpmInput) globalBpmInput.value = loopMetadata.bpm.toString();
+      if (globalPitchInput)
+        globalPitchInput.value = loopMetadata.pitch.toString();
+    }
+
     // Add to engine
     const track = await this.audioEngine.addTrack(audioBuffer, loopMetadata);
 
@@ -148,6 +165,8 @@ export class Mixer {
 
   addTrackUI(image: HTMLImageElement, metadata: LoopMetadata, track: any) {
     const tracksDiv = document.getElementById("tracks")!;
+    const trackControlsList = document.getElementById("track-controls-list")!;
+
     const div = document.createElement("div");
     div.className = "track";
 
@@ -161,11 +180,38 @@ export class Mixer {
     // Style the canvas
     this.animators.push({ animator, track, currentRotation: 0 });
 
+    // --- Create Control Panel Item ---
+    const controlItem = document.createElement("div");
+    controlItem.style.marginBottom = "15px";
+    controlItem.style.paddingBottom = "15px";
+    controlItem.style.borderBottom = "1px solid #444";
+    controlItem.style.display = "flex";
+    controlItem.style.gap = "10px";
+
+    // Tiny Preview
+    const previewCanvas = document.createElement("canvas");
+    const aspectRatio = image.width / image.height;
+    const previewWidth = 50;
+    const previewHeight = previewWidth / aspectRatio;
+
+    previewCanvas.width = previewWidth;
+    previewCanvas.height = previewHeight;
+    previewCanvas.style.width = "50px";
+    previewCanvas.style.height = "auto";
+    previewCanvas.style.alignSelf = "flex-start";
+
+    const pCtx = previewCanvas.getContext("2d")!;
+    pCtx.drawImage(image, 0, 0, previewWidth, previewHeight);
+    controlItem.appendChild(previewCanvas);
+
+    // Controls Container
     const controlsContainer = document.createElement("div");
-    controlsContainer.className = "track-controls";
+    controlsContainer.style.flex = "1";
 
     const info = document.createElement("div");
     info.className = "track-info";
+    info.style.textAlign = "left";
+    info.style.marginBottom = "5px";
     info.innerText = `BPM: ${metadata.bpm}, Pitch: ${metadata.pitch}`;
     controlsContainer.appendChild(info);
 
@@ -173,7 +219,8 @@ export class Mixer {
     controls.style.display = "flex";
     controls.style.flexDirection = "column";
     controls.style.gap = "5px";
-    controls.style.marginTop = "10px"; // Speed Controls
+
+    // Speed Controls
     const speedControls = document.createElement("div");
     speedControls.style.display = "flex";
     speedControls.style.gap = "5px";
@@ -181,6 +228,8 @@ export class Mixer {
     speeds.forEach((speed) => {
       const btn = document.createElement("button");
       btn.innerText = `${speed}x`;
+      btn.style.padding = "4px";
+      btn.style.fontSize = "11px";
       btn.onclick = () => {
         this.audioEngine.setTrackSpeedMultiplier(track, speed);
         // Update active state
@@ -203,6 +252,8 @@ export class Mixer {
       const btn = document.createElement("button");
       btn.innerText =
         octave === 0 ? "Norm" : `${octave > 0 ? "+" : ""}${octave} Oct`;
+      btn.style.padding = "4px";
+      btn.style.fontSize = "11px";
       btn.onclick = () => {
         this.audioEngine.setTrackOctaveShift(track, octave);
         // Update active state
@@ -224,6 +275,7 @@ export class Mixer {
 
     const volLabel = document.createElement("span");
     volLabel.innerText = "Vol:";
+    volLabel.style.fontSize = "11px";
     volumeControl.appendChild(volLabel);
 
     const volSlider = document.createElement("input");
@@ -240,9 +292,11 @@ export class Mixer {
 
     controls.appendChild(volumeControl);
     controlsContainer.appendChild(controls);
+    controlItem.appendChild(controlsContainer);
+
+    trackControlsList.appendChild(controlItem);
 
     div.appendChild(animator.canvas);
-    div.appendChild(controlsContainer);
     tracksDiv.appendChild(div);
   }
 
