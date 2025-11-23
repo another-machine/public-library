@@ -73,7 +73,7 @@ jobs:
         # compiling live
       - run: npm i
         working-directory: machines/live
-      - run: npm run build --public-url live
+      - run: npm run build --public-url ./
         working-directory: machines/live
 
       # renaming docs/dist to main site directory
