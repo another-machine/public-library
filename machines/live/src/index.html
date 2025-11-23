@@ -39,8 +39,10 @@
         box-sizing: border-box;
         display: flex;
         flex-direction: column;
-        height: 100%;
         justify-content: center;
+        height: 100%;
+        padding-left: var(--padding);
+        padding-right: var(--padding);
         position: relative;
         scroll-snap-align: start;
 
@@ -80,10 +82,10 @@
             height: calc(var(--start-dimension) + var(--padding) * 2);
             > button {
               &:not(.active) > img {
-                opacity: 0.1;
+                filter: brightness(30%);
 
                 &:hover {
-                  opacity: 1;
+                  filter: brightness(100%);
                 }
               }
             }
@@ -113,7 +115,7 @@
 
             > img {
               height: auto;
-              transition: opacity 250ms ease-in-out;
+              transition: all 250ms ease-in-out;
               width: var(--start-dimension);
 
               &.media {
@@ -122,12 +124,16 @@
             }
           }
         }
-        &.intro {
+        &.info {
           align-items: center;
           background: black;
+          box-sizing: border-box;
           color: white;
           gap: 0.9em;
           justify-content: center;
+          padding: 4rem 0;
+          min-height: 100%;
+          height: initial;
           text-align: left;
 
           h1 {
@@ -150,11 +156,41 @@
           }
           h1,
           p {
-            font-weight: 400;
-            margin: 0;
             max-width: min(90%, 900px);
             text-wrap: balance;
+          }
+          h1,
+          p,
+          ul {
+            font-weight: 400;
+            margin: 0;
             width: 100%;
+          }
+          ul {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-width: min(90%, 700px);
+            text-wrap: pretty;
+            > li {
+              > a {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: white;
+                font-size: 0.8em;
+                font-style: italic;
+                letter-spacing: 0.035em;
+                text-decoration: none;
+                > img {
+                  height: auto;
+                  width: 2.5em;
+                }
+              }
+            }
           }
         }
       }
@@ -162,7 +198,7 @@
   </head>
   <body>
     <main>
-      <section class="intro">
+      <section class="info">
         <h1>live</h1>
         <p>an homage to performances that have made me feel&nbsp;alive.</p>
         <p class="body">
@@ -180,197 +216,271 @@
           src="media/thumbs/media-1763862984411.jpg"
           class="background hidden"
         />
-        <a
-          title="Nina Simone - I Wish I Knew How It Would Feel to Be Free (Live in New York, c. 1968)"
-          id="link-nina"
-          href="https://www.youtube.com/watch?v=SzEDYoE7YQ4"
-          >source</a
-        >
-        <a
-          title="Mdou Moctar, Niger"
-          id="link-mdou"
-          href="https://www.youtube.com/watch?v=jYJGP0FBaT0"
-          >source</a
-        >
-        <a
-          title="Antony singing If It Be Your Will"
-          id="link-your-will"
-          href="https://www.youtube.com/watch?v=1MDlMdu2gjw"
-          >source</a
-        >
-        <a
-          title="J Dilla - Fuck the Police (live @ Jazz Cafe, 1st May 2004)"
-          id="link-dilla"
-          href="https://www.youtube.com/watch?v=_6GX7RoSXR8"
-          >source</a
-        >
-        <a
-          title="Ted Hawkins Venice Beach 1990"
-          id="link-ted"
-          href="https://www.youtube.com/watch?v=iy9JL_FKnW4"
-          >source</a
-        >
-        <a
-          title="R.L. Burnside's wood-chopping holler (1978)"
-          id="link-burnside"
-          href="https://www.youtube.com/watch?v=2vy0dMXhlWI"
-          >source</a
-        >
-        <a
-          title="The Staple Singers | Sit down servant"
-          id="link-staples"
-          href="https://www.youtube.com/watch?v=YxgZuE14he8"
-          >source</a
-        >
-        <a
-          title="Janie Hunter and the Moving Star Hall Singers: Jonah (1983)"
-          id="link-janie"
-          href="https://www.youtube.com/watch?v=3yG2z6GC4Ww"
-          >source</a
-        >
-        <a
-          title="Geese - Getting Killed | From The Basement"
-          id="link-geese"
-          href="https://www.youtube.com/watch?v=qIol9hig2G4"
-          >source</a
-        >
 
         <nav>
-          <button data-link="link-nina">
+          <button>
             <img
               src="media/thumbs/media-1763862984411.jpg"
+              alt="A cropped silhouette of Nina Simone leaning in motion to the left, head low with the arch of her bare kneck centered in the square. In the center is a noisey distortion covering 80% of the image, turning the natural browns and warm temperature into a high contrast range of white, blues, and some magenta."
+              aria-hidden="true"
               height="500"
               width="500"
             />
             <img
               class="media"
               src="media/media-1763862984411.png"
+              aria-hidden="true"
               height="1027"
               width="1027"
               loading="lazy"
             />
           </button>
 
-          <button data-link="link-mdou">
+          <button>
             <img
               src="media/thumbs/media-1763864810140.jpg"
+              alt="A square distorted photograph, medium shot. Mdou Moctar playing an electric guitar wearing formal Saharan clothing, surrounded by people dancing. Outdoor in the dark with harsh lighting directed towards the activity. The image itself is fully  distorted with intense fine colorful lime and magenta noise, but the subject is apparent."
+              aria-hidden="true"
               height="500"
               width="500"
             />
             <img
               class="media"
               src="media/media-1763864810140.png"
+              aria-hidden="true"
               height="957"
               width="957"
               loading="lazy"
             />
           </button>
 
-          <button data-link="link-your-will">
+          <button>
             <img
               src="media/thumbs/media-1763885637959.jpg"
+              alt="Medium-long shot high angle of Anohni Hegarty singing on stage. Dark blues and purples are contrasted by a distortion square in the center of the image brining lime, red, and yellow contrast to cover 80% of the original image."
+              aria-hidden="true"
               height="500"
               width="500"
             />
             <img
               class="media"
               src="media/media-1763885637959.png"
+              aria-hidden="true"
               height="1818"
               width="1818"
               loading="lazy"
             />
           </button>
 
-          <button data-link="link-dilla">
+          <button>
             <img
               src="media/thumbs/media-1763884764481.jpg"
+              alt="A blue lofi closeup of J Dilla speaking into a microphone, looking to the left, wearing a ballcap in a live stage setting a centered, square colorful noise pattern covers 80% of the image."
+              aria-hidden="true"
               height="500"
               width="500"
             />
             <img
               class="media"
               src="media/media-1763884764481.png"
+              aria-hidden="true"
               height="406"
               width="409"
               loading="lazy"
             />
           </button>
 
-          <button data-link="link-ted">
+          <button>
             <img
               src="media/thumbs/media-1763885462877.jpg"
+              alt="A medium VHS-recorded shot of Ted Hawkins sitting on a makeshift stool on the Venice Beach boardwalk, longsleeve shirt, ballcap, acoustic guitar in hand. The cropped letters 'Ed Hawk' can be seen in tall handwriting on a open guitar case on the right side of the image on the ground. The image is sunlit high contrast with a lot of white and green. In the center is a square covering half the image with intense red, blue, yellow, and green noise."
+              aria-hidden="true"
               height="500"
               width="500"
             />
             <img
               class="media"
               src="media/media-1763885462877.png"
+              aria-hidden="true"
               height="443"
               width="443"
               loading="lazy"
             />
           </button>
 
-          <button data-link="link-burnside">
+          <button>
             <img
               src="media/thumbs/media-1763868941432.jpg"
+              alt="Medium shot of R. L. Burnside, standing over a long log in a yard, holding an axe. The image is VHS-recorded and full of grass and tree green. In the center is a noisey square covering a third of the image. The noise is high contrast magentas and greens."
               height="500"
               width="500"
             />
             <img
               class="media"
+              src="media/media-1763868941432.png"
+              aria-hidden="true"
               height="766"
               width="766"
-              src="media/media-1763868941432.png"
               loading="lazy"
             />
           </button>
 
-          <button data-link="link-staples">
+          <button>
             <img
               src="media/thumbs/media-1763869970824.jpg"
+              alt="A high angle close up of Mavis Staples in black and white singing on television in the 1960s. Her mouth is open singing, her eyes are closed, and her hands are open facing out at shoulder height. Covering half the image is a centered square noise pattern of reds and teals."
               height="500"
               width="500"
             />
             <img
               class="media"
+              src="media/media-1763869970824.png"
               height="1411"
               width="1411"
-              src="media/media-1763869970824.png"
+              aria-hidden="true"
               loading="lazy"
             />
           </button>
 
-          <button data-link="link-janie">
+          <button>
             <img
               src="media/thumbs/media-1763873039153.jpg"
+              alt="A low angle close up of Janie Hunter and other Moving Star Hall singers, shot on VHS in the 1990s. The image is entirely distorted, reversing the polarity of the image with bright and harsh pops of white, teal, blue, yellow, and red."
               height="500"
               width="500"
             />
             <img
               class="media"
+              src="media/media-1763873039153.png"
+              aria-hidden="true"
               height="570"
               width="570"
-              src="media/media-1763873039153.png"
               loading="lazy"
             />
           </button>
 
-          <button data-link="link-geese">
+          <button>
             <img
-              src="media/thumbs/media-1763863679716.jpg"
+              src="media/thumbs/media-1763915562974.jpg"
+              alt="A medium shot of Cameron Winter playing an upright piano on a spotlit stage, facing to the left and away from the audience. He is wearing a white T-shirt, there are two directional microphones hovering above the piano like antennae, facing down. The back of the heads of many audience members are at the base of the image. A centered distortion square covers two thirds of the image increasing the presence of reds on the primarily blue and white image."
               height="500"
               width="500"
             />
             <img
               class="media"
-              src="media/media-1763863679716.png"
+              src="media/media-1763915562974.png"
+              aria-hidden="true"
               height="250"
               width="250"
               loading="lazy"
             />
           </button>
         </nav>
+      </section>
+      <section class="info">
+        <ul>
+          <li>
+            <a href="https://www.youtube.com/watch?v=SzEDYoE7YQ4"
+              ><img
+                src="media/thumbs/media-1763862984411.jpg"
+                alt="A silhouette of Nina Simone leaning in motion to the left, head low with the arch of her bare kneck centered in the square. In the center is a noisey distortion covering 80% of the image, turning the natural browns and yellows into a high contrast range of white, blues, and some magenta."
+                height="500"
+                width="500"
+              />
+              Nina Simone - I Wish I Knew How It Would Feel to Be Free (Live in
+              New York, c. 1968)</a
+            >
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=jYJGP0FBaT0"
+              ><img
+                src="media/thumbs/media-1763864810140.jpg"
+                alt="A square distorted photograph, medium shot. Mdou Moctar playing an electric guitar wearing formal Saharan clothing, surrounded by people dancing. Outdoor in the dark with harsh lighting directed towards the activity. The image itself is fully  distorted with intense fine colorful lime and magenta noise, but the subject is apparent."
+                height="500"
+                width="500"
+              />
+              Mdou Moctar, Niger</a
+            >
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=1MDlMdu2gjw"
+              ><img
+                src="media/thumbs/media-1763885637959.jpg"
+                alt="Medium-long shot high angle of Anohni Hegarty singing on stage. Dark blues and purples are contrasted by a distortion square in the center of the image brining lime, red, and yellow contrast to cover 80% of the original image."
+                height="500"
+                width="500"
+              />
+              Anohni singing If It Be Your Will</a
+            >
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=_6GX7RoSXR8"
+              ><img
+                src="media/thumbs/media-1763884764481.jpg"
+                alt="A blue lofi closeup of J Dilla speaking into a microphone, looking to the left, wearing a ballcap in a live stage setting a centered, square colorful noise pattern covers 80% of the image."
+                height="500"
+                width="500"
+              />
+              J Dilla - F*ck the Police (live @ Jazz Cafe, 1st May 2004)</a
+            >
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=iy9JL_FKnW4"
+              ><img
+                src="media/thumbs/media-1763885462877.jpg"
+                alt="A medium VHS-recorded shot of Ted Hawkins sitting on a makeshift stool on the Venice Beach boardwalk, longsleeve shirt, ballcap, acoustic guitar in hand. The cropped letters 'Ed Hawk' can be seen in tall handwriting on a open guitar case on the right side of the image on the ground. The image is sunlit high contrast with a lot of white and green. In the center is a square covering half the image with intense red, blue, yellow, and green noise."
+                height="500"
+                width="500"
+              />
+              Ted Hawkins Venice Beach 1990</a
+            >
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=2vy0dMXhlWI"
+              ><img
+                src="media/thumbs/media-1763868941432.jpg"
+                alt="Medium shot of R. L. Burnside, standing over a long log in a yard, holding an axe. The image is VHS-recorded and full of grass and tree green. In the center is a noisey square covering a third of the image. The noise is high contrast magentas and greens."
+                height="500"
+                width="500"
+              />
+              R.L. Burnside's wood-chopping holler (1978)</a
+            >
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=YxgZuE14he8"
+              ><img
+                src="media/thumbs/media-1763869970824.jpg"
+                alt="A high angle close up of Mavis Staples in black and white singing on television in the 1960s. Her mouth is open singing, her eyes are closed, and her hands are open facing out at shoulder height. Covering half the image is a centered square noise pattern of reds and teals."
+                height="500"
+                width="500"
+              />
+              The Staple Singers | Sit down servant</a
+            >
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=3yG2z6GC4Ww"
+              ><img
+                src="media/thumbs/media-1763873039153.jpg"
+                alt="A low angle close up of Janie Hunter and other Moving Star Hall singers, shot on VHS in the 1990s. The image is entirely distorted, reversing the polarity of the image with bright and harsh pops of white, teal, blue, yellow, and red."
+                height="500"
+                width="500"
+              />
+              Janie Hunter and the Moving Star Hall Singers: Jonah (1983)</a
+            >
+          </li>
+          <li>
+            <a href="https://www.youtube.com/watch?v=rU4BRPRlNn0"
+              ><img
+                src="media/thumbs/media-1763915562974.jpg"
+                alt="A medium shot of Cameron Winter playing an upright piano on a spotlit stage, facing to the left and away from the audience. He is wearing a white T-shirt, there are two directional microphones hovering above the piano like antennae, facing down. The back of the heads of many audience members are at the base of the image. A centered distortion square covers two thirds of the image increasing the presence of reds on the primarily blue and white image."
+                height="500"
+                width="500"
+              />
+              Cameron Winter: Love Takes Miles / Drinking Age - Live at Sleeping
+              Village, Chicago, IL 01/18/2025
+            </a>
+          </li>
+        </ul>
       </section>
     </main>
     <script type="module">

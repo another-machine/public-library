@@ -13,9 +13,6 @@ document.querySelectorAll("button").forEach((button) => {
     const media = button.querySelector<HTMLImageElement>("img.media");
     const background =
       section?.querySelector<HTMLImageElement>("img.background");
-    const link = document.getElementById(
-      button.getAttribute("data-link") || ""
-    );
     const isActive = button.classList.contains("active");
     const activeButton = section?.querySelector("button.active");
     if (activeButton) {
@@ -29,9 +26,6 @@ document.querySelectorAll("button").forEach((button) => {
     if (media && background) {
       if (active) {
         active.classList.remove("active");
-      }
-      if (link) {
-        link.classList.add("active");
       }
       const src = media.getAttribute("src");
       if (section) {
