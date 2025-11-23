@@ -118,7 +118,7 @@ recordBtn.addEventListener("click", async () => {
       audioBuffers: audioBuffers,
       sampleRate: 44100,
       bitDepth: 16,
-      encoding: "additive",
+      encoding: "difference",
       encodeMetadata: true,
       borderWidth: 1,
       music: {

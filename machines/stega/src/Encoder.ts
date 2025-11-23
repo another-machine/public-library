@@ -393,53 +393,45 @@ export class Encoder {
       link.click();
     });
 
-    const detectBpmBtn = document.getElementById("detect-bpm-btn")!;
-    const detectKeyBtn = document.getElementById("detect-key-btn")!;
+    const tapBpmBtn = document.getElementById("detect-bpm-btn")!;
+    let tapTimes: number[] = [];
 
-    detectBpmBtn.addEventListener("click", async () => {
-      if (!this.fullAudioBuffer) return;
-      const originalText = detectBpmBtn.innerText;
-      detectBpmBtn.innerText = "...";
-      const detector = new DetectBPM({ audioContext: this.audioContext });
-      const bpm = await detector.analyzeBPM(this.fullAudioBuffer);
-      if (bpm > 0) {
-        bpmInput.value = bpm.toString();
-      } else {
-        alert("Could not detect BPM");
+    tapBpmBtn.addEventListener("click", () => {
+      const now = Date.now();
+      tapTimes.push(now);
+
+      // Keep only the last 8 taps
+      if (tapTimes.length > 8) {
+        tapTimes.shift();
       }
-      detectBpmBtn.innerText = originalText;
-    });
 
-    detectKeyBtn.addEventListener("click", async () => {
-      if (!this.fullAudioBuffer) return;
-      const originalText = detectKeyBtn.innerText;
-      detectKeyBtn.innerText = "...";
-      const detector = new DetectTone({ audioContext: this.audioContext });
-      const key = await detector.analyzeKey(this.fullAudioBuffer);
-      if (key) {
-        const root = key.split(" ")[0];
-        const notes = [
-          "C",
-          "C#",
-          "D",
-          "D#",
-          "E",
-          "F",
-          "F#",
-          "G",
-          "G#",
-          "A",
-          "A#",
-          "B",
-        ];
-        const index = notes.indexOf(root);
-        if (index !== -1) {
-          pitchInput.value = index.toString();
+      // Need at least 2 taps to calculate BPM
+      if (tapTimes.length >= 2) {
+        const intervals: number[] = [];
+        for (let i = 1; i < tapTimes.length; i++) {
+          intervals.push(tapTimes[i] - tapTimes[i - 1]);
         }
+
+        // Calculate average interval in milliseconds
+        const avgInterval =
+          intervals.reduce((a, b) => a + b, 0) / intervals.length;
+
+        // Convert to BPM (60000 ms per minute)
+        const bpm = Math.round(60000 / avgInterval);
+        bpmInput.value = bpm.toString();
+
+        tapBpmBtn.innerText = `Tap (${tapTimes.length})`;
       } else {
-        alert("Could not detect Key");
+        tapBpmBtn.innerText = "Tap (1)";
       }
-      detectKeyBtn.innerText = originalText;
+
+      // Reset after 2 seconds of no taps
+      setTimeout(() => {
+        if (Date.now() - now >= 2000) {
+          tapTimes = [];
+          tapBpmBtn.innerText = "Tap";
+        }
+      }, 2000);
     });
   }
 

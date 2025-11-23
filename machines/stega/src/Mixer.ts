@@ -161,11 +161,10 @@ export class Mixer {
 
     // Create Canvas
     const canvas = document.createElement("canvas");
-    const size = 500;
-    canvas.width = size;
-    canvas.height = size;
+    canvas.width = image.naturalWidth;
+    canvas.height = image.naturalHeight;
     const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(image, 0, 0, size, size);
+    ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
 
     // Store visual
     this.visuals.push({ canvas, source: image, track });
@@ -257,6 +256,18 @@ export class Mixer {
     });
     controls.appendChild(octaveControls);
 
+    // Reverse Control
+    const reverseBtn = document.createElement("button");
+    reverseBtn.innerText = "Rev";
+    reverseBtn.style.padding = "4px";
+    reverseBtn.style.fontSize = "11px";
+    reverseBtn.onclick = () => {
+      const isReversed = !track.isReversed;
+      this.audioEngine.setTrackReversed(track, isReversed);
+      reverseBtn.style.background = isReversed ? "#666" : "";
+    };
+    controls.appendChild(reverseBtn);
+
     // Volume Control
     const volumeControl = document.createElement("div");
     volumeControl.style.display = "flex";
@@ -312,9 +323,17 @@ export class Mixer {
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    ctx.globalCompositeOperation = "screen";
+    ctx.imageSmoothingEnabled = true;
 
-    this.visuals.forEach(({ source }) => {
+    this.visuals.forEach(({ source }, index) => {
+      if (index === 0) {
+        // Draw first image at 100% opacity
+        ctx.globalAlpha = 1.0;
+      } else {
+        // Draw remaining images with reduced opacity based on count
+        const remainingCount = this.visuals.length;
+        ctx.globalAlpha = 1.0 / remainingCount;
+      }
       ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
     });
 

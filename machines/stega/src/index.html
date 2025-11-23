@@ -151,11 +151,10 @@
         position: relative;
 
         canvas {
-          image-rendering: pixelated;
           width: 100%;
           height: auto;
           max-width: 700px;
-          box-shadow: 0 0 0 1px rgba(255, 255, 255, var(--opacity, 0));
+          /* box-shadow: 0 0 0 1px rgba(255, 255, 255, var(--opacity, 0)); */
         }
       }
       .track:hover .track-controls {
@@ -494,20 +493,12 @@
                   id="detect-bpm-btn"
                   style="width: auto; padding: 0 10px; font-size: 0.8em"
                 >
-                  Detect
+                  Tap
                 </button>
               </div>
 
               <label>Pitch (Semitones)</label>
-              <div style="display: flex; gap: 5px">
-                <input type="number" id="encoder-pitch" value="0" />
-                <button
-                  id="detect-key-btn"
-                  style="width: auto; padding: 0 10px; font-size: 0.8em"
-                >
-                  Detect
-                </button>
-              </div>
+              <input type="number" id="encoder-pitch" value="0" />
 
               <label>Sample Rate (Hz)</label>
               <div style="display: flex; gap: 5px; align-items: center">
