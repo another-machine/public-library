@@ -68,6 +68,9 @@ export class Encoder {
     const borderWidthInput = document.getElementById(
       "encoder-border-width"
     ) as HTMLInputElement;
+    const resampleSelect = document.getElementById(
+      "encoder-resample"
+    ) as HTMLSelectElement;
     const previewPlayBtn = document.getElementById("preview-play")!;
     const previewStopBtn = document.getElementById("preview-stop")!;
     const generatedControls = document.getElementById("generated-controls")!;
@@ -284,6 +287,7 @@ export class Encoder {
       const targetBitDepth = parseInt(bitDepthInput.value) as 8 | 16 | 24;
       const targetEncoding = encodingInput.value as any;
       const targetBorderWidth = parseInt(borderWidthInput.value);
+      const shouldResample = resampleSelect.value === "resample";
 
       if (!imageFile) {
         alert("Please select an image");
@@ -299,12 +303,16 @@ export class Encoder {
 
       // Calculate adjusted BPM and Pitch based on sample rate ratio
       const originalSampleRate = this.fullAudioBuffer.sampleRate;
-      const ratio = targetSampleRate / originalSampleRate;
+      let adjustedBpm = bpm;
+      let adjustedPitch = pitch;
 
-      const adjustedBpm = bpm * ratio;
-      const pitchShift = 12 * Math.log2(ratio);
-      // Modulo 12 logic: ((n % m) + m) % m
-      const adjustedPitch = (((pitch + pitchShift) % 12) + 12) % 12;
+      if (!shouldResample) {
+        // If not resampling, adjust BPM and pitch for the sample rate change
+        const ratio = targetSampleRate / originalSampleRate;
+        adjustedBpm = bpm * ratio;
+        const pitchShift = 12 * Math.log2(ratio);
+        adjustedPitch = (((pitch + pitchShift) % 12) + 12) % 12;
+      }
 
       // Slice the buffer
       const sampleRate = this.fullAudioBuffer.sampleRate;
@@ -321,7 +329,7 @@ export class Encoder {
       }
 
       // 2. Process channels based on selection
-      const slicedBuffers: Float32Array[] = [];
+      let slicedBuffers: Float32Array[] = [];
 
       if (targetChannels === 1) {
         // Mono Mixdown
@@ -347,6 +355,43 @@ export class Encoder {
           // Stereo source -> Stereo output
           slicedBuffers.push(tempBuffers[0]);
           slicedBuffers.push(tempBuffers[1]);
+        }
+      }
+
+      // 3. Resample if needed
+      if (shouldResample && targetSampleRate !== originalSampleRate) {
+        const duration = slicedBuffers[0].length / originalSampleRate;
+        const newLength = Math.floor(duration * targetSampleRate);
+
+        // Create temporary audio buffer for resampling
+        const tempAudioBuffer = this.audioContext.createBuffer(
+          slicedBuffers.length,
+          slicedBuffers[0].length,
+          originalSampleRate
+        );
+
+        for (let i = 0; i < slicedBuffers.length; i++) {
+          const channelData = tempAudioBuffer.getChannelData(i);
+          channelData.set(slicedBuffers[i]);
+        }
+
+        // Resample using OfflineAudioContext
+        const offlineCtx = new OfflineAudioContext(
+          targetChannels,
+          newLength,
+          targetSampleRate
+        );
+        const source = offlineCtx.createBufferSource();
+        source.buffer = tempAudioBuffer;
+        source.connect(offlineCtx.destination);
+        source.start();
+
+        const resampledBuffer = await offlineCtx.startRendering();
+
+        // Extract resampled buffers
+        slicedBuffers = [];
+        for (let i = 0; i < targetChannels; i++) {
+          slicedBuffers.push(resampledBuffer.getChannelData(i).slice());
         }
       }
 

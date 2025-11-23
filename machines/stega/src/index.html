@@ -234,7 +234,6 @@
         height: 30px; /* Container height */
         background: transparent;
         border: none;
-        margin: 0;
         padding: 0;
       }
       input[type="range"]::-webkit-slider-runnable-track {
@@ -322,7 +321,7 @@
     </style>
   </head>
   <body>
-    <button class="drawer-toggle" id="drawer-toggle">☰ Settings</button>
+    <button class="drawer-toggle" id="drawer-toggle">Menu</button>
 
     <div class="drawer" id="drawer">
       <h1>Stega</h1>
@@ -389,7 +388,6 @@
         id="panel-create"
         style="display: none; max-width: 600px; margin: 0 auto"
       >
-        <h2>Create Loop</h2>
         <div class="drop-zone" id="encoder-drop">
           Drop Audio or Click to Upload
           <input
@@ -511,6 +509,7 @@
                   step="100"
                 />
               </div>
+              <label>Sample Rate Slider</label>
               <input
                 type="range"
                 id="encoder-sample-rate"
@@ -519,6 +518,15 @@
                 step="100"
                 value="44100"
               />
+              <label>Downsample Mode</label>
+              <select id="encoder-resample">
+                <option value="resample" selected>
+                  Resample (maintain speed, reduce size)
+                </option>
+                <option value="slow">
+                  Transform playback (keep sample count)
+                </option>
+              </select>
             </div>
             <div>
               <label>Channels</label>

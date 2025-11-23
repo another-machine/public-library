@@ -163,4 +163,4 @@ if (recordingAddBtn) {
 }
 
 // Set initial state
-viewMixBtn.click();
+viewCreateBtn.click();
