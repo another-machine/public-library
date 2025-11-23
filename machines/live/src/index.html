@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>live</title>
+    <style>
+      html,
+      body {
+        background-color: black;
+        height: 100%;
+        margin: 0;
+      }
+      main {
+        height: 100%;
+        overflow-y: auto;
+        scroll-snap-type: y mandatory;
+      }
+      section {
+        --inset: max(5vh, 5vw);
+        align-items: center;
+        box-sizing: border-box;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        height: 100%;
+        justify-content: center;
+        padding: calc(var(--inset) * 0.1);
+        position: relative;
+        scroll-snap-align: start;
+
+        > a {
+          bottom: calc(var(--inset) * 0.1);
+          color: white;
+          font-size: 16px;
+          position: absolute;
+          right: calc(var(--inset) * 0.1);
+        }
+
+        &:has(> .background:not(.hidden)) {
+          align-items: end;
+          justify-content: start;
+        }
+
+        > .background {
+          display: block;
+          inset: var(--inset);
+          position: absolute;
+          object-fit: contain;
+          object-position: center;
+          image-rendering: pixelated;
+          height: calc(100% - var(--inset) * 2);
+          width: calc(100% - var(--inset) * 2);
+          z-index: 0;
+
+          &.hidden {
+            display: none;
+          }
+
+          &:not(.hidden) ~ button {
+            & > img {
+              opacity: 0.8;
+              width: calc(var(--inset) * 0.8);
+
+              &:hover {
+                opacity: 1;
+              }
+            }
+          }
+        }
+
+        > button {
+          appearance: none;
+          background: 0;
+          border: 0;
+          cursor: crosshair;
+          display: block;
+          padding: 0;
+          position: relative;
+
+          > img {
+            height: auto;
+            width: 250px;
+
+            &.media {
+              display: none;
+            }
+          }
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <img
+          src="./media/thumbs/media-1763862984411.jpg"
+          class="background hidden"
+        />
+        <a
+          title="Nina Simone - I Wish I Knew How It Would Feel to Be Free (Live in New York, c. 1968)"
+          href="https://www.youtube.com/watch?v=SzEDYoE7YQ4"
+          >source</a
+        >
+        <button>
+          <img
+            src="./media/thumbs/media-1763862984411.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            src="./media/media-1763862984411.png"
+            height="1027"
+            width="1027"
+            loading="lazy"
+          />
+        </button>
+      </section>
+
+      <section>
+        <img
+          src="./media/thumbs/media-1763864810140.jpg"
+          class="background hidden"
+        />
+        <a
+          title="Mdou Moctar, Niger"
+          href="https://www.youtube.com/watch?v=jYJGP0FBaT0"
+          >source</a
+        >
+
+        <button>
+          <img
+            src="./media/thumbs/media-1763864810140.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            src="./media/media-1763864810140.png"
+            height="957"
+            width="957"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <img
+          src="./media/thumbs/media-1763866071347.jpg"
+          class="background hidden"
+        />
+        <a
+          title="Antony singing If It Be Your Will"
+          href="https://www.youtube.com/watch?v=1MDlMdu2gjw"
+          >source</a
+        >
+        <button>
+          <img
+            src="./media/thumbs/media-1763866071347.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            src="./media/media-1763866071347.png"
+            height="1818"
+            width="1818"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <img
+          src="./media/thumbs/media-1763867113694.jpg"
+          class="background hidden"
+        />
+        <a
+          title="J Dilla Agua de Beber Intro"
+          href="https://www.youtube.com/watch?v=lmz8rzJG-cQ"
+          >source</a
+        >
+        <button>
+          <img
+            src="./media/thumbs/media-1763867113694.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            src="./media/media-1763867113694.png"
+            height="406"
+            width="409"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <img
+          src="./media/thumbs/media-1763868573625.jpg"
+          class="background hidden"
+        />
+        <a
+          title="Ted Hawkins Venice Beach 1990"
+          href="https://www.youtube.com/watch?v=iy9JL_FKnW4"
+          >source</a
+        >
+        <button>
+          <img
+            src="./media/thumbs/media-1763868573625.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            src="./media/media-1763868573625.png"
+            height="443"
+            width="443"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <img
+          src="./media/thumbs/media-1763868941432.jpg"
+          class="background hidden"
+        />
+        <a
+          title="R.L. Burnside's wood-chopping holler (1978)"
+          href="https://www.youtube.com/watch?v=2vy0dMXhlWI"
+          >source</a
+        >
+        <button>
+          <img
+            src="./media/thumbs/media-1763868941432.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            height="766"
+            width="766"
+            src="./media/media-1763868941432.png"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <img
+          src="./media/thumbs/media-1763869970824.jpg"
+          class="background hidden"
+        />
+        <a
+          title="The Staple Singers | Sit down servant"
+          href="https://www.youtube.com/watch?v=YxgZuE14he8"
+          >source</a
+        >
+        <button>
+          <img
+            src="./media/thumbs/media-1763869970824.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            height="1411"
+            width="1411"
+            src="./media/media-1763869970824.png"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <img
+          src="./media/thumbs/media-1763873039153.jpg"
+          class="background hidden"
+        />
+        <a
+          title="Janie Hunter and the Moving Star Hall Singers: Jonah (1983)"
+          href="https://www.youtube.com/watch?v=3yG2z6GC4Ww"
+          >source</a
+        >
+        <button>
+          <img
+            src="./media/thumbs/media-1763873039153.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            height="570"
+            width="570"
+            src="./media/media-1763873039153.png"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <img
+          src="./media/thumbs/media-1763863646707.jpg"
+          class="background hidden"
+        />
+        <a
+          title="Geese - Getting Killed | From The Basement"
+          href="https://www.youtube.com/watch?v=qIol9hig2G4"
+          >source</a
+        >
+
+        <button>
+          <img
+            src="./media/thumbs/media-1763863646707.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            src="./media/media-1763863646707.png"
+            height="250"
+            width="250"
+            loading="lazy"
+          />
+        </button>
+
+        <button>
+          <img
+            src="./media/thumbs/media-1763863679716.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            src="./media/media-1763863679716.png"
+            height="923"
+            width="923"
+            loading="lazy"
+          />
+        </button>
+
+        <button>
+          <img
+            src="./media/thumbs/media-1763863780021.jpg"
+            height="500"
+            width="500"
+          />
+          <img
+            class="media"
+            src="./media/media-1763863780021.png"
+            height="636"
+            width="636"
+            loading="lazy"
+          />
+        </button>
+      </section>
+    </main>
+    <script type="module">
+      import "./index.ts";
+    </script>
+  </body>
+</html>
