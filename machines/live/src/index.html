@@ -131,14 +131,13 @@
           color: white;
           gap: 0.9em;
           justify-content: center;
-          text-align: center;
+          text-align: left;
 
           h1 {
             font-size: 4em;
           }
           h1,
-          h1 + p,
-          p:last-child {
+          p:not(.body) {
             font-style: italic;
           }
           p a {
@@ -147,6 +146,10 @@
           p {
             font-size: 1.4em;
             line-height: 1.2;
+            &.body,
+            &:last-child {
+              font-size: 1.1em;
+            }
           }
           h1,
           p {
@@ -154,6 +157,7 @@
             margin: 0;
             max-width: min(90%, 900px);
             text-wrap: balance;
+            width: 100%;
           }
         }
       }
@@ -163,15 +167,15 @@
     <main>
       <section class="intro">
         <h1>live</h1>
-        <p>an homage to live performances that have made me feel&nbsp;alive.</p>
-        <p>
+        <p>an homage to performances that have made me feel&nbsp;alive.</p>
+        <p class="body">
           these images are screenshots of videos, with audio transformed and
           encoded into their pixels. there are no audio files here, just image
-          data being played back to you as sound. select an image and listen
+          data played back to you as sound. select an image and listen
           to&nbsp;it&nbsp;loop.
         </p>
         <p>
-          made using resources by
+          tools provided by
           <a href="https://anothermachine.info">another machine</a>.
         </p>
       </section>
