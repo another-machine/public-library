@@ -6,18 +6,37 @@ import {
 
 let audioContext: AudioContext;
 let currentSource: AudioBufferSourceNode | null = null;
-let currentSrc: string | null = null;
 document.querySelectorAll("button").forEach((button) => {
   audioContext = audioContext || new AudioContext();
   button.addEventListener("click", (e) => {
-    const section = button.parentElement;
+    const section = button.parentElement?.parentElement;
     const media = button.querySelector<HTMLImageElement>("img.media");
     const background =
       section?.querySelector<HTMLImageElement>("img.background");
+    const link = document.getElementById(
+      button.getAttribute("data-link") || ""
+    );
+    const isActive = button.classList.contains("active");
+    const activeButton = section?.querySelector("button.active");
+    if (activeButton) {
+      activeButton.classList.remove("active");
+    }
+    if (!isActive) {
+      button.classList.add("active");
+    }
+    const active = document.querySelector("a.active");
 
     if (media && background) {
+      if (active) {
+        active.classList.remove("active");
+      }
+      if (link) {
+        link.classList.add("active");
+      }
       const src = media.getAttribute("src");
-      const sameSrc = src === currentSrc;
+      if (section) {
+        document.body.style.backgroundImage = `url(${src})`;
+      }
       background.classList.remove("hidden");
       background.setAttribute("src", src || "");
       background.setAttribute("height", media.getAttribute("height") || "");
@@ -58,10 +77,7 @@ document.querySelectorAll("button").forEach((button) => {
           currentSource.stop();
         }
 
-        if (sameSrc) {
-          currentSrc = null;
-        } else {
-          currentSrc = src;
+        if (!isActive) {
           currentSource = await playDecodedAudioBuffers({
             audioBuffers,
             audioContext,
