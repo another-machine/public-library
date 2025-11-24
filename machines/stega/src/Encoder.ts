@@ -135,9 +135,20 @@ export class Encoder {
       const amp = height / 2;
 
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#444";
-      ctx.beginPath();
 
+      // Calculate zoom region
+      const zoomMin = parseFloat(zoomSliderStart.min);
+      const zoomMax = parseFloat(zoomSliderStart.max);
+      const zoomValStart = parseFloat(zoomSliderStart.value);
+      const zoomValEnd = parseFloat(zoomSliderEnd.value);
+      const zoomPercentStart = (zoomValStart - zoomMin) / (zoomMax - zoomMin);
+      const zoomPercentEnd = (zoomValEnd - zoomMin) / (zoomMax - zoomMin);
+
+      const zoomStartX = zoomPercentStart * width;
+      const zoomEndX = zoomPercentEnd * width;
+
+      // Draw waveform
+      ctx.fillStyle = "#444";
       for (let i = 0; i < width; i++) {
         let min = 1.0;
         let max = -1.0;
@@ -149,21 +160,16 @@ export class Encoder {
         ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
       }
 
-      // Draw Zoom Highlight (Main Area)
-      const zoomMin = parseFloat(zoomSliderStart.min);
-      const zoomMax = parseFloat(zoomSliderStart.max);
-      const zoomValStart = parseFloat(zoomSliderStart.value);
-      const zoomValEnd = parseFloat(zoomSliderEnd.value);
-      const zoomPercentStart = (zoomValStart - zoomMin) / (zoomMax - zoomMin);
-      const zoomPercentEnd = (zoomValEnd - zoomMin) / (zoomMax - zoomMin);
-
-      ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-      ctx.fillRect(
-        zoomPercentStart * width,
-        0,
-        (zoomPercentEnd - zoomPercentStart) * width,
-        height
-      );
+      // Draw dark overlay on areas outside zoom region
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      // Left side
+      if (zoomStartX > 0) {
+        ctx.fillRect(0, 0, zoomStartX, height);
+      }
+      // Right side
+      if (zoomEndX < width) {
+        ctx.fillRect(zoomEndX, 0, width - zoomEndX, height);
+      }
 
       // Draw Playback Line
       if (playbackTime !== undefined) {
@@ -208,9 +214,22 @@ export class Encoder {
       const amp = height / 2;
 
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
-      ctx.beginPath();
 
+      // Calculate trim region in zoom window coordinates
+      const trimStart = this.absoluteTrimStart;
+      const trimEnd = this.absoluteTrimEnd;
+      const zoomDuration = zoomWindowEnd - zoomWindowStart;
+
+      let trimStartX = 0;
+      let trimEndX = width;
+
+      if (zoomDuration > 0) {
+        trimStartX = ((trimStart - zoomWindowStart) / zoomDuration) * width;
+        trimEndX = ((trimEnd - zoomWindowStart) / zoomDuration) * width;
+      }
+
+      // Draw waveform
+      ctx.fillStyle = "#444";
       for (let i = 0; i < width; i++) {
         let min = 1.0;
         let max = -1.0;
@@ -240,40 +259,15 @@ export class Encoder {
         ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
       }
 
-      // Draw Trim Highlight (Fine Scrub)
-      // Trim is absolute, map to zoom window
-      const trimStart = this.absoluteTrimStart;
-      const trimEnd = this.absoluteTrimEnd;
-
-      // Map trim times to canvas x coordinates
-      // x = (time - zoomWindowStart) / (zoomWindowEnd - zoomWindowStart) * width
-      const zoomDuration = zoomWindowEnd - zoomWindowStart;
-
-      if (zoomDuration > 0) {
-        const xStart = ((trimStart - zoomWindowStart) / zoomDuration) * width;
-        const xEnd = ((trimEnd - zoomWindowStart) / zoomDuration) * width;
-
-        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-        // Clamp rect to canvas
-        const rectX = Math.max(0, xStart);
-        const rectW = Math.min(width, xEnd) - rectX;
-
-        // Only draw if visible
-        if (rectW > 0) {
-          // Actually we want to show the "active" area.
-          // If the trim is larger than the zoom, we fill the whole thing?
-          // If the trim is outside, we don't see it.
-          // But wait, the trim sliders are constrained to the zoom window in the UI logic?
-          // No, the trim sliders (0-100) are relative to the zoom window.
-          // So the trim highlight should always be visible within the fine view.
-          // Let's verify:
-          // trimSliderStart value is 0-100 relative to zoom window.
-          // So xStart should be trimSliderStart% * width.
-          // But we are using absoluteTrimStart which is the source of truth.
-          // So the math above is correct.
-
-          ctx.fillRect(xStart, 0, xEnd - xStart, height);
-        }
+      // Draw dark overlay on areas outside trim region
+      ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      // Left side
+      if (trimStartX > 0) {
+        ctx.fillRect(0, 0, trimStartX, height);
+      }
+      // Right side
+      if (trimEndX < width) {
+        ctx.fillRect(trimEndX, 0, width - trimEndX, height);
       }
 
       // Draw Playback Line

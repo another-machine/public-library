@@ -232,7 +232,11 @@ label {
 .range-slider-container {
   position: relative;
   height: 30px;
+  margin-top: -44px;
   margin-bottom: 15px;
+  /* Account for 15px slider thumb inset on each side (30px thumb, centered = 15px from edge) */
+  padding: 0 15px;
+  margin-left: -30px;
 }
 
 .range-slider-track {
@@ -241,7 +245,8 @@ label {
   transform: translateY(-50%);
   height: 1px;
   width: 100%;
-  background: var(--input-border);
+  /* background: var(--input-border); */
+  background: transparent;
 }
 
 .range-slider-highlight {
@@ -249,7 +254,7 @@ label {
   top: 50%;
   transform: translateY(-50%);
   height: 1px;
-  background: var(--highlight);
+  background: transparent;
   pointer-events: none;
 }
 
@@ -312,8 +317,9 @@ input[type="range"] {
 
 input[type="range"]::-webkit-slider-runnable-track {
   width: 100%;
-  height: 1px;
-  background: var(--input-border);
+  height: 2px;
+  background: transparent;
+  border: none;
   cursor: pointer;
 }
 
@@ -336,8 +342,9 @@ input[type="range"]::-webkit-slider-thumb {
 
 input[type="range"]::-moz-range-track {
   width: 100%;
-  height: 1px;
-  background: var(--input-border);
+  height: 2px;
+  background: transparent;
+  border: none;
   cursor: pointer;
 }
 
@@ -418,7 +425,7 @@ input[type="range"]:focus {
   width: 100%;
   height: 60px;
   background: var(--waveform-bg);
-  margin-bottom: 5px;
+  display: block;
 }
 
 .track-control-item {
@@ -471,6 +478,7 @@ input[type="range"]:focus {
   margin-bottom: 15px;
   padding-bottom: 15px;
   border-bottom: 1px solid var(--input-border);
+  overflow-x: hidden;
 }
 
 .controls-header {
