@@ -4,404 +4,54 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stega</title>
-    <style>
-      body {
-        font-family: sans-serif;
-        background: #000;
-        color: #fff;
-        margin: 0;
-        padding: 0;
-        height: 100vh;
-        overflow: hidden;
-      }
-      h1 {
-        font-weight: 300;
-        margin: 0;
-        font-size: 1.2em;
-      }
-      .drawer {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 300px;
-        height: 100%;
-        background: #222;
-        padding: 20px;
-        box-shadow: -2px 0 10px rgba(0, 0, 0, 0.5);
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-        z-index: 100;
-        overflow-y: auto;
-      }
-      .drawer.open {
-        transform: translateX(0);
-      }
-      .drawer-toggle {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 101;
-        width: auto;
-        padding: 10px 15px;
-        background: #333;
-        border: 1px solid #444;
-        border-radius: 4px;
-        cursor: pointer;
-      }
-      .main-area {
-        width: 100%;
-        height: 100%;
-        padding: 20px;
-        box-sizing: border-box;
-        overflow-y: auto;
-      }
-      .container {
-        display: flex;
-        gap: 20px;
-        flex-wrap: wrap;
-      }
-      .panel {
-        background: transparent;
-        padding: 0;
-        border-radius: 0;
-        flex: 1;
-        min-width: 300px;
-      }
-      .drop-zone {
-        text-align: center;
-        cursor: pointer;
-        input {
-          margin-bottom: 0;
-        }
-      }
-      .drop-zone.drag-over {
-        opacity: 0.5;
-      }
-      .smart-drop-zone {
-        border: 1px dashed #444;
-        padding: 10px;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        cursor: pointer;
-        transition: border-color 0.2s, background 0.2s;
-        margin-bottom: 10px;
-      }
-      .smart-drop-zone:hover,
-      .smart-drop-zone.drag-over {
-        border-color: #888;
-        background: #222;
-      }
-      .smart-drop-zone button {
-        width: auto;
-        margin: 0;
-      }
-      .smart-drop-zone .file-name {
-        color: #aaa;
-        font-size: 0.9em;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        flex: 1;
-        text-align: left;
-      }
-      input,
-      button,
-      select {
-        background: #333;
-        border: 1px solid #444;
-        color: #fff;
-        padding: 8px;
-        border-radius: 4px;
-        margin-bottom: 10px;
-        width: 100%;
-        box-sizing: border-box;
-      }
-      select {
-        -webkit-appearance: none;
-        appearance: none;
-        background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23FFFFFF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
-        background-repeat: no-repeat;
-        background-position: right 10px top 50%;
-        background-size: 10px auto;
-        padding-right: 30px;
-      }
-      button,
-      .btn {
-        cursor: pointer;
-        background: #444;
-        border: 1px solid #444;
-        color: #fff;
-        padding: 8px;
-        border-radius: 4px;
-        margin-bottom: 10px;
-        width: 100%;
-        box-sizing: border-box;
-        text-align: center;
-        text-decoration: none;
-        display: inline-block;
-        font-size: 13px; /* Match default button font size */
-        white-space: nowrap;
-      }
-      button:hover,
-      .btn:hover {
-        background: #555;
-      }
-      button:disabled,
-      .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-      label {
-        display: block;
-        margin-bottom: 4px;
-        font-size: 0.9em;
-        color: #aaa;
-      }
-      #encoded-image {
-        max-width: 100%;
-        margin-top: 20px;
-        display: none;
-      }
-      .track {
-        background: transparent;
-        padding: 10px;
-        margin-bottom: 10px;
-        border-radius: 4px;
-        display: inline-flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 10px;
-        flex: 1;
-        vertical-align: top;
-        position: relative;
-
-        canvas {
-          width: 100%;
-          height: auto;
-          max-width: 700px;
-          /* box-shadow: 0 0 0 1px rgba(255, 255, 255, var(--opacity, 0)); */
-        }
-      }
-      .track:hover .track-controls {
-        opacity: 1;
-      }
-      /* Dual Range Slider Styles */
-      .range-slider-container {
-        position: relative;
-        height: 30px;
-        margin-bottom: 15px;
-      }
-      .range-slider-track {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        height: 1px;
-        width: 100%;
-        background: #444;
-      }
-      .range-slider-highlight {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        height: 1px;
-        background: #fff;
-        pointer-events: none;
-      }
-      .range-slider-input {
-        position: absolute;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 100%;
-        background: none;
-        pointer-events: none;
-        -webkit-appearance: none;
-        appearance: none;
-        margin: 0;
-        border: none; /* Remove default border */
-      }
-      .range-slider-input::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        pointer-events: auto;
-        width: 30px;
-        height: 30px;
-        background: linear-gradient(
-          to right,
-          transparent 14px,
-          #fff 14px,
-          #fff 16px,
-          transparent 16px
-        );
-        cursor: pointer;
-        border: none;
-        border-radius: 0;
-      }
-      .range-slider-input::-moz-range-thumb {
-        pointer-events: auto;
-        width: 30px;
-        height: 30px;
-        background: linear-gradient(
-          to right,
-          transparent 14px,
-          #fff 14px,
-          #fff 16px,
-          transparent 16px
-        );
-        cursor: pointer;
-        border: none;
-        border-radius: 0;
-      }
-
-      /* General Range Input Styles */
-      input[type="range"] {
-        -webkit-appearance: none;
-        appearance: none;
-        width: 100%;
-        height: 30px; /* Container height */
-        background: transparent;
-        border: none;
-        padding: 0;
-      }
-      input[type="range"]::-webkit-slider-runnable-track {
-        width: 100%;
-        height: 1px;
-        background: #444;
-        cursor: pointer;
-      }
-      input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        height: 30px;
-        width: 30px;
-        background: linear-gradient(
-          to right,
-          transparent 14px,
-          #fff 14px,
-          #fff 16px,
-          transparent 16px
-        );
-        cursor: pointer;
-        margin-top: -14.5px; /* (30px - 1px) / 2 * -1 */
-        border: none;
-        border-radius: 0;
-      }
-      input[type="range"]::-moz-range-track {
-        width: 100%;
-        height: 1px;
-        background: #444;
-        cursor: pointer;
-      }
-      input[type="range"]::-moz-range-thumb {
-        height: 30px;
-        width: 30px;
-        background: linear-gradient(
-          to right,
-          transparent 14px,
-          #fff 14px,
-          #fff 16px,
-          transparent 16px
-        );
-        cursor: pointer;
-        border: none;
-        border-radius: 0;
-      }
-      input[type="range"]:focus {
-        outline: none;
-      }
-
-      .controls-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-      }
-      @media (max-width: 600px) {
-        .controls-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-      .track-controls {
-        opacity: 0;
-        transition: opacity 0.2s;
-        background: rgba(0, 0, 0, 0.8);
-        padding: 10px;
-        border-radius: 4px;
-        position: absolute;
-        top: 100%;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 10;
-        width: 200px;
-      }
-      .track-info {
-        font-size: 0.8em;
-        text-align: center;
-        color: #888;
-      }
-      #tracks {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        justify-content: center;
-        align-items: center;
-        min-height: 300px;
-      }
-    </style>
+    <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
     <button class="drawer-toggle" id="drawer-toggle">Menu</button>
 
     <div class="drawer" id="drawer">
       <h1>Stega</h1>
-      <div style="margin-top: 20px">
+      <div class="drawer-section">
         <label>View</label>
-        <div style="display: flex; gap: 10px">
-          <button id="view-create">Create</button>
+        <div class="button-group">
+          <button id="view-create" class="active">Create</button>
           <button id="view-mix">Mix</button>
         </div>
       </div>
 
-      <div style="margin-top: 20px">
+      <div class="drawer-section">
         <label>Playback</label>
-        <div style="display: flex; gap: 10px">
+        <div class="button-group">
           <button id="play-pause">Play</button>
-          <button id="record-btn" style="background: #822">Record</button>
+          <button id="record-btn" class="btn-record">Record</button>
         </div>
       </div>
 
-      <div style="margin-top: 20px">
+      <div class="drawer-section">
         <label>Global BPM</label>
         <input type="number" id="global-bpm" value="120" />
       </div>
 
-      <div style="margin-top: 20px">
+      <div class="drawer-section">
         <label>Global Pitch</label>
         <input type="number" id="global-pitch" value="0" />
       </div>
 
-      <div
-        style="margin-top: 20px; border-top: 1px solid #444; padding-top: 20px"
-      >
+      <div class="drawer-section-divided">
         <label>Tracks</label>
         <div id="track-controls-list"></div>
       </div>
 
-      <div
-        style="margin-top: 20px; display: none"
-        id="recording-preview-container"
-      >
+      <div class="drawer-section hidden" id="recording-preview-container">
         <label>Recording Preview</label>
-        <img
-          id="recording-preview-img"
-          style="width: 100%; margin-bottom: 10px; border: 1px solid #444"
-        />
-        <div style="display: flex; gap: 10px; margin-bottom: 10px">
+        <img id="recording-preview-img" class="preview-image" />
+        <div class="flex-group">
           <button id="recording-add-btn">Add to Mixer</button>
           <a
             id="recording-download-link"
             href="#"
             download="stega-mix.png"
-            class="btn"
-            style="line-height: 1.2"
+            class="btn btn-inline"
             >Download</a
           >
         </div>
@@ -410,11 +60,7 @@
 
     <div class="main-area">
       <!-- Encoder Panel -->
-      <div
-        class="panel"
-        id="panel-create"
-        style="display: none; max-width: 600px; margin: 0 auto"
-      >
+      <div class="panel panel-centered" id="panel-create">
         <div class="smart-drop-zone" id="encoder-drop">
           <button id="encoder-file-btn">Choose Audio</button>
           <span id="encoder-file-name" class="file-name">No audio chosen</span>
@@ -422,28 +68,14 @@
             type="file"
             id="encoder-input"
             accept="audio/*"
-            style="display: none"
+            class="hidden"
           />
         </div>
 
-        <div id="encoder-controls" style="display: none; margin-top: 20px">
-          <div
-            style="
-              margin-bottom: 15px;
-              padding-bottom: 15px;
-              border-bottom: 1px solid #444;
-            "
-          >
+        <div id="encoder-controls" class="hidden controls-header">
+          <div class="section-divider">
             <label>Zoom (Coarse)</label>
-            <canvas
-              id="waveform-canvas"
-              style="
-                width: 100%;
-                height: 60px;
-                background: #222;
-                margin-bottom: 5px;
-              "
-            ></canvas>
+            <canvas id="waveform-canvas" class="waveform-canvas"></canvas>
             <div class="range-slider-container">
               <div class="range-slider-track"></div>
               <div class="range-slider-highlight" id="zoom-highlight"></div>
@@ -468,15 +100,7 @@
             </div>
 
             <label>Trim (Fine)</label>
-            <canvas
-              id="waveform-canvas-fine"
-              style="
-                width: 100%;
-                height: 60px;
-                background: #222;
-                margin-bottom: 5px;
-              "
-            ></canvas>
+            <canvas id="waveform-canvas-fine" class="waveform-canvas"></canvas>
             <div class="range-slider-container">
               <div class="range-slider-track"></div>
               <div class="range-slider-highlight" id="trim-highlight"></div>
@@ -500,8 +124,8 @@
               />
             </div>
 
-            <div style="display: flex; gap: 10px; margin-bottom: 10px">
-              <div style="flex: 1">
+            <div class="flex-group">
+              <div class="flex-col">
                 <label>Start</label>
                 <input
                   type="number"
@@ -511,7 +135,7 @@
                   min="0"
                 />
               </div>
-              <div style="flex: 1">
+              <div class="flex-col">
                 <label>End</label>
                 <input
                   type="number"
@@ -522,7 +146,7 @@
                 />
               </div>
             </div>
-            <div style="display: flex; gap: 10px">
+            <div class="button-group">
               <button id="preview-play">Play Loop</button>
               <button id="preview-stop">Stop</button>
             </div>
@@ -531,21 +155,16 @@
           <div class="controls-grid">
             <div>
               <label>BPM</label>
-              <div style="display: flex; gap: 5px">
+              <div class="flex-center">
                 <input type="number" id="encoder-bpm" value="120" />
-                <button
-                  id="detect-bpm-btn"
-                  style="width: auto; padding: 0 10px; font-size: 0.8em"
-                >
-                  Tap
-                </button>
+                <button id="detect-bpm-btn" class="btn-small">Tap</button>
               </div>
 
               <label>Pitch (Semitones)</label>
               <input type="number" id="encoder-pitch" value="0" />
 
               <label>Sample Rate (Hz)</label>
-              <div style="display: flex; gap: 5px; align-items: center">
+              <div class="flex-center">
                 <input
                   type="number"
                   id="encoder-sample-rate-input"
@@ -614,59 +233,29 @@
                   type="file"
                   id="encoder-image-input"
                   accept="image/*"
-                  style="display: none"
+                  class="hidden"
                 />
               </div>
             </div>
           </div>
 
-          <button id="encode-btn" style="margin-top: 20px">Encode Image</button>
+          <button id="encode-btn" class="controls-header">Encode Image</button>
         </div>
 
-        <div
-          id="generated-controls"
-          style="
-            display: none;
-            margin-top: 20px;
-            border-top: 1px solid #444;
-            padding-top: 20px;
-          "
-        >
-          <div
-            style="
-              display: flex;
-              gap: 10px;
-              margin-bottom: 10px;
-              align-items: center;
-            "
-          >
+        <div id="generated-controls" class="hidden generated-section">
+          <div class="button-row">
             <button id="play-generated-btn">Play Generated Loop</button>
             <button id="stop-generated-btn">Stop</button>
             <button id="download-generated-btn">Download Image</button>
           </div>
-          <img id="encoded-image" />
+          <img id="encoded-image" class="hidden" />
         </div>
       </div>
 
       <!-- Mixer Panel -->
-      <div class="panel" id="panel-mix">
-        <div
-          class="drop-zone"
-          id="mixer-drop"
-          style="
-            border: none;
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
-          "
-        >
-          <div
-            class="smart-drop-zone"
-            id="mixer-drop-zone"
-            style="margin-bottom: 20px"
-          >
+      <div class="panel hidden" id="panel-mix">
+        <div class="drop-zone mixer-container" id="mixer-drop">
+          <div class="smart-drop-zone mixer-drop-header" id="mixer-drop-zone">
             <button id="mixer-add-btn">Add Image</button>
             <span class="file-name">Drop images here to add tracks</span>
             <input
@@ -674,7 +263,7 @@
               id="mixer-file-input"
               accept="image/*"
               multiple
-              style="display: none"
+              class="hidden"
             />
           </div>
           <div id="tracks"></div>

@@ -208,7 +208,7 @@ export class Encoder {
       const amp = height / 2;
 
       ctx.clearRect(0, 0, width, height);
-      ctx.fillStyle = "#444";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
       ctx.beginPath();
 
       for (let i = 0; i < width; i++) {
@@ -719,8 +719,8 @@ export class Encoder {
       const dataUrl = encodedCanvas.toDataURL();
       resultImg.src = dataUrl;
 
-      generatedControls.style.display = "block";
-      resultImg.style.display = "block";
+      generatedControls.classList.remove("hidden");
+      resultImg.classList.remove("hidden");
     });
 
     playGeneratedBtn.addEventListener("click", () => {
@@ -841,8 +841,7 @@ export class Encoder {
     const controls = document.getElementById("encoder-controls")!;
 
     // Don't hide drop zone, just show controls
-    // dropZone.style.display = "none";
-    controls.style.display = "block";
+    controls.classList.remove("hidden");
 
     const trimStartInput = document.getElementById(
       "trim-start"

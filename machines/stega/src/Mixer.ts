@@ -183,9 +183,10 @@ export class Mixer {
 
     // --- Create Control Panel Item ---
     const controlItem = document.createElement("div");
+    controlItem.className = "track-control-item";
     controlItem.style.marginBottom = "15px";
     controlItem.style.paddingBottom = "15px";
-    controlItem.style.borderBottom = "1px solid #444";
+    controlItem.style.borderBottom = "1px solid var(--input-border)";
     controlItem.style.display = "flex";
     controlItem.style.gap = "10px";
 
@@ -234,12 +235,12 @@ export class Mixer {
       btn.onclick = () => {
         this.audioEngine.setTrackSpeedMultiplier(track, speed);
         // Update active state
-        Array.from(speedControls.children).forEach(
-          (c) => ((c as HTMLElement).style.background = "")
+        Array.from(speedControls.children).forEach((c) =>
+          (c as HTMLElement).classList.remove("active")
         );
-        btn.style.background = "#666";
+        btn.classList.add("active");
       };
-      if (speed === 1) btn.style.background = "#666";
+      if (speed === 1) btn.classList.add("active");
       speedControls.appendChild(btn);
     });
     controls.appendChild(speedControls);
@@ -258,12 +259,12 @@ export class Mixer {
       btn.onclick = () => {
         this.audioEngine.setTrackOctaveShift(track, octave);
         // Update active state
-        Array.from(octaveControls.children).forEach(
-          (c) => ((c as HTMLElement).style.background = "")
+        Array.from(octaveControls.children).forEach((c) =>
+          (c as HTMLElement).classList.remove("active")
         );
-        btn.style.background = "#666";
+        btn.classList.add("active");
       };
-      if (octave === 0) btn.style.background = "#666";
+      if (octave === 0) btn.classList.add("active");
       octaveControls.appendChild(btn);
     });
     controls.appendChild(octaveControls);
@@ -276,7 +277,11 @@ export class Mixer {
     reverseBtn.onclick = () => {
       const isReversed = !track.isReversed;
       this.audioEngine.setTrackReversed(track, isReversed);
-      reverseBtn.style.background = isReversed ? "#666" : "";
+      if (isReversed) {
+        reverseBtn.classList.add("active");
+      } else {
+        reverseBtn.classList.remove("active");
+      }
     };
     controls.appendChild(reverseBtn);
 

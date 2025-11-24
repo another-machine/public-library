@@ -69,18 +69,18 @@ document.addEventListener("click", (e) => {
 });
 
 viewCreateBtn.addEventListener("click", () => {
-  panelCreate.style.display = "block";
-  panelMix.style.display = "none";
-  viewCreateBtn.style.background = "#666";
-  viewMixBtn.style.background = "";
+  panelCreate.classList.remove("hidden");
+  panelMix.classList.add("hidden");
+  viewCreateBtn.classList.add("active");
+  viewMixBtn.classList.remove("active");
   drawer.classList.remove("open");
 });
 
 viewMixBtn.addEventListener("click", () => {
-  panelCreate.style.display = "none";
-  panelMix.style.display = "block";
-  viewCreateBtn.style.background = "";
-  viewMixBtn.style.background = "#666";
+  panelCreate.classList.add("hidden");
+  panelMix.classList.remove("hidden");
+  viewCreateBtn.classList.remove("active");
+  viewMixBtn.classList.add("active");
   drawer.classList.remove("open");
 });
 
@@ -88,12 +88,16 @@ viewMixBtn.addEventListener("click", () => {
 const recordBtn = document.getElementById("record-btn")!;
 let isRecording = false;
 
+recordingDownloadLink.addEventListener("click", () => {
+  recordingPreviewContainer.classList.add("hidden");
+});
+
 recordBtn.addEventListener("click", async () => {
   if (!isRecording) {
     // Start Recording
     isRecording = true;
     recordBtn.innerText = "Stop Recording";
-    recordBtn.style.background = "red";
+    recordBtn.classList.add("recording");
     audioEngine.startRecording();
   } else {
     // Stop Recording
@@ -134,7 +138,7 @@ recordBtn.addEventListener("click", async () => {
     recordingPreviewImg.src = dataUrl;
     recordingDownloadLink.href = dataUrl;
     recordingDownloadLink.download = filename;
-    recordingPreviewContainer.style.display = "block";
+    recordingPreviewContainer.classList.remove("hidden");
 
     // Open drawer so user sees the result
     if (!drawer.classList.contains("open")) {
@@ -142,7 +146,7 @@ recordBtn.addEventListener("click", async () => {
     }
 
     recordBtn.innerText = "Record";
-    recordBtn.style.background = "#822";
+    recordBtn.classList.remove("recording");
     (recordBtn as HTMLButtonElement).disabled = false;
   }
 });
