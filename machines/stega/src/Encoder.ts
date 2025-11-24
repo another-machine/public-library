@@ -1,8 +1,7 @@
-import { StegaCassette } from "../../../packages/amplib-steganography/src";
 import {
-  DetectBPM,
-  DetectTone,
-} from "../../../packages/amplib-music-detection/src";
+  StegaCassette,
+  createDropReader,
+} from "../../../packages/amplib-steganography/src";
 
 export class Encoder {
   audioContext: AudioContext;
@@ -21,6 +20,13 @@ export class Encoder {
     borderWidth: number;
   } | null = null;
 
+  // State for absolute trim times
+  absoluteTrimStart: number = 0;
+  absoluteTrimEnd: number = 0;
+
+  // State for dropped image
+  droppedImage: HTMLImageElement | null = null;
+
   constructor() {
     this.audioContext = new AudioContext();
     this.setupListeners();
@@ -28,17 +34,25 @@ export class Encoder {
 
   setupListeners() {
     const dropZone = document.getElementById("encoder-drop")!;
+    const fileBtn = document.getElementById("encoder-file-btn")!;
+    const fileName = document.getElementById("encoder-file-name")!;
     const fileInput = document.getElementById(
       "encoder-input"
     ) as HTMLInputElement;
+
+    const imageDropZone = document.getElementById("encoder-image-drop")!;
+    const imageBtn = document.getElementById("encoder-image-btn")!;
+    const imageName = document.getElementById("encoder-image-name")!;
+    const imageInput = document.getElementById(
+      "encoder-image-input"
+    ) as HTMLInputElement;
+
     const controls = document.getElementById("encoder-controls")!;
     const bpmInput = document.getElementById("encoder-bpm") as HTMLInputElement;
     const pitchInput = document.getElementById(
       "encoder-pitch"
     ) as HTMLInputElement;
-    const imageInput = document.getElementById(
-      "encoder-image-input"
-    ) as HTMLInputElement;
+    // imageInput is already declared above
     const encodeBtn = document.getElementById("encode-btn")!;
     const resultImg = document.getElementById(
       "encoded-image"
@@ -96,8 +110,70 @@ export class Encoder {
       "trim-slider-end"
     ) as HTMLInputElement;
     const trimHighlight = document.getElementById("trim-highlight")!;
+    const waveformCanvas = document.getElementById(
+      "waveform-canvas"
+    ) as HTMLCanvasElement;
 
-    const updateSliderUI = () => {
+    const drawWaveform = () => {
+      if (!this.fullAudioBuffer) return;
+      const ctx = waveformCanvas.getContext("2d");
+      if (!ctx) return;
+
+      const width = (waveformCanvas.width = waveformCanvas.clientWidth);
+      const height = (waveformCanvas.height = waveformCanvas.clientHeight);
+      const data = this.fullAudioBuffer.getChannelData(0);
+      const step = Math.ceil(data.length / width);
+      const amp = height / 2;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#444";
+      ctx.beginPath();
+
+      for (let i = 0; i < width; i++) {
+        let min = 1.0;
+        let max = -1.0;
+        for (let j = 0; j < step; j++) {
+          const datum = data[i * step + j];
+          if (datum < min) min = datum;
+          if (datum > max) max = datum;
+        }
+        ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+      }
+
+      // Draw Zoom Highlight (Main Area)
+      const zoomMin = parseFloat(zoomSliderStart.min);
+      const zoomMax = parseFloat(zoomSliderStart.max);
+      const zoomValStart = parseFloat(zoomSliderStart.value);
+      const zoomValEnd = parseFloat(zoomSliderEnd.value);
+      const zoomPercentStart = (zoomValStart - zoomMin) / (zoomMax - zoomMin);
+      const zoomPercentEnd = (zoomValEnd - zoomMin) / (zoomMax - zoomMin);
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.2)";
+      ctx.fillRect(
+        zoomPercentStart * width,
+        0,
+        (zoomPercentEnd - zoomPercentStart) * width,
+        height
+      );
+
+      // Draw Trim Highlight (Fine Scrub)
+      const duration = this.fullAudioBuffer.duration;
+      const trimStartPercent = this.absoluteTrimStart / duration;
+      const trimEndPercent = this.absoluteTrimEnd / duration;
+
+      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+      ctx.fillRect(
+        trimStartPercent * width,
+        0,
+        (trimEndPercent - trimStartPercent) * width,
+        height
+      );
+    };
+
+    const updateSliderUI = (source: "zoom" | "trim" | "manual" = "manual") => {
+      if (!this.fullAudioBuffer) return;
+      const duration = this.fullAudioBuffer.duration;
+
       // Zoom Slider Logic
       const zoomMin = parseFloat(zoomSliderStart.min);
       const zoomMax = parseFloat(zoomSliderStart.max);
@@ -105,28 +181,58 @@ export class Encoder {
       let zoomValEnd = parseFloat(zoomSliderEnd.value);
 
       if (zoomValStart > zoomValEnd) {
-        zoomSliderStart.value = zoomValEnd.toString();
-        zoomValStart = zoomValEnd;
+        if (source === "zoom") {
+          zoomValStart = zoomValEnd;
+          zoomSliderStart.value = zoomValStart.toString();
+        }
       }
 
-      const zoomPercentStart =
-        ((zoomValStart - zoomMin) / (zoomMax - zoomMin)) * 100;
-      const zoomPercentEnd =
-        ((zoomValEnd - zoomMin) / (zoomMax - zoomMin)) * 100;
+      const zoomPercentStart = (zoomValStart - zoomMin) / (zoomMax - zoomMin);
+      const zoomPercentEnd = (zoomValEnd - zoomMin) / (zoomMax - zoomMin);
 
-      zoomHighlight.style.left = zoomPercentStart + "%";
-      zoomHighlight.style.width = zoomPercentEnd - zoomPercentStart + "%";
+      zoomHighlight.style.left = zoomPercentStart * 100 + "%";
+      zoomHighlight.style.width =
+        (zoomPercentEnd - zoomPercentStart) * 100 + "%";
 
-      // Trim Slider Logic (Relative to Zoom)
+      // Calculate Zoom Window Absolute Times
+      const zoomWindowStart = duration * zoomPercentStart;
+      const zoomWindowEnd = duration * zoomPercentEnd;
+      const zoomWindowDuration = zoomWindowEnd - zoomWindowStart;
+
+      if (source === "zoom") {
+        let newTrimSliderStart =
+          ((this.absoluteTrimStart - zoomWindowStart) / zoomWindowDuration) *
+          100;
+        let newTrimSliderEnd =
+          ((this.absoluteTrimEnd - zoomWindowStart) / zoomWindowDuration) * 100;
+
+        if (newTrimSliderStart < 0) newTrimSliderStart = 0;
+        if (newTrimSliderStart > 100) newTrimSliderStart = 100;
+        if (newTrimSliderEnd < 0) newTrimSliderEnd = 0;
+        if (newTrimSliderEnd > 100) newTrimSliderEnd = 100;
+
+        trimSliderStart.value = newTrimSliderStart.toString();
+        trimSliderEnd.value = newTrimSliderEnd.toString();
+      } else if (source === "trim") {
+        let trimValStart = parseFloat(trimSliderStart.value);
+        let trimValEnd = parseFloat(trimSliderEnd.value);
+
+        if (trimValStart > trimValEnd) {
+          trimValStart = trimValEnd;
+          trimSliderStart.value = trimValStart.toString();
+        }
+
+        this.absoluteTrimStart =
+          zoomWindowStart + zoomWindowDuration * (trimValStart / 100);
+        this.absoluteTrimEnd =
+          zoomWindowStart + zoomWindowDuration * (trimValEnd / 100);
+      }
+
+      // Update Trim Highlight
       const trimMin = parseFloat(trimSliderStart.min);
       const trimMax = parseFloat(trimSliderStart.max);
-      let trimValStart = parseFloat(trimSliderStart.value);
-      let trimValEnd = parseFloat(trimSliderEnd.value);
-
-      if (trimValStart > trimValEnd) {
-        trimSliderStart.value = trimValEnd.toString();
-        trimValStart = trimValEnd;
-      }
+      const trimValStart = parseFloat(trimSliderStart.value);
+      const trimValEnd = parseFloat(trimSliderEnd.value);
 
       const trimPercentStart =
         ((trimValStart - trimMin) / (trimMax - trimMin)) * 100;
@@ -136,24 +242,11 @@ export class Encoder {
       trimHighlight.style.left = trimPercentStart + "%";
       trimHighlight.style.width = trimPercentEnd - trimPercentStart + "%";
 
-      // Calculate Absolute Times
-      if (this.fullAudioBuffer) {
-        const duration = this.fullAudioBuffer.duration;
+      // Update Inputs
+      trimStartInput.value = this.absoluteTrimStart.toFixed(3);
+      trimEndInput.value = this.absoluteTrimEnd.toFixed(3);
 
-        // Zoom Window (Absolute Times)
-        const zoomWindowStart = duration * (zoomPercentStart / 100);
-        const zoomWindowEnd = duration * (zoomPercentEnd / 100);
-        const zoomWindowDuration = zoomWindowEnd - zoomWindowStart;
-
-        // Trim Times (Absolute, based on Zoom Window)
-        const absoluteStart =
-          zoomWindowStart + zoomWindowDuration * (trimPercentStart / 100);
-        const absoluteEnd =
-          zoomWindowStart + zoomWindowDuration * (trimPercentEnd / 100);
-
-        trimStartInput.value = absoluteStart.toFixed(3);
-        trimEndInput.value = absoluteEnd.toFixed(3);
-      }
+      drawWaveform();
     };
 
     // Zoom Listeners
@@ -163,7 +256,7 @@ export class Encoder {
       ) {
         zoomSliderStart.value = zoomSliderEnd.value;
       }
-      updateSliderUI();
+      updateSliderUI("zoom");
     });
 
     zoomSliderEnd.addEventListener("input", () => {
@@ -172,15 +265,13 @@ export class Encoder {
       ) {
         zoomSliderEnd.value = zoomSliderStart.value;
       }
-      updateSliderUI();
+      updateSliderUI("zoom");
     });
 
     // Trim Listeners
     const restartIfPlaying = () => {
       if (this.previewSource) {
-        const start = parseFloat(trimStartInput.value);
-        const end = parseFloat(trimEndInput.value);
-        this.playPreview(start, end);
+        this.playPreview(this.absoluteTrimStart, this.absoluteTrimEnd);
       }
     };
 
@@ -190,7 +281,7 @@ export class Encoder {
       ) {
         trimSliderStart.value = trimSliderEnd.value;
       }
-      updateSliderUI();
+      updateSliderUI("trim");
       restartIfPlaying();
     });
 
@@ -200,12 +291,11 @@ export class Encoder {
       ) {
         trimSliderEnd.value = trimSliderStart.value;
       }
-      updateSliderUI();
+      updateSliderUI("trim");
       restartIfPlaying();
     });
 
-    // Sync number inputs back to sliders (Complex due to relative zoom)
-    // For now, let's reset zoom to full if user manually types time, to keep it simple
+    // Sync number inputs back to sliders
     const handleManualInput = () => {
       if (!this.fullAudioBuffer) return;
       const duration = this.fullAudioBuffer.duration;
@@ -215,6 +305,9 @@ export class Encoder {
       if (start < 0) start = 0;
       if (end > duration) end = duration;
       if (start > end) start = end;
+
+      this.absoluteTrimStart = start;
+      this.absoluteTrimEnd = end;
 
       // Reset Zoom to 0-100
       zoomSliderStart.value = "0";
@@ -227,7 +320,7 @@ export class Encoder {
       trimSliderStart.value = startPercent.toString();
       trimSliderEnd.value = endPercent.toString();
 
-      updateSliderUI();
+      updateSliderUI("trim");
     };
 
     trimStartInput.addEventListener("change", handleManualInput);
@@ -241,35 +334,74 @@ export class Encoder {
       sampleRateInput.value = sampleRateNumberInput.value;
     });
 
+    // Audio Input Logic
+    fileBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fileInput.click();
+    });
+
     dropZone.addEventListener("click", () => fileInput.click());
 
     fileInput.addEventListener("change", async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) this.handleAudioFile(file);
-    });
-
-    dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      dropZone.classList.add("drag-over");
-    });
-
-    dropZone.addEventListener("dragleave", () =>
-      dropZone.classList.remove("drag-over")
-    );
-
-    dropZone.addEventListener("drop", (e) => {
-      e.preventDefault();
-      dropZone.classList.remove("drag-over");
-      const file = e.dataTransfer?.files[0];
-      if (file && file.type.startsWith("audio/")) {
+      if (file) {
+        fileName.innerText = file.name;
         this.handleAudioFile(file);
       }
     });
 
+    createDropReader({
+      element: dropZone,
+      onSuccess: ({ audioElements }) => {
+        if (audioElements.length > 0) {
+          const audio = audioElements[0];
+          // Extract filename from src if possible, or just say "Dropped Audio"
+          // Since we load from URL, we might not get the original filename easily unless we parse the blob URL or something, which is not useful.
+          // But createDropReader handles files.
+          // Wait, createDropReader returns elements.
+          // If I want the file name, I should probably modify createDropReader or just use the drop event directly if I need the file object for name.
+          // But for now let's just set a generic name or try to get it.
+          fileName.innerText = "Dropped Audio";
+          this.loadAudioFromUrl(audio.src);
+        }
+      },
+      onDragEnter: () => dropZone.classList.add("drag-over"),
+      onDragLeave: () => dropZone.classList.remove("drag-over"),
+      onDrop: () => dropZone.classList.remove("drag-over"),
+      types: ["audio/*"],
+    });
+
+    // Image Input Logic
+    imageBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      imageInput.click();
+    });
+
+    imageDropZone.addEventListener("click", () => imageInput.click());
+
+    imageInput.addEventListener("change", (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        imageName.innerText = file.name;
+      }
+    });
+
+    createDropReader({
+      element: imageDropZone,
+      onSuccess: ({ imageElements }) => {
+        if (imageElements.length > 0) {
+          imageName.innerText = "Dropped Image";
+          this.droppedImage = imageElements[0];
+        }
+      },
+      onDragEnter: () => imageDropZone.classList.add("drag-over"),
+      onDragLeave: () => imageDropZone.classList.remove("drag-over"),
+      onDrop: () => imageDropZone.classList.remove("drag-over"),
+      types: ["image/*"],
+    });
+
     previewPlayBtn.addEventListener("click", () => {
-      const start = parseFloat(trimStartInput.value);
-      const end = parseFloat(trimEndInput.value);
-      this.playPreview(start, end);
+      this.playPreview(this.absoluteTrimStart, this.absoluteTrimEnd);
     });
 
     previewStopBtn.addEventListener("click", () => this.stopPreview());
@@ -280,8 +412,8 @@ export class Encoder {
       const bpm = parseFloat(bpmInput.value);
       const pitch = parseFloat(pitchInput.value);
       const imageFile = imageInput.files?.[0];
-      const start = parseFloat(trimStartInput.value);
-      const end = parseFloat(trimEndInput.value);
+      const start = this.absoluteTrimStart;
+      const end = this.absoluteTrimEnd;
       const targetSampleRate = parseInt(sampleRateInput.value);
       const targetChannels = parseInt(channelsInput.value);
       const targetBitDepth = parseInt(bitDepthInput.value) as 8 | 16 | 24;
@@ -289,7 +421,7 @@ export class Encoder {
       const targetBorderWidth = parseInt(borderWidthInput.value);
       const shouldResample = resampleSelect.value === "resample";
 
-      if (!imageFile) {
+      if (!imageFile && !this.droppedImage) {
         alert("Please select an image");
         return;
       }
@@ -299,7 +431,9 @@ export class Encoder {
         return;
       }
 
-      const image = await this.loadImage(imageFile);
+      const image = imageFile
+        ? await this.loadImage(imageFile)
+        : this.droppedImage!;
 
       // Calculate adjusted BPM and Pitch based on sample rate ratio
       const originalSampleRate = this.fullAudioBuffer.sampleRate;
@@ -521,7 +655,26 @@ export class Encoder {
 
   async handleAudioFile(file: File) {
     const arrayBuffer = await file.arrayBuffer();
-    this.fullAudioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+    this.setAudioBuffer(audioBuffer);
+  }
+
+  async loadAudioFromUrl(url: string) {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
+    this.setAudioBuffer(audioBuffer);
+  }
+
+  setAudioBuffer(audioBuffer: AudioBuffer) {
+    this.fullAudioBuffer = audioBuffer;
+
+    const dropZone = document.getElementById("encoder-drop")!;
+    const controls = document.getElementById("encoder-controls")!;
+
+    // Don't hide drop zone, just show controls
+    // dropZone.style.display = "none";
+    controls.style.display = "block";
 
     const trimStartInput = document.getElementById(
       "trim-start"
@@ -548,6 +701,9 @@ export class Encoder {
 
     const duration = this.fullAudioBuffer.duration;
 
+    this.absoluteTrimStart = 0;
+    this.absoluteTrimEnd = duration;
+
     // Update inputs
     trimStartInput.value = "0";
     trimEndInput.value = duration.toFixed(3);
@@ -571,11 +727,9 @@ export class Encoder {
     (
       document.getElementById("encoder-sample-rate-input") as HTMLInputElement
     ).value = this.fullAudioBuffer.sampleRate.toString();
-    // document.getElementById("sample-rate-display")!.innerText =
-    //   this.fullAudioBuffer.sampleRate.toString();
 
-    document.getElementById("encoder-controls")!.style.display = "block";
-    document.getElementById("encoder-drop")!.innerText = `Loaded: ${file.name}`;
+    // Trigger waveform draw
+    zoomSliderStart.dispatchEvent(new Event("input"));
   }
 
   playPreview(start: number, end: number) {

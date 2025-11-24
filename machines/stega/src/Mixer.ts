@@ -1,6 +1,7 @@
 import {
   StegaCassette,
   StegaMetadata,
+  createDropReader,
 } from "../../../packages/amplib-steganography/src";
 import { AudioEngine } from "./AudioEngine";
 import { LoopMetadata } from "./types";
@@ -49,42 +50,53 @@ export class Mixer {
 
   setupListeners() {
     const dropZone = document.getElementById("mixer-drop")!;
+    const addBtn = document.getElementById("mixer-add-btn")!;
 
-    dropZone.addEventListener("dragover", (e) => {
-      e.preventDefault();
-      dropZone.classList.add("drag-over");
+    // Create hidden input for button
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = "image/*";
+    fileInput.multiple = true;
+    fileInput.style.display = "none";
+    document.body.appendChild(fileInput);
+
+    addBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      fileInput.click();
     });
 
-    dropZone.addEventListener("dragleave", () =>
-      dropZone.classList.remove("drag-over")
-    );
-
-    dropZone.addEventListener("drop", async (e) => {
-      e.preventDefault();
-      dropZone.classList.remove("drag-over");
-
-      const items = e.dataTransfer?.items;
-      if (items) {
-        const files: File[] = [];
-        for (let i = 0; i < items.length; i++) {
-          if (items[i].kind === "file") {
-            const file = items[i].getAsFile();
-            if (file && file.type.startsWith("image/")) {
-              files.push(file);
-            }
+    fileInput.addEventListener("change", async () => {
+      if (fileInput.files) {
+        for (let i = 0; i < fileInput.files.length; i++) {
+          const file = fileInput.files[i];
+          if (file.type.startsWith("image/")) {
+            await this.handleImageFile(file);
           }
         }
-        // Process sequentially to avoid race conditions or UI jank
-        for (const file of files) {
-          await this.handleImageFile(file);
-        }
       }
+      fileInput.value = "";
+    });
+
+    createDropReader({
+      element: dropZone,
+      onSuccess: async ({ imageElements }) => {
+        for (const image of imageElements) {
+          await this.handleImage(image);
+        }
+      },
+      onDragEnter: () => dropZone.classList.add("drag-over"),
+      onDragLeave: () => dropZone.classList.remove("drag-over"),
+      onDrop: () => dropZone.classList.remove("drag-over"),
+      types: ["image/*"],
     });
   }
 
   async handleImageFile(file: File) {
     const image = await this.loadImage(file);
+    await this.handleImage(image);
+  }
 
+  async handleImage(image: HTMLImageElement) {
     // Decode metadata
     const metadata = StegaMetadata.decode({ source: image });
     if (
