@@ -27,6 +27,9 @@ export class Encoder {
   // State for dropped image
   droppedImage: HTMLImageElement | null = null;
 
+  // Callback to stop preview from outside setupListeners
+  stopPreviewFn: (() => void) | null = null;
+
   constructor() {
     this.audioContext = new AudioContext();
     this.setupListeners();
@@ -113,8 +116,14 @@ export class Encoder {
     const waveformCanvas = document.getElementById(
       "waveform-canvas"
     ) as HTMLCanvasElement;
+    const waveformCanvasFine = document.getElementById(
+      "waveform-canvas-fine"
+    ) as HTMLCanvasElement;
 
-    const drawWaveform = () => {
+    let animationFrameId: number | null = null;
+    let playbackStartTime: number = 0;
+
+    const drawCoarseWaveform = (playbackTime?: number) => {
       if (!this.fullAudioBuffer) return;
       const ctx = waveformCanvas.getContext("2d");
       if (!ctx) return;
@@ -156,18 +165,174 @@ export class Encoder {
         height
       );
 
-      // Draw Trim Highlight (Fine Scrub)
-      const duration = this.fullAudioBuffer.duration;
-      const trimStartPercent = this.absoluteTrimStart / duration;
-      const trimEndPercent = this.absoluteTrimEnd / duration;
+      // Draw Playback Line
+      if (playbackTime !== undefined) {
+        const duration = this.fullAudioBuffer.duration;
+        const x = (playbackTime / duration) * width;
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(x, 0, 1, height);
+      }
+    };
 
-      ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
-      ctx.fillRect(
-        trimStartPercent * width,
-        0,
-        (trimEndPercent - trimStartPercent) * width,
-        height
-      );
+    const drawFineWaveform = (playbackTime?: number) => {
+      if (!this.fullAudioBuffer) return;
+      const ctx = waveformCanvasFine.getContext("2d");
+      if (!ctx) return;
+
+      const width = (waveformCanvasFine.width = waveformCanvasFine.clientWidth);
+      const height = (waveformCanvasFine.height =
+        waveformCanvasFine.clientHeight);
+
+      // Calculate Zoom Window Absolute Times
+      const duration = this.fullAudioBuffer.duration;
+      const zoomMin = parseFloat(zoomSliderStart.min);
+      const zoomMax = parseFloat(zoomSliderStart.max);
+      const zoomValStart = parseFloat(zoomSliderStart.value);
+      const zoomValEnd = parseFloat(zoomSliderEnd.value);
+      const zoomPercentStart = (zoomValStart - zoomMin) / (zoomMax - zoomMin);
+      const zoomPercentEnd = (zoomValEnd - zoomMin) / (zoomMax - zoomMin);
+
+      const zoomWindowStart = duration * zoomPercentStart;
+      const zoomWindowEnd = duration * zoomPercentEnd;
+
+      // Get Data Slice
+      const data = this.fullAudioBuffer.getChannelData(0);
+      const sampleRate = this.fullAudioBuffer.sampleRate;
+      const startIndex = Math.floor(zoomWindowStart * sampleRate);
+      const endIndex = Math.floor(zoomWindowEnd * sampleRate);
+      const sliceLength = endIndex - startIndex;
+
+      if (sliceLength <= 0) return;
+
+      const step = sliceLength / width;
+      const amp = height / 2;
+
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#444";
+      ctx.beginPath();
+
+      for (let i = 0; i < width; i++) {
+        let min = 1.0;
+        let max = -1.0;
+
+        const startSample = Math.floor(startIndex + i * step);
+        const endSample = Math.floor(startIndex + (i + 1) * step);
+
+        // Ensure we check at least one sample
+        const effectiveEnd = Math.max(startSample + 1, endSample);
+
+        for (let j = startSample; j < effectiveEnd; j++) {
+          if (j >= data.length) break;
+          const datum = data[j];
+          if (datum < min) min = datum;
+          if (datum > max) max = datum;
+        }
+
+        // Handle case where no samples were processed (e.g. out of bounds)
+        if (min > max) {
+          if (startSample >= data.length) break;
+          // Fallback to single sample
+          const datum = data[startSample];
+          min = datum;
+          max = datum;
+        }
+
+        ctx.fillRect(i, (1 + min) * amp, 1, Math.max(1, (max - min) * amp));
+      }
+
+      // Draw Trim Highlight (Fine Scrub)
+      // Trim is absolute, map to zoom window
+      const trimStart = this.absoluteTrimStart;
+      const trimEnd = this.absoluteTrimEnd;
+
+      // Map trim times to canvas x coordinates
+      // x = (time - zoomWindowStart) / (zoomWindowEnd - zoomWindowStart) * width
+      const zoomDuration = zoomWindowEnd - zoomWindowStart;
+
+      if (zoomDuration > 0) {
+        const xStart = ((trimStart - zoomWindowStart) / zoomDuration) * width;
+        const xEnd = ((trimEnd - zoomWindowStart) / zoomDuration) * width;
+
+        ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+        // Clamp rect to canvas
+        const rectX = Math.max(0, xStart);
+        const rectW = Math.min(width, xEnd) - rectX;
+
+        // Only draw if visible
+        if (rectW > 0) {
+          // Actually we want to show the "active" area.
+          // If the trim is larger than the zoom, we fill the whole thing?
+          // If the trim is outside, we don't see it.
+          // But wait, the trim sliders are constrained to the zoom window in the UI logic?
+          // No, the trim sliders (0-100) are relative to the zoom window.
+          // So the trim highlight should always be visible within the fine view.
+          // Let's verify:
+          // trimSliderStart value is 0-100 relative to zoom window.
+          // So xStart should be trimSliderStart% * width.
+          // But we are using absoluteTrimStart which is the source of truth.
+          // So the math above is correct.
+
+          ctx.fillRect(xStart, 0, xEnd - xStart, height);
+        }
+      }
+
+      // Draw Playback Line
+      if (playbackTime !== undefined) {
+        if (playbackTime >= zoomWindowStart && playbackTime <= zoomWindowEnd) {
+          const x = ((playbackTime - zoomWindowStart) / zoomDuration) * width;
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(x, 0, 1, height);
+        }
+      }
+    };
+
+    const drawWaveforms = (playbackTime?: number) => {
+      drawCoarseWaveform(playbackTime);
+      drawFineWaveform(playbackTime);
+    };
+
+    const stopPreview = () => {
+      if (this.previewSource) {
+        this.previewSource.stop();
+        this.previewSource = null;
+      }
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+      drawWaveforms(); // Clear playback line
+    };
+
+    this.stopPreviewFn = stopPreview;
+
+    const playPreview = (start: number, end: number) => {
+      if (!this.fullAudioBuffer) return;
+      stopPreview();
+
+      this.previewSource = this.audioContext.createBufferSource();
+      this.previewSource.buffer = this.fullAudioBuffer;
+      this.previewSource.loop = true;
+      this.previewSource.loopStart = start;
+      this.previewSource.loopEnd = end;
+      this.previewSource.connect(this.audioContext.destination);
+
+      // Start at the beginning of the loop
+      this.previewSource.start(0, start);
+
+      // Animation Loop
+      playbackStartTime = this.audioContext.currentTime;
+      const animate = () => {
+        if (!this.previewSource) return;
+
+        const now = this.audioContext.currentTime;
+        const elapsed = now - playbackStartTime;
+        const duration = end - start;
+        const currentPos = start + (elapsed % duration);
+
+        drawWaveforms(currentPos);
+        animationFrameId = requestAnimationFrame(animate);
+      };
+      animate();
     };
 
     const updateSliderUI = (source: "zoom" | "trim" | "manual" = "manual") => {
@@ -206,6 +371,8 @@ export class Encoder {
         let newTrimSliderEnd =
           ((this.absoluteTrimEnd - zoomWindowStart) / zoomWindowDuration) * 100;
 
+        // Allow trim sliders to go out of bounds (visually they will be clamped by the slider, but we set the value)
+        // Actually, if we zoom in and the trim is outside, the slider should probably be pegged at 0 or 100.
         if (newTrimSliderStart < 0) newTrimSliderStart = 0;
         if (newTrimSliderStart > 100) newTrimSliderStart = 100;
         if (newTrimSliderEnd < 0) newTrimSliderEnd = 0;
@@ -246,7 +413,7 @@ export class Encoder {
       trimStartInput.value = this.absoluteTrimStart.toFixed(3);
       trimEndInput.value = this.absoluteTrimEnd.toFixed(3);
 
-      drawWaveform();
+      drawWaveforms();
     };
 
     // Zoom Listeners
@@ -271,7 +438,7 @@ export class Encoder {
     // Trim Listeners
     const restartIfPlaying = () => {
       if (this.previewSource) {
-        this.playPreview(this.absoluteTrimStart, this.absoluteTrimEnd);
+        playPreview(this.absoluteTrimStart, this.absoluteTrimEnd);
       }
     };
 
@@ -401,10 +568,10 @@ export class Encoder {
     });
 
     previewPlayBtn.addEventListener("click", () => {
-      this.playPreview(this.absoluteTrimStart, this.absoluteTrimEnd);
+      playPreview(this.absoluteTrimStart, this.absoluteTrimEnd);
     });
 
-    previewStopBtn.addEventListener("click", () => this.stopPreview());
+    previewStopBtn.addEventListener("click", () => stopPreview());
 
     encodeBtn.addEventListener("click", async () => {
       if (!this.fullAudioBuffer) return;
@@ -667,6 +834,7 @@ export class Encoder {
   }
 
   setAudioBuffer(audioBuffer: AudioBuffer) {
+    if (this.stopPreviewFn) this.stopPreviewFn();
     this.fullAudioBuffer = audioBuffer;
 
     const dropZone = document.getElementById("encoder-drop")!;
@@ -730,28 +898,6 @@ export class Encoder {
 
     // Trigger waveform draw
     zoomSliderStart.dispatchEvent(new Event("input"));
-  }
-
-  playPreview(start: number, end: number) {
-    if (!this.fullAudioBuffer) return;
-    this.stopPreview();
-
-    this.previewSource = this.audioContext.createBufferSource();
-    this.previewSource.buffer = this.fullAudioBuffer;
-    this.previewSource.loop = true;
-    this.previewSource.loopStart = start;
-    this.previewSource.loopEnd = end;
-    this.previewSource.connect(this.audioContext.destination);
-
-    // Start at the beginning of the loop
-    this.previewSource.start(0, start);
-  }
-
-  stopPreview() {
-    if (this.previewSource) {
-      this.previewSource.stop();
-      this.previewSource = null;
-    }
   }
 
   loadImage(file: File): Promise<HTMLImageElement> {
