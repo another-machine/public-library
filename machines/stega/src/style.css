@@ -470,7 +470,7 @@ input[type="range"]:focus {
 
 /* Panel specific */
 .panel-centered {
-  max-width: 600px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -478,7 +478,6 @@ input[type="range"]:focus {
   margin-bottom: 15px;
   padding-bottom: 15px;
   border-bottom: 1px solid var(--input-border);
-  overflow-x: hidden;
 }
 
 .controls-header {

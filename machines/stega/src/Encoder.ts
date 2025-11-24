@@ -365,8 +365,7 @@ export class Encoder {
         let newTrimSliderEnd =
           ((this.absoluteTrimEnd - zoomWindowStart) / zoomWindowDuration) * 100;
 
-        // Allow trim sliders to go out of bounds (visually they will be clamped by the slider, but we set the value)
-        // Actually, if we zoom in and the trim is outside, the slider should probably be pegged at 0 or 100.
+        // Clamp slider values to 0-100 range
         if (newTrimSliderStart < 0) newTrimSliderStart = 0;
         if (newTrimSliderStart > 100) newTrimSliderStart = 100;
         if (newTrimSliderEnd < 0) newTrimSliderEnd = 0;
@@ -420,12 +419,70 @@ export class Encoder {
       updateSliderUI("zoom");
     });
 
+    zoomSliderStart.addEventListener("change", () => {
+      if (!this.fullAudioBuffer) return;
+      const duration = this.fullAudioBuffer.duration;
+      const zoomMin = parseFloat(zoomSliderStart.min);
+      const zoomMax = parseFloat(zoomSliderStart.max);
+      const zoomValStart = parseFloat(zoomSliderStart.value);
+      const zoomValEnd = parseFloat(zoomSliderEnd.value);
+      const zoomPercentStart = (zoomValStart - zoomMin) / (zoomMax - zoomMin);
+      const zoomPercentEnd = (zoomValEnd - zoomMin) / (zoomMax - zoomMin);
+      const zoomWindowStart = duration * zoomPercentStart;
+      const zoomWindowEnd = duration * zoomPercentEnd;
+
+      // Clamp absoluteTrim values to stay within zoom window
+      if (this.absoluteTrimStart < zoomWindowStart) {
+        this.absoluteTrimStart = zoomWindowStart;
+      }
+      if (this.absoluteTrimStart > zoomWindowEnd) {
+        this.absoluteTrimStart = zoomWindowEnd;
+      }
+      if (this.absoluteTrimEnd < zoomWindowStart) {
+        this.absoluteTrimEnd = zoomWindowStart;
+      }
+      if (this.absoluteTrimEnd > zoomWindowEnd) {
+        this.absoluteTrimEnd = zoomWindowEnd;
+      }
+
+      updateSliderUI("zoom");
+    });
+
     zoomSliderEnd.addEventListener("input", () => {
       if (
         parseFloat(zoomSliderEnd.value) <= parseFloat(zoomSliderStart.value)
       ) {
         zoomSliderEnd.value = zoomSliderStart.value;
       }
+      updateSliderUI("zoom");
+    });
+
+    zoomSliderEnd.addEventListener("change", () => {
+      if (!this.fullAudioBuffer) return;
+      const duration = this.fullAudioBuffer.duration;
+      const zoomMin = parseFloat(zoomSliderStart.min);
+      const zoomMax = parseFloat(zoomSliderStart.max);
+      const zoomValStart = parseFloat(zoomSliderStart.value);
+      const zoomValEnd = parseFloat(zoomSliderEnd.value);
+      const zoomPercentStart = (zoomValStart - zoomMin) / (zoomMax - zoomMin);
+      const zoomPercentEnd = (zoomValEnd - zoomMin) / (zoomMax - zoomMin);
+      const zoomWindowStart = duration * zoomPercentStart;
+      const zoomWindowEnd = duration * zoomPercentEnd;
+
+      // Clamp absoluteTrim values to stay within zoom window
+      if (this.absoluteTrimStart < zoomWindowStart) {
+        this.absoluteTrimStart = zoomWindowStart;
+      }
+      if (this.absoluteTrimStart > zoomWindowEnd) {
+        this.absoluteTrimStart = zoomWindowEnd;
+      }
+      if (this.absoluteTrimEnd < zoomWindowStart) {
+        this.absoluteTrimEnd = zoomWindowStart;
+      }
+      if (this.absoluteTrimEnd > zoomWindowEnd) {
+        this.absoluteTrimEnd = zoomWindowEnd;
+      }
+
       updateSliderUI("zoom");
     });
 
