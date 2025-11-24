@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Stega</title>
-    <link rel="stylesheet" href="./style.css" />
+    <style>
+      @import "./style.css";
+    </style>
   </head>
   <body>
     <button class="drawer-toggle" id="drawer-toggle">Menu</button>
@@ -222,6 +224,12 @@
                 value="1"
                 min="1"
               />
+
+              <label>Direction</label>
+              <select id="encoder-direction">
+                <option value="forward" selected>Forward</option>
+                <option value="reverse">Reverse</option>
+              </select>
 
               <label>Image</label>
               <div class="smart-drop-zone" id="encoder-image-drop">

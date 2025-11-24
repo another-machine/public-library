@@ -85,6 +85,9 @@ export class Encoder {
     const borderWidthInput = document.getElementById(
       "encoder-border-width"
     ) as HTMLInputElement;
+    const directionSelect = document.getElementById(
+      "encoder-direction"
+    ) as HTMLSelectElement;
     const resampleSelect = document.getElementById(
       "encoder-resample"
     ) as HTMLSelectElement;
@@ -638,6 +641,7 @@ export class Encoder {
       const targetEncoding = encodingInput.value as any;
       const targetBorderWidth = parseInt(borderWidthInput.value);
       const shouldResample = resampleSelect.value === "resample";
+      const shouldReverse = directionSelect.value === "reverse";
 
       if (!imageFile && !this.droppedImage) {
         alert("Please select an image");
@@ -745,6 +749,17 @@ export class Encoder {
         for (let i = 0; i < targetChannels; i++) {
           slicedBuffers.push(resampledBuffer.getChannelData(i).slice());
         }
+      }
+
+      // 4. Reverse buffers if requested
+      if (shouldReverse) {
+        slicedBuffers = slicedBuffers.map((buffer) => {
+          const reversed = new Float32Array(buffer.length);
+          for (let i = 0; i < buffer.length; i++) {
+            reversed[i] = buffer[buffer.length - 1 - i];
+          }
+          return reversed;
+        });
       }
 
       const encodedCanvas = StegaCassette.encode({
