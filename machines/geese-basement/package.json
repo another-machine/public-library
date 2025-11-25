@@ -5,7 +5,7 @@
   "source": "src/index.html",
   "scripts": {
     "start": "parcel",
-    "build": "parcel build --public-url /live/",
+    "build": "parcel build --public-url /geese-basement/",
     "thumbs": "node src/generate-thumbs.js"
   },
   "dependencies": {},

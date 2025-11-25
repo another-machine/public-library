@@ -67,7 +67,6 @@
         flex-shrink: 0;
         justify-content: center;
         height: 100%;
-
         position: relative;
         scroll-snap-align: start;
         width: 100%;
@@ -79,11 +78,13 @@
           position: absolute;
           z-index: 0;
         }
+
         &::before {
           background: var(--background, transparent);
           background-position: center;
           background-size: cover;
         }
+
         &::after {
           backdrop-filter: blur(1rem) brightness(50%);
         }
@@ -94,7 +95,6 @@
           border: 0;
           cursor: crosshair;
           display: flex;
-          height: auto;
           align-items: center;
           max-width: 90%;
           padding: 0;
@@ -103,15 +103,14 @@
         }
 
         img {
-          box-shadow: 0px 0px 120px black;
+          box-shadow: 0 0 120px black;
           display: block;
           height: auto;
           image-rendering: pixelated;
-          width: auto;
           max-height: min(100%, var(--og-height));
           max-width: min(100%, var(--og-width));
-          margin: 0 auto;
           filter: brightness(70%);
+          width: auto;
 
           &:hover {
             filter: brightness(100%);
@@ -124,6 +123,7 @@
             transform: translate(-50%, -50%);
             max-height: 90vh;
             max-width: 90vw;
+
             &.active {
               filter: brightness(100%);
             }
@@ -138,75 +138,36 @@
         &.info {
           align-items: start;
           background: black;
-          box-sizing: border-box;
           color: white;
           gap: 0.9em;
           justify-content: center;
           padding: 4rem 2rem;
-          min-height: 100%;
           width: var(--intro-width);
           height: initial;
-          text-align: left;
 
           h1 {
             font-size: 2.4em;
             line-height: 1;
-          }
-          h2 {
-            font-size: 2.2em;
-            line-height: 1;
-          }
-          h1,
-          h2 {
             font-style: italic;
           }
+
+          p {
+            font-size: 1em;
+            line-height: 1.2;
+            max-width: min(90%, 900px);
+            text-wrap: balance;
+          }
+
           p a {
             color: white;
             font-style: italic;
           }
-          p {
-            font-size: 1em;
-            line-height: 1.2;
-          }
+
           h1,
-          h2,
           p {
-            max-width: min(90%, 900px);
-            text-wrap: balance;
-          }
-          h1,
-          h2,
-          p,
-          ul {
             font-weight: 400;
             margin: 0;
             width: 100%;
-          }
-          ul {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            max-width: min(90%, 700px);
-            text-wrap: pretty;
-            > li {
-              > a {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-                color: white;
-                font-size: 0.8em;
-                font-style: italic;
-                letter-spacing: 0.035em;
-                text-decoration: none;
-                > img {
-                  height: auto;
-                  width: 2.5em;
-                }
-              }
-            }
           }
         }
       }
