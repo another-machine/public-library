@@ -438,10 +438,10 @@ function encodeSubtractive(
 }
 
 function decodeSubtractive(byteEncode: number, byteSource: number): number {
-  if (byteEncode < byteSource) {
-    return byteEncode + 256 - byteSource;
+  if (byteSource < byteEncode) {
+    return byteSource + 256 - byteEncode;
   }
-  return byteEncode - byteSource;
+  return byteSource - byteEncode;
 }
 
 /**
@@ -479,8 +479,10 @@ function encodeNoise(
   value: number
 ): [number, number] {
   const space = Math.abs(byteEncode - byteSource);
-  const stepA = Math.ceil(space * 0.5);
-  const stepB = Math.floor(space * 0.5);
+  const maxSpace = 2 * Math.min(value, 255 - value);
+  const usedSpace = Math.min(space, maxSpace);
+  const stepA = Math.ceil(usedSpace * 0.5);
+  const stepB = Math.floor(usedSpace * 0.5);
   return [(value - stepA + 256) % 256, (value + stepB) % 256];
 }
 
