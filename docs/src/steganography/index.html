@@ -198,14 +198,17 @@ interface StegaMetadataRobust {
         <p>
           <code
             >new StegaAnimator({ resolution: number; source: HTMLImageElement |
-            HTMLCanvasElement; fadeAmount?: number; })</code
+            HTMLCanvasElement; fadeAmount?: number; rotationMode?: "2d" | "3d";
+            shape?: "circle" | "square" | "implicit"; })</code
           >
         </p>
 
         <pre><code>const animator = new StegaAnimator({
   source,
   resolution: <span data-value="resolution"></span>,
-  fadeAmount: <span data-value="fadeAmount"></span>
+  fadeAmount: <span data-value="fadeAmount"></span>,
+  rotationMode: "<span data-value="rotationMode"></span>",
+  shape: "<span data-value="shape"></span>"
 });
 document.body.appendChild(animator.canvas);
 await animator.animate({

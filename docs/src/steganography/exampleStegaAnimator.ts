@@ -5,11 +5,15 @@ type FormData = {
   rate: number;
   resolution: number;
   fadeAmount: number;
+  rotationMode: "2d" | "3d";
+  shape: "circle" | "square" | "implicit";
 };
 
-let animator;
+let animator: StegaAnimator | null = null;
 
-export default async function example(source) {
+export default async function example(
+  source: HTMLImageElement | HTMLCanvasElement
+) {
   const section = document.querySelector("#stega-animator")!;
   const output = section.querySelector("figure")!;
   const form = section.querySelector("form")!;
@@ -35,6 +39,18 @@ export default async function example(source) {
         max: 0.05,
         step: 0.001,
       },
+      rotationMode: {
+        name: "rotationMode",
+        type: "select",
+        options: ["2d", "3d"],
+        value: "3d",
+      },
+      shape: {
+        name: "shape",
+        type: "select",
+        options: ["circle", "square", "implicit"],
+        value: "implicit",
+      },
     },
     onInput: run,
     actions: [],
@@ -49,6 +65,8 @@ export default async function example(source) {
       source,
       resolution: data.resolution,
       fadeAmount: data.fadeAmount,
+      rotationMode: data.rotationMode,
+      shape: data.shape,
     });
     output.innerHTML = "";
     output.appendChild(animator.canvas);
