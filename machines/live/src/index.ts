@@ -53,16 +53,6 @@ document.querySelectorAll("button").forEach((button) => {
           borderWidth: metadata.borderWidth,
         });
 
-        // Create AudioBuffer
-        const audioBuffer = audioContext.createBuffer(
-          audioBuffers.length,
-          audioBuffers[0].length,
-          metadata.sampleRate
-        );
-        for (let i = 0; i < audioBuffers.length; i++) {
-          audioBuffer.copyToChannel(audioBuffers[i], i);
-        }
-
         if (currentSource) {
           currentSource.stop();
         }

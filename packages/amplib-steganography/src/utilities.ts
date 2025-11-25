@@ -30,6 +30,7 @@ export function createCanvasAndContextForImageWithMinimums({
   minHeight,
   aspectRatio,
   borderWidth = 0,
+  internalBorderMode = "none",
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   messageLength: number;
@@ -37,6 +38,7 @@ export function createCanvasAndContextForImageWithMinimums({
   minHeight: number;
   aspectRatio?: number;
   borderWidth?: number;
+  internalBorderMode?: "none" | "vertical" | "horizontal" | "cross";
 }) {
   const { width: sourceWidth, height: sourceHeight } =
     dimensionsFromSource(source);
@@ -59,6 +61,7 @@ export function createCanvasAndContextForImageWithMinimums({
       2 * Math.ceil(messageLength / 3) * (1 / (1 - sourceTransparency)),
     aspectRatio: targetAspectRatio,
     borderWidth,
+    internalBorderMode,
   });
 
   const { canvas, context } = createCanvasAndContext(
@@ -95,6 +98,7 @@ export function createCanvasAndContextForImageWithMinimums({
       Math.ceil(Math.ceil(messageLength / 3) * (1 / (1 - preciseTransparency))),
     aspectRatio: targetAspectRatio,
     borderWidth,
+    internalBorderMode,
   });
 
   canvas.width = preciseDimensions.width;
@@ -132,19 +136,36 @@ function canvasWidthAndHeight({
   minPixelCount,
   aspectRatio,
   borderWidth = 0,
+  internalBorderMode = "none",
 }: {
   minWidth: number;
   minHeight: number;
   minPixelCount: number;
   aspectRatio: number;
   borderWidth?: number;
+  internalBorderMode?: "none" | "vertical" | "horizontal" | "cross";
 }) {
   const SAFETY_FACTOR = 1.0;
   const targetArea = minPixelCount * SAFETY_FACTOR;
 
+  let widthBorderMultiplier = 2;
+  let heightBorderMultiplier = 2;
+
+  if (internalBorderMode === "vertical") {
+    widthBorderMultiplier = 3;
+  } else if (internalBorderMode === "horizontal") {
+    heightBorderMultiplier = 3;
+  } else if (internalBorderMode === "cross") {
+    widthBorderMultiplier = 3;
+    heightBorderMultiplier = 3;
+  }
+
+  const widthLoss = widthBorderMultiplier * borderWidth;
+  const heightLoss = heightBorderMultiplier * borderWidth;
+
   const a = aspectRatio;
-  const b = -2 * borderWidth * (aspectRatio + 1);
-  const c = 4 * borderWidth * borderWidth - targetArea;
+  const b = -(heightLoss * aspectRatio + widthLoss);
+  const c = widthLoss * heightLoss - targetArea;
 
   const discriminant = b * b - 4 * a * c;
   let height = (-b + Math.sqrt(discriminant)) / (2 * a);
@@ -152,7 +173,7 @@ function canvasWidthAndHeight({
 
   // Verify and adjust if needed
   const getUsableArea = (w: number, h: number) =>
-    (w - 2 * borderWidth) * (h - 2 * borderWidth);
+    (w - widthLoss) * (h - heightLoss);
 
   // Adjust for minimum dimensions
   height = Math.max(height, minHeight);

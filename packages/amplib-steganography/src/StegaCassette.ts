@@ -107,6 +107,13 @@ export function encode(
     minWidth: 0,
     aspectRatio,
     borderWidth,
+    internalBorderMode: encoding.endsWith("-quarters")
+      ? "cross"
+      : encoding.endsWith("-columns")
+      ? "vertical"
+      : encoding.endsWith("-rows")
+      ? "horizontal"
+      : "none",
   });
 
   const canvas = encodeMetadata
@@ -148,10 +155,14 @@ export function encode(
     encoding.endsWith("-quarters");
   const increment = bitDepth === 16 ? (isSpatial ? 8 : 16) : 4;
 
-  const midPoint =
-    encoding.endsWith("-rows") || encoding.endsWith("-quarters")
-      ? Math.floor(data.length / 4)
-      : Math.floor(data.length / 2);
+  let midPoint = Math.floor(data.length / 2);
+  if (encoding.endsWith("-rows") || encoding.endsWith("-quarters")) {
+    const midY = canvas.height / 2;
+    const topEnd = Math.ceil(midY - borderWidth / 2);
+    const validRows = topEnd - borderWidth;
+    const splitRow = borderWidth + validRows / 2;
+    midPoint = Math.floor(splitRow) * canvas.width * 4;
+  }
 
   const indexData = encoding.endsWith("-columns")
     ? splitColumnsIndicesFromIndexGenerator(
@@ -466,10 +477,14 @@ export function decode(options: DecodeOptions): Float32Array[] {
     encoding.endsWith("-quarters");
   const increment = bitDepth === 16 ? (isSpatial ? 8 : 16) : 4;
 
-  const midPoint =
-    encoding.endsWith("-rows") || encoding.endsWith("-quarters")
-      ? Math.floor(data.length / 4)
-      : Math.floor(data.length / 2);
+  let midPoint = Math.floor(data.length / 2);
+  if (encoding.endsWith("-rows") || encoding.endsWith("-quarters")) {
+    const midY = canvas.height / 2;
+    const topEnd = Math.ceil(midY - borderWidth / 2);
+    const validRows = topEnd - borderWidth;
+    const splitRow = borderWidth + validRows / 2;
+    midPoint = Math.floor(splitRow) * canvas.width * 4;
+  }
 
   for (let i = 0; i < data.length; i += increment) {
     const isBottomHalf = stereo && i >= midPoint;
@@ -743,6 +758,9 @@ function splitQuartersIndicesFromIndexGenerator(
   // Valid top range: [borderWidth, midY - borderWidth/2)
   const topEnd = Math.ceil(midY - borderWidth / 2);
 
+  const midX = width / 2;
+  const leftEnd = Math.ceil(midX - borderWidth / 2);
+
   return (i: number, data: Uint8ClampedArray) => {
     const pxIndex = Math.floor(i / 4);
     const y = Math.floor(pxIndex / width);
@@ -754,9 +772,9 @@ function splitQuartersIndicesFromIndexGenerator(
       x < borderWidth ||
       x >= width - borderWidth ||
       // Vertical gap (horizontal line)
-      (y >= midY - borderWidth / 2 && y < midY + borderWidth / 2) ||
+      (y >= topEnd && y <= height - 1 - topEnd) ||
       // Horizontal gap (vertical line)
-      (x >= width / 2 - borderWidth / 2 && x < width / 2 + borderWidth / 2);
+      (x >= leftEnd && x <= width - 1 - leftEnd);
 
     // Check if y is in top valid region
     const isTop = y < topEnd;

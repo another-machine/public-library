@@ -132,7 +132,9 @@ recordBtn.addEventListener("click", async () => {
     });
 
     // Show preview in drawer
-    const dataUrl = encodedCanvas.toDataURL();
+    const dataUrl = (
+      Array.isArray(encodedCanvas) ? encodedCanvas[0] : encodedCanvas
+    ).toDataURL();
     const filename = `stega-mix-${Date.now()}.png`;
 
     recordingPreviewImg.src = dataUrl;
