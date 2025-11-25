@@ -19,7 +19,11 @@ export type StegaCassetteEncoding =
   | "additive-rows"
   | "subtractive-rows"
   | "difference-rows"
-  | "noise-rows";
+  | "noise-rows"
+  | "additive-quarters"
+  | "subtractive-quarters"
+  | "difference-quarters"
+  | "noise-quarters";
 export type StegaCassetteChannels = 1 | 2;
 
 interface EncodeOptions {
@@ -138,12 +142,16 @@ export function encode(
   let leftAudioIndex = 0;
   let rightAudioIndex = 0;
 
-  const isSpatial = encoding.endsWith("-columns") || encoding.endsWith("-rows");
+  const isSpatial =
+    encoding.endsWith("-columns") ||
+    encoding.endsWith("-rows") ||
+    encoding.endsWith("-quarters");
   const increment = bitDepth === 16 ? (isSpatial ? 8 : 16) : 4;
 
-  const midPoint = encoding.endsWith("-rows")
-    ? Math.floor(data.length / 4)
-    : Math.floor(data.length / 2);
+  const midPoint =
+    encoding.endsWith("-rows") || encoding.endsWith("-quarters")
+      ? Math.floor(data.length / 4)
+      : Math.floor(data.length / 2);
 
   const indexData = encoding.endsWith("-columns")
     ? splitColumnsIndicesFromIndexGenerator(
@@ -154,6 +162,13 @@ export function encode(
       )
     : encoding.endsWith("-rows")
     ? splitRowsIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth,
+        bitDepth
+      )
+    : encoding.endsWith("-quarters")
+    ? splitQuartersIndicesFromIndexGenerator(
         canvas.width,
         canvas.height,
         borderWidth,
@@ -425,6 +440,13 @@ export function decode(options: DecodeOptions): Float32Array[] {
         borderWidth,
         bitDepth
       )
+    : encoding.endsWith("-quarters")
+    ? splitQuartersIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth,
+        bitDepth
+      )
     : skippedAndIndicesFromIndexGenerator(
         canvas.width,
         canvas.height,
@@ -438,12 +460,16 @@ export function decode(options: DecodeOptions): Float32Array[] {
     ? decodeDifference
     : decodeNoise;
 
-  const isSpatial = encoding.endsWith("-columns") || encoding.endsWith("-rows");
+  const isSpatial =
+    encoding.endsWith("-columns") ||
+    encoding.endsWith("-rows") ||
+    encoding.endsWith("-quarters");
   const increment = bitDepth === 16 ? (isSpatial ? 8 : 16) : 4;
 
-  const midPoint = encoding.endsWith("-rows")
-    ? Math.floor(data.length / 4)
-    : Math.floor(data.length / 2);
+  const midPoint =
+    encoding.endsWith("-rows") || encoding.endsWith("-quarters")
+      ? Math.floor(data.length / 4)
+      : Math.floor(data.length / 2);
 
   for (let i = 0; i < data.length; i += increment) {
     const isBottomHalf = stereo && i >= midPoint;
@@ -680,6 +706,76 @@ function splitRowsIndicesFromIndexGenerator(
     const xNext = pxIndexNext % width;
     const pairYNext = height - 1 - yNext;
     const index2Next = (pairYNext * width + xNext) * 4;
+
+    // Alternate based on x to checker
+    // For 16-bit, we step 2 pixels at a time, so x parity doesn't change within a row (for even widths).
+    // We use x/2 to get the step index.
+    const effectiveX = bitDepth === 16 ? x / 2 : x;
+    const swap = (Math.floor(effectiveX) + y) % 2 !== 0;
+
+    const encodedIndex = swap ? index2 : index1;
+    const sourceIndex = swap ? index1 : index2;
+
+    const encodedIndexNext = swap ? index2Next : nextI;
+    const sourceIndexNext = swap ? nextI : index2Next;
+
+    const isSkipped = isBorder || !isTop;
+    const isOpaque1 = data[index1 + 3] === 255;
+    const isOpaque2 = data[index2 + 3] === 255;
+
+    return {
+      isSkipped: isSkipped || !isOpaque1 || !isOpaque2,
+      encodedIndex,
+      sourceIndex,
+      encodedIndexNext,
+      sourceIndexNext,
+    };
+  };
+}
+
+function splitQuartersIndicesFromIndexGenerator(
+  width: number,
+  height: number,
+  borderWidth: number,
+  bitDepth: number
+) {
+  const midY = height / 2;
+  // Valid top range: [borderWidth, midY - borderWidth/2)
+  const topEnd = Math.ceil(midY - borderWidth / 2);
+
+  return (i: number, data: Uint8ClampedArray) => {
+    const pxIndex = Math.floor(i / 4);
+    const y = Math.floor(pxIndex / width);
+    const x = pxIndex % width;
+
+    const isBorder =
+      y < borderWidth ||
+      y >= height - borderWidth ||
+      x < borderWidth ||
+      x >= width - borderWidth ||
+      // Vertical gap (horizontal line)
+      (y >= midY - borderWidth / 2 && y < midY + borderWidth / 2) ||
+      // Horizontal gap (vertical line)
+      (x >= width / 2 - borderWidth / 2 && x < width / 2 + borderWidth / 2);
+
+    // Check if y is in top valid region
+    const isTop = y < topEnd;
+
+    const pairX = width - 1 - x;
+    const pairY = height - 1 - y;
+
+    // Indices
+    const index1 = i;
+    const index2 = (pairY * width + pairX) * 4;
+
+    // Next indices (for 16-bit)
+    const nextI = i + 4;
+    const pxIndexNext = Math.floor(nextI / 4);
+    const yNext = Math.floor(pxIndexNext / width);
+    const xNext = pxIndexNext % width;
+    const pairXNext = width - 1 - xNext;
+    const pairYNext = height - 1 - yNext;
+    const index2Next = (pairYNext * width + pairXNext) * 4;
 
     // Alternate based on x to checker
     // For 16-bit, we step 2 pixels at a time, so x parity doesn't change within a row (for even widths).
