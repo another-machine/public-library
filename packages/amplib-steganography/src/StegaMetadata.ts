@@ -46,6 +46,10 @@ const metadataAudioEncoding: StegaMetadataAudio["encoding"][] = [
   "subtractive-columns",
   "difference-columns",
   "noise-columns",
+  "additive-rows",
+  "subtractive-rows",
+  "difference-rows",
+  "noise-rows",
 ];
 
 export interface StegaMetadataString {

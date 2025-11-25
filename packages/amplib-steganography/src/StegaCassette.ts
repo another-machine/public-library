@@ -15,7 +15,11 @@ export type StegaCassetteEncoding =
   | "additive-columns"
   | "subtractive-columns"
   | "difference-columns"
-  | "noise-columns";
+  | "noise-columns"
+  | "additive-rows"
+  | "subtractive-rows"
+  | "difference-rows"
+  | "noise-rows";
 export type StegaCassetteChannels = 1 | 2;
 
 interface EncodeOptions {
@@ -134,27 +138,39 @@ export function encode(
   let leftAudioIndex = 0;
   let rightAudioIndex = 0;
 
-  const midPoint = stereo
-    ? Math.floor(canvas.height / 2) * canvas.width * 4
-    : data.length;
+  const isSpatial = encoding.endsWith("-columns") || encoding.endsWith("-rows");
+  const increment = bitDepth === 16 ? (isSpatial ? 8 : 16) : 4;
+
+  const midPoint = encoding.endsWith("-rows")
+    ? Math.floor(data.length / 4)
+    : Math.floor(data.length / 2);
 
   const indexData = encoding.endsWith("-columns")
-    ? splitIndicesFromIndexGenerator(canvas.width, canvas.height, borderWidth)
+    ? splitColumnsIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth,
+        bitDepth
+      )
+    : encoding.endsWith("-rows")
+    ? splitRowsIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth,
+        bitDepth
+      )
     : skippedAndIndicesFromIndexGenerator(
         canvas.width,
         canvas.height,
         borderWidth
       );
-  const encoder =
-    encoding === "additive" || encoding === "additive-columns"
-      ? encodeAdditive
-      : encoding === "subtractive" || encoding === "subtractive-columns"
-      ? encodeSubtractive
-      : encoding === "difference" || encoding === "difference-columns"
-      ? encodeDifference
-      : encodeNoise;
-
-  const increment = bitDepth === 16 ? 16 : 4;
+  const encoder = encoding.startsWith("additive")
+    ? encodeAdditive
+    : encoding.startsWith("subtractive")
+    ? encodeSubtractive
+    : encoding.startsWith("difference")
+    ? encodeDifference
+    : encodeNoise;
 
   for (let i = 0; i < data.length; i += increment) {
     const isBottomHalf = stereo && i >= midPoint;
@@ -395,29 +411,39 @@ export function decode(options: DecodeOptions): Float32Array[] {
   const leftSamples: number[] = [];
   const rightSamples: number[] = [];
 
-  const midPoint = stereo
-    ? Math.floor(canvas.height / 2) * canvas.width * 4
-    : data.length;
   const indexData = encoding.endsWith("-columns")
-    ? splitIndicesFromIndexGenerator(canvas.width, canvas.height, borderWidth)
+    ? splitColumnsIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth,
+        bitDepth
+      )
+    : encoding.endsWith("-rows")
+    ? splitRowsIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth,
+        bitDepth
+      )
     : skippedAndIndicesFromIndexGenerator(
         canvas.width,
         canvas.height,
         borderWidth
       );
-  const decoder =
-    encoding === "additive" || encoding === "additive-columns"
-      ? decodeAdditive
-      : encoding === "subtractive" || encoding === "subtractive-columns"
-      ? decodeSubtractive
-      : encoding === "difference" || encoding === "difference-columns"
-      ? decodeDifference
-      : decodeNoise;
+  const decoder = encoding.startsWith("additive")
+    ? decodeAdditive
+    : encoding.startsWith("subtractive")
+    ? decodeSubtractive
+    : encoding.startsWith("difference")
+    ? decodeDifference
+    : decodeNoise;
 
-  let leftSampleIndex = 0;
-  let rightSampleIndex = 0;
+  const isSpatial = encoding.endsWith("-columns") || encoding.endsWith("-rows");
+  const increment = bitDepth === 16 ? (isSpatial ? 8 : 16) : 4;
 
-  const increment = bitDepth === 16 ? 16 : 4;
+  const midPoint = encoding.endsWith("-rows")
+    ? Math.floor(data.length / 4)
+    : Math.floor(data.length / 2);
 
   for (let i = 0; i < data.length; i += increment) {
     const isBottomHalf = stereo && i >= midPoint;
@@ -435,12 +461,9 @@ export function decode(options: DecodeOptions): Float32Array[] {
         for (let j = 0; j < 3; j++) {
           const value = decoder(data[encodedIndex + j], data[sourceIndex + j]);
           const sample = value / 127.5 - 1;
-          if (sample !== 0) currentSamples.push(sample);
-        }
-        if (isBottomHalf) {
-          rightSampleIndex += 3;
-        } else {
-          leftSampleIndex += 3;
+          if (sample !== 0) {
+            currentSamples.push(sample);
+          }
         }
       } else if (bitDepth === 16) {
         /**
@@ -454,13 +477,8 @@ export function decode(options: DecodeOptions): Float32Array[] {
           decoder(data[encodedIndexNext + 1], data[sourceIndexNext + 1]) * 256 +
             decoder(data[encodedIndexNext + 2], data[sourceIndexNext + 2]),
         ].map((value) => value / 32767.5 - 1);
-        currentSamples.push(...samples);
 
-        if (isBottomHalf) {
-          rightSampleIndex += 3;
-        } else {
-          leftSampleIndex += 3;
-        }
+        currentSamples.push(...samples);
       } else if (bitDepth === 24) {
         /**
          * Decoding one sample from two pixels.
@@ -472,12 +490,6 @@ export function decode(options: DecodeOptions): Float32Array[] {
         const sample = value / 8388607.5 - 1;
 
         currentSamples.push(sample);
-
-        if (isBottomHalf) {
-          rightSampleIndex++;
-        } else {
-          leftSampleIndex++;
-        }
       }
     }
   }
@@ -565,10 +577,11 @@ function decodeNoise(byteEncode: number, byteSource: number): number {
   );
 }
 
-function splitIndicesFromIndexGenerator(
+function splitColumnsIndicesFromIndexGenerator(
   width: number,
   height: number,
-  borderWidth: number
+  borderWidth: number,
+  bitDepth: number
 ) {
   const midX = width / 2;
   // Valid left range: [borderWidth, midX - borderWidth/2)
@@ -586,7 +599,12 @@ function splitIndicesFromIndexGenerator(
       x >= width - borderWidth; // Right border check
 
     // Check if x is in left valid region
-    const isLeft = x < leftEnd;
+    // For 16-bit, we need x+1 to be valid and not overlap with pairX
+    // pairX = width - 1 - x
+    // We need x + 1 < pairX => x + 1 < width - 1 - x => 2x < width - 2 => x < width/2 - 1
+    const effectiveLeftEnd =
+      bitDepth === 16 ? Math.min(leftEnd, Math.floor(width / 2) - 1) : leftEnd;
+    const isLeft = x < effectiveLeftEnd;
 
     const pairX = width - 1 - x;
 
@@ -600,7 +618,7 @@ function splitIndicesFromIndexGenerator(
     const index2Next = (y * width + (pairX - 1)) * 4;
 
     // Alternate based on x
-    const swap = x % 2 !== 0;
+    const swap = (x + y) % 2 !== 0;
 
     const encodedIndex = swap ? index2 : index1;
     const sourceIndex = swap ? index1 : index2;
@@ -609,6 +627,67 @@ function splitIndicesFromIndexGenerator(
     const sourceIndexNext = swap ? index1Next : index2Next;
 
     const isSkipped = isBorder || !isLeft;
+    const isOpaque1 = data[index1 + 3] === 255;
+    const isOpaque2 = data[index2 + 3] === 255;
+
+    return {
+      isSkipped: isSkipped || !isOpaque1 || !isOpaque2,
+      encodedIndex,
+      sourceIndex,
+      encodedIndexNext,
+      sourceIndexNext,
+    };
+  };
+}
+
+function splitRowsIndicesFromIndexGenerator(
+  width: number,
+  height: number,
+  borderWidth: number,
+  bitDepth: number
+) {
+  const midY = height / 2;
+  // Valid top range: [borderWidth, midY - borderWidth/2)
+  const topEnd = Math.ceil(midY - borderWidth / 2);
+
+  return (i: number, data: Uint8ClampedArray) => {
+    const pxIndex = Math.floor(i / 4);
+    const y = Math.floor(pxIndex / width);
+    const x = pxIndex % width;
+
+    const isBorder =
+      y < borderWidth ||
+      y >= height - borderWidth ||
+      x < borderWidth ||
+      x >= width - borderWidth;
+
+    // Check if y is in top valid region
+    const isTop = y < topEnd;
+
+    const pairY = height - 1 - y;
+
+    // Indices
+    const index1 = i;
+    const index2 = (pairY * width + x) * 4;
+
+    // Next indices (for 16-bit)
+    const nextI = i + 4;
+    const pxIndexNext = Math.floor(nextI / 4);
+    const yNext = Math.floor(pxIndexNext / width);
+    const xNext = pxIndexNext % width;
+    const pairYNext = height - 1 - yNext;
+    const index2Next = (pairYNext * width + xNext) * 4;
+
+    // Alternate based on x to checker
+    const swap = (x + y) % 2 !== 0;
+
+    const encodedIndex = swap ? index2 : index1;
+    const sourceIndex = swap ? index1 : index2;
+
+    const encodedIndexNext = swap ? index2Next : nextI;
+    const sourceIndexNext = swap ? nextI : index2Next;
+
+    const isSkipped = isBorder || !isTop;
     const isOpaque1 = data[index1 + 3] === 255;
     const isOpaque2 = data[index2 + 3] === 255;
 
