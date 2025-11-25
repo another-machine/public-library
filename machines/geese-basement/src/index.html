@@ -3,9 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>artifacts of geese in the basement</title>
+    <title>artifacts of geese from the basement</title>
 
-    <meta property="og:title" content="artifacts of geese in the basement" />
+    <meta property="og:title" content="artifacts of geese from the basement" />
     <meta
       property="og:description"
       content="moments captured as images with audio encoded in their pixels."
@@ -18,7 +18,7 @@
     <meta property="og:type" content="website" />
 
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="artifacts of geese in the basement" />
+    <meta name="twitter:title" content="artifacts of geese from the basement" />
     <meta
       name="twitter:description"
       content="moments captured as images with audio encoded in their pixels."
@@ -29,7 +29,13 @@
     />
 
     <style>
+      :root {
+        --intro-width: 90%;
+      }
       @media (min-width: 900px) {
+        :root {
+          --intro-width: 50%;
+        }
         body {
           font-size: 1.8rem;
         }
@@ -90,6 +96,7 @@
           display: flex;
           height: auto;
           align-items: center;
+          max-width: 90%;
           padding: 0;
           position: relative;
           z-index: 1;
@@ -101,8 +108,9 @@
           height: auto;
           image-rendering: pixelated;
           width: auto;
-          max-height: calc(var(--og-height) * 1);
-          max-width: calc(var(--og-width) * 1);
+          max-height: min(100%, var(--og-height));
+          max-width: min(100%, var(--og-width));
+          margin: 0 auto;
           filter: brightness(70%);
 
           &:hover {
@@ -128,22 +136,28 @@
         }
 
         &.info {
-          align-items: center;
+          align-items: start;
           background: black;
           box-sizing: border-box;
           color: white;
           gap: 0.9em;
           justify-content: center;
-          padding: 4rem 0;
+          padding: 4rem 2rem;
           min-height: 100%;
+          width: var(--intro-width);
           height: initial;
           text-align: left;
 
           h1 {
-            font-size: 4em;
+            font-size: 2.4em;
+            line-height: 1;
+          }
+          h2 {
+            font-size: 2.2em;
+            line-height: 1;
           }
           h1,
-          p:not(.body) {
+          h2 {
             font-style: italic;
           }
           p a {
@@ -151,19 +165,17 @@
             font-style: italic;
           }
           p {
-            font-size: 1.4em;
+            font-size: 1em;
             line-height: 1.2;
-            &.body,
-            &:last-child {
-              font-size: 1.1em;
-            }
           }
           h1,
+          h2,
           p {
             max-width: min(90%, 900px);
             text-wrap: balance;
           }
           h1,
+          h2,
           p,
           ul {
             font-weight: 400;
@@ -203,8 +215,8 @@
   <body>
     <main>
       <section class="info">
-        <h1>artifacts of geese in the basement</h1>
-        <p class="body">
+        <h1>artifacts of geese from the basement</h1>
+        <p>
           these ten images have sound waves inside of them. they are frames from
           <a href="https://www.youtube.com/watch?v=qIol9hig2G4">this video</a>,
           with audio from the same moment encoded into their pixels. select one
@@ -424,6 +436,27 @@
             loading="lazy"
           />
         </button>
+      </section>
+      <section class="info">
+        <p>
+          The visual distortion in these images is the result of an audio
+          waveform stored in image pixels. They were created using code
+          libraries that can be found at
+          <a href="https://amplib.app">amplib.app</a>. The same tools are used
+          here to decode and play them back as&nbsp;sound.
+        </p>
+        <p>
+          There are no audio files, just the images you see here. I claim no
+          rights to
+          <a href="https://www.youtube.com/watch?v=qIol9hig2G4"
+            >the original works</a
+          >, this sampling is meant to direct attention to the&nbsp;artists.
+        </p>
+        <p>
+          My name is <a href="https://jake.fun">jake</a>, and I started
+          <a href="https://anothermachine.info">another machine</a> to create
+          interesting&nbsp;things.
+        </p>
       </section>
     </main>
     <script type="module">
