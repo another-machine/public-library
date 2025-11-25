@@ -122,7 +122,7 @@ const audio = await <a href="#play-decoded-audio-buffers">playDecodedAudioBuffer
 });</code></pre>
       </section>
 
-      <section id="stega-metadata">
+      <section>
         <h2>StegaMetadata can be optionally encoded inside of stega images.</h2>
         <p>
           <code
@@ -177,8 +177,20 @@ interface StegaMetadataRobust {
   redundancyLevel: number;
   messageCount: number;
   blockSize: 2 | 4;
-  encoding: "hex" | "base16";
+    encoding: "hex" | "base16";
 }</code></pre>
+      </section>
+
+      <section id="stega-metadata">
+        <h2>View StegaMetadata for an image.</h2>
+        <pre><code data-output="metadata">Choose an image to see its metadata here</code></pre>
+        <form>
+          <div class="drop-reader">
+            <button type="button" class="choose-image">Choose an image</button>
+          </div>
+          <button type="button" class="play-audio" disabled>Play Audio</button>
+        </form>
+        <figure></figure>
       </section>
 
       <section id="stega-animator">
