@@ -617,8 +617,11 @@ function splitColumnsIndicesFromIndexGenerator(
     const index1Next = i + 4;
     const index2Next = (y * width + (pairX - 1)) * 4;
 
-    // Alternate based on x
-    const swap = (x + y) % 2 !== 0;
+    // Alternate based on x to checker
+    // For 16-bit, we step 2 pixels at a time, so x parity doesn't change within a row (for even widths).
+    // We use x/2 to get the step index.
+    const effectiveX = bitDepth === 16 ? x / 2 : x;
+    const swap = (Math.floor(effectiveX) + y) % 2 !== 0;
 
     const encodedIndex = swap ? index2 : index1;
     const sourceIndex = swap ? index1 : index2;
@@ -679,7 +682,10 @@ function splitRowsIndicesFromIndexGenerator(
     const index2Next = (pairYNext * width + xNext) * 4;
 
     // Alternate based on x to checker
-    const swap = (x + y) % 2 !== 0;
+    // For 16-bit, we step 2 pixels at a time, so x parity doesn't change within a row (for even widths).
+    // We use x/2 to get the step index.
+    const effectiveX = bitDepth === 16 ? x / 2 : x;
+    const swap = (Math.floor(effectiveX) + y) % 2 !== 0;
 
     const encodedIndex = swap ? index2 : index1;
     const sourceIndex = swap ? index1 : index2;
