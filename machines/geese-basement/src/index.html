@@ -55,9 +55,9 @@
       main {
         display: flex;
         height: 100%;
-        width: 100%;
         overflow-x: auto;
         scroll-snap-type: x mandatory;
+        width: 100%;
       }
       section {
         align-items: center;
@@ -65,8 +65,8 @@
         display: flex;
         flex-direction: column;
         flex-shrink: 0;
-        justify-content: center;
         height: 100%;
+        justify-content: center;
         position: relative;
         scroll-snap-align: start;
         width: 100%;
@@ -90,12 +90,12 @@
         }
 
         > button {
+          align-items: center;
           appearance: none;
           background: 0;
           border: 0;
           cursor: crosshair;
           display: flex;
-          align-items: center;
           max-width: 90%;
           padding: 0;
           position: relative;
@@ -105,11 +105,11 @@
         img {
           box-shadow: 0 0 120px black;
           display: block;
+          filter: brightness(70%);
           height: auto;
           image-rendering: pixelated;
-          max-height: min(100%, var(--og-height));
-          max-width: min(100%, var(--og-width));
-          filter: brightness(70%);
+          max-height: min(90svh, var(--og-height));
+          max-width: min(90svw, var(--og-width));
           width: auto;
 
           &:hover {
@@ -117,12 +117,12 @@
           }
 
           &.media {
-            position: absolute;
-            top: 50%;
             left: 50%;
-            transform: translate(-50%, -50%);
             max-height: 90svh;
             max-width: 90svw;
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
 
             &.active {
               filter: brightness(100%);
