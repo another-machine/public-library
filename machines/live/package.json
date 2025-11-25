@@ -4,7 +4,7 @@
   "license": "MIT",
   "source": "src/index.html",
   "scripts": {
-    "start": "parcel",
+    "start": "parcel --no-cache",
     "build": "parcel build --public-url /live/",
     "thumbs": "node src/generate-thumbs.js"
   },

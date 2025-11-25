@@ -14,6 +14,8 @@ type FormData = {
   aspectRatio: string;
   borderWidth: number;
   channels: "1" | "2";
+  splitOutput: "1" | "2" | "3" | "4";
+  splitPlayback: "First" | "All" | "Mixed";
 };
 
 export default async function example() {
@@ -22,6 +24,7 @@ export default async function example() {
   const source = section
     .querySelector("figure:nth-of-type(1)")!
     .querySelector("img")!;
+  const source2 = section.querySelector<HTMLImageElement>("img.source")!;
   const output = section.querySelector("figure:nth-of-type(2)")!;
   const audio = section.querySelector("audio")!;
   const form = section.querySelector("form")!;
@@ -79,6 +82,18 @@ export default async function example() {
         value: `${defaults.channels}`,
         name: "channels",
       },
+      splitOutput: {
+        type: "select",
+        options: ["1", "2", "3", "4"],
+        value: "1",
+        name: "Split output",
+      },
+      splitPlayback: {
+        type: "select",
+        options: ["First", "All", "Mixed"],
+        value: "First",
+        name: "Split playback",
+      },
     },
     onInput: run,
     actions: [
@@ -92,9 +107,22 @@ export default async function example() {
           } else {
             element.innerText = "Stop Audio";
             element.setAttribute("data-playing", "true");
-            const source = output.querySelector("canvas")!;
+            const canvases = Array.from(output.querySelectorAll("canvas"));
+            let sources: HTMLCanvasElement[] = [];
+
+            if (values.splitPlayback === "First") {
+              sources = [canvases[0]];
+            } else if (values.splitPlayback === "All") {
+              sources = canvases;
+            } else if (values.splitPlayback === "Mixed") {
+              sources = [...canvases].reverse();
+            }
+
+            const source = sources.length === 1 ? sources[0] : sources;
+            const metadataSource = Array.isArray(source) ? source[0] : source;
+
             const metadata: StegaMetadata.StegaMetadata | null =
-              StegaMetadata.decode({ source });
+              StegaMetadata.decode({ source: metadataSource });
             section.querySelector(`[data-output="metadata"]`)!.innerHTML =
               JSON.stringify(metadata || {}, null, 2);
             if (
@@ -133,8 +161,13 @@ export default async function example() {
     // defaults.encodeMetadata = values.encodeMetadata
     // defaults.aspectRatio = values.aspectRatio
 
+    const splitOutput = parseInt(values.splitOutput);
+    const sources = Array(splitOutput)
+      .fill(0)
+      .map((_, i) => (i % 2 === 0 ? source : source2));
+
     const result = StegaCassette.encode({
-      source,
+      source: splitOutput === 1 ? source : sources,
       audioBuffers: await loadAudioBuffersFromAudioUrl({
         url: audio.getAttribute("src")!,
         audioContext,
@@ -152,6 +185,10 @@ export default async function example() {
           : parseFloat(values.aspectRatio),
     });
     output.innerHTML = "";
-    output.appendChild(result);
+    if (Array.isArray(result)) {
+      result.forEach((r) => output.appendChild(r));
+    } else {
+      output.appendChild(result);
+    }
   }
 }

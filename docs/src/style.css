@@ -232,6 +232,11 @@ section {
   }
 
   figure {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
     margin: 0;
     width: var(--figure-width);
 
@@ -240,6 +245,13 @@ section {
       height: auto;
       image-rendering: pixelated;
       width: 100%;
+    }
+
+    &:has(:nth-child(2)) {
+      > img,
+      > canvas {
+        width: calc(50% - 0.5rem);
+      }
     }
   }
 

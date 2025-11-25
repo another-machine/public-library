@@ -15,7 +15,10 @@ export type StegaCassetteEncoding =
 export type StegaCassetteChannels = 1 | 2;
 
 interface EncodeOptions {
-  source: HTMLImageElement | HTMLCanvasElement;
+  source:
+    | HTMLImageElement
+    | HTMLCanvasElement
+    | (HTMLImageElement | HTMLCanvasElement)[];
   audioBuffers: Float32Array[];
   sampleRate: number;
   bitDepth: StegaCassetteBitDepth;
@@ -27,24 +30,56 @@ interface EncodeOptions {
 }
 
 export interface DecodeOptions {
-  source: HTMLImageElement | HTMLCanvasElement;
+  source:
+    | HTMLImageElement
+    | HTMLCanvasElement
+    | (HTMLImageElement | HTMLCanvasElement)[];
   bitDepth: StegaCassetteBitDepth;
   channels: StegaCassetteChannels;
   encoding: StegaCassetteEncoding;
   borderWidth?: number;
 }
 
-export function encode({
-  source,
-  audioBuffers,
-  sampleRate,
-  bitDepth,
-  encoding,
-  encodeMetadata,
-  aspectRatio,
-  borderWidth = 0,
-  music,
-}: EncodeOptions) {
+export function encode(
+  options: EncodeOptions
+): HTMLCanvasElement | HTMLCanvasElement[] {
+  const {
+    source,
+    audioBuffers,
+    sampleRate,
+    bitDepth,
+    encoding,
+    encodeMetadata,
+    aspectRatio,
+    borderWidth = 0,
+    music,
+  } = options;
+
+  if (Array.isArray(source)) {
+    const count = source.length;
+    const splitBuffers = audioBuffers.map((channel) => {
+      const splits = Array.from({ length: count }, () => [] as number[]);
+      for (let i = 0; i < channel.length; i++) {
+        splits[i % count].push(channel[i]);
+      }
+      return splits.map((s) => new Float32Array(s));
+    });
+
+    const buffersPerImage = Array.from({ length: count }, (_, i) => {
+      return audioBuffers.map(
+        (_, channelIndex) => splitBuffers[channelIndex][i]
+      );
+    });
+
+    return buffersPerImage.map((buffers, i) => {
+      return encode({
+        ...options,
+        source: source[i],
+        audioBuffers: buffers,
+      }) as HTMLCanvasElement;
+    });
+  }
+
   const stereo = audioBuffers.length > 1;
   const leftChannel = audioBuffers[0];
   const rightChannel = stereo ? audioBuffers[1] : audioBuffers[0];
@@ -54,7 +89,7 @@ export function encode({
   const messageLength = samples * (bitDepth / 8);
 
   const initialCanvas = createCanvasAndContextForImageWithMinimums({
-    source,
+    source: source as HTMLImageElement | HTMLCanvasElement,
     messageLength,
     minHeight: 0,
     minWidth: 0,
@@ -298,23 +333,53 @@ export function encode({
   return canvas;
 }
 
-export function decode({
-  source,
-  encoding,
-  bitDepth,
-  channels = 1,
-  borderWidth = 0,
-}: DecodeOptions) {
+export function decode(options: DecodeOptions): Float32Array[] {
+  const { source, encoding, bitDepth, channels = 1, borderWidth = 0 } = options;
+
+  if (Array.isArray(source)) {
+    const decodedBuffers = source.map((s) => decode({ ...options, source: s }));
+
+    const combinedChannels: Float32Array[] = [];
+    const channelCount = decodedBuffers[0].length;
+    const count = source.length;
+
+    for (let c = 0; c < channelCount; c++) {
+      const channelParts = decodedBuffers.map((d) => d[c]);
+      const totalLength = channelParts.reduce(
+        (acc, part) => acc + part.length,
+        0
+      );
+      const result = new Float32Array(totalLength);
+
+      for (let i = 0; i < count; i++) {
+        const part = channelParts[i];
+        for (let j = 0; j < part.length; j++) {
+          const targetIndex = j * count + i;
+          if (targetIndex < totalLength) {
+            result[targetIndex] = part[j];
+          }
+        }
+      }
+      combinedChannels.push(result);
+    }
+    return combinedChannels;
+  }
+
+  const singleSource = source as HTMLImageElement | HTMLCanvasElement;
   const relativeWidth =
-    "naturalWidth" in source ? source.naturalWidth : source.width;
+    "naturalWidth" in singleSource
+      ? singleSource.naturalWidth
+      : singleSource.width;
   const relativeHeight =
-    "naturalHeight" in source ? source.naturalHeight : source.height;
+    "naturalHeight" in singleSource
+      ? singleSource.naturalHeight
+      : singleSource.height;
 
   const { canvas, context } = createCanvasAndContext(
     relativeWidth,
     relativeHeight
   );
-  context.drawImage(source, 0, 0);
+  context.drawImage(singleSource, 0, 0);
 
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
 

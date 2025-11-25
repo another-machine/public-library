@@ -64,7 +64,8 @@ Stega64.encode({
         <h2>StegaCassette encodes and decodes audio in image pixels.</h2>
         <p>
           <code
-            >StegaCassette.encode({ source: HTMLImageElement; audioBuffers:
+            >StegaCassette.encode({ source: HTMLImageElement | HTMLCanvasElement
+            | (HTMLImageElement | HTMLCanvasElement)[]; audioBuffers:
             Float32Array[]; sampleRate: number; bitDepth: StegaCassetteBitDepth;
             encoding: StegaCassetteEncoding; encodeMetadata?: boolean;
             aspectRatio?: number; borderWidth?: number; }):
@@ -91,16 +92,18 @@ const result = StegaCassette.encode({
 
         <form></form>
 
+        <img class="source" src="./lovetakesmiles.jpg" style="display: none" />
         <figure><img src="./example.jpg" /></figure>
         <figure></figure>
         <audio src="./example.mp3"></audio>
 
         <p>
           <code
-            >StegaCassette.decode({ source: HTMLImageElement |
-            HTMLCanvasElement; bitDepth: StegaCassetteBitDepth; channels:
-            StegaCassetteChannels; encoding: StegaCassetteEncoding;
-            borderWidth?: number; }): Float32Array[]</code
+            >StegaCassette.decode({ source: HTMLImageElement | HTMLCanvasElement
+            | (HTMLImageElement | HTMLCanvasElement)[]; bitDepth:
+            StegaCassetteBitDepth; channels: StegaCassetteChannels; encoding:
+            StegaCassetteEncoding; borderWidth?: number; }):
+            Float32Array[]</code
           >
         </p>
         <pre><code>const metadata = <a href="#stega-metadata">StegaMetadata</a>.decode({ source }) || {};
