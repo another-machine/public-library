@@ -70,11 +70,17 @@ jobs:
       - run: npm run build
         working-directory: machines/stega
 
-        # compiling live
+      # compiling live
       - run: npm i
         working-directory: machines/live
       - run: npm run build
         working-directory: machines/live
+
+      # compiling geese-basement
+      - run: npm i
+        working-directory: machines/geese-basement
+      - run: npm run build
+        working-directory: machines/geese-basement
 
       # renaming docs/dist to main site directory
       - run: mv ./docs/dist ./site
@@ -90,6 +96,8 @@ jobs:
       - run: mv ./machines/stega/dist ./site/stega
       # moving live into site
       - run: mv ./machines/live/dist ./site/live
+      # moving geese-basement into site
+      - run: mv ./machines/geese-basement/dist ./site/geese-basement
 
       - name: Setup Pages
         uses: actions/configure-pages@v3

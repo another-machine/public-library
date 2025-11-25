@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>artifacts of geese in the basement</title>
+
+    <meta property="og:title" content="artifacts of geese in the basement" />
+    <meta
+      property="og:description"
+      content="moments captured as images with audio encoded in their pixels."
+    />
+    <meta
+      property="og:image"
+      content="https://anothermachine.info/amplib.app.geese-basement.png"
+    />
+    <meta property="og:url" content="https://amplib.app/geese-basement" />
+    <meta property="og:type" content="website" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="artifacts of geese in the basement" />
+    <meta
+      name="twitter:description"
+      content="moments captured as images with audio encoded in their pixels."
+    />
+    <meta
+      name="twitter:image"
+      content="https://anothermachine.info/amplib.app.geese-basement.png"
+    />
+
+    <style>
+      @media (min-width: 900px) {
+        body {
+          font-size: 1.8rem;
+        }
+      }
+      html,
+      body {
+        background-color: black;
+        height: 100%;
+        margin: 0;
+      }
+      body {
+        background-position: center;
+        background-size: cover;
+        font-family: "Times New Roman", Times, serif;
+        letter-spacing: 0.07em;
+      }
+      main {
+        display: flex;
+        height: 100%;
+        width: 100%;
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+      }
+      section {
+        align-items: center;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        justify-content: center;
+        height: 100%;
+
+        position: relative;
+        scroll-snap-align: start;
+        width: 100%;
+
+        &:not(.info)::before,
+        &:not(.info)::after {
+          content: "";
+          inset: 0;
+          position: absolute;
+          z-index: 0;
+        }
+        &::before {
+          background: var(--background, transparent);
+          background-position: center;
+          background-size: cover;
+        }
+        &::after {
+          backdrop-filter: blur(1rem) brightness(50%);
+        }
+
+        > button {
+          appearance: none;
+          background: 0;
+          border: 0;
+          cursor: crosshair;
+          display: flex;
+          height: auto;
+          align-items: center;
+          padding: 0;
+          position: relative;
+          z-index: 1;
+        }
+
+        img {
+          box-shadow: 0px 0px 120px black;
+          display: block;
+          height: auto;
+          image-rendering: pixelated;
+          width: auto;
+          max-height: calc(var(--og-height) * 1);
+          max-width: calc(var(--og-width) * 1);
+          filter: brightness(70%);
+
+          &:hover {
+            filter: brightness(100%);
+          }
+
+          &.media {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-height: 90vh;
+            max-width: 90vw;
+            &.active {
+              filter: brightness(100%);
+            }
+          }
+
+          &.hidden {
+            opacity: 0;
+            pointer-events: none;
+          }
+        }
+
+        &.info {
+          align-items: center;
+          background: black;
+          box-sizing: border-box;
+          color: white;
+          gap: 0.9em;
+          justify-content: center;
+          padding: 4rem 0;
+          min-height: 100%;
+          height: initial;
+          text-align: left;
+
+          h1 {
+            font-size: 4em;
+          }
+          h1,
+          p:not(.body) {
+            font-style: italic;
+          }
+          p a {
+            color: white;
+            font-style: italic;
+          }
+          p {
+            font-size: 1.4em;
+            line-height: 1.2;
+            &.body,
+            &:last-child {
+              font-size: 1.1em;
+            }
+          }
+          h1,
+          p {
+            max-width: min(90%, 900px);
+            text-wrap: balance;
+          }
+          h1,
+          p,
+          ul {
+            font-weight: 400;
+            margin: 0;
+            width: 100%;
+          }
+          ul {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            max-width: min(90%, 700px);
+            text-wrap: pretty;
+            > li {
+              > a {
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: white;
+                font-size: 0.8em;
+                font-style: italic;
+                letter-spacing: 0.035em;
+                text-decoration: none;
+                > img {
+                  height: auto;
+                  width: 2.5em;
+                }
+              }
+            }
+          }
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="info">
+        <h1>artifacts of geese in the basement</h1>
+        <p class="body">
+          these ten images have sound waves inside of them. they are frames from
+          <a href="https://www.youtube.com/watch?v=qIol9hig2G4">this video</a>,
+          with audio from the same moment encoded into their pixels. select one
+          and listen to&nbsp;it&nbsp;loop.
+        </p>
+        <p>
+          tools provided by
+          <a href="https://anothermachine.info">another machine</a>.
+        </p>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/01a-1764015893011.jpg"
+            alt="An ultrawide landscape photo cropping Cameron Winter and Emily Green playing electric guitars with studio instruments in the background. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            height="229"
+            width="732"
+            style="--og-width: 732px; --og-height: 229px"
+          />
+          <img
+            class="media hidden"
+            src="media/01a-1764015893011.png"
+            alt="An ultrawide landscape photo cropping Cameron Winter and Emily Green playing electric guitars with studio instruments in the background. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="764"
+            width="2443"
+            style="--og-width: 2443px; --og-height: 764px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/01b-1764024269008.jpg"
+            alt="A cropped vertical shot of Cameron Winter with Emily Green out of focus in the foreground, both leaning downward in the same direction playing their guitars intensely. The shot framing lines them up at the same downward angle, with both bodies and guitars blending into each other. A tall rectangle of lime and red noise is distorting the primary center area of the image."
+            height="545"
+            width="405"
+            style="--og-width: 405px; --og-height: 545px"
+          />
+          <img
+            class="media hidden"
+            src="media/01b-1764024269008.png"
+            alt="A cropped vertical shot of Cameron Winter with Emily Green out of focus in the foreground, both leaning downward in the same direction playing their guitars intensely. The shot framing lines them up at the same downward angle, with both bodies and guitars blending into each other. A tall rectangle of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="957"
+            width="957"
+            style="--og-width: 957px; --og-height: 957px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/02-1764016367048.jpg"
+            alt="A wide shot of Max Bassin playing drums, stick actively hitting a ride cymbal, with Dominic DiGesu out of focus and facing away from camera in the foreground with the neck of his bass in view. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            height="288"
+            width="601"
+            style="--og-width: 601px; --og-height: 288px"
+          />
+          <img
+            class="media hidden"
+            src="media/02-1764016367048.png"
+            alt="A wide shot of Max Bassin playing drums, stick actively hitting a ride cymbal, with Dominic DiGesu out of focus and facing away from camera in the foreground with the neck of his bass in view. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="961"
+            width="2004"
+            style="--og-width: 2004px; --og-height: 961px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/03a-1764017181408.jpg"
+            alt="A high angle wide shot of the Geese band playing in the studio. Clockwise, Max Bassin on drums, Dominic DiGesu playing bass, Cameron Winter on guitar and singing, Emily Green playing guitar, and the back of Sam Revaz playing a Fender Rhodes. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            height="370"
+            width="735"
+            style="--og-width: 735px; --og-height: 370px"
+          />
+          <img
+            class="media hidden"
+            src="media/03a-1764017181408.png"
+            alt="A high angle wide shot of the Geese band playing in the studio. Clockwise, Max Bassin on drums, Dominic DiGesu playing bass, Cameron Winter on guitar and singing, Emily Green playing guitar, and the back of Sam Revaz playing a Fender Rhodes. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="1234"
+            width="2450"
+            style="--og-width: 2450px; --og-height: 1234px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/03b-1764017932454.jpg"
+            alt="A rectangular image, close up crop of Emily Green's hands playing guitar. On here guitar is a sticker that says 'Would you kill her for $1,000,000????'. A landscape rectangle of lime and red noise is distorting the primary center area of the image."
+            height="386"
+            width="490"
+            style="--og-width: 490px; --og-height: 386px"
+          />
+          <img
+            class="media hidden"
+            src="media/03b-1764017932454.png"
+            alt="A rectangular image, close up crop of Emily Green's hands playing guitar. On here guitar is a sticker that says 'Would you kill her for $1,000,000????'. A landscape rectangle of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="1286"
+            width="1632"
+            style="--og-width: 1632px; --og-height: 1286px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/04-1764018937177.jpg"
+            alt="A vertical rectangular image, high angle shot of of Sam Revaz playing an electronic piano with Max Bassin and Dominic DiGesu playing drums and bass in the background. A rectangle of lime and red noise is distorting the primary center area of the image."
+            height="517"
+            width="480"
+            style="--og-width: 480px; --og-height: 517px"
+          />
+          <img
+            class="media hidden"
+            src="media/04-1764018937177.png"
+            alt="A vertical rectangular image, high angle shot of of Sam Revaz playing an electronic piano with Max Bassin and Dominic DiGesu playing drums and bass in the background. A rectangle of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="1722"
+            width="1599"
+            style="--og-width: 1599px; --og-height: 1722px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/05a-1764020111340.jpg"
+            alt="A close up portrait image, low angle shot of Cameron Winter singing into a microphone, with the head of his guitar in the bottom right corner. A rectangle of lime and red noise is distorting the primary center area of the image."
+            height="557"
+            width="429"
+            style="--og-width: 429px; --og-height: 557px"
+          />
+          <img
+            class="media hidden"
+            src="media/05a-1764020111340.png"
+            alt="A close up portrait image, low angle shot of Cameron Winter singing into a microphone, with the head of his guitar in the bottom right corner. A rectangle of lime and red noise is distorting the primary center area of the image."
+            height="1858"
+            width="1431"
+            style="--og-width: 1431px; --og-height: 1858px"
+            aria-hidden="true"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/05b-1764020568957.jpg"
+            alt="A wide angle over the shoulder shot behind Max Bassin and his drum kit. In the background and out of focus is a singing Cameron Winter and Emily Green playing guitar. A rectangle of lime and red noise is distorting the primary center area of the image."
+            height="265"
+            width="570"
+            style="--og-width: 570px; --og-height: 265px"
+          />
+          <img
+            class="media hidden"
+            src="media/05b-1764020568957.png"
+            alt="A wide angle over the shoulder shot behind Max Bassin and his drum kit. In the background and out of focus is a singing Cameron Winter and Emily Green playing guitar. A rectangle of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="883"
+            width="1899"
+            style="--og-width: 1899px; --og-height: 883px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/06-1764022758422.jpg"
+            alt="A close up square image of Max Bassin intensely playing the drums. A square of lime and red noise is distorting the primary center area of the image."
+            height="362"
+            width="364"
+            style="--og-width: 364px; --og-height: 362px"
+          />
+          <img
+            class="media hidden"
+            src="media/06-1764022758422.png"
+            alt="A close up square image of Max Bassin intensely playing the drums. A square of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="1206"
+            width="1214"
+            style="--og-width: 1214px; --og-height: 1206px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+      <section>
+        <button>
+          <img
+            src="media/thumbs/07-1764023801862.jpg"
+            alt="An over the shoulder wide angle shot of Emily Green's hands playing a power chord on her guitar on the right, and the back of Sam Revaz's head out of focus in the foreground on the left. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            height="298"
+            width="796"
+            style="--og-width: 796px; --og-height: 298px"
+          />
+          <img
+            class="media hidden"
+            src="media/07-1764023801862.png"
+            alt="An over the shoulder wide angle shot of Emily Green's hands playing a power chord on her guitar on the right, and the back of Sam Revaz's head out of focus in the foreground on the left. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            aria-hidden="true"
+            height="993"
+            width="2654"
+            style="--og-width: 2654px; --og-height: 993px"
+            loading="lazy"
+          />
+        </button>
+      </section>
+    </main>
+    <script type="module">
+      import "./index.ts";
+    </script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "name": "geese-basement",
+  "version": "1.0.0",
+  "license": "MIT",
+  "source": "src/index.html",
+  "scripts": {
+    "start": "parcel",
+    "build": "parcel build --public-url /live/",
+    "thumbs": "node src/generate-thumbs.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "sharp": "^0.33.0"
+  }
+}

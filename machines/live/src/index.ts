@@ -21,12 +21,8 @@ document.querySelectorAll("button").forEach((button) => {
     if (!isActive) {
       button.classList.add("active");
     }
-    const active = document.querySelector("a.active");
 
     if (media && background) {
-      if (active) {
-        active.classList.remove("active");
-      }
       const src = media.getAttribute("src");
       if (section) {
         document.body.style.backgroundImage = `url(${src})`;
