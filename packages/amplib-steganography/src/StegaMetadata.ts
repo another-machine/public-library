@@ -100,11 +100,15 @@ function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
       sequence.push(metadata.borderWidth & 0xff);
 
       if (metadata.type === StegaContentType.MUSIC) {
+        const bpmInt = Math.floor(metadata.bpm);
+        const bpmDec = Math.round((metadata.bpm - bpmInt) * 100);
         // BPM (2 bytes)
-        sequence.push((metadata.bpm >> 8) & 0xff);
-        sequence.push(metadata.bpm & 0xff);
+        sequence.push((bpmInt >> 8) & 0xff);
+        sequence.push(bpmInt & 0xff);
         // Semitones (1 byte)
         sequence.push(metadata.semitones);
+        // BPM Decimal (1 byte)
+        sequence.push(bpmDec);
       }
       break;
     }
@@ -169,8 +173,10 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
       }
 
       if (type === StegaContentType.MUSIC) {
-        const bpm = (sequence[9] << 8) | sequence[10];
+        const bpmInt = (sequence[9] << 8) | sequence[10];
         const semitones = sequence[11];
+        const bpmDec = sequence[12];
+        const bpm = bpmInt + bpmDec / 100;
         return {
           type: StegaContentType.MUSIC,
           sampleRate,

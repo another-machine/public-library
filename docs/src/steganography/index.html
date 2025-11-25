@@ -137,16 +137,18 @@ const audio = await <a href="#play-decoded-audio-buffers">playDecodedAudioBuffer
           >
         </p>
 
-        <pre><code>enum StegaContentType {
+        <pre><code>enum StegaContentType StegaContentType {
   AUDIO = 0,
   STRING = 1,
   ROBUST = 2,
+  MUSIC = 3,
 }
 
 type StegaMetadata =
   | StegaMetadataAudio
   | StegaMetadataString
-  | StegaMetadataRobust;
+  | StegaMetadataRobust
+  | StegaMetadataMusic;
 
 interface StegaMetadataAudio {
   type: StegaContentType.AUDIO;
@@ -155,6 +157,12 @@ interface StegaMetadataAudio {
   channels: StegaCassetteChannels;
   encoding: StegaCassetteEncoding;
   borderWidth: number;
+}
+
+export interface StegaMetadataMusic extends Omit&lt;StegaMetadataAudio, "type"> {
+  type: StegaContentType.MUSIC;
+  bpm: number;
+  semitones: number;
 }
 
 interface StegaMetadataString {
