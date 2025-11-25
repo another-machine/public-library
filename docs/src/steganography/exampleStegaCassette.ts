@@ -59,7 +59,16 @@ export default async function example() {
       },
       encoding: {
         type: "select",
-        options: ["additive", "subtractive", "difference", "noise"],
+        options: [
+          "additive",
+          "subtractive",
+          "difference",
+          "noise",
+          "additive-columns",
+          "subtractive-columns",
+          "difference-columns",
+          "noise-columns",
+        ],
         value: `${defaults.encoding}`,
         name: "encoding",
       },

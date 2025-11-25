@@ -11,7 +11,11 @@ export type StegaCassetteEncoding =
   | "additive"
   | "subtractive"
   | "difference"
-  | "noise";
+  | "noise"
+  | "additive-columns"
+  | "subtractive-columns"
+  | "difference-columns"
+  | "noise-columns";
 export type StegaCassetteChannels = 1 | 2;
 
 interface EncodeOptions {
@@ -134,17 +138,19 @@ export function encode(
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
 
-  const indexData = skippedAndIndicesFromIndexGenerator(
-    canvas.width,
-    canvas.height,
-    borderWidth
-  );
+  const indexData = encoding.endsWith("-columns")
+    ? splitIndicesFromIndexGenerator(canvas.width, canvas.height, borderWidth)
+    : skippedAndIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth
+      );
   const encoder =
-    encoding === "additive"
+    encoding === "additive" || encoding === "additive-columns"
       ? encodeAdditive
-      : encoding === "subtractive"
+      : encoding === "subtractive" || encoding === "subtractive-columns"
       ? encodeSubtractive
-      : encoding === "difference"
+      : encoding === "difference" || encoding === "difference-columns"
       ? encodeDifference
       : encodeNoise;
 
@@ -392,17 +398,19 @@ export function decode(options: DecodeOptions): Float32Array[] {
   const midPoint = stereo
     ? Math.floor(canvas.height / 2) * canvas.width * 4
     : data.length;
-  const indexData = skippedAndIndicesFromIndexGenerator(
-    canvas.width,
-    canvas.height,
-    borderWidth
-  );
+  const indexData = encoding.endsWith("-columns")
+    ? splitIndicesFromIndexGenerator(canvas.width, canvas.height, borderWidth)
+    : skippedAndIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth
+      );
   const decoder =
-    encoding === "additive"
+    encoding === "additive" || encoding === "additive-columns"
       ? decodeAdditive
-      : encoding === "subtractive"
+      : encoding === "subtractive" || encoding === "subtractive-columns"
       ? decodeSubtractive
-      : encoding === "difference"
+      : encoding === "difference" || encoding === "difference-columns"
       ? decodeDifference
       : decodeNoise;
 
@@ -555,4 +563,61 @@ function decodeNoise(byteEncode: number, byteSource: number): number {
   return Math.round(
     Math.abs(byteEncode - byteSource) / 2 + Math.min(byteEncode, byteSource)
   );
+}
+
+function splitIndicesFromIndexGenerator(
+  width: number,
+  height: number,
+  borderWidth: number
+) {
+  const midX = width / 2;
+  // Valid left range: [borderWidth, midX - borderWidth/2)
+  const leftEnd = Math.ceil(midX - borderWidth / 2);
+
+  return (i: number, data: Uint8ClampedArray) => {
+    const pxIndex = Math.floor(i / 4);
+    const y = Math.floor(pxIndex / width);
+    const x = pxIndex % width;
+
+    const isBorder =
+      y < borderWidth ||
+      y >= height - borderWidth ||
+      x < borderWidth ||
+      x >= width - borderWidth; // Right border check
+
+    // Check if x is in left valid region
+    const isLeft = x < leftEnd;
+
+    const pairX = width - 1 - x;
+
+    // Indices
+    const index1 = i;
+    const index2 = (y * width + pairX) * 4;
+
+    // Next indices (for 16-bit)
+    // We use x+1 and pairX-1
+    const index1Next = i + 4;
+    const index2Next = (y * width + (pairX - 1)) * 4;
+
+    // Alternate based on x
+    const swap = x % 2 !== 0;
+
+    const encodedIndex = swap ? index2 : index1;
+    const sourceIndex = swap ? index1 : index2;
+
+    const encodedIndexNext = swap ? index2Next : index1Next;
+    const sourceIndexNext = swap ? index1Next : index2Next;
+
+    const isSkipped = isBorder || !isLeft;
+    const isOpaque1 = data[index1 + 3] === 255;
+    const isOpaque2 = data[index2 + 3] === 255;
+
+    return {
+      isSkipped: isSkipped || !isOpaque1 || !isOpaque2,
+      encodedIndex,
+      sourceIndex,
+      encodedIndexNext,
+      sourceIndexNext,
+    };
+  };
 }
