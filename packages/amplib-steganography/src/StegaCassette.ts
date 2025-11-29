@@ -9,20 +9,24 @@ import {
 export type StegaCassetteBitDepth = 8 | 16 | 24;
 export type StegaCassetteEncoding =
   | "additive"
-  | "subtractive"
-  | "difference"
-  | "noise"
   | "additive-columns"
-  | "subtractive-columns"
-  | "difference-columns"
-  | "noise-columns"
   | "additive-rows"
-  | "subtractive-rows"
-  | "difference-rows"
-  | "noise-rows"
   | "additive-quarters"
+  | "subtractive"
+  | "subtractive-columns"
+  | "subtractive-rows"
   | "subtractive-quarters"
+  | "difference"
+  | "difference-columns"
+  | "difference-rows"
   | "difference-quarters"
+  | "bitshift"
+  | "bitshift-columns"
+  | "bitshift-rows"
+  | "bitshift-quarters"
+  | "noise"
+  | "noise-columns"
+  | "noise-rows"
   | "noise-quarters";
 export type StegaCassetteChannels = 1 | 2;
 
@@ -196,6 +200,8 @@ export function encode(
     ? encodeSubtractive
     : encoding.startsWith("difference")
     ? encodeDifference
+    : encoding.startsWith("bitshift")
+    ? encodeBitShift
     : encodeNoise;
 
   for (let i = 0; i < data.length; i += increment) {
@@ -469,6 +475,8 @@ export function decode(options: DecodeOptions): Float32Array[] {
     ? decodeSubtractive
     : encoding.startsWith("difference")
     ? decodeDifference
+    : encoding.startsWith("bitshift")
+    ? decodeBitShift
     : decodeNoise;
 
   const isSpatial =
@@ -594,6 +602,26 @@ function decodeDifference(byteEncode: number, byteSource: number): number {
     return byteSource + 256 - byteEncode;
   }
   return byteSource - byteEncode;
+}
+
+/**
+ * Rotating the "value" bits left by "byteSource"
+ */
+function encodeBitShift(
+  _byteEncode: number,
+  byteSource: number,
+  value: number
+): [number, number] {
+  const shift = byteSource & 7;
+  return [((value << shift) | (value >>> (8 - shift))) & 0xff, byteSource];
+}
+
+/**
+ * Rotating the "byteEncode" bits right by "byteSource"
+ */
+function decodeBitShift(byteEncode: number, byteSource: number): number {
+  const shift = byteSource & 7;
+  return ((byteEncode >>> shift) | (byteEncode << (8 - shift))) & 0xff;
 }
 
 /**

@@ -54,6 +54,10 @@ const metadataAudioEncoding: StegaMetadataAudio["encoding"][] = [
   "subtractive-quarters",
   "difference-quarters",
   "noise-quarters",
+  "bitshift",
+  "bitshift-columns",
+  "bitshift-rows",
+  "bitshift-quarters",
 ];
 
 export interface StegaMetadataString {
