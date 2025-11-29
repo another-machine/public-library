@@ -11,6 +11,7 @@ document.querySelectorAll("button").forEach((button) => {
   button.addEventListener("click", (e) => {
     const section = button.parentElement?.parentElement;
     const media = button.querySelector<HTMLImageElement>("img.media");
+    const thumb = button.querySelector<HTMLImageElement>("img:not(.media)");
     const background =
       section?.querySelector<HTMLImageElement>("img.background");
     const isActive = button.classList.contains("active");
@@ -21,19 +22,25 @@ document.querySelectorAll("button").forEach((button) => {
     if (!isActive) {
       button.classList.add("active");
     }
+    if (thumb) {
+      document.body.style.backgroundImage = `url(${thumb.getAttribute("src")})`;
+    }
 
     if (media && background) {
       const src = media.getAttribute("src");
-      if (section) {
-        document.body.style.backgroundImage = `url(${src})`;
-      }
+      section?.classList.add("loading");
       background.classList.remove("hidden");
       background.setAttribute("src", src || "");
       background.setAttribute("height", media.getAttribute("height") || "");
       background.setAttribute("width", media.getAttribute("width") || "");
       // Decode metadata
 
+      if (currentSource) {
+        currentSource.stop();
+      }
+
       background.onload = async () => {
+        section?.classList.remove("loading");
         const metadata = StegaMetadata.decode({ source: media });
         if (
           !metadata ||
@@ -52,10 +59,6 @@ document.querySelectorAll("button").forEach((button) => {
           encoding: metadata.encoding,
           borderWidth: metadata.borderWidth,
         });
-
-        if (currentSource) {
-          currentSource.stop();
-        }
 
         if (!isActive) {
           currentSource = await playDecodedAudioBuffers({

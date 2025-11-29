@@ -38,6 +38,16 @@
           font-size: 1.8rem;
         }
       }
+
+      @keyframes flashing {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
       html,
       body {
         background-color: black;
@@ -86,17 +96,30 @@
           }
         }
 
+        > .loading-text {
+          color: white;
+          font-style: italic;
+          left: 50%;
+          margin: 0;
+          opacity: 0;
+          pointer-events: none;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 99;
+        }
+
         > .background {
           display: block;
           height: calc(100% - var(--start-dimension) - var(--padding) * 3);
           image-rendering: pixelated;
           margin-top: var(--padding);
+          max-height: calc(100% - var(--start-dimension) - var(--padding) * 3);
           object-fit: contain;
           object-position: center;
+          transition: opacity 250ms ease-in;
           width: 100%;
           z-index: 0;
-          transition: max-height 250ms ease-in-out;
-          max-height: calc(100% - var(--start-dimension) - var(--padding) * 3);
 
           &.hidden {
             max-height: 0;
@@ -113,6 +136,16 @@
                 }
               }
             }
+          }
+        }
+
+        &.loading {
+          > .background {
+            opacity: 0;
+            transition: max-height 250ms ease-in;
+          }
+          > .loading-text {
+            animation: flashing 1s ease-in-out 250ms alternate infinite;
           }
         }
 
@@ -242,6 +275,7 @@
           src="media/thumbs/media-1763862984411.jpg"
           class="background hidden"
         />
+        <p class="loading-text">loading...</p>
 
         <nav>
           <button>
