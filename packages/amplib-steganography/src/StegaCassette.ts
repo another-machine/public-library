@@ -27,7 +27,11 @@ export type StegaCassetteEncoding =
   | "noise"
   | "noise-columns"
   | "noise-rows"
-  | "noise-quarters";
+  | "noise-quarters"
+  | "solid"
+  | "solid-columns"
+  | "solid-rows"
+  | "solid-quarters";
 export type StegaCassetteChannels = 1 | 2;
 
 interface EncodeOptions {
@@ -118,6 +122,7 @@ export function encode(
       : encoding.endsWith("-rows")
       ? "horizontal"
       : "none",
+    pixelMultiplier: encoding.startsWith("solid") ? 1 : 2,
   });
 
   const canvas = encodeMetadata
@@ -156,11 +161,15 @@ export function encode(
   const isSpatial =
     encoding.endsWith("-columns") ||
     encoding.endsWith("-rows") ||
-    encoding.endsWith("-quarters");
+    encoding.endsWith("-quarters") ||
+    encoding.startsWith("solid");
   const increment = bitDepth === 16 ? (isSpatial ? 8 : 16) : 4;
 
   let midPoint = Math.floor(data.length / 2);
-  if (encoding.endsWith("-rows") || encoding.endsWith("-quarters")) {
+  if (
+    (encoding.endsWith("-rows") || encoding.endsWith("-quarters")) &&
+    !encoding.startsWith("solid")
+  ) {
     const midY = canvas.height / 2;
     const topEnd = Math.ceil(midY - borderWidth / 2);
     const validRows = topEnd - borderWidth;
@@ -168,7 +177,15 @@ export function encode(
     midPoint = Math.floor(splitRow) * canvas.width * 4;
   }
 
-  const indexData = encoding.endsWith("-columns")
+  const indexData = encoding.startsWith("solid")
+    ? solidIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth,
+        bitDepth,
+        encoding
+      )
+    : encoding.endsWith("-columns")
     ? splitColumnsIndicesFromIndexGenerator(
         canvas.width,
         canvas.height,
@@ -202,6 +219,8 @@ export function encode(
     ? encodeDifference
     : encoding.startsWith("bitshift")
     ? encodeBitShift
+    : encoding.startsWith("solid")
+    ? encodeAdditive
     : encodeNoise;
 
   for (let i = 0; i < data.length; i += increment) {
@@ -443,7 +462,15 @@ export function decode(options: DecodeOptions): Float32Array[] {
   const leftSamples: number[] = [];
   const rightSamples: number[] = [];
 
-  const indexData = encoding.endsWith("-columns")
+  const indexData = encoding.startsWith("solid")
+    ? solidIndicesFromIndexGenerator(
+        canvas.width,
+        canvas.height,
+        borderWidth,
+        bitDepth,
+        encoding
+      )
+    : encoding.endsWith("-columns")
     ? splitColumnsIndicesFromIndexGenerator(
         canvas.width,
         canvas.height,
@@ -477,16 +504,22 @@ export function decode(options: DecodeOptions): Float32Array[] {
     ? decodeDifference
     : encoding.startsWith("bitshift")
     ? decodeBitShift
+    : encoding.startsWith("solid")
+    ? decodeAdditive
     : decodeNoise;
 
   const isSpatial =
     encoding.endsWith("-columns") ||
     encoding.endsWith("-rows") ||
-    encoding.endsWith("-quarters");
+    encoding.endsWith("-quarters") ||
+    encoding.startsWith("solid");
   const increment = bitDepth === 16 ? (isSpatial ? 8 : 16) : 4;
 
   let midPoint = Math.floor(data.length / 2);
-  if (encoding.endsWith("-rows") || encoding.endsWith("-quarters")) {
+  if (
+    (encoding.endsWith("-rows") || encoding.endsWith("-quarters")) &&
+    !encoding.startsWith("solid")
+  ) {
     const midY = canvas.height / 2;
     const topEnd = Math.ceil(midY - borderWidth / 2);
     const validRows = topEnd - borderWidth;
@@ -841,6 +874,60 @@ function splitQuartersIndicesFromIndexGenerator(
 
     return {
       isSkipped: isSkipped || !isOpaque1 || !isOpaque2,
+      encodedIndex,
+      sourceIndex,
+      encodedIndexNext,
+      sourceIndexNext,
+    };
+  };
+}
+
+function solidIndicesFromIndexGenerator(
+  width: number,
+  height: number,
+  borderWidth: number,
+  bitDepth: number,
+  encoding: StegaCassetteEncoding
+) {
+  const keyPixelIndex = (borderWidth * width + borderWidth) * 4;
+
+  const midX = width / 2;
+  const midY = height / 2;
+
+  const hasVerticalBorder =
+    encoding.includes("-columns") || encoding.includes("-quarters");
+  const hasHorizontalBorder =
+    encoding.includes("-rows") || encoding.includes("-quarters");
+
+  const leftEnd = Math.ceil(midX - borderWidth / 2);
+  const topEnd = Math.ceil(midY - borderWidth / 2);
+
+  return (i: number, data: Uint8ClampedArray) => {
+    const pxIndex = Math.floor(i / 4);
+    const y = Math.floor(pxIndex / width);
+    const x = pxIndex % width;
+
+    const isBorder =
+      y < borderWidth ||
+      y >= height - borderWidth ||
+      x < borderWidth ||
+      x >= width - borderWidth ||
+      (hasVerticalBorder && x >= leftEnd && x <= width - 1 - leftEnd) ||
+      (hasHorizontalBorder && y >= topEnd && y <= height - 1 - topEnd);
+
+    const encodedIndex = i;
+    const sourceIndex = keyPixelIndex;
+    const encodedIndexNext = i + 4;
+    const sourceIndexNext = keyPixelIndex;
+
+    const isKey =
+      i === keyPixelIndex ||
+      (bitDepth === 16 && encodedIndexNext === keyPixelIndex);
+    const isOpaque = data[i + 3] === 255;
+    const isKeyOpaque = data[keyPixelIndex + 3] === 255;
+
+    return {
+      isSkipped: isBorder || isKey || !isOpaque || !isKeyOpaque,
       encodedIndex,
       sourceIndex,
       encodedIndexNext,

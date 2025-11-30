@@ -194,6 +194,20 @@
                   Transform playback (keep sample count)
                 </option>
               </select>
+
+              <label>Image</label>
+              <div class="smart-drop-zone" id="encoder-image-drop">
+                <button id="encoder-image-btn">Choose Image</button>
+                <span id="encoder-image-name" class="file-name"
+                  >No image chosen</span
+                >
+                <input
+                  type="file"
+                  id="encoder-image-input"
+                  accept="image/*"
+                  class="hidden"
+                />
+              </div>
             </div>
             <div>
               <label>Channels</label>
@@ -215,28 +229,16 @@
                 <option value="subtractive">Subtractive</option>
                 <option value="difference">Difference</option>
                 <option value="bitshift">Bitshift</option>
+                <option value="solid">Solid</option>
                 <option value="noise">Noise</option>
-                <option value="additive-columns">Additive: Columns</option>
-                <option value="subtractive-columns">
-                  Subtractive: Columns
-                </option>
-                <option value="difference-columns">Difference: Columns</option>
-                <option value="bitshift-columns">Bitshift: Columns</option>
-                <option value="noise-columns">Noise: Columns</option>
-                <option value="additive-rows">Additive: Rows</option>
-                <option value="subtractive-rows">Subtractive: Rows</option>
-                <option value="difference-rows">Difference: Rows</option>
-                <option value="bitshift-rows">Bitshift: Rows</option>
-                <option value="noise-rows">Noise: Rows</option>
-                <option value="additive-quarters">Additive: Quarters</option>
-                <option value="subtractive-quarters">
-                  Subtractive: Quarters
-                </option>
-                <option value="difference-quarters">
-                  Difference: Quarters
-                </option>
-                <option value="bitshift-quarters">Bitshift: Quarters</option>
-                <option value="noise-quarters">Noise: Quarters</option>
+              </select>
+
+              <label>Encoding Tiling</label>
+              <select id="encoder-tiling">
+                <option value="none" selected>None</option>
+                <option value="columns">Columns</option>
+                <option value="rows">Rows</option>
+                <option value="quarters">Quarters</option>
               </select>
 
               <label>Border Width (px)</label>
@@ -252,20 +254,6 @@
                 <option value="forward" selected>Forward</option>
                 <option value="reverse">Reverse</option>
               </select>
-
-              <label>Image</label>
-              <div class="smart-drop-zone" id="encoder-image-drop">
-                <button id="encoder-image-btn">Choose Image</button>
-                <span id="encoder-image-name" class="file-name"
-                  >No image chosen</span
-                >
-                <input
-                  type="file"
-                  id="encoder-image-input"
-                  accept="image/*"
-                  class="hidden"
-                />
-              </div>
             </div>
           </div>
 

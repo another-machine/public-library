@@ -82,6 +82,9 @@ export class Encoder {
     const encodingInput = document.getElementById(
       "encoder-encoding"
     ) as HTMLSelectElement;
+    const encodingTilingInput = document.getElementById(
+      "encoder-tiling"
+    ) as HTMLSelectElement;
     const borderWidthInput = document.getElementById(
       "encoder-border-width"
     ) as HTMLInputElement;
@@ -638,7 +641,12 @@ export class Encoder {
       const targetSampleRate = parseInt(sampleRateInput.value);
       const targetChannels = parseInt(channelsInput.value);
       const targetBitDepth = parseInt(bitDepthInput.value) as 8 | 16 | 24;
-      const targetEncoding = encodingInput.value as any;
+      const targetEncodingTiling = encodingTilingInput.value as any;
+      const targetEncodingEncoding = encodingInput.value as any;
+      const targetEncoding =
+        targetEncodingTiling === "none"
+          ? targetEncodingEncoding
+          : [targetEncodingEncoding, targetEncodingTiling].join("-");
       const targetBorderWidth = parseInt(borderWidthInput.value);
       const shouldResample = resampleSelect.value === "resample";
       const shouldReverse = directionSelect.value === "reverse";

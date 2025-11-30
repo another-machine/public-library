@@ -31,6 +31,7 @@ export function createCanvasAndContextForImageWithMinimums({
   aspectRatio,
   borderWidth = 0,
   internalBorderMode = "none",
+  pixelMultiplier = 2,
 }: {
   source: HTMLImageElement | HTMLCanvasElement;
   messageLength: number;
@@ -39,6 +40,7 @@ export function createCanvasAndContextForImageWithMinimums({
   aspectRatio?: number;
   borderWidth?: number;
   internalBorderMode?: "none" | "vertical" | "horizontal" | "cross";
+  pixelMultiplier?: number;
 }) {
   const { width: sourceWidth, height: sourceHeight } =
     dimensionsFromSource(source);
@@ -57,11 +59,15 @@ export function createCanvasAndContextForImageWithMinimums({
   const sourceDimensions = canvasWidthAndHeight({
     minWidth,
     minHeight,
-    minPixelCount:
-      2 * Math.ceil(messageLength / 3) * (1 / (1 - sourceTransparency)),
+    minPixelCount: Math.ceil(
+      pixelMultiplier *
+        Math.ceil(messageLength / 3) *
+        (1 / (1 - sourceTransparency))
+    ),
     aspectRatio: targetAspectRatio,
     borderWidth,
     internalBorderMode,
+    pixelMultiplier,
   });
 
   const { canvas, context } = createCanvasAndContext(
@@ -93,12 +99,16 @@ export function createCanvasAndContextForImageWithMinimums({
   const preciseDimensions = canvasWidthAndHeight({
     minWidth,
     minHeight,
-    minPixelCount:
-      2 *
-      Math.ceil(Math.ceil(messageLength / 3) * (1 / (1 - preciseTransparency))),
+    minPixelCount: Math.ceil(
+      pixelMultiplier *
+        Math.ceil(
+          Math.ceil(messageLength / 3) * (1 / (1 - preciseTransparency))
+        )
+    ),
     aspectRatio: targetAspectRatio,
     borderWidth,
     internalBorderMode,
+    pixelMultiplier,
   });
 
   canvas.width = preciseDimensions.width;
@@ -137,6 +147,7 @@ function canvasWidthAndHeight({
   aspectRatio,
   borderWidth = 0,
   internalBorderMode = "none",
+  pixelMultiplier = 2,
 }: {
   minWidth: number;
   minHeight: number;
@@ -144,6 +155,7 @@ function canvasWidthAndHeight({
   aspectRatio: number;
   borderWidth?: number;
   internalBorderMode?: "none" | "vertical" | "horizontal" | "cross";
+  pixelMultiplier?: number;
 }) {
   const SAFETY_FACTOR = 1.0;
   const targetArea = minPixelCount * SAFETY_FACTOR;
@@ -183,7 +195,7 @@ function canvasWidthAndHeight({
 
   // Basically when we add a border, that disqualifies a subset of pixels at the end of the x axis since their next pixel is in the border.
   // We want to increase min pixel count conditionally based on our height.
-  const heightMinPixelFactor = 1.5;
+  const heightMinPixelFactor = 0.75 * pixelMultiplier;
   if (borderWidth > 0) {
     minPixelCount += height * heightMinPixelFactor;
   }

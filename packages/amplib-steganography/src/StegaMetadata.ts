@@ -35,6 +35,7 @@ export interface StegaMetadataMusic extends Omit<StegaMetadataAudio, "type"> {
   semitones: number;
 }
 
+// IMPORTANT: The ordewr of these is important. The index association is already encoded into images.
 const metadataAudioBitDepth: StegaMetadataAudio["bitDepth"][] = [8, 16, 24];
 const metadataAudioChannels: StegaMetadataAudio["channels"][] = [1, 2];
 const metadataAudioEncoding: StegaMetadataAudio["encoding"][] = [
@@ -58,6 +59,10 @@ const metadataAudioEncoding: StegaMetadataAudio["encoding"][] = [
   "bitshift-columns",
   "bitshift-rows",
   "bitshift-quarters",
+  "solid",
+  "solid-columns",
+  "solid-rows",
+  "solid-quarters",
 ];
 
 export interface StegaMetadataString {
@@ -108,6 +113,7 @@ function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
       // Bit depth (1 byte)
       sequence.push(metadataAudioBitDepth.indexOf(metadata.bitDepth));
       // Channels (1 byte)
+      // IMPORTANT: The ordewr of these is important. The index association is already encoded into images.
       sequence.push(metadataAudioChannels.indexOf(metadata.channels));
       // Encoding (1 byte)
       sequence.push(metadataAudioEncoding.indexOf(metadata.encoding));
@@ -179,6 +185,7 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
     case StegaContentType.AUDIO:
     case StegaContentType.MUSIC: {
       const sampleRate = (sequence[1] << 16) | (sequence[2] << 8) | sequence[3];
+      // IMPORTANT: The ordewr of these is important. The index association is already encoded into images.
       const bitDepth = metadataAudioBitDepth[sequence[4]];
       const channels = metadataAudioChannels[sequence[5]];
       const encoding = metadataAudioEncoding[sequence[6]];
