@@ -34,11 +34,7 @@ export type StegaCassetteEncoding =
   | "solid-quarters";
 export type StegaCassetteChannels = 1 | 2;
 
-interface EncodeOptions {
-  source:
-    | HTMLImageElement
-    | HTMLCanvasElement
-    | (HTMLImageElement | HTMLCanvasElement)[];
+interface BaseEncodeOptions {
   audioBuffers: Float32Array[];
   sampleRate: number;
   bitDepth: StegaCassetteBitDepth;
@@ -49,22 +45,41 @@ interface EncodeOptions {
   music?: { bpm: number; semitones: number };
 }
 
-export interface DecodeOptions {
-  source:
-    | HTMLImageElement
-    | HTMLCanvasElement
-    | (HTMLImageElement | HTMLCanvasElement)[];
+export type EncodeOptions = BaseEncodeOptions &
+  (
+    | { source: HTMLImageElement | HTMLCanvasElement; sources?: never }
+    | { source?: never; sources: (HTMLImageElement | HTMLCanvasElement)[] }
+  );
+
+interface BaseDecodeOptions {
   bitDepth: StegaCassetteBitDepth;
   channels: StegaCassetteChannels;
   encoding: StegaCassetteEncoding;
   borderWidth?: number;
 }
 
+export type DecodeOptions = BaseDecodeOptions &
+  (
+    | { source: HTMLImageElement | HTMLCanvasElement; sources?: never }
+    | { source?: never; sources: (HTMLImageElement | HTMLCanvasElement)[] }
+  );
+
+export function encode(
+  options: BaseEncodeOptions & {
+    source: HTMLImageElement | HTMLCanvasElement;
+    sources?: never;
+  }
+): HTMLCanvasElement;
+export function encode(
+  options: BaseEncodeOptions & {
+    source?: never;
+    sources: (HTMLImageElement | HTMLCanvasElement)[];
+  }
+): HTMLCanvasElement[];
 export function encode(
   options: EncodeOptions
 ): HTMLCanvasElement | HTMLCanvasElement[] {
   const {
-    source,
     audioBuffers,
     sampleRate,
     bitDepth,
@@ -75,7 +90,8 @@ export function encode(
     music,
   } = options;
 
-  if (Array.isArray(source)) {
+  if (options.sources) {
+    const source = options.sources;
     const count = source.length;
     const splitBuffers = audioBuffers.map((channel) => {
       const splits = Array.from({ length: count }, () => [] as number[]);
@@ -92,13 +108,16 @@ export function encode(
     });
 
     return buffersPerImage.map((buffers, i) => {
+      const { sources, ...rest } = options;
       return encode({
-        ...options,
+        ...rest,
         source: source[i],
         audioBuffers: buffers,
       }) as HTMLCanvasElement;
     });
   }
+
+  const source = options.source;
 
   const stereo = audioBuffers.length > 1;
   const leftChannel = audioBuffers[0];
@@ -407,10 +426,12 @@ export function encode(
 }
 
 export function decode(options: DecodeOptions): Float32Array[] {
-  const { source, encoding, bitDepth, channels = 1, borderWidth = 0 } = options;
+  const { encoding, bitDepth, channels = 1, borderWidth = 0 } = options;
 
-  if (Array.isArray(source)) {
-    const decodedBuffers = source.map((s) => decode({ ...options, source: s }));
+  if (options.sources) {
+    const source = options.sources;
+    const { sources, ...rest } = options;
+    const decodedBuffers = source.map((s) => decode({ ...rest, source: s }));
 
     const combinedChannels: Float32Array[] = [];
     const channelCount = decodedBuffers[0].length;
@@ -438,7 +459,7 @@ export function decode(options: DecodeOptions): Float32Array[] {
     return combinedChannels;
   }
 
-  const singleSource = source as HTMLImageElement | HTMLCanvasElement;
+  const singleSource = options.source;
   const relativeWidth =
     "naturalWidth" in singleSource
       ? singleSource.naturalWidth

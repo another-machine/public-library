@@ -154,13 +154,16 @@ export default async function example() {
               !metadata ||
               metadata.type === StegaMetadata.StegaContentType.AUDIO
             ) {
-              const audioBuffers = StegaCassette.decode({
-                source,
+              const decodeOptions = {
                 bitDepth: metadata?.bitDepth || defaults.bitDepth,
                 channels: metadata?.channels || defaults.channels,
                 encoding: metadata?.encoding || defaults.encoding,
                 borderWidth: metadata?.borderWidth || defaults.borderWidth,
-              });
+              };
+              const audioBuffers = Array.isArray(source)
+                ? StegaCassette.decode({ ...decodeOptions, sources: source })
+                : StegaCassette.decode({ ...decodeOptions, source });
+
               const audio = await playDecodedAudioBuffers({
                 audioBuffers,
                 audioContext,
@@ -191,8 +194,7 @@ export default async function example() {
       .fill(0)
       .map((_, i) => (i % 2 === 0 ? source : source2));
 
-    const result = StegaCassette.encode({
-      source: splitOutput === 1 ? source : sources,
+    const encodeOptions = {
       audioBuffers: await loadAudioBuffersFromAudioUrl({
         url: audio.getAttribute("src")!,
         audioContext,
@@ -208,12 +210,15 @@ export default async function example() {
         values.aspectRatio === "undefined"
           ? undefined
           : parseFloat(values.aspectRatio),
-    });
+    };
+
     output.innerHTML = "";
-    if (Array.isArray(result)) {
-      result.forEach((r) => output.appendChild(r));
-    } else {
+    if (splitOutput === 1) {
+      const result = StegaCassette.encode({ ...encodeOptions, source });
       output.appendChild(result);
+    } else {
+      const result = StegaCassette.encode({ ...encodeOptions, sources });
+      result.forEach((r) => output.appendChild(r));
     }
   }
 }

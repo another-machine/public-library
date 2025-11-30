@@ -877,7 +877,8 @@ export class Encoder {
     );
 
     for (let i = 0; i < channels; i++) {
-      audioBuffer.copyToChannel(decodedBuffers[i], i);
+      const channelData = new Float32Array(decodedBuffers[i]);
+      audioBuffer.copyToChannel(channelData, i);
     }
 
     this.generatedSource = this.audioContext.createBufferSource();

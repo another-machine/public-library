@@ -64,12 +64,13 @@ Stega64.encode({
         <h2>StegaCassette encodes and decodes audio in image pixels.</h2>
         <p>
           <code
-            >StegaCassette.encode({ source: HTMLImageElement | HTMLCanvasElement
-            | (HTMLImageElement | HTMLCanvasElement)[]; audioBuffers:
-            Float32Array[]; sampleRate: number; bitDepth: StegaCassetteBitDepth;
-            encoding: StegaCassetteEncoding; encodeMetadata?: boolean;
-            aspectRatio?: number; borderWidth?: number; }):
-            HTMLCanvasElement</code
+            >StegaCassette.encode({ source?: HTMLImageElement |
+            HTMLCanvasElement; sources?: (HTMLImageElement |
+            HTMLCanvasElement)[]; audioBuffers: Float32Array[]; sampleRate:
+            number; bitDepth: StegaCassetteBitDepth; encoding:
+            StegaCassetteEncoding; encodeMetadata?: boolean; aspectRatio?:
+            number; borderWidth?: number; }): HTMLCanvasElement |
+            HTMLCanvasElement[]</code
           >
         </p>
         <p></p>
@@ -99,11 +100,11 @@ const result = StegaCassette.encode({
 
         <p>
           <code
-            >StegaCassette.decode({ source: HTMLImageElement | HTMLCanvasElement
-            | (HTMLImageElement | HTMLCanvasElement)[]; bitDepth:
-            StegaCassetteBitDepth; channels: StegaCassetteChannels; encoding:
-            StegaCassetteEncoding; borderWidth?: number; }):
-            Float32Array[]</code
+            >StegaCassette.decode({ source?: HTMLImageElement |
+            HTMLCanvasElement; sources?: (HTMLImageElement |
+            HTMLCanvasElement)[]; bitDepth: StegaCassetteBitDepth; channels:
+            StegaCassetteChannels; encoding: StegaCassetteEncoding;
+            borderWidth?: number; }): Float32Array[]</code
           >
         </p>
         <pre><code>const metadata = <a href="#stega-metadata">StegaMetadata</a>.decode({ source }) || {};
