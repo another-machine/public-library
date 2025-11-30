@@ -35,7 +35,7 @@ export interface StegaMetadataMusic extends Omit<StegaMetadataAudio, "type"> {
   semitones: number;
 }
 
-// IMPORTANT: The ordewr of these is important. The index association is already encoded into images.
+// IMPORTANT: The order of these is important. The index association is already encoded into images.
 const metadataAudioBitDepth: StegaMetadataAudio["bitDepth"][] = [8, 16, 24];
 const metadataAudioChannels: StegaMetadataAudio["channels"][] = [1, 2];
 const metadataAudioEncoding: StegaMetadataAudio["encoding"][] = [
