@@ -256,6 +256,7 @@ function getTransparencyRatio({
 
 type AudioType = "audio/*" | "audio/mp3" | "audio/wav";
 type ImageType = "image/*" | "image/png" | "image/jpg" | "image/jpeg";
+type VideoType = "video/*" | "video/mp4" | "video/webm" | "video/ogg";
 
 export function createDropReader({
   element,
@@ -275,7 +276,7 @@ export function createDropReader({
   onDragEnter?: () => void;
   onDragLeave?: () => void;
   onDrop?: () => void;
-  types?: (AudioType | ImageType)[];
+  types?: (AudioType | ImageType | VideoType)[];
 }) {
   element.addEventListener("dragover", (event) => {
     event.preventDefault();
@@ -366,7 +367,7 @@ export function createFileReader({
   element: HTMLInputElement;
   onSuccess: (image: HTMLAudioElement | HTMLImageElement) => void;
   onFailure?: (message: string) => void;
-  types?: (AudioType | ImageType)[];
+  types?: (AudioType | ImageType | VideoType)[];
 }) {
   element.accept = types.join(", ");
   element.type = "file";

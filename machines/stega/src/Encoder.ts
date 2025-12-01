@@ -585,14 +585,14 @@ export class Encoder {
           // Wait, createDropReader returns elements.
           // If I want the file name, I should probably modify createDropReader or just use the drop event directly if I need the file object for name.
           // But for now let's just set a generic name or try to get it.
-          fileName.innerText = "Dropped Audio";
+          fileName.innerText = "Dropped File";
           this.loadAudioFromUrl(audio.src);
         }
       },
       onDragEnter: () => dropZone.classList.add("drag-over"),
       onDragLeave: () => dropZone.classList.remove("drag-over"),
       onDrop: () => dropZone.classList.remove("drag-over"),
-      types: ["audio/*"],
+      types: ["audio/*", "video/*"],
     });
 
     // Image Input Logic
