@@ -123,6 +123,109 @@ const audio = await <a href="#play-decoded-audio-buffers">playDecodedAudioBuffer
 });</code></pre>
       </section>
 
+      <section id="example-visualization">
+        <style>
+          #viz-full-waveform {
+            height: 100px;
+            width: 100%;
+          }
+          .visualization-container {
+            display: flex;
+            align-items: end;
+            gap: var(--gap);
+            width: 100%;
+
+            figure {
+              display: flex;
+              flex-direction: column;
+              align-items: start;
+              gap: 0;
+              margin: 0;
+              width: 100%;
+              > figcaption {
+                font-style: italic;
+
+                &:first-child {
+                  margin-bottom: calc(0.5 * var(--gap));
+                }
+                &:last-child {
+                  margin-top: calc(0.5 * var(--gap));
+                }
+              }
+              > canvas {
+                height: 100px;
+                width: 100% !important;
+              }
+            }
+            .stack {
+              display: flex;
+              flex-direction: column;
+              flex-grow: 1;
+              /* gap: var(--gap); */
+            }
+
+            &.squares {
+              figure {
+                flex-direction: column-reverse;
+                figcaption {
+                  margin-top: calc(0.5 * var(--gap));
+                  margin-bottom: 0;
+                }
+              }
+              figure > canvas {
+                aspect-ratio: 1;
+                height: auto;
+                /* width: 100px !important; */
+              }
+            }
+          }
+        </style>
+        <h2>Encoding audio waveforms in image pixels.</h2>
+        <audio src="./example-mono-24bit-48khz-765731.wav"></audio>
+        <div class="left-side">
+          <div class="visualization-container">
+            <figure>
+              <canvas id="viz-full-waveform"></canvas>
+              <figcaption>
+                Source waveform (drag to move the playhead)
+              </figcaption>
+            </figure>
+          </div>
+          <div class="visualization-container">
+            <div class="stack">
+              <figure>
+                <figcaption>
+                  64 sample waveform (<strong
+                    ><span data-value="milliseconds">1.3</span>ms</strong
+                  >
+                  of audio)
+                </figcaption>
+                <canvas id="viz-waveform-64"></canvas>
+                <canvas id="viz-lines-64"></canvas>
+                <figcaption>
+                  64 sample waveform as
+                  <strong><span data-value="pixels">64</span> colors</strong>
+                </figcaption>
+              </figure>
+            </div>
+          </div>
+          <div class="visualization-container squares">
+            <figure>
+              <figcaption>
+                64 sample waveform as
+                <strong><span data-value="pixels">64</span> colors</strong> in
+                grid
+              </figcaption>
+              <canvas id="viz-pixels-64"></canvas>
+            </figure>
+            <figure id="viz-source-encoded">
+              <figcaption>Source waveform encoded into image</figcaption>
+            </figure>
+          </div>
+        </div>
+        <form></form>
+      </section>
+
       <section>
         <h2>StegaMetadata can be optionally encoded inside of stega images.</h2>
         <p>

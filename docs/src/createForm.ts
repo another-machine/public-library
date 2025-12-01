@@ -1,6 +1,8 @@
 type BaseFormInput = {
   name: string;
   value: any;
+  readOnly?: boolean;
+  hidden?: boolean;
 };
 
 type InputText = BaseFormInput & {
@@ -93,6 +95,9 @@ export function createForm<T extends Record<string, string | number>>({
   for (const inputKey in inputs) {
     const input = inputs[inputKey];
     const label = document.createElement("label");
+    if (input.hidden) {
+      label.className = "hidden";
+    }
     label.innerHTML = `<span>${input.name}</span>`;
     form.appendChild(label);
 
@@ -104,6 +109,10 @@ export function createForm<T extends Record<string, string | number>>({
 
     if (input.type === "text") {
       const element = document.createElement("input");
+      if (input.readOnly) {
+        element.readOnly = true;
+        element.disabled = true;
+      }
       element.id = id;
       element.name = input.name;
       element.value = input.value;
@@ -117,6 +126,10 @@ export function createForm<T extends Record<string, string | number>>({
       label.appendChild(element);
     } else if (input.type === "number" || input.type === "range") {
       const element = document.createElement("input");
+      if (input.readOnly) {
+        element.readOnly = true;
+        element.disabled = true;
+      }
       element.id = id;
       element.name = input.name;
       element.type = input.type;
@@ -140,6 +153,9 @@ export function createForm<T extends Record<string, string | number>>({
       label.appendChild(element);
     } else if (input.type === "select") {
       const element = document.createElement("select");
+      if (input.readOnly) {
+        element.disabled = true;
+      }
       element.id = id;
       element.name = input.name;
       element.innerHTML = input.options

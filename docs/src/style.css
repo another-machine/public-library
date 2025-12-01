@@ -258,6 +258,10 @@ section {
     gap: var(--gap);
     justify-content: start;
 
+    &.hidden {
+      display: none;
+    }
+
     &,
     & input,
     & select {
@@ -279,6 +283,15 @@ section {
   input {
     background: transparent;
     color: var(--color-accent);
+  }
+
+  .left-side {
+    color: var(--color-text);
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: var(--gap);
+    min-width: var(--pre-width);
   }
 
   pre {
