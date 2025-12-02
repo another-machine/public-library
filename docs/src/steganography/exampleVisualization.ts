@@ -4,8 +4,10 @@ import {
 } from "../../../packages/amplib-steganography/src";
 import { createForm } from "../createForm";
 
-const COLOR_SHAPE = "#fff";
-const COLOR_BACKGROUND = "#6e1152";
+const COLOR_SHAPE = "#333";
+const COLOR_BACKGROUND = "#eee";
+const COLOR_PLAYHEAD = "#6e1152";
+const SIZE_LINE = 3;
 
 export default async function example() {
   const section = document.getElementById("example-visualization")!;
@@ -292,8 +294,8 @@ export default async function example() {
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x, height);
-    ctx.strokeStyle = "red";
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = COLOR_PLAYHEAD;
+    ctx.lineWidth = SIZE_LINE;
     ctx.stroke();
   }
 
@@ -404,7 +406,7 @@ export default async function example() {
       const y = (1 - samples[i]) * amp; // Invert y because canvas y goes down
       ctx.lineTo(x, y);
     }
-    ctx.lineWidth = 3;
+    ctx.lineWidth = SIZE_LINE;
     ctx.strokeStyle = COLOR_SHAPE;
     ctx.stroke();
 
@@ -413,7 +415,7 @@ export default async function example() {
     for (let i = 0; i < 64; i++) {
       const x = i * step + halfStep;
       const y = (1 - samples[i]) * amp;
-      ctx.fillRect(x - 1.5, y - 4, 3, 8);
+      ctx.fillRect(x - SIZE_LINE / 2, y - SIZE_LINE, SIZE_LINE, SIZE_LINE * 2);
     }
   }
 
@@ -431,13 +433,37 @@ export default async function example() {
     const count = pixels.length;
     const step = width / count;
 
+    // Top third for separate RGB channels (3 rows)
+    const topThirdHeight = height / 3;
+    const channelHeight = topThirdHeight / 3;
+
+    // Draw R, G, B channels separately
+    for (let i = 0; i < count; i++) {
+      const { r, g, b } = pixels[i];
+
+      // Red channel
+      ctx.fillStyle = `rgb(${r}, 0, 0)`;
+      ctx.fillRect(i * step, 0, step, channelHeight);
+
+      // Green channel
+      ctx.fillStyle = `rgb(0, ${g}, 0)`;
+      ctx.fillRect(i * step, channelHeight, step, channelHeight);
+
+      // Blue channel
+      ctx.fillStyle = `rgb(0, 0, ${b})`;
+      ctx.fillRect(i * step, channelHeight * 2, step, channelHeight);
+    }
+
+    // Bottom 2/3 for combined color columns
+    const combinedStartY = topThirdHeight;
+    const combinedHeight = height - topThirdHeight;
+
     for (let i = 0; i < count; i++) {
       const { r, g, b } = pixels[i];
       ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-      ctx.fillRect(i * step, 0, step, height);
+      ctx.fillRect(i * step, combinedStartY, step, combinedHeight);
     }
   }
-
   function drawPixels64(pixels: { r: number; g: number; b: number }[]) {
     const canvas = pixels64Canvas;
     const ctx = canvas.getContext("2d")!;
