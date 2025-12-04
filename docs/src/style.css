@@ -210,8 +210,10 @@ section {
     margin-top: var(--vertical-spacing);
   }
 
-  h2:not(:first-child) {
-    margin-top: calc(var(--vertical-spacing) * 0.5);
+  &.example {
+    h2:not(:first-child) {
+      margin-top: calc(var(--vertical-spacing) * 0.5);
+    }
   }
 
   h2,
