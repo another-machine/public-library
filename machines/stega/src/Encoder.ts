@@ -18,6 +18,7 @@ export class Encoder {
     channels: 1 | 2;
     encoding: any;
     borderWidth: number;
+    key?: string | HTMLImageElement;
   } | null = null;
 
   // State for absolute trim times
@@ -26,6 +27,7 @@ export class Encoder {
 
   // State for dropped image
   droppedImage: HTMLImageElement | null = null;
+  keyImage: HTMLImageElement | null = null;
 
   // Callback to stop preview from outside setupListeners
   stopPreviewFn: (() => void) | null = null;
@@ -91,6 +93,25 @@ export class Encoder {
     const directionSelect = document.getElementById(
       "encoder-direction"
     ) as HTMLSelectElement;
+    const keyTypeSelect = document.getElementById(
+      "encoder-key-type"
+    ) as HTMLSelectElement;
+    const keyStringContainer = document.getElementById(
+      "encoder-key-string-container"
+    )!;
+    const keyStringInput = document.getElementById(
+      "encoder-key-string"
+    ) as HTMLInputElement;
+    const keyImageContainer = document.getElementById(
+      "encoder-key-image-container"
+    )!;
+    const keyImageDropZone = document.getElementById("encoder-key-image-drop")!;
+    const keyImageBtn = document.getElementById("encoder-key-image-btn")!;
+    const keyImageName = document.getElementById("encoder-key-image-name")!;
+    const keyImageInput = document.getElementById(
+      "encoder-key-image-input"
+    ) as HTMLInputElement;
+
     const resampleSelect = document.getElementById(
       "encoder-resample"
     ) as HTMLSelectElement;
@@ -102,6 +123,55 @@ export class Encoder {
     const downloadGeneratedBtn = document.getElementById(
       "download-generated-btn"
     )!;
+
+    // Key Type Selection
+    keyTypeSelect.addEventListener("change", () => {
+      const type = keyTypeSelect.value;
+      if (type === "string") {
+        keyStringContainer.classList.remove("hidden");
+        keyImageContainer.classList.add("hidden");
+      } else if (type === "image") {
+        keyStringContainer.classList.add("hidden");
+        keyImageContainer.classList.remove("hidden");
+      } else {
+        keyStringContainer.classList.add("hidden");
+        keyImageContainer.classList.add("hidden");
+      }
+    });
+
+    // Key Image Handling
+    keyImageBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      keyImageInput.click();
+    });
+
+    keyImageDropZone.addEventListener("click", () => keyImageInput.click());
+
+    keyImageInput.addEventListener("change", (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        keyImageName.innerText = file.name;
+        const img = new Image();
+        img.onload = () => {
+          this.keyImage = img;
+        };
+        img.src = URL.createObjectURL(file);
+      }
+    });
+
+    createDropReader({
+      element: keyImageDropZone,
+      onSuccess: ({ imageElements }) => {
+        if (imageElements.length > 0) {
+          keyImageName.innerText = "Dropped Key Image";
+          this.keyImage = imageElements[0];
+        }
+      },
+      onDragEnter: () => keyImageDropZone.classList.add("drag-over"),
+      onDragLeave: () => keyImageDropZone.classList.remove("drag-over"),
+      onDrop: () => keyImageDropZone.classList.remove("drag-over"),
+      types: ["image/*"],
+    });
 
     // Dual Range Slider Logic
     const zoomSliderStart = document.getElementById(
@@ -770,6 +840,21 @@ export class Encoder {
         });
       }
 
+      // Determine key
+      const keyType = (
+        document.getElementById("encoder-key-type") as HTMLSelectElement
+      ).value;
+      let key: string | HTMLImageElement | undefined = undefined;
+
+      if (keyType === "string") {
+        const keyStr = (
+          document.getElementById("encoder-key-string") as HTMLInputElement
+        ).value.trim();
+        if (keyStr) key = keyStr;
+      } else if (keyType === "image") {
+        if (this.keyImage) key = this.keyImage;
+      }
+
       const encodedCanvas = StegaCassette.encode({
         source: image,
         audioBuffers: slicedBuffers,
@@ -779,6 +864,7 @@ export class Encoder {
         encodeMetadata: true,
         borderWidth: targetBorderWidth,
         music: { bpm: adjustedBpm, semitones: adjustedPitch },
+        key,
       });
 
       this.lastEncodedData = {
@@ -788,6 +874,7 @@ export class Encoder {
         channels: slicedBuffers.length as 1 | 2,
         encoding: targetEncoding,
         borderWidth: targetBorderWidth,
+        key,
       };
 
       const dataUrl = encodedCanvas.toDataURL();
@@ -859,8 +946,15 @@ export class Encoder {
     if (!this.lastEncodedData) return;
     this.stopGenerated();
 
-    const { canvas, sampleRate, bitDepth, channels, encoding, borderWidth } =
-      this.lastEncodedData;
+    const {
+      canvas,
+      sampleRate,
+      bitDepth,
+      channels,
+      encoding,
+      borderWidth,
+      key,
+    } = this.lastEncodedData;
 
     const decodedBuffers = StegaCassette.decode({
       source: canvas,
@@ -868,6 +962,7 @@ export class Encoder {
       channels,
       encoding,
       borderWidth,
+      key,
     });
 
     const audioBuffer = this.audioContext.createBuffer(

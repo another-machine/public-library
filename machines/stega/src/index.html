@@ -15,10 +15,12 @@
       <h1>Stega</h1>
       <div class="drawer-section">
         <label>View</label>
-        <div class="button-group">
-          <button id="view-create" class="active">Create</button>
-          <button id="view-mix">Mix</button>
-        </div>
+        <select id="view-select">
+          <option value="create" selected>Encode Audio</option>
+          <option value="create-key">Create Key</option>
+          <option value="playback">Playback</option>
+          <option value="mix">Mix</option>
+        </select>
       </div>
 
       <div class="drawer-section">
@@ -254,6 +256,38 @@
                 <option value="forward" selected>Forward</option>
                 <option value="reverse">Reverse</option>
               </select>
+
+              <label>Encryption Key</label>
+              <select id="encoder-key-type">
+                <option value="none" selected>None</option>
+                <option value="string">String</option>
+                <option value="image">Image</option>
+              </select>
+
+              <div id="encoder-key-string-container" class="hidden">
+                <label>Key String</label>
+                <input
+                  type="text"
+                  id="encoder-key-string"
+                  placeholder="Enter key string"
+                />
+              </div>
+
+              <div id="encoder-key-image-container" class="hidden">
+                <label>Key Image</label>
+                <div class="smart-drop-zone" id="encoder-key-image-drop">
+                  <button id="encoder-key-image-btn">Choose Key Image</button>
+                  <span id="encoder-key-image-name" class="file-name"
+                    >No key image</span
+                  >
+                  <input
+                    type="file"
+                    id="encoder-key-image-input"
+                    accept="image/*"
+                    class="hidden"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
@@ -267,6 +301,175 @@
             <button id="download-generated-btn">Download Image</button>
           </div>
           <img id="encoded-image" class="hidden" />
+        </div>
+      </div>
+
+      <!-- Key Encoder Panel Removed -->
+
+      <!-- Create Key Panel -->
+      <div class="panel panel-centered hidden" id="panel-create-key">
+        <div class="controls-header">
+          <div class="section-divider">
+            <label>Key Generation</label>
+            <div class="flex-group">
+              <div class="flex-col">
+                <label>Key Length (characters)</label>
+                <input
+                  type="number"
+                  id="key-length"
+                  value="256"
+                  min="16"
+                  max="10000"
+                />
+              </div>
+            </div>
+            <button id="generate-key-btn">Generate Random Key</button>
+            <div class="flex-col">
+              <label>Generated Key String</label>
+              <textarea id="generated-key-string" rows="4" readonly></textarea>
+            </div>
+          </div>
+
+          <div class="controls-grid">
+            <div>
+              <label>Source Image</label>
+              <div class="smart-drop-zone" id="create-key-image-drop">
+                <button id="create-key-image-btn">Choose Image</button>
+                <span id="create-key-image-name" class="file-name"
+                  >No image chosen</span
+                >
+                <input
+                  type="file"
+                  id="create-key-image-input"
+                  accept="image/*"
+                  class="hidden"
+                />
+              </div>
+
+              <label>Encoding</label>
+              <select id="create-key-encoding">
+                <option value="base64" selected>Base64</option>
+                <option value="raw">Raw</option>
+              </select>
+
+              <label>Border Width (px)</label>
+              <input
+                type="number"
+                id="create-key-border-width"
+                value="1"
+                min="0"
+              />
+            </div>
+            <div>
+              <label>Min Width (px)</label>
+              <input
+                type="number"
+                id="create-key-min-width"
+                value="256"
+                min="16"
+              />
+
+              <label>Min Height (px)</label>
+              <input
+                type="number"
+                id="create-key-min-height"
+                value="256"
+                min="16"
+              />
+
+              <label>Aspect Ratio</label>
+              <select id="create-key-aspect-ratio">
+                <option value="undefined" selected>Auto</option>
+                <option value="1">1:1 (Square)</option>
+                <option value="1.7778">16:9</option>
+                <option value="1.3334">4:3</option>
+              </select>
+            </div>
+          </div>
+
+          <button id="encode-key-btn" class="controls-header">
+            Encode Key into Image
+          </button>
+        </div>
+
+        <div id="create-key-result" class="hidden generated-section">
+          <div class="button-row">
+            <button id="download-key-image-btn">Download Key Image</button>
+            <button id="copy-key-string-btn">Copy Key String</button>
+          </div>
+          <img id="key-result-image" class="hidden" />
+        </div>
+      </div>
+
+      <!-- Playback Panel -->
+      <div class="panel panel-centered hidden" id="panel-playback">
+        <div class="smart-drop-zone" id="playback-image-drop">
+          <button id="playback-image-btn">Choose Stega Image</button>
+          <span id="playback-image-name" class="file-name"
+            >No image chosen</span
+          >
+          <input
+            type="file"
+            id="playback-image-input"
+            accept="image/*"
+            class="hidden"
+          />
+        </div>
+
+        <div id="playback-controls" class="hidden controls-header">
+          <div class="section-divider">
+            <label>Decryption Key</label>
+            <select id="playback-key-type">
+              <option value="none" selected>None</option>
+              <option value="string">String</option>
+              <option value="image">Image</option>
+            </select>
+
+            <div id="playback-key-string-container" class="hidden">
+              <label>Key String</label>
+              <input
+                type="text"
+                id="playback-key-string"
+                placeholder="Enter key string"
+              />
+            </div>
+
+            <div id="playback-key-image-container" class="hidden">
+              <label>Key Image</label>
+              <div class="smart-drop-zone" id="playback-key-image-drop">
+                <button id="playback-key-image-btn">Choose Key Image</button>
+                <span id="playback-key-image-name" class="file-name"
+                  >No key image</span
+                >
+                <input
+                  type="file"
+                  id="playback-key-image-input"
+                  accept="image/*"
+                  class="hidden"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="section-divider">
+            <label>Metadata</label>
+            <pre id="playback-metadata">Loading...</pre>
+          </div>
+
+          <div class="button-row">
+            <button id="playback-play-pause-btn">Play</button>
+          </div>
+
+          <div class="image-preview-container">
+            <div class="preview-box">
+              <label>Stega Image</label>
+              <img id="playback-preview-stega" class="pixelated-preview" />
+            </div>
+            <div class="preview-box">
+              <label>Key Image</label>
+              <img id="playback-preview-key" class="pixelated-preview" />
+            </div>
+          </div>
         </div>
       </div>
 

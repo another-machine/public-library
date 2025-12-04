@@ -1,6 +1,8 @@
 import { Encoder } from "./Encoder";
 import { Mixer } from "./Mixer";
 import { AudioEngine } from "./AudioEngine";
+import { CreateKey } from "./CreateKey";
+import { Playback } from "./Playback";
 import {
   StegaCassette,
   loadAudioBuffersFromAudioUrl,
@@ -9,6 +11,8 @@ import {
 const audioEngine = new AudioEngine();
 const encoder = new Encoder();
 const mixer = new Mixer(audioEngine);
+const createKey = new CreateKey();
+const playback = new Playback();
 
 // Global controls
 const playPauseBtn = document.getElementById("play-pause")!;
@@ -46,9 +50,10 @@ globalPitchInput.addEventListener("change", () => {
 });
 
 // View switching
-const viewCreateBtn = document.getElementById("view-create")!;
-const viewMixBtn = document.getElementById("view-mix")!;
+const viewSelect = document.getElementById("view-select") as HTMLSelectElement;
 const panelCreate = document.getElementById("panel-create")!;
+const panelCreateKey = document.getElementById("panel-create-key")!;
+const panelPlayback = document.getElementById("panel-playback")!;
 const panelMix = document.getElementById("panel-mix")!;
 const drawer = document.getElementById("drawer")!;
 const drawerToggle = document.getElementById("drawer-toggle")!;
@@ -68,19 +73,31 @@ document.addEventListener("click", (e) => {
   }
 });
 
-viewCreateBtn.addEventListener("click", () => {
-  panelCreate.classList.remove("hidden");
-  panelMix.classList.add("hidden");
-  viewCreateBtn.classList.add("active");
-  viewMixBtn.classList.remove("active");
-  drawer.classList.remove("open");
-});
+viewSelect.addEventListener("change", () => {
+  const selectedView = viewSelect.value;
 
-viewMixBtn.addEventListener("click", () => {
+  // Hide all panels
   panelCreate.classList.add("hidden");
-  panelMix.classList.remove("hidden");
-  viewCreateBtn.classList.remove("active");
-  viewMixBtn.classList.add("active");
+  panelCreateKey.classList.add("hidden");
+  panelPlayback.classList.add("hidden");
+  panelMix.classList.add("hidden");
+
+  // Show selected panel
+  switch (selectedView) {
+    case "create":
+      panelCreate.classList.remove("hidden");
+      break;
+    case "create-key":
+      panelCreateKey.classList.remove("hidden");
+      break;
+    case "playback":
+      panelPlayback.classList.remove("hidden");
+      break;
+    case "mix":
+      panelMix.classList.remove("hidden");
+      break;
+  }
+
   drawer.classList.remove("open");
 });
 
@@ -169,4 +186,5 @@ if (recordingAddBtn) {
 }
 
 // Set initial state
-viewCreateBtn.click();
+viewSelect.value = "create";
+viewSelect.dispatchEvent(new Event("change"));
