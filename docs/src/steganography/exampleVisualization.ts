@@ -51,6 +51,8 @@ export default async function example() {
     playbackRate: string;
     pixels: number;
     milliseconds: number;
+    samplesPerPixel: string;
+    dimension: string;
   }>({
     form,
     actions: [
@@ -70,33 +72,40 @@ export default async function example() {
         type: "select",
         options: ["8", "16", "24"],
         value: state.bitDepth,
-        name: "Bit Depth",
+        name: "bitDepth",
       },
       sampleRate: {
         type: "range",
         min: 3000,
         max: 48000,
         value: state.sampleRate,
-        name: "Sample Rate",
+        name: "sampleRate",
       },
       playbackRate: {
         type: "select",
         options: ["0.0001", "0.001", "0.01", "0.1", "1", "2"],
         value: state.playbackRate,
-        name: "Playback Rate",
+        name: "playbackRate",
       },
       pixels: {
         type: "number",
         value: 64,
-        name: "Pixels",
+        name: "pixels",
         hidden: true,
       },
       milliseconds: {
         type: "number",
         value: 1,
-        name: "Milliseconds",
+        name: "milliseconds",
         hidden: true,
       },
+      samplesPerPixel: {
+        type: "text",
+        value: "1 sample",
+        hidden: true,
+        name: "samplesPerPixel",
+      },
+      dimension: { type: "text", value: "8", hidden: true, name: "dimension" },
     },
     onInput: async (values, changed) => {
       state.bitDepth = values.bitDepth;
@@ -106,6 +115,18 @@ export default async function example() {
         setValue(
           "pixels",
           values.bitDepth === "24" ? 64 : values.bitDepth === "16" ? 43 : 22
+        );
+        setValue(
+          "samplesPerPixel",
+          values.bitDepth === "24"
+            ? "1 sample"
+            : values.bitDepth === "16"
+            ? "1.5 samples"
+            : "3 samples"
+        );
+        setValue(
+          "dimension",
+          values.bitDepth === "24" ? "8" : values.bitDepth === "16" ? "7" : "5"
         );
       }
       if (changed.includes("sampleRate")) {

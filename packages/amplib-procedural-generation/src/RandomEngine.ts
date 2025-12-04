@@ -10,8 +10,8 @@ export class RandomEngine {
   private _size: number;
 
   constructor({ seed, size }: RandomEngineParams) {
-    this.setSeed(seed);
-    this.setSize(size);
+    this._seed = seed;
+    this._size = size;
     this.setPerlinCores();
     this.random(0);
   }
@@ -42,16 +42,6 @@ export class RandomEngine {
     return this.random(0);
   }
 
-  setSeed(seed: string) {
-    this._seed = seed;
-    return this.random(0);
-  }
-
-  setSize(size: number) {
-    this._size = size;
-    return this.random(0);
-  }
-
   private setPerlinCores() {
     this._perlinCores.splice(0, this._perlinCores.length);
     for (let i = 0; i < this._size; i++) {
@@ -77,7 +67,7 @@ class RandomEngineCoreSFC {
     );
   }
 
-  private xmur3(str) {
+  private xmur3(str: string) {
     for (var i = 0, h = 1779033703 ^ str.length; i < str.length; i++)
       (h = Math.imul(h ^ str.charCodeAt(i), 3432918353)),
         (h = (h << 13) | (h >>> 19));
@@ -88,7 +78,7 @@ class RandomEngineCoreSFC {
     };
   }
 
-  private sfc32(a, b, c, d) {
+  private sfc32(a: number, b: number, c: number, d: number) {
     return function () {
       a >>>= 0;
       b >>>= 0;

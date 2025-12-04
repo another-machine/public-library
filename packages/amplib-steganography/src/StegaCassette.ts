@@ -1,3 +1,5 @@
+import { PermutationEngine } from "../../amplib-procedural-generation/src";
+import * as Stega64 from "./Stega64";
 import * as StegaMetadata from "./StegaMetadata";
 import {
   createCanvasAndContext,
@@ -43,6 +45,13 @@ interface BaseEncodeOptions {
   aspectRatio?: number;
   borderWidth?: number;
   music?: { bpm: number; semitones: number };
+  /**
+   * Optional encryption key. Can be a string or an image containing Stega64-encoded text.
+   * When provided, audio samples are scrambled using a deterministic permutation derived from the key.
+   * The encoded image will be visually identical and playable, but will sound like noise without the correct key.
+   * The same key can be used across multiple tracks (e.g., album-wide encryption).
+   */
+  key?: string | HTMLImageElement | HTMLCanvasElement;
 }
 
 export type EncodeOptions = BaseEncodeOptions &
@@ -56,6 +65,12 @@ interface BaseDecodeOptions {
   channels: StegaCassetteChannels;
   encoding: StegaCassetteEncoding;
   borderWidth?: number;
+  /**
+   * Optional decryption key. Must match the key used during encoding.
+   * Can be a string or an image containing Stega64-encoded text.
+   * If the key doesn't match, the decoded audio will be scrambled noise.
+   */
+  key?: string | HTMLImageElement | HTMLCanvasElement;
 }
 
 export type DecodeOptions = BaseDecodeOptions &
@@ -88,6 +103,7 @@ export function encode(
     aspectRatio,
     borderWidth = 0,
     music,
+    key,
   } = options;
 
   if (options.sources) {
@@ -120,8 +136,30 @@ export function encode(
   const source = options.source;
 
   const stereo = audioBuffers.length > 1;
-  const leftChannel = audioBuffers[0];
-  const rightChannel = stereo ? audioBuffers[1] : audioBuffers[0];
+  let leftChannel = audioBuffers[0];
+  let rightChannel = stereo ? audioBuffers[1] : audioBuffers[0];
+
+  // Apply key-based permutation if key is provided
+  if (key) {
+    const keyString = extractKeyString(key);
+    const leftPermutation = new PermutationEngine({
+      seed: keyString,
+      length: leftChannel.length,
+    });
+    leftChannel = new Float32Array(
+      leftPermutation.permute(Array.from(leftChannel))
+    );
+
+    if (stereo) {
+      const rightPermutation = new PermutationEngine({
+        seed: keyString,
+        length: rightChannel.length,
+      });
+      rightChannel = new Float32Array(
+        rightPermutation.permute(Array.from(rightChannel))
+      );
+    }
+  }
 
   const samples =
     audioBuffers.length * Math.max(...audioBuffers.map((a) => a.length));
@@ -426,7 +464,7 @@ export function encode(
 }
 
 export function decode(options: DecodeOptions): Float32Array[] {
-  const { encoding, bitDepth, channels = 1, borderWidth = 0 } = options;
+  const { encoding, bitDepth, channels = 1, borderWidth = 0, key } = options;
 
   if (options.sources) {
     const source = options.sources;
@@ -597,9 +635,34 @@ export function decode(options: DecodeOptions): Float32Array[] {
     }
   }
 
-  return stereo
-    ? [new Float32Array(leftSamples), new Float32Array(rightSamples)]
-    : [new Float32Array(leftSamples)];
+  let leftResult = new Float32Array(leftSamples);
+  let rightResult = stereo
+    ? new Float32Array(rightSamples)
+    : new Float32Array();
+
+  // Apply inverse permutation if key is provided
+  if (key) {
+    const keyString = extractKeyString(key);
+    const leftPermutation = new PermutationEngine({
+      seed: keyString,
+      length: leftResult.length,
+    });
+    leftResult = new Float32Array(
+      leftPermutation.unpermute(Array.from(leftResult))
+    );
+
+    if (stereo) {
+      const rightPermutation = new PermutationEngine({
+        seed: keyString,
+        length: rightResult.length,
+      });
+      rightResult = new Float32Array(
+        rightPermutation.unpermute(Array.from(rightResult))
+      );
+    }
+  }
+
+  return stereo ? [leftResult, rightResult] : [leftResult];
 }
 
 function encodeAdditive(
@@ -901,6 +964,43 @@ function splitQuartersIndicesFromIndexGenerator(
       sourceIndexNext,
     };
   };
+}
+
+/**
+ * Extract a key string from either a string or an image with Stega64-encoded key.
+ * For string keys: use directly
+ * For image keys: decode the hidden string using Stega64 with metadata
+ * Security comes from the entropy of the string itself - a long random string
+ * provides vastly more security than multiple rounds of short seeds.
+ */
+function extractKeyString(
+  key: string | HTMLImageElement | HTMLCanvasElement
+): string {
+  if (typeof key === "string") {
+    return key;
+  }
+
+  // Extract string from image using Stega64
+  try {
+    const metadata = StegaMetadata.decode({ source: key });
+    if (metadata?.type === StegaMetadata.StegaContentType.STRING) {
+      const decoded = Stega64.decode({
+        source: key,
+        encoding: metadata.encoding,
+        borderWidth: metadata.borderWidth,
+      });
+      if (decoded && decoded.length > 0) {
+        // Join all decoded messages into one long key string
+        return decoded.join("");
+      }
+    }
+  } catch (e) {
+    // If decoding fails, throw error
+  }
+
+  throw new Error(
+    "Invalid key: Image must contain Stega64-encoded string data"
+  );
 }
 
 function solidIndicesFromIndexGenerator(

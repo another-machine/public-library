@@ -129,3 +129,94 @@ Finally, we can add a **Border**.
 - **What it is:** A visual margin around the edge of the image and for some tiling patterns, the inner gap.
 - **Function:** No data is written here except metadata in the outer most 1 pixel border. The rest of the border pixels remain 100% original.
 - **Why use it?** We need at least a one pixel border to store metadata about the encoding approach used (encoding, borderWidth) and the audio that is stored inside (sampleRate, bitDepth, channels, bpm, step). Metadata is not required, but it can be automatically decoded if provided. Visually, borders can frame the "noise" in a compelling way.
+
+---
+
+## 7. Encryption via Key-Based Permutation
+
+StegaCassette supports **optional encryption** through a key parameter. When a key is provided, the audio samples are scrambled using a deterministic permutation before being encoded into the image. Without the correct key, the decoded audio will be unrecognizable noise.
+
+### How It Works
+
+- **Permutation-Based Encryption:** The audio buffer is shuffled using the Fisher-Yates algorithm with a seeded random number generator.
+- **Single-Round:** Only one permutation pass is performed (O(n) complexity), keeping the operation fast.
+- **Deterministic:** The same key always produces the same permutation, ensuring reliable decoding.
+
+### Key Types
+
+#### String Keys
+
+- **Usage:** Pass a string directly as the `key` parameter.
+- **Security:** A long random string (100+ characters) provides excellent security. For example, a 128-character random string has ~10^200+ possible combinations.
+- **Best for:** Memorable passphrases or programmatically generated keys.
+
+```typescript
+const encrypted = StegaCassette.encode({
+  source,
+  audioBuffers,
+  sampleRate: 48000,
+  bitDepth: 24,
+  encoding: "difference",
+  key: "my-secret-passphrase-with-lots-of-entropy-12345",
+});
+```
+
+#### Image Keys
+
+- **Usage:** Pass an `HTMLImageElement` or `HTMLCanvasElement` that contains a Stega64-encoded string.
+- **Requirement:** The image must have been encoded with **Stega64** (not StegaCassette) and contain **STRING** type data with metadata.
+- **Security:** The longer the hidden string in the image, the stronger the encryption.
+- **Best for:** Storing complex, high-entropy keys that don't need to be memorized.
+
+```typescript
+// First, create a key image by encoding a long random string
+const keyImage = Stega64.encode({
+  source: someImage,
+  messages: ["a-very-long-random-string-with-256-characters-of-entropy..."],
+  encoding: "base64",
+  encodeMetadata: true,
+});
+
+// Then use that image as the encryption key
+const encrypted = StegaCassette.encode({
+  source,
+  audioBuffers,
+  sampleRate: 48000,
+  bitDepth: 24,
+  encoding: "difference",
+  key: keyImage,
+});
+```
+
+### Decoding with Keys
+
+To decode encrypted audio, you must provide the **exact same key** used during encoding:
+
+```typescript
+const decrypted = StegaCassette.decode({
+  source: encryptedImage,
+  bitDepth: 24,
+  channels: 2,
+  encoding: "difference",
+  key: "my-secret-passphrase-with-lots-of-entropy-12345",
+});
+
+// Or with an image key
+const decrypted = StegaCassette.decode({
+  source: encryptedImage,
+  bitDepth: 24,
+  channels: 2,
+  encoding: "difference",
+  key: keyImage,
+});
+```
+
+**Without the correct key**, the decoded audio will be scrambled and sound like random noise. The permutation is irreversible without knowing the seed.
+
+### Why Single-Round is Secure
+
+Unlike password hashing (which needs to be slow), encryption permutations benefit from long keys rather than multiple rounds. A 100-character random string already provides more security than 16 rounds of a 32-bit seed. The single-round approach:
+
+- ✅ **Fast:** O(n) time complexity - minimal performance impact
+- ✅ **Secure:** Long keys provide exponential security (10^150+ combinations)
+- ✅ **Efficient:** No need for multiple passes through large audio buffers

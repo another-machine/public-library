@@ -210,14 +210,25 @@ section {
     margin-top: var(--vertical-spacing);
   }
 
+  h2:not(:first-child) {
+    margin-top: calc(var(--vertical-spacing) * 0.5);
+  }
+
   h2,
   h3,
   p {
     width: 100%;
   }
 
+  p {
+    font-style: italic;
+    font-size: 1.2rem;
+  }
+
   p code {
     color: var(--color-accent);
+    font-style: normal;
+    font-size: 1rem;
   }
 
   aside,
@@ -248,6 +259,37 @@ section {
       > img,
       > canvas {
         width: calc(50% - 0.5rem);
+      }
+    }
+
+    &.hidden {
+      display: none;
+    }
+
+    figcaption {
+      font-style: italic;
+
+      &:first-child {
+        margin-bottom: calc(0.5 * var(--gap));
+      }
+      &:last-child {
+        margin-top: calc(0.5 * var(--gap));
+      }
+    }
+
+    &.square {
+      align-items: start;
+      flex-direction: column-reverse;
+      text-align: left;
+
+      figcaption {
+        margin-top: calc(0.5 * var(--gap));
+        margin-bottom: 0;
+      }
+
+      > canvas {
+        aspect-ratio: 1;
+        height: auto;
       }
     }
   }
@@ -320,5 +362,35 @@ section {
     [data-output] {
       color: var(--color-accent);
     }
+  }
+}
+
+#viz-full-waveform {
+  height: 100px;
+  width: 100%;
+}
+.visualization-container {
+  display: flex;
+  align-items: end;
+  gap: var(--gap);
+  width: 100%;
+
+  figure {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+    gap: 0;
+    margin: 0;
+    width: 100%;
+
+    > canvas {
+      height: 100px;
+      width: 100% !important;
+    }
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
   }
 }

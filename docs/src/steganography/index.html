@@ -91,11 +91,11 @@ const result = StegaCassette.encode({
   borderWidth: <span data-value="borderWidth"></span>
 });</code></pre>
 
-        <form></form>
+        <form id="form-basic"></form>
 
         <img class="source" src="./lovetakesmiles.jpg" style="display: none" />
         <figure><img src="./example.jpg" /></figure>
-        <figure></figure>
+        <figure id="output-basic"></figure>
         <audio src="./example.mp3"></audio>
 
         <p>
@@ -121,66 +121,74 @@ const audio = await <a href="#play-decoded-audio-buffers">playDecodedAudioBuffer
   audioContext,
   sampleRate: metadata.sampleRate || <span data-value="sampleRate"></span>,
 });</code></pre>
+
+        <h2>Splitting audio across multiple images</h2>
+        <p>
+          <code>StegaCassette</code> can split audio data across multiple images
+          using the <code>sources</code> parameter for encoding and decoding. To
+          properly play back the audio, all images must be provided in the right
+          order. They can still be heard when provided partially (will sound
+          sped up depending on how many samples are missing) or in the wrong
+          order (will sound distored).
+        </p>
+        <pre><code>const result = StegaCassette.encode({
+  <span data-value="sourceEncodeRepresentation"></span>,
+  audioBuffers,
+  sampleRate: <span data-value="sampleRate"></span>,
+  bitDepth: <span data-value="bitDepth"></span>,
+  encoding: "<span data-value="encoding"></span>",
+});
+
+const audioBuffers = StegaCassette.decode({
+  <span data-value="sourceDecodeRepresentation"></span>,
+  bitDepth: <span data-value="bitDepth"></span>,
+  channels: <span data-value="channels"></span>,
+  encoding: "<span data-value="encoding"></span>",
+});</code></pre>
+
+        <form id="form-split"></form>
+
+        <figure id="output-split"></figure>
+
+        <h2>Obfuscating the data</h2>
+        <p>
+          <code>StegaCassette</code> encodes audio with a
+          <code>key</code> parameter to apply permutation-based encryption,
+          making the audio unplayable without the correct key. Keys can be
+          strings or <code>StegaMetadataString</code> images. You can use
+          <code>Stega64</code> to create these.
+        </p>
+        <pre><code>const result = StegaCassette.encode({
+  source,
+  audioBuffers,
+  sampleRate: <span data-value="sampleRate"></span>,
+  bitDepth: <span data-value="bitDepth"></span>,
+  encoding: "<span data-value="encoding"></span>",
+  key: <span data-value="keyRepresentation"></span>
+});
+
+const audioBuffers = StegaCassette.decode({
+  source,
+  bitDepth: <span data-value="bitDepth"></span>,
+  channels: <span data-value="channels"></span>,
+  encoding: "<span data-value="encoding"></span>",
+  key: <span data-value="keyRepresentation"></span>
+});</code></pre>
+
+        <form id="form-obfuscation"></form>
+
+        <figure id="output-obfuscation"></figure>
+        <figure id="key-image-display" class="hidden square">
+          <figcaption>Key Image</figcaption>
+        </figure>
       </section>
 
       <section id="example-visualization">
-        <style>
-          #viz-full-waveform {
-            height: 100px;
-            width: 100%;
-          }
-          .visualization-container {
-            display: flex;
-            align-items: end;
-            gap: var(--gap);
-            width: 100%;
-
-            figure {
-              display: flex;
-              flex-direction: column;
-              align-items: start;
-              gap: 0;
-              margin: 0;
-              width: 100%;
-              > figcaption {
-                font-style: italic;
-
-                &:first-child {
-                  margin-bottom: calc(0.5 * var(--gap));
-                }
-                &:last-child {
-                  margin-top: calc(0.5 * var(--gap));
-                }
-              }
-              > canvas {
-                height: 100px;
-                width: 100% !important;
-              }
-            }
-            .stack {
-              display: flex;
-              flex-direction: column;
-              flex-grow: 1;
-              /* gap: var(--gap); */
-            }
-
-            &.squares {
-              figure {
-                flex-direction: column-reverse;
-                figcaption {
-                  margin-top: calc(0.5 * var(--gap));
-                  margin-bottom: 0;
-                }
-              }
-              figure > canvas {
-                aspect-ratio: 1;
-                height: auto;
-                /* width: 100px !important; */
-              }
-            }
-          }
-        </style>
         <h2>Encoding audio waveforms in image pixels.</h2>
+        <p>
+          This is a demonstration of how waveforms are stored inside of pixels
+          using <code>StegaCassette</code>.
+        </p>
         <audio src="./example-mono-24bit-48khz-765731.wav"></audio>
         <div class="left-side">
           <div class="visualization-container">
@@ -195,30 +203,38 @@ const audio = await <a href="#play-decoded-audio-buffers">playDecodedAudioBuffer
             <div class="stack">
               <figure>
                 <figcaption>
-                  64 sample waveform (<strong
-                    ><span data-value="milliseconds">1.3</span>ms</strong
-                  >
-                  of audio)
+                  <strong>64 sample</strong> waveform |
+                  <strong><span data-value="milliseconds">1.3</span>ms</strong>
+                  of audio
                 </figcaption>
                 <canvas id="viz-waveform-64"></canvas>
                 <canvas id="viz-lines-64"></canvas>
                 <figcaption>
-                  64 sample waveform as
+                  <strong><span data-value="bitDepth">24</span>-bit</strong> |
                   <strong><span data-value="pixels">64</span> colors</strong>
+                  with red, green, and blue channels separated above |
+                  <strong
+                    ><span data-value="samplesPerPixel">1 sample</span></strong
+                  >
+                  per pixel
                 </figcaption>
               </figure>
             </div>
           </div>
-          <div class="visualization-container squares">
-            <figure>
+          <div class="visualization-container">
+            <figure class="square">
               <figcaption>
-                64 sample waveform as
-                <strong><span data-value="pixels">64</span> colors</strong> in
-                grid
+                <strong>64 sample</strong> waveform as a
+                <strong
+                  ><span data-value="dimension">8</span>&times;<span
+                    data-value="dimension"
+                    >8</span
+                  >px image</strong
+                >
               </figcaption>
               <canvas id="viz-pixels-64"></canvas>
             </figure>
-            <figure id="viz-source-encoded">
+            <figure class="square" id="viz-source-encoded">
               <figcaption>Source waveform encoded into image</figcaption>
             </figure>
           </div>
@@ -298,7 +314,7 @@ interface StegaMetadataRobust {
       </section>
 
       <section id="stega-animator">
-        <h2>Animate stegonographic image</h2>
+        <h2>Animate steganographic image</h2>
         <p>
           <code
             >new StegaAnimator({ resolution: number; source: HTMLImageElement |
