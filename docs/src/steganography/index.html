@@ -505,8 +505,10 @@ createDropReader({
         <p>
           <code
             >createFileReader({ element: HTMLInputElement; onSuccess: (element:
-            HTMLImageElement | HTMLAudioElement) => void; onFailure?: (message:
-            string) => void; types?: (AudioType | ImageType)[]; }): void</code
+            HTMLImageElement | HTMLAudioElement) => void; onBinarySuccess?:
+            (result: { data: Uint8Array; mimeType: string; fileName: string })
+            => void; onFailure?: (message: string) => void; types?: (AudioType |
+            ImageType | VideoType | "*/*")[]; }): void</code
           >
         </p>
         <pre><code>const element = document.createElement("input");
@@ -515,6 +517,64 @@ createFileReader({
   onSuccess: (image) => document.body.appendChild(image),
   onFailure: (message) => console.error(message),
   types: ["image/*"]
+});
+
+// Or for binary data (any file type)
+createFileReader({
+  element,
+  onBinarySuccess: ({ data, mimeType, fileName }) => {
+    console.log(`Loaded ${fileName} (${mimeType}): ${data.length} bytes`);
+  },
+  types: ["*/*"]
+});</code></pre>
+      </section>
+
+      <section>
+        <h2>Read a file as binary bytes</h2>
+        <p>
+          <code
+            >readFileAsBytes({ file: File }): Promise&lt;{ data: Uint8Array;
+            mimeType: string; fileName: string }></code
+          >
+        </p>
+        <pre><code>const input = document.createElement("input");
+input.type = "file";
+input.onchange = async () => {
+  const file = input.files[0];
+  const { data, mimeType, fileName } = await readFileAsBytes({ file });
+  console.log(`Read ${fileName} (${mimeType}): ${data.length} bytes`);
+};</code></pre>
+      </section>
+
+      <section>
+        <h2>Convert binary data to a Blob URL</h2>
+        <p>
+          <code
+            >bytesToBlobUrl({ data: Uint8Array; mimeType: string }):
+            string</code
+          >
+        </p>
+        <pre><code>const url = bytesToBlobUrl({ data: myBytes, mimeType: "image/png" });
+const img = document.createElement("img");
+img.src = url;
+document.body.appendChild(img);
+
+// Remember to revoke when done
+URL.revokeObjectURL(url);</code></pre>
+      </section>
+
+      <section>
+        <h2>Download binary data as a file</h2>
+        <p>
+          <code
+            >downloadBytes({ data: Uint8Array; mimeType: string; fileName:
+            string }): void</code
+          >
+        </p>
+        <pre><code>downloadBytes({
+  data: myBytes,
+  mimeType: "application/pdf",
+  fileName: "document.pdf"
 });</code></pre>
       </section>
     </main>
