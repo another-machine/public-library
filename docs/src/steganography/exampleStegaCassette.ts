@@ -377,20 +377,6 @@ export default async function example() {
           },
         },
         {
-          name: "Clear Key Image",
-          action: async () => {
-            keyImage = null;
-            keyImageDisplay.classList.add("hidden");
-            keyImageDisplay.innerHTML = "<figcaption>Key Image</figcaption>";
-            const key = obfuscationValues.key || undefined;
-            setObfuscationValue(
-              "keyRepresentation",
-              key ? `"${obfuscationValues.key}"` : "undefined"
-            );
-            runObfuscation(obfuscationValues);
-          },
-        },
-        {
           name: "Play Audio",
           action: async (element) => {
             if (element.getAttribute("data-playing")) {

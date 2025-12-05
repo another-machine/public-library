@@ -257,7 +257,7 @@ section {
       width: 100%;
     }
 
-    &:has(:nth-child(2)) {
+    &:has(:nth-of-type(2)) {
       > img,
       > canvas {
         width: calc(50% - 0.5rem);
@@ -270,7 +270,11 @@ section {
 
     figcaption {
       font-style: italic;
+      width: 100%;
 
+      &:only-child {
+        display: none;
+      }
       &:first-child {
         margin-bottom: calc(0.5 * var(--gap));
       }
@@ -394,5 +398,12 @@ section {
     display: flex;
     flex-direction: column;
     flex-grow: 1;
+  }
+}
+
+#example-stega-binary {
+  figure {
+    flex-direction: column-reverse;
+    width: calc(33.333% - var(--gap));
   }
 }

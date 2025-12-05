@@ -362,12 +362,20 @@ export function createFileReader({
   element,
   onSuccess,
   onFailure,
+  onBinarySuccess,
   types = ["audio/*", "image/*"],
 }: {
   element: HTMLInputElement;
-  onSuccess: (image: HTMLAudioElement | HTMLImageElement) => void;
+  /** Called when an audio or image file is loaded (legacy behavior) */
+  onSuccess?: (element: HTMLAudioElement | HTMLImageElement) => void;
   onFailure?: (message: string) => void;
-  types?: (AudioType | ImageType | VideoType)[];
+  /** Called when any file is loaded as binary data with its mime type */
+  onBinarySuccess?: (result: {
+    data: Uint8Array;
+    mimeType: string;
+    fileName: string;
+  }) => void;
+  types?: (AudioType | ImageType | VideoType | "*/*")[];
 }) {
   element.accept = types.join(", ");
   element.type = "file";
@@ -375,10 +383,19 @@ export function createFileReader({
     event.preventDefault();
     const file = element.files?.item(0);
     if (file) {
-      if (file.type.match("image")) {
-        handleImageFile({ file, onSuccess, onFailure });
-      } else {
-        handleAudioFile({ file, onSuccess, onFailure });
+      // If onBinarySuccess is provided, read file as binary
+      if (onBinarySuccess) {
+        readFileAsBytes({ file })
+          .then((result) => onBinarySuccess(result))
+          .catch((error) => onFailure?.(error.message));
+      }
+      // Legacy behavior: load as audio/image element
+      if (onSuccess) {
+        if (file.type.match("image")) {
+          handleImageFile({ file, onSuccess, onFailure });
+        } else {
+          handleAudioFile({ file, onSuccess, onFailure });
+        }
       }
     }
   });
@@ -434,6 +451,67 @@ function handleImageFile({
 }
 
 /**
+ * Read a file as binary bytes and return the data with mime type.
+ */
+export function readFileAsBytes({
+  file,
+}: {
+  file: File;
+}): Promise<{ data: Uint8Array; mimeType: string; fileName: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsArrayBuffer(file);
+    reader.onloadend = () => {
+      if (reader.result instanceof ArrayBuffer) {
+        resolve({
+          data: new Uint8Array(reader.result),
+          mimeType: file.type || "application/octet-stream",
+          fileName: file.name,
+        });
+      } else {
+        reject(new Error(`Could not read file ${file.name} as binary`));
+      }
+    };
+    reader.onerror = () =>
+      reject(new Error(`Could not load file ${file.name}`));
+  });
+}
+
+/**
+ * Convert a Uint8Array to a Blob URL for download or preview.
+ */
+export function bytesToBlobUrl({
+  data,
+  mimeType,
+}: {
+  data: Uint8Array;
+  mimeType: string;
+}): string {
+  const blob = new Blob([new Uint8Array(data)], { type: mimeType });
+  return URL.createObjectURL(blob);
+}
+
+/**
+ * Download binary data as a file.
+ */
+export function downloadBytes({
+  data,
+  mimeType,
+  fileName,
+}: {
+  data: Uint8Array;
+  mimeType: string;
+  fileName: string;
+}): void {
+  const url = bytesToBlobUrl({ data, mimeType });
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Draw an image on a canvas with "center" position and "cover" fit.
  */
 export function fillCanvasWithImage(
@@ -471,7 +549,7 @@ export function dimensionsFromSource(
 export function imageOrCanvasIsImage(
   imageOrCanvas: HTMLImageElement | HTMLCanvasElement
 ): imageOrCanvas is HTMLImageElement {
-  return imageOrCanvas.tagName === "IMAGE";
+  return imageOrCanvas.tagName === "IMG";
 }
 
 export async function loadAudioBuffersFromAudioUrl({

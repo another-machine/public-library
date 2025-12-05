@@ -262,13 +262,17 @@ const audioBuffers = StegaCassette.decode({
   STRING = 1,
   ROBUST = 2,
   MUSIC = 3,
+  BINARY = 4,
+  KEY = 5,
 }
 
 type StegaMetadata =
   | StegaMetadataAudio
   | StegaMetadataString
   | StegaMetadataRobust
-  | StegaMetadataMusic;
+  | StegaMetadataMusic
+  | StegaMetadataBinary
+  | StegaMetadataKey;
 
 interface StegaMetadataAudio {
   type: StegaContentType.AUDIO;
@@ -297,7 +301,20 @@ interface StegaMetadataRobust {
   redundancyLevel: number;
   messageCount: number;
   blockSize: 2 | 4;
-    encoding: "hex" | "base16";
+  encoding: "hex" | "base16";
+}
+
+interface StegaMetadataBinary {
+  type: StegaContentType.BINARY;
+  dataLength: number;
+  borderWidth: number;
+  sessionId: number; // 0 = keyless, non-zero = requires matching key
+}
+
+interface StegaMetadataKey {
+  type: StegaContentType.KEY;
+  borderWidth: number;
+  sessionId: number;
 }</code></pre>
       </section>
 
@@ -311,6 +328,64 @@ interface StegaMetadataRobust {
           <button type="button" class="play-audio" disabled>Play Audio</button>
         </form>
         <figure></figure>
+      </section>
+
+      <section id="example-stega-binary">
+        <h2>StegaBinary encodes arbitrary binary data into images.</h2>
+        <p>
+          <code
+            >StegaBinary.encode({ source: HTMLImageElement | HTMLCanvasElement;
+            data: Uint8Array; mimeType: string; borderWidth?: number;
+            aspectRatio?: number; key?: boolean | HTMLImageElement |
+            HTMLCanvasElement; sessionId?: number; }): EncodeResult</code
+          >
+        </p>
+        <pre><code>const fileBytes; // <span data-value="fileSize">0</span> bytes from "<span data-value="fileName">select a file</span>"
+
+const { key, encoded, sessionId } = StegaBinary.encode({
+  source,
+  data: fileBytes,
+  mimeType: "<span data-value="fileMimeType">application/octet-stream</span>",
+  borderWidth: <span data-value="borderWidth">1</span>,
+  aspectRatio: <span data-value="aspectRatio">undefined</span>,
+  key: <span data-value="keyParam"></span> <span data-value="codeComment">// source image is also the key</span>
+});</code></pre>
+
+        <form></form>
+
+        <figure>
+          <figcaption>Source Image</figcaption>
+          <img src="./example.jpg" />
+        </figure>
+        <figure class="hidden">
+          <!-- Custom Key Source - populated by JS in custom key but still hidden -->
+        </figure>
+        <figure id="output-key-container">
+          <figcaption>Key Image</figcaption>
+        </figure>
+        <figure id="output-encoded-container">
+          <figcaption>Encoded Image</figcaption>
+        </figure>
+
+        <p>
+          <code
+            >StegaBinary.decode({ encoded: HTMLImageElement | HTMLCanvasElement;
+            key?: HTMLImageElement | HTMLCanvasElement; }): { mimeType: string;
+            data: Uint8Array; }</code
+          >
+        </p>
+        <pre><code>// Decode with key (for keyed or custom key)
+const { mimeType, data } = StegaBinary.decode({ encoded, key });
+
+// Decode keyless (sessionId = 0)
+const { mimeType, data } = StegaBinary.decode({ encoded });
+
+// Download decoded binary data as a file
+downloadBytes({ data, mimeType, fileName: "<span data-value="fileName">decoded.bin</span>" });</code></pre>
+
+        <pre
+          id="output-decoded"
+        ><code>Decoded output will appear here</code></pre>
       </section>
 
       <section id="stega-animator">

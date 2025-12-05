@@ -18,6 +18,8 @@ export enum StegaContentType {
   STRING = 1,
   ROBUST = 2,
   MUSIC = 3,
+  BINARY = 4,
+  KEY = 5,
 }
 
 export interface StegaMetadataAudio {
@@ -91,11 +93,35 @@ const metadataRobustEncoding: StegaMetadataRobust["encoding"][] = [
   "base16",
 ];
 
+/**
+ * Binary metadata for arbitrary file storage.
+ * sessionId of 0 indicates "keyless" mode (decodes from black pixels).
+ * Non-zero sessionId indicates sidecar key mode.
+ */
+export interface StegaMetadataBinary {
+  type: StegaContentType.BINARY;
+  dataLength: number; // Total payload length including mimeType and null terminator
+  borderWidth: number;
+  sessionId: number; // 0 = keyless, non-zero = requires matching key
+}
+
+/**
+ * Key metadata for sidecar key images.
+ * sessionId must match the corresponding BINARY image's sessionId.
+ */
+export interface StegaMetadataKey {
+  type: StegaContentType.KEY;
+  borderWidth: number;
+  sessionId: number;
+}
+
 export type StegaMetadata =
   | StegaMetadataAudio
   | StegaMetadataString
   | StegaMetadataRobust
-  | StegaMetadataMusic;
+  | StegaMetadataMusic
+  | StegaMetadataBinary
+  | StegaMetadataKey;
 
 function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
   const sequence: number[] = [];
@@ -157,6 +183,35 @@ function convertMetadataToNumericSequence(metadata: StegaMetadata): number[] {
       sequence.push(metadataRobustBlockSize.indexOf(metadata.blockSize));
       // Encoding (1 byte)
       sequence.push(metadataRobustEncoding.indexOf(metadata.encoding));
+      break;
+    }
+
+    case StegaContentType.BINARY: {
+      // Data length (4 bytes)
+      sequence.push((metadata.dataLength >> 24) & 0xff);
+      sequence.push((metadata.dataLength >> 16) & 0xff);
+      sequence.push((metadata.dataLength >> 8) & 0xff);
+      sequence.push(metadata.dataLength & 0xff);
+      // Border width (2 bytes)
+      sequence.push((metadata.borderWidth >> 8) & 0xff);
+      sequence.push(metadata.borderWidth & 0xff);
+      // Session ID (4 bytes) - 0 means keyless
+      sequence.push((metadata.sessionId >> 24) & 0xff);
+      sequence.push((metadata.sessionId >> 16) & 0xff);
+      sequence.push((metadata.sessionId >> 8) & 0xff);
+      sequence.push(metadata.sessionId & 0xff);
+      break;
+    }
+
+    case StegaContentType.KEY: {
+      // Border width (2 bytes)
+      sequence.push((metadata.borderWidth >> 8) & 0xff);
+      sequence.push(metadata.borderWidth & 0xff);
+      // Session ID (4 bytes)
+      sequence.push((metadata.sessionId >> 24) & 0xff);
+      sequence.push((metadata.sessionId >> 16) & 0xff);
+      sequence.push((metadata.sessionId >> 8) & 0xff);
+      sequence.push(metadata.sessionId & 0xff);
       break;
     }
   }
@@ -255,6 +310,42 @@ function convertNumericSequenceToMetadata(sequence: number[]): StegaMetadata {
         messageCount,
         blockSize,
         encoding,
+      };
+    }
+
+    case StegaContentType.BINARY: {
+      const dataLength =
+        (sequence[1] << 24) |
+        (sequence[2] << 16) |
+        (sequence[3] << 8) |
+        sequence[4];
+      const borderWidth = (sequence[5] << 8) | sequence[6];
+      const sessionId =
+        (sequence[7] << 24) |
+        (sequence[8] << 16) |
+        (sequence[9] << 8) |
+        sequence[10];
+
+      return {
+        type: StegaContentType.BINARY,
+        dataLength,
+        borderWidth,
+        sessionId,
+      };
+    }
+
+    case StegaContentType.KEY: {
+      const borderWidth = (sequence[1] << 8) | sequence[2];
+      const sessionId =
+        (sequence[3] << 24) |
+        (sequence[4] << 16) |
+        (sequence[5] << 8) |
+        sequence[6];
+
+      return {
+        type: StegaContentType.KEY,
+        borderWidth,
+        sessionId,
       };
     }
 
