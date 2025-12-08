@@ -350,12 +350,6 @@ export function decode(options: DecodeOptions): DecodeResult {
   // Get dimensions
   const { width: encodedWidth, height: encodedHeight } =
     dimensionsFromSource(encoded);
-  console.log(
-    "StegaBinary.decode - encoded dimensions:",
-    encodedWidth,
-    "x",
-    encodedHeight
-  );
 
   // Create canvas for encoded image
   const { canvas: encodedCanvas, context: encodedContext } =

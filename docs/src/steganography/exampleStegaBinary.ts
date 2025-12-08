@@ -2,7 +2,6 @@ import {
   StegaBinary,
   StegaKey,
   StegaMetadata,
-  createFileReader,
   downloadBytes,
   bytesToBlobUrl,
 } from "../../../packages/amplib-steganography/src";
@@ -95,6 +94,29 @@ export default async function example() {
     return map[mimeType] || ".bin";
   }
 
+  // Create hidden file input once and add to DOM (Safari requires this)
+  const fileInput = document.createElement("input");
+  fileInput.type = "file";
+  fileInput.style.display = "none";
+  section.appendChild(fileInput);
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files?.item(0);
+    if (file) {
+      file.arrayBuffer().then((buffer) => {
+        fileData = {
+          bytes: new Uint8Array(buffer),
+          mimeType: file.type || "application/octet-stream",
+          name: file.name,
+        };
+        updateDataValue("fileName", file.name);
+        updateDataValue("fileMimeType", fileData.mimeType);
+        updateDataValue("fileSize", fileData.bytes.length);
+        run(values);
+      });
+    }
+  });
+
   const { values } = createForm<FormData>({
     form,
     inputs: {
@@ -116,25 +138,8 @@ export default async function example() {
     actions: [
       {
         name: "Choose File",
-        action: async () => {
-          const input = document.createElement("input");
-          input.type = "file";
-          createFileReader({
-            element: input,
-            onBinarySuccess: (result) => {
-              fileData = {
-                bytes: result.data,
-                mimeType: result.mimeType || "application/octet-stream",
-                name: result.fileName,
-              };
-              updateDataValue("fileName", result.fileName);
-              updateDataValue("fileMimeType", fileData.mimeType);
-              updateDataValue("fileSize", result.data.length);
-              run(values);
-            },
-            types: ["*/*"],
-          });
-          input.click();
+        action: () => {
+          fileInput.click();
         },
       },
       {

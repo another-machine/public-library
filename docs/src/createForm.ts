@@ -58,7 +58,7 @@ export function createForm<T extends Record<string, string | number>>({
     Object.entries(inputs).map(([key, input]) => [key, input.value])
   ) as T;
 
-  const timeouts = new Map<keyof T, number>();
+  const timeouts = new Map<keyof T, ReturnType<typeof setTimeout>>();
 
   function createDebouncedHandler<K extends keyof T>(
     inputKey: K,

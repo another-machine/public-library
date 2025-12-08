@@ -3,7 +3,6 @@ import {
   StegaMetadata,
   loadAudioBuffersFromAudioUrl,
   playDecodedAudioBuffers,
-  createFileReader,
 } from "../../../packages/amplib-steganography/src";
 import { createForm } from "../createForm";
 
@@ -64,6 +63,13 @@ export default async function example() {
   let stopObfuscation = () => {};
   let stopWithoutKey = () => {};
   let keyImage: HTMLImageElement | null = null;
+
+  // Create hidden file input for key image once and add to DOM (Safari requires this)
+  const keyImageInput = document.createElement("input");
+  keyImageInput.type = "file";
+  keyImageInput.accept = "image/*";
+  keyImageInput.style.display = "none";
+  section.appendChild(keyImageInput);
 
   // Basic encoding form
   const { values: basicValues } = createForm<BasicFormData>({
@@ -360,26 +366,8 @@ export default async function example() {
       actions: [
         {
           name: "Add Key Image",
-          action: async () => {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = "image/*";
-            createFileReader({
-              element: input,
-              onSuccess: (img) => {
-                if (img instanceof HTMLImageElement) {
-                  keyImage = img;
-                  keyImageDisplay.classList.remove("hidden");
-                  keyImageDisplay.innerHTML =
-                    "<figcaption>Key Image</figcaption>";
-                  keyImageDisplay.appendChild(img);
-                  setObfuscationValue("keyRepresentation", "HTMLImageElement");
-                  runObfuscation(obfuscationValues);
-                }
-              },
-              types: ["image/*"],
-            });
-            input.click();
+          action: () => {
+            keyImageInput.click();
           },
         },
         {
@@ -471,6 +459,27 @@ export default async function example() {
         },
       ],
     });
+
+  // Set up change listener for key image input (after form is created so we have access to setObfuscationValue)
+  keyImageInput.addEventListener("change", () => {
+    const file = keyImageInput.files?.item(0);
+    if (file && file.type.startsWith("image/")) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          keyImage = img;
+          keyImageDisplay.classList.remove("hidden");
+          keyImageDisplay.innerHTML = "<figcaption>Key Image</figcaption>";
+          keyImageDisplay.appendChild(img);
+          setObfuscationValue("keyRepresentation", "HTMLImageElement");
+          runObfuscation(obfuscationValues);
+        };
+        img.src = e.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
 
   runBasic(basicValues);
   runSplit(splitValues);
