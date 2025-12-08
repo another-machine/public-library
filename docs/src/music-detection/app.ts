@@ -113,8 +113,12 @@ ${JSON.stringify(res, null, 2)}`;
   }
 }
 
-function notePresence({ notes }) {
-  const values = {};
+function notePresence({
+  notes,
+}: {
+  notes: { notation: string; value: number }[];
+}) {
+  const values: Record<string, number> = {};
   notes.forEach(({ notation, value }) => {
     values[notation] = value;
   });
