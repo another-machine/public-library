@@ -109,6 +109,10 @@ export default async function example() {
           "solid-columns",
           "solid-rows",
           "solid-quarters",
+          "alpha",
+          "alpha-columns",
+          "alpha-rows",
+          "alpha-quarters",
         ],
         value: `${defaults.encoding}`,
         name: "encoding",
@@ -281,6 +285,8 @@ export default async function example() {
 
               const metadata: StegaMetadata.StegaMetadata | null =
                 StegaMetadata.decode({ source: metadataSource });
+
+              console.log(metadata);
 
               if (
                 !metadata ||

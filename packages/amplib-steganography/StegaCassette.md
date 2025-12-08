@@ -68,17 +68,29 @@ Different methods change the "Encoded Pixel" in different ways. This affects bot
 - **Visual Style:** Creates a very dense, solid block of noise or color shifting. The original image is largely overwritten by the data.
 - **Best for:** Maximizing storage capacity.
 
+### 👻 Alpha
+
+- **How it works:** Stores audio data **only in the alpha (transparency) channel**. The RGB color channels are left completely untouched, so the image's colors remain perfectly intact.
+- **Visual Style:** The image will have varying transparency. Invisible if displayed on a matching solid background. Colors remain perfect.
+- **Technical Detail:** Uses alpha values 1-255 (avoiding 0) to prevent browser premultiplied alpha from corrupting RGB values. This costs ~0.4% precision but guarantees perfect color preservation.
+- **Density:**
+  - 8-bit: **1 sample** per 1 pixel
+  - 16-bit: **1 sample** per 2 pixels
+  - 24-bit: **1 sample** per 3 pixels
+- **No layout variants:** Unlike other encodings, alpha has no columns/rows/quarters variants—just "alpha".
+- **Best for:** Preserving the exact original colors of an image. Works well when the output will be displayed on a solid background where transparency changes won't be visible.
+
 ---
 
 ## 3. Audio Quality (Bit Depth)
 
 Just like digital audio files, we can choose the quality of the sound. Higher quality requires more space (pixels) on the image.
 
-| Quality    | Description                                          | Differential Usage (Standard) | Solid Usage (High Density)  |
-| :--------- | :--------------------------------------------------- | :---------------------------- | :-------------------------- |
-| **8-bit**  | **Lo-Fi / Retro.** Sounds like an old game console.  | **3 samples** per 2 pixels.   | **3 samples** per 1 pixel.  |
-| **16-bit** | **CD Quality.** The standard for clear, crisp audio. | **3 samples** per 4 pixels.   | **3 samples** per 2 pixels. |
-| **24-bit** | **High Definition.** Studio quality.                 | **1 sample** per 2 pixels.    | **1 sample** per 1 pixel.   |
+| Quality    | Description                                          | Differential Usage (Standard) | Solid Usage (High Density)  | Alpha Usage                |
+| :--------- | :--------------------------------------------------- | :---------------------------- | :-------------------------- | :------------------------- |
+| **8-bit**  | **Lo-Fi / Retro.** Sounds like an old game console.  | **3 samples** per 2 pixels.   | **3 samples** per 1 pixel.  | **1 sample** per 1 pixel.  |
+| **16-bit** | **CD Quality.** The standard for clear, crisp audio. | **3 samples** per 4 pixels.   | **3 samples** per 2 pixels. | **1 sample** per 2 pixels. |
+| **24-bit** | **High Definition.** Studio quality.                 | **1 sample** per 2 pixels.    | **1 sample** per 1 pixel.   | **1 sample** per 3 pixels. |
 
 ---
 
@@ -94,6 +106,8 @@ We can record a single track (Mono) or two separate tracks (Stereo).
 ## 5. Layouts (Tiling Patterns)
 
 If we are recording in Stereo, or just want to organize the data differently, we can choose how the "tape" is laid out on the canvas.
+
+**Note:** The **Alpha** encoding does not support layout variants. It uses the standard interleaved layout only.
 
 ### Standard (Interleaved)
 
