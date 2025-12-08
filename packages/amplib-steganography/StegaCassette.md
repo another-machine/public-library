@@ -39,36 +39,36 @@ Instead of using pairs of pixels, this method uses a single **Key Pixel** (locat
 
 Different methods change the "Encoded Pixel" in different ways. This affects both how the image looks and how robust the data is.
 
-### ➕ Additive
+### Additive
 
 - **How it works:** The sound value is **added** to the pixel's color. If the color gets too bright (over 255), it wraps around to 0 (black).
 - **Visual Style:** Creates a high-contrast, digital-looking noise.
 - **Best for:** Glitch art aesthetics.
 
-### ➖ Subtractive
+### Subtractive
 
 - **How it works:** The sound value is **subtracted** from the pixel's color. If it goes below 0, it wraps around to 255 (white).
 - **Visual Style:** Similar to additive but often darker or inverted in feel.
 
-### ↔️ Difference (Recommended)
+### Difference
 
 - **How it works:** This method is the smartest. It calculates the "shortest path" between colors to represent the sound. It tries to change the pixel color as little as possible while still storing the data.
 - **Visual Style:** The most subtle. It looks like faint film grain or sensor noise.
 - **Best for:** Preserving the original image's look.
 
-### 🌊 Noise
+### Noise
 
 - **How it works:** Instead of directly modifying the color, it uses the image itself as a "seed" to generate a random noise pattern. The sound is encoded into the intensity of this noise.
 - **Visual Style:** Very textured and chaotic.
 - **Best for:** Hiding data in images that are already noisy or textured (like sand or concrete).
 
-### 🧱 Solid
+### Solid
 
 - **How it works:** Uses the **Key Pixel** strategy. Every pixel stores data relative to one fixed reference point.
 - **Visual Style:** Creates a very dense, solid block of noise or color shifting. The original image is largely overwritten by the data.
 - **Best for:** Maximizing storage capacity.
 
-### 👻 Alpha
+### Alpha
 
 - **How it works:** Stores audio data **only in the alpha (transparency) channel**. The RGB color channels are left completely untouched, so the image's colors remain perfectly intact.
 - **Visual Style:** The image will have varying transparency. Invisible if displayed on a matching solid background. Colors remain perfect.
