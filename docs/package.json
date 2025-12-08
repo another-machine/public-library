@@ -4,7 +4,7 @@
   "license": "MIT",
   "scripts": {
     "start": "parcel src/*.html src/**/*.html --no-cache",
-    "build": "parcel build src/*.html src/**/*.html --no-cache"
+    "build": "parcel build src/*.html src/**/*.html --no-cache --no-scope-hoist"
   },
   "devDependencies": {
     "@parcel/transformer-worklet": "^2.12.0",
