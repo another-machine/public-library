@@ -51,6 +51,9 @@ export class Scale {
     this.label = "";
     this.intervals = [];
     this.noteIds = [];
+    this.mode = new Mode({ type: params.mode });
+    this.root = params.root;
+    this.rootOffset = Note.notationIndex(params.root);
     this.update(params);
   }
 

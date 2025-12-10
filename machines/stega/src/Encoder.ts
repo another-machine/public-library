@@ -991,16 +991,58 @@ export class Encoder {
   }
 
   async handleAudioFile(file: File) {
-    const arrayBuffer = await file.arrayBuffer();
-    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-    this.setAudioBuffer(audioBuffer);
+    try {
+      // Safari requires AudioContext to be resumed before decoding
+      if (this.audioContext.state === "suspended") {
+        await this.audioContext.resume();
+      }
+
+      const arrayBuffer = await file.arrayBuffer();
+
+      // Use a Promise wrapper for decodeAudioData for better Safari compatibility
+      const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+        this.audioContext.decodeAudioData(
+          arrayBuffer,
+          (buffer) => resolve(buffer),
+          (error) => reject(error)
+        );
+      });
+      this.setAudioBuffer(audioBuffer);
+    } catch (error) {
+      console.error("Error decoding audio:", error);
+      const format = file.name.split(".").pop()?.toUpperCase() || "unknown";
+      alert(
+        `Could not decode ${format} file. This format may not be supported by your browser.\n\nTry converting to MP3 or WAV format.`
+      );
+    }
   }
 
   async loadAudioFromUrl(url: string) {
-    const response = await fetch(url);
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer);
-    this.setAudioBuffer(audioBuffer);
+    try {
+      // Safari requires AudioContext to be resumed before decoding
+      if (this.audioContext.state === "suspended") {
+        await this.audioContext.resume();
+      }
+
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+
+      // Use a Promise wrapper for decodeAudioData for better Safari compatibility
+      const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+        this.audioContext.decodeAudioData(
+          arrayBuffer,
+          (buffer) => resolve(buffer),
+          (error) => reject(error)
+        );
+      });
+
+      this.setAudioBuffer(audioBuffer);
+    } catch (error) {
+      console.error("Error decoding audio:", error);
+      alert(
+        "Could not decode audio file. Safari may not support this format. Try MP3 or WAV."
+      );
+    }
   }
 
   setAudioBuffer(audioBuffer: AudioBuffer) {

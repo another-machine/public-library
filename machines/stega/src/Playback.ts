@@ -241,6 +241,11 @@ export class Playback {
   ) {
     this.stop();
 
+    // Resume AudioContext for Safari compatibility
+    if (this.audioContext.state === "suspended") {
+      this.audioContext.resume();
+    }
+
     try {
       // Read metadata to get decode parameters
       const metadata = StegaMetadata.decode({ source: stegaImage });
