@@ -635,10 +635,12 @@
         }
         const p = c.planets[name];
         if (!p) return { alt: -90, az: 0, visible: false };
+        const alt = p.altitude?.value;
+        const az = p.azimuth?.value;
         return {
-          alt: p.altitude.value,
-          az: p.azimuth.value,
-          visible: p.isVisible.value,
+          alt: typeof alt === "number" && isFinite(alt) ? alt : -90,
+          az: typeof az === "number" && isFinite(az) ? az : 0,
+          visible: !!p.isVisible?.value,
         };
       }
 
@@ -722,7 +724,8 @@
         { key: "D", mode: "minor" },
       ];
       function getScalePool(c) {
-        const ang = c.planets.venus?.heliocentricAngle?.value ?? 0;
+        const raw = c.planets.venus?.heliocentricAngle?.value;
+        const ang = typeof raw === "number" && isFinite(raw) ? raw : 0;
         return SCALE_POOLS[Math.floor((ang / 360) * 3) % 3];
       }
 
@@ -850,20 +853,44 @@
           cy = h / 2;
         const R = Math.min(cx, cy) * 0.82;
 
-        celCtx.strokeStyle = "rgba(79,163,247,0.15)";
-        celCtx.lineWidth = 1;
-        celCtx.beginPath();
-        celCtx.arc(cx, cy, R, 0, Math.PI * 2);
-        celCtx.stroke();
+        // altitude rings at 60°, 30°, and horizon (0°)
+        const altRings = [
+          { alt: 60, opacity: 0.1 },
+          { alt: 30, opacity: 0.1 },
+          { alt: 0, opacity: 0.35 },
+        ];
+        for (const { alt, opacity } of altRings) {
+          const r = R * Math.cos((alt * Math.PI) / 180);
+          celCtx.strokeStyle = "rgba(79,163,247," + opacity + ")";
+          celCtx.lineWidth = alt === 0 ? 1.5 : 1;
+          celCtx.beginPath();
+          celCtx.arc(cx, cy, r, 0, Math.PI * 2);
+          celCtx.stroke();
+          if (alt > 0) {
+            celCtx.fillStyle = "rgba(79,163,247,0.2)";
+            celCtx.font = "8px monospace";
+            celCtx.textAlign = "left";
+            celCtx.textBaseline = "middle";
+            celCtx.fillText(alt + "°", cx + r + 2, cy);
+          }
+        }
 
-        celCtx.fillStyle = "rgba(79,163,247,0.3)";
+        // horizon label
+        celCtx.fillStyle = "rgba(79,163,247,0.25)";
+        celCtx.font = "8px monospace";
+        celCtx.textAlign = "left";
+        celCtx.textBaseline = "middle";
+        celCtx.fillText("horizon", cx + R + 2, cy);
+
+        // cardinal labels
+        celCtx.fillStyle = "rgba(79,163,247,0.5)";
         celCtx.font = "9px monospace";
         celCtx.textAlign = "center";
         celCtx.textBaseline = "middle";
-        celCtx.fillText("N", cx, cy - R - 6);
-        celCtx.fillText("S", cx, cy + R + 6);
-        celCtx.fillText("E", cx + R + 6, cy);
-        celCtx.fillText("W", cx - R - 6, cy);
+        celCtx.fillText("N", cx, cy - R - 7);
+        celCtx.fillText("S", cx, cy + R + 7);
+        celCtx.fillText("E", cx + R + 7, cy - 10);
+        celCtx.fillText("W", cx - R - 7, cy - 10);
 
         for (const [name, sym] of PLANET_SYMS) {
           const pd = getPlanet(c, name);
@@ -873,20 +900,43 @@
           const d = R * Math.cos(altRad);
           const x = cx + d * Math.sin(azRad);
           const y = cy - d * Math.cos(azRad);
-          celCtx.fillStyle =
+          const color =
             name === "sun"
               ? "#f8c94b"
               : name === "moon"
                 ? "#c8cdd2"
                 : pd.alt > 0
-                  ? "rgba(79,163,247,0.8)"
-                  : "rgba(79,163,247,0.2)";
+                  ? "rgba(79,163,247,0.85)"
+                  : "rgba(79,163,247,0.25)";
+          celCtx.fillStyle = color;
           celCtx.font = "11px monospace";
           celCtx.textAlign = "center";
           celCtx.textBaseline = "middle";
           celCtx.fillText(sym, x, y);
+          // name label below symbol
+          celCtx.font = "7px monospace";
+          celCtx.fillStyle =
+            pd.alt > 0 ? "rgba(79,163,247,0.55)" : "rgba(79,163,247,0.18)";
+          celCtx.fillText(name, x, y + 9);
         }
       }
+
+      // ═══ MAP CLICK → LAT/LON ═══════════════════════════════════════════════════
+      mapCanvas.addEventListener("click", function (e) {
+        const rect = mapCanvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const w = mapCanvas.width;
+        const h = mapCanvas.height;
+        lon = (x / w) * 360 - 180;
+        lat = 90 - (y / h) * 180;
+        cachedCosmos = null;
+        const latStr =
+          Math.abs(lat).toFixed(2) + "\u00b0" + (lat >= 0 ? "N" : "S");
+        const lonStr =
+          Math.abs(lon).toFixed(2) + "\u00b0" + (lon >= 0 ? "E" : "W");
+        appendAnn("location: " + latStr + "  " + lonStr);
+      });
 
       // ═══ STATUS PANEL ═════════════════════════════════════════════════════════
       const INTERVAL_LABELS = ["I", "II", "III", "IV", "V", "VI", "VII"];
@@ -1235,7 +1285,8 @@
         "start                 \u2014 begin playback",
         "stop                  \u2014 pause playback",
         "bpm <n>               \u2014 override tempo (auto: 70\u2013100, moon-driven)",
-        "offset <ms>           \u2014 shift virtual time (negative = past)",
+        "offset <days>         \u2014 shift time by N days from now (e.g. offset 30)",
+        "set <date>            \u2014 set absolute time (e.g. set 2025-06-21)",
         "location <lat> <lon>  \u2014 set observer coordinates",
         "export [min]          \u2014 download beat log as markdown",
         "metronome on|off      \u2014 toggle audible click",
@@ -1289,16 +1340,50 @@
           }
 
           case "offset": {
-            const d = parseInt(args[0]);
+            const d = parseFloat(args[0]);
             if (!isNaN(d)) {
-              timeOffset += d;
+              timeOffset = d * 86400000;
               cachedCosmos = null;
+              const sign = timeOffset >= 0 ? "+" : "";
               appendAnn(
                 "time offset: " +
-                  (timeOffset > 0 ? "+" : "") +
-                  timeOffset +
-                  "ms",
+                  sign +
+                  d +
+                  " days  (" +
+                  new Date(Date.now() + timeOffset).toUTCString() +
+                  ")",
               );
+            } else {
+              const days = timeOffset / 86400000;
+              appendAnn(
+                "time offset: " +
+                  (days >= 0 ? "+" : "") +
+                  days.toFixed(2) +
+                  " days",
+              );
+            }
+            break;
+          }
+
+          case "set": {
+            const arg = args.join(" ");
+            if (!arg) {
+              appendAnn("set <date>  e.g. set 2025-12-25  or set now");
+              break;
+            }
+            let target;
+            if (arg === "now") {
+              target = Date.now();
+            } else {
+              const d = new Date(arg);
+              target = isNaN(d.getTime()) ? NaN : d.getTime();
+            }
+            if (isNaN(target)) {
+              appendAnn('could not parse date: "' + arg + '"');
+            } else {
+              timeOffset = target - Date.now();
+              cachedCosmos = null;
+              appendAnn("time set to " + new Date(target).toUTCString());
             }
             break;
           }
