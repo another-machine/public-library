@@ -1179,8 +1179,13 @@
         const scale = new Scale({ root: pool.key, mode: pool.mode });
 
         const moonPhase = c.moon.phase.value;
-        lastBpm = lastBpm + (70 + moonPhase * 30 - lastBpm) * 0.008;
-        clock.setBPM(lastBpm);
+        const targetBpm = 70 + moonPhase * 30;
+        lastBpm = lastBpm + (targetBpm - lastBpm) * 0.008;
+        // Only push BPM to the clock worker when it shifts enough to matter;
+        // calling setBPM every tick resets the worker's beat counter causing gaps.
+        if (Math.abs(lastBpm - clock.bpm) > 0.5) {
+          clock.setBPM(lastBpm);
+        }
 
         const beatMs = (60 / clock.bpm) * (4 / clock.subdivision) * 1000;
         const phasedIdx = Math.floor(now / beatMs);
@@ -1292,13 +1297,12 @@
       const HELP_TEXT = [
         "start                 \u2014 begin playback",
         "stop                  \u2014 pause playback",
-        "bpm <n>               \u2014 override tempo (auto: 70\u2013100, moon-driven)",
         "offset <days>         \u2014 shift time by N days from now (e.g. offset 30)",
-        "set <date>            \u2014 set absolute time (e.g. set 2025-06-21)",
+        "set <date>            \u2014 set absolute time  (e.g. set 2025-06-21)",
         "location <lat> <lon>  \u2014 set observer coordinates",
         "export [min]          \u2014 download beat log as markdown",
         "metronome on|off      \u2014 toggle audible click",
-        "swing <0\u20131>           \u2014 set rhythmic swing amount (0 = straight)",
+        "swing <0\u20131>           \u2014 set rhythmic swing (0 = straight)",
         "sync                  \u2014 restart at next 5-second boundary",
         "help                  \u2014 show this message",
       ];
@@ -1327,26 +1331,6 @@
             wall.stop();
             appendAnn("stopped");
             break;
-
-          case "bpm": {
-            const b = parseFloat(args[0]);
-            if (!isNaN(b) && b > 0) {
-              if (!clock) {
-                appendAnn("start first");
-                break;
-              }
-              clock.setBPM(b);
-              lastBpm = b;
-              appendAnn("bpm: " + b);
-            } else {
-              appendAnn(
-                "current bpm: " +
-                  (clock ? Math.round(clock.bpm) : "\u2014") +
-                  " (auto)",
-              );
-            }
-            break;
-          }
 
           case "offset": {
             const d = parseFloat(args[0]);
