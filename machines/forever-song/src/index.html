@@ -595,11 +595,14 @@
       let clock = null;
       let metroOsc = null;
       let metroGain = null;
+      let audioBaseline = null; // { perf, ctx } — maps performance.now() → audioCtx.currentTime
 
       function initAudio() {
         if (audioCtx) return; // already initialised
 
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        // Capture baseline immediately so we can map performance.now() → audioCtx.currentTime
+        audioBaseline = { perf: performance.now(), ctx: audioCtx.currentTime };
 
         wall = new ChromaticWall({
           audioContext: audioCtx,
@@ -1141,7 +1144,20 @@
       // ═══ BEAT CALLBACK ════════════════════════════════════════════════════════
       let lastStatusKey = "";
 
-      function beatCallback() {
+      function beatCallback(tickInfo) {
+        // Schedule metronome click at the exact audio time the worker intended,
+        // not at audioCtx.currentTime (which has JS-jitter baked in).
+        if (metronomeEnabled && audioCtx && audioBaseline) {
+          const workerPerf = tickInfo?.timestamp ?? performance.now();
+          const audioAt = Math.max(
+            audioCtx.currentTime,
+            audioBaseline.ctx + (workerPerf - audioBaseline.perf) / 1000,
+          );
+          metroGain.gain.cancelScheduledValues(audioAt);
+          metroGain.gain.setValueAtTime(0.12, audioAt);
+          metroGain.gain.exponentialRampToValueAtTime(0.001, audioAt + 0.05);
+        }
+
         const now = Date.now() + timeOffset;
 
         if (!cachedCosmos || now - lastCosmosTs > 3000) {
@@ -1209,14 +1225,6 @@
 
         const bassLabel = triggerBass(pool, moonPhase, phasedIdx, brightness);
         fired.bass = !!bassLabel;
-
-        if (metronomeEnabled) {
-          metroGain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-          metroGain.gain.exponentialRampToValueAtTime(
-            0.001,
-            audioCtx.currentTime + 0.05,
-          );
-        }
 
         beatHistory.push({
           timestamp: now,
@@ -1290,6 +1298,7 @@
         "location <lat> <lon>  \u2014 set observer coordinates",
         "export [min]          \u2014 download beat log as markdown",
         "metronome on|off      \u2014 toggle audible click",
+        "swing <0\u20131>           \u2014 set rhythmic swing amount (0 = straight)",
         "sync                  \u2014 restart at next 5-second boundary",
         "help                  \u2014 show this message",
       ];
@@ -1441,6 +1450,26 @@
               appendAnn("metronome: off");
             } else appendAnn("metronome: " + (metronomeEnabled ? "on" : "off"));
             break;
+
+          case "swing": {
+            const s = parseFloat(args[0]);
+            if (!clock) {
+              appendAnn("start first");
+              break;
+            }
+            if (!isNaN(s)) {
+              const clamped = Math.max(0, Math.min(1, s));
+              clock.setResolution(clamped);
+              appendAnn("swing: " + clamped.toFixed(2));
+            } else {
+              appendAnn(
+                "swing: " +
+                  (clock.swing ?? 0).toFixed(2) +
+                  "  (0 = straight, 1 = full swing)",
+              );
+            }
+            break;
+          }
 
           case "sync":
             if (!clock) {
