@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>forever song</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0c0e10;
+      --bg-panel:  #0f1214;
+      --fg:        #c8cdd2;
+      --fg-dim:    #48515a;
+      --fg-muted:  #6b7580;
+      --sep:       #1e2429;
+      --accent:    #4fa3f7;
+      --c-main:    #6ea8fe;
+      --c-twinkle: #f8c94b;
+      --c-bass:    #3dd68c;
+      --c-pad:     #b88ef7;
+      --c-arpeggios: #ff8866;
+      --c-ann:     #8b7ec8;
+      --font: "Cascadia Code", "Fira Code", "JetBrains Mono", "Menlo", monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      font-size: 13px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    #root {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* ── Main area ── */
+    #main {
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ── Stream column ── */
+    #stream-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    #stream {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 16px 0 8px 0;
+      scroll-behavior: auto;
+    }
+
+    #stream::-webkit-scrollbar { width: 4px; }
+    #stream::-webkit-scrollbar-track { background: transparent; }
+    #stream::-webkit-scrollbar-thumb { background: var(--sep); border-radius: 2px; }
+
+    .s-line {
+      display: flex;
+      align-items: baseline;
+      padding: 0 16px;
+      min-height: 20px;
+      gap: 0;
+      white-space: pre;
+    }
+
+    .s-line.dim { opacity: 0.3; }
+
+    .s-addr {
+      color: var(--fg-dim);
+      min-width: 8ch;
+      flex-shrink: 0;
+      user-select: none;
+    }
+
+    .s-voices {
+      display: flex;
+      gap: 0;
+    }
+
+    .s-voice {
+      min-width: 7ch;
+      flex-shrink: 0;
+    }
+
+    .s-voice.hit-main    { color: var(--c-main); }
+    .s-voice.hit-twinkle { color: var(--c-twinkle); }
+    .s-voice.hit-bass    { color: var(--c-bass); }
+    .s-voice.hit-pad     { color: var(--c-pad); }
+    .s-voice.hit-arpeggios { color: var(--c-arpeggios); }
+    .s-voice.silent      { color: var(--fg-dim); }
+
+    .s-ann {
+      color: var(--c-ann);
+      font-style: italic;
+      padding: 6px 16px 2px;
+      font-size: 12px;
+    }
+
+    .s-sep {
+      color: var(--sep);
+      padding: 2px 16px;
+      user-select: none;
+    }
+
+    /* ── Status panel ── */
+    #panel {
+      width: 240px;
+      flex-shrink: 0;
+      border-left: 1px solid var(--sep);
+      background: var(--bg-panel);
+      overflow-y: auto;
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    #panel::-webkit-scrollbar { width: 3px; }
+    #panel::-webkit-scrollbar-thumb { background: var(--sep); }
+
+    .p-section { display: flex; flex-direction: column; gap: 4px; }
+
+    .p-label {
+      color: var(--fg-dim);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+    }
+
+    .p-val {
+      color: var(--fg);
+      font-size: 13px;
+    }
+
+    .p-val.large {
+      color: #e0e8f0;
+      font-size: 15px;
+      letter-spacing: 0.05em;
+    }
+
+    .p-sub {
+      color: var(--fg-muted);
+      font-size: 11px;
+      font-style: italic;
+    }
+
+    .p-meter {
+      display: flex;
+      gap: 6px;
+      align-items: baseline;
+      flex-wrap: wrap;
+    }
+
+    .p-meter .tag {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--sep);
+      color: var(--fg-muted);
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 2px;
+    }
+
+    .p-planets { display: flex; flex-direction: column; gap: 3px; }
+
+    .p-planet {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      color: var(--fg-muted);
+    }
+
+    .p-planet .sym { color: var(--fg); min-width: 3ch; }
+    .p-planet .alt { font-variant-numeric: tabular-nums; }
+    .p-planet .alt.above { color: #4fa3f7; }
+    .p-planet .alt.below { color: var(--fg-dim); }
+    .p-planet .retro { color: var(--c-twinkle); font-size: 10px; }
+
+    .p-dyn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .p-dyn-bar {
+      height: 3px;
+      background: var(--sep);
+      flex: 1;
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .p-dyn-fill {
+      height: 100%;
+      background: linear-gradient(to right, #4fa3f7, #f8c94b, #ff6b6b);
+      border-radius: 1px;
+      transition: width 3s ease;
+    }
+
+    .p-voice-dynamic {
+      margin: 8px 0;
+      font-size: 12px;
+    }
+
+    .p-voice-dynamic-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2px;
+      color: var(--fg-muted);
+    }
+
+    .p-voice-dynamic-bar {
+      height: 6px;
+      background: rgba(200, 205, 210, 0.1);
+      border-radius: 1px;
+      overflow: hidden;
+    }
+
+    .p-voice-dynamic-fill {
+      height: 100%;
+      border-radius: 1px;
+      transition: width 3s ease;
+    }
+
+    .p-voice-dynamic-fill.main    { background: var(--c-main); }
+    .p-voice-dynamic-fill.twinkle { background: var(--c-twinkle); }
+    .p-voice-dynamic-fill.bass    { background: var(--c-bass); }
+    .p-voice-dynamic-fill.pad     { background: var(--c-pad); }
+    .p-voice-dynamic-fill.arpeggios { background: var(--c-arpeggios); }
+
+    /* ── Map ── */
+    #p-map-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 8px 0;
+    }
+
+    #p-map {
+      width: 100%;
+      max-width: 200px;
+      height: 120px;
+      background: rgba(79, 163, 247, 0.05);
+      border: 1px solid var(--sep);
+      border-radius: 2px;
+      cursor: crosshair;
+      position: relative;
+    }
+
+    .map-dot {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      transform: translate(-50%, -50%);
+      opacity: 0.8;
+    }
+
+    .map-outline {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #p-coords {
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+
+    .map-btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .map-btn {
+      flex: 1;
+      padding: 4px 8px;
+      background: rgba(79, 163, 247, 0.1);
+      border: 1px solid var(--sep);
+      border-radius: 2px;
+      color: var(--fg-muted);
+      font-size: 11px;
+      font-family: var(--font);
+      cursor: pointer;
+      transition: all 200ms ease;
+    }
+
+    .map-btn:hover {
+      background: rgba(79, 163, 247, 0.2);
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+
+    .p-sep {
+      height: 1px;
+      background: var(--sep);
+      flex-shrink: 0;
+    }
+
+    /* ── Voice legend ── */
+    #legend {
+      display: flex;
+      gap: 16px;
+      padding: 6px 16px;
+      border-bottom: 1px solid var(--sep);
+      background: var(--bg-panel);
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--fg-muted);
+    }
+
+    .legend-dot { font-size: 9px; }
+    .legend-dot.main    { color: var(--c-main); }
+    .legend-dot.twinkle { color: var(--c-twinkle); }
+    .legend-dot.bass    { color: var(--c-bass); }
+    .legend-dot.pad     { color: var(--c-pad); }
+    .legend-dot.arpeggios { color: var(--c-arpeggios); }
+
+    /* ── Celestial visualization ── */
+    #p-celestial-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin: 8px 0;
+    }
+
+    #p-celestial {
+      width: 100%;
+      max-width: 200px;
+      height: 150px;
+      background: rgba(79, 163, 247, 0.05);
+      border: 1px solid var(--sep);
+      border-radius: 2px;
+      position: relative;
+    }
+
+    .celestial-grid {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0.3;
+    }
+
+    .celestial-body {
+      position: absolute;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+    }
+
+    .celestial-label {
+      font-size: 10px;
+      color: var(--fg-muted);
+      position: absolute;
+      white-space: nowrap;
+      transform: translate(-50%, -100%);
+      margin-top: 4px;
+    }
+
+    /* ── Command line ── */
+    #cmdbar {
+      border-top: 1px solid var(--sep);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      height: 38px;
+      flex-shrink: 0;
+      background: var(--bg-panel);
+      gap: 0;
+    }
+
+    #prompt {
+      color: var(--accent);
+      user-select: none;
+      flex-shrink: 0;
+      padding-right: 6px;
+    }
+
+    #cmd-display {
+      flex: 1;
+      color: var(--fg);
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    #cmd-text { white-space: pre; }
+
+    #cursor {
+      display: inline-block;
+      width: 7px;
+      height: 14px;
+      background: var(--accent);
+      opacity: 1;
+      vertical-align: middle;
+      animation: blink 1.1s step-end infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #cmd-input {
+      position: absolute;
+      opacity: 0;
+      width: 1px;
+      height: 1px;
+      pointer-events: none;
+    }
+
+    /* ── Bottom bar ── */
+    #bottombar {
+      border-top: 1px solid var(--sep);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 16px;
+      height: 26px;
+      background: rgba(255,255,255,0.02);
+      font-size: 11px;
+      color: var(--fg-dim);
+      flex-shrink: 0;
+      letter-spacing: 0.06em;
+    }
+
+    #bottombar .bb-left { display: flex; gap: 16px; }
+    #bottombar .bb-item { display: flex; gap: 5px; align-items: center; }
+    #bottombar .bb-val  { color: var(--fg-muted); }
+
+    #sync-indicator {
+      display: none;
+      color: var(--c-twinkle);
+      animation: pulse 0.6s ease-in-out infinite alternate;
+    }
+
+    @keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+<div id="root">
+  <div id="main">
+    <div id="stream-col">
+      <div id="legend">
+        <div class="legend-item"><span class="legend-dot main">♦</span><span>melodic</span></div>
+        <div class="legend-item"><span class="legend-dot twinkle">◆</span><span>twinkle</span></div>
+        <div class="legend-item"><span class="legend-dot bass">●</span><span>bass</span></div>
+        <div class="legend-item"><span class="legend-dot pad">▬</span><span>pad</span></div>
+        <div class="legend-item"><span class="legend-dot arpeggios">≋</span><span>runs</span></div>
+      </div>
+      <div id="stream"></div>
+    </div>
+
+    <div id="panel">
+      <div class="p-section">
+        <div class="p-label">key</div>
+        <div class="p-val large" id="p-key">—</div>
+        <div class="p-sub" id="p-mode-desc">—</div>
+        <div class="p-sub" id="p-change">—</div>
+      </div>
+
+      <div class="p-sep"></div>
+
+      <div class="p-section">
+        <div class="p-label">meter · tempo</div>
+        <div class="p-meter">
+          <span class="tag" id="p-meter">—</span>
+          <span class="tag" id="p-bpm">— bpm</span>
+        </div>
+      </div>
+
+      <div class="p-sep"></div>
+
+      <div class="p-section">
+        <div class="p-label">dynamics per voice</div>
+        <div class="p-voice-dynamic">
+          <div class="p-voice-dynamic-label">
+            <span><span style="color: var(--c-main)">♦ melodic</span></span>
+            <span id="p-main-dyn" style="min-width: 3ch">—</span>
+          </div>
+          <div class="p-voice-dynamic-bar">
+            <div class="p-voice-dynamic-fill main" id="p-main-dyn-fill" style="width: 0%"></div>
+          </div>
+          <div style="font-size: 10px; color: var(--fg-dim); margin-top: 2px;" id="p-main-driver">—</div>
+        </div>
+        <div class="p-voice-dynamic">
+          <div class="p-voice-dynamic-label">
+            <span><span style="color: var(--c-twinkle)">◆ twinkle</span></span>
+            <span id="p-twinkle-dyn" style="min-width: 3ch">—</span>
+          </div>
+          <div class="p-voice-dynamic-bar">
+            <div class="p-voice-dynamic-fill twinkle" id="p-twinkle-dyn-fill" style="width: 0%"></div>
+          </div>
+          <div style="font-size: 10px; color: var(--fg-dim); margin-top: 2px;" id="p-twinkle-driver">—</div>
+        </div>
+        <div class="p-voice-dynamic">
+          <div class="p-voice-dynamic-label">
+            <span><span style="color: var(--c-bass)">● bass</span></span>
+            <span id="p-bass-dyn" style="min-width: 3ch">—</span>
+          </div>
+          <div class="p-voice-dynamic-bar">
+            <div class="p-voice-dynamic-fill bass" id="p-bass-dyn-fill" style="width: 0%"></div>
+          </div>
+          <div style="font-size: 10px; color: var(--fg-dim); margin-top: 2px;" id="p-bass-driver">—</div>
+        </div>
+        <div class="p-voice-dynamic">
+          <div class="p-voice-dynamic-label">
+            <span><span style="color: var(--c-pad)">▬ pad</span></span>
+            <span id="p-pad-dyn" style="min-width: 3ch">—</span>
+          </div>
+          <div class="p-voice-dynamic-bar">
+            <div class="p-voice-dynamic-fill pad" id="p-pad-dyn-fill" style="width: 0%"></div>
+          </div>
+          <div style="font-size: 10px; color: var(--fg-dim); margin-top: 2px;" id="p-pad-driver">—</div>
+        </div>
+        <div class="p-voice-dynamic">
+          <div class="p-voice-dynamic-label">
+            <span><span style="color: var(--c-arpeggios)">≋ runs</span></span>
+            <span id="p-arpeggios-dyn" style="min-width: 3ch">—</span>
+          </div>
+          <div class="p-voice-dynamic-bar">
+            <div class="p-voice-dynamic-fill arpeggios" id="p-arpeggios-dyn-fill" style="width: 0%"></div>
+          </div>
+          <div style="font-size: 10px; color: var(--fg-dim); margin-top: 2px;" id="p-arpeggios-driver">—</div>
+        </div>
+        <div class="p-sub" id="p-artic">—</div>
+      </div>
+
+      <div class="p-section">
+        <div class="p-label">performer guidance</div>
+        <div class="p-sub" id="p-vibrato">—</div>
+        <div class="p-sub" id="p-timbre">—</div>
+      </div>
+
+      <div class="p-sep"></div>
+
+      <div class="p-section">
+        <div class="p-label">sky</div>
+        <div class="p-val" id="p-sky">—</div>
+        <div class="p-val" id="p-moon">—</div>
+      </div>
+
+      <div class="p-section">
+        <div class="p-label">planets</div>
+        <div class="p-planets" id="p-planets"></div>
+      </div>
+
+      <div class="p-sep"></div>
+
+      <div class="p-section">
+        <div class="p-label">location</div>
+        <div class="p-sub" id="p-location">—</div>
+        <div id="p-map-container">
+          <canvas id="p-map" width="200" height="120"></canvas>
+          <div id="p-coords">—</div>
+          <div class="map-btn-group">
+            <button class="map-btn" id="btn-reset-location">current location</button>
+          </div>
+        </div>
+
+        <div id="p-celestial-container">
+          <canvas id="p-celestial" width="200" height="150"></canvas>
+        </div>
+      </div>
+
+      <div class="p-section" id="p-sim-section" style="display:none">
+        <div class="p-label">simulated time</div>
+        <div class="p-sub" id="p-simdate">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="cmdbar" tabindex="0">
+    <span id="prompt">›</span>
+    <div id="cmd-display">
+      <span id="cmd-text"></span><span id="cursor"></span>
+    </div>
+    <input id="cmd-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+  </div>
+
+  <div id="bottombar">
+    <div class="bb-left">
+      <div class="bb-item"><span id="bb-key">forever song</span></div>
+      <div class="bb-item"><span id="bb-meter" class="bb-val">—</span></div>
+      <div class="bb-item"><span id="bb-bpm" class="bb-val">—</span></div>
+      <div class="bb-item" id="sync-indicator">↻ syncing</div>
+    </div>
+    <div class="bb-item"><span class="bb-val">v1 · offset / mute / sync / help</span></div>
+  </div>
+</div>
+
+<script type="module">
+import { init } from "./app.ts";
+
+// ── Voice config (extensible) ──────────────────────────────────────────────
+// To add a new voice: add an entry here, and add a `key` field to FireEvent.
+const VOICES = [
+  { id: 'main',      char: '♦', cls: 'hit-main',      label: 'melodic' },
+  { id: 'twinkle',   char: '◆', cls: 'hit-twinkle',   label: 'twinkle' },
+  { id: 'bass',      char: '●', cls: 'hit-bass',      label: 'bass'    },
+  { id: 'pad',       char: '▬', cls: 'hit-pad',       label: 'pad'     },
+  { id: 'arpeggios', char: '≋', cls: 'hit-arpeggios', label: 'runs'    },
+];
+
+// ── State ──────────────────────────────────────────────────────────────────
+let started = false;
+let controls = null;  // { wall, clock, setTimeOffset }
+let muted = false;
+let syncArmed = false;
+let syncTarget = 0;
+const SYNC_INTERVAL = 5000;
+let cmdHistory = [];
+let historyIdx = -1;
+
+const stream   = document.getElementById('stream');
+const cmdInput = document.getElementById('cmd-input');
+const cmdText  = document.getElementById('cmd-text');
+const syncIndicator = document.getElementById('sync-indicator');
+const MAX_STREAM_LINES = 300;
+
+// ── Stream rendering ────────────────────────────────────────────────────────
+
+function appendLine(content, extraClass = '') {
+  const el = document.createElement('div');
+  el.className = 's-line' + (extraClass ? ' ' + extraClass : '');
+  el.innerHTML = content;
+  stream.appendChild(el);
+  while (stream.children.length > MAX_STREAM_LINES) stream.removeChild(stream.firstChild);
+  stream.scrollTop = stream.scrollHeight;
+  return el;
+}
+
+function appendAnnotation(text) {
+  const el = document.createElement('div');
+  el.className = 's-ann';
+  el.textContent = text;
+  stream.appendChild(el);
+  while (stream.children.length > MAX_STREAM_LINES) stream.removeChild(stream.firstChild);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+function appendSep() {
+  const el = document.createElement('div');
+  el.className = 's-sep';
+  el.textContent = '─'.repeat(38);
+  stream.appendChild(el);
+  while (stream.children.length > MAX_STREAM_LINES) stream.removeChild(stream.firstChild);
+  stream.scrollTop = stream.scrollHeight;
+}
+
+function renderFireLine(ev) {
+  const addr = `${String(ev.bar).padStart(4,'0')}.${String(ev.step).padStart(2,'0')}`;
+  const note = ev.note.padEnd(3,' ');
+
+  let voices = '';
+  for (const v of VOICES) {
+    const fired = ev[v.id];
+    // For melodic voice, show the note; for others show their char or dim dash
+    const char = fired ? v.char : '·';
+    const noteStr = fired && v.id === 'main' ? note : (fired && v.id === 'bass' ? ev.note.padEnd(3,' ') : '   ');
+    const cls = fired ? v.cls : 'silent';
+    voices += `<span class="s-voice ${cls}">${char}${noteStr}</span>`;
+  }
+
+  const anyFired = VOICES.some(v => ev[v.id]);
+  const lineClass = anyFired ? '' : 'dim';
+  appendLine(`<span class="s-addr">${addr}  </span><span class="s-voices">${voices}</span>`, lineClass);
+}
+
+// ── Status panel ────────────────────────────────────────────────────────────
+
+function renderStatus(s) {
+  document.getElementById('p-key').textContent = s.key;
+  document.getElementById('p-mode-desc').textContent = s.modeDesc;
+  document.getElementById('p-change').textContent = `key changes in ${s.changeIn}`;
+  document.getElementById('p-meter').textContent = s.meter;
+  document.getElementById('p-bpm').textContent = `${s.bpm} ♩`;
+  
+  // Per-voice dynamics
+  document.getElementById('p-main-dyn').textContent = s.mainDynamic.label;
+  document.getElementById('p-main-dyn-fill').style.width = `${s.mainDynamic.level * 100}%`;
+  document.getElementById('p-main-driver').textContent = s.mainDynamic.driver;
+  
+  document.getElementById('p-twinkle-dyn').textContent = s.twinkleDynamic.label;
+  document.getElementById('p-twinkle-dyn-fill').style.width = `${s.twinkleDynamic.level * 100}%`;
+  document.getElementById('p-twinkle-driver').textContent = s.twinkleDynamic.driver;
+  
+  document.getElementById('p-bass-dyn').textContent = s.bassDynamic.label;
+  document.getElementById('p-bass-dyn-fill').style.width = `${s.bassDynamic.level * 100}%`;
+  document.getElementById('p-bass-driver').textContent = s.bassDynamic.driver;
+  
+  document.getElementById('p-pad-dyn').textContent = s.padDynamic.label;
+  document.getElementById('p-pad-dyn-fill').style.width = `${s.padDynamic.level * 100}%`;
+  document.getElementById('p-pad-driver').textContent = s.padDynamic.driver;
+  
+  document.getElementById('p-arpeggios-dyn').textContent = s.arpeggiosDynamic.label;
+  document.getElementById('p-arpeggios-dyn-fill').style.width = `${s.arpeggiosDynamic.level * 100}%`;
+  document.getElementById('p-arpeggios-driver').textContent = s.arpeggiosDynamic.driver;
+  
+  document.getElementById('p-artic').textContent = s.articulation;
+  document.getElementById('p-vibrato').textContent = `vibrato: ${s.vibratoGuide}`;
+  document.getElementById('p-timbre').textContent = `timbre: ${s.timbreGuide}`;
+
+  const sunSign = s.sunElevation >= 0 ? '+' : '';
+  document.getElementById('p-sky').textContent = `☀ ${sunSign}${s.sunElevation.toFixed(1)}°  ${s.skyLabel}`;
+  document.getElementById('p-moon').textContent = `${s.moonEmoji} ${s.moonLabel}`;
+  document.getElementById('p-location').textContent = s.locationLabel;
+
+  // Update map
+  drawMap(s.lat, s.lon);
+  document.getElementById('p-coords').textContent = `${Math.abs(s.lat).toFixed(2)}°${s.lat >= 0 ? 'N' : 'S'} ${Math.abs(s.lon).toFixed(2)}°${s.lon >= 0 ? 'E' : 'W'}`;
+
+  // Update celestial visualization
+  drawCelestial(s.lat, s.lon, s.celestial);
+
+  // Planets
+  const planetsEl = document.getElementById('p-planets');
+  planetsEl.innerHTML = '';
+  for (const p of s.planets) {
+    const sign = p.altitude >= 0 ? '+' : '';
+    const aboveCls = p.altitude >= 0 ? 'above' : 'below';
+    const retroStr = p.isRetrograde ? `<span class="retro">℞</span>` : '';
+    const row = document.createElement('div');
+    row.className = 'p-planet';
+    row.innerHTML = `<span class="sym">${p.symbol}</span><span class="name">${p.name}</span>${retroStr}<span class="alt ${aboveCls}">${sign}${p.altitude.toFixed(0)}°</span>`;
+    planetsEl.appendChild(row);
+  }
+
+  // Simulated date
+  const simSection = document.getElementById('p-sim-section');
+  if (s.simDate) {
+    simSection.style.display = '';
+    const dateStr = s.simDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const dayOffset = (s.timeOffset / 86400000).toFixed(1);
+    const sign = s.timeOffset >= 0 ? '+' : '';
+    document.getElementById('p-simdate').textContent = `${sign}${dayOffset}d  ·  ${dateStr}`;
+  } else {
+    simSection.style.display = 'none';
+  }
+
+  // Bottom bar
+  document.getElementById('bb-key').textContent = s.key;
+  document.getElementById('bb-meter').textContent = s.meter;
+  document.getElementById('bb-bpm').textContent = `${s.bpm} bpm`;
+
+  // Background tint: deep black at night → very dark blue at day
+  const b = Math.round(s.brightness * 22);
+  const bBlue = Math.round(s.brightness * 35);
+  document.body.style.background = `rgb(${b}, ${b}, ${bBlue})`;
+  document.getElementById('root').style.background = `rgb(${b}, ${b}, ${bBlue})`;
+}
+
+// ── Command handling ────────────────────────────────────────────────────────
+
+const HELP_TEXT = [
+  'start         — begin playback',
+  'stop          — halt playback',
+  'mute / unmute — toggle audio',
+  'offset <n>    — time-travel n days (neg = past)',
+  'sync          — arm sync to next 5s boundary',
+  'help          — show this list',
+];
+
+async function runCommand(raw) {
+  const line = raw.trim();
+  if (!line) return;
+
+  // Echo to stream
+  appendLine(`<span style="color: var(--fg-dim)">›</span> <span style="color: var(--fg)">${escHtml(line)}</span>`);
+
+  const [cmd, ...args] = line.toLowerCase().split(/\s+/);
+
+  switch (cmd) {
+    case 'start': {
+      if (started) { appendAnnotation('already running'); break; }
+      appendAnnotation('locating…');
+      try {
+        const offsetMs = controls?._timeOffset ?? 0;
+        const params = new URLSearchParams(window.location.search);
+        const initialDays = parseFloat(params.get('days') || '0') || 0;
+        controls = await init(
+          (ev) => {
+            renderFireLine(ev);
+            // Inject score header at bar 0
+            if (ev.step === 0 && ev.bar % 8 === 0) {
+              // handled via onStatus
+            }
+          },
+          (status) => {
+            renderStatus(status);
+            // Inject score annotation every 8 bars worth of beats
+            if (!lastStatusKey || lastStatusKey !== status.key + status.meter) {
+              lastStatusKey = status.key + status.meter;
+              appendSep();
+              appendAnnotation(`${status.key}  ·  ${status.meter}  ·  ${status.bpm} ♩  ·  ${status.mainDynamic.label}  ·  ${status.skyLabel}`);
+            }
+          },
+          initialDays * 86400000
+        );
+        started = true;
+        appendAnnotation('playing  ·  type offset / sync / mute / stop');
+        // Start rAF sync loop
+        rafLoop();
+      } catch (e) {
+        appendAnnotation(`error: ${e.message}`);
+      }
+      break;
+    }
+
+    case 'stop': {
+      if (!started || !controls) { appendAnnotation('not playing'); break; }
+      controls.clock.stop();
+      controls.wall.stop();
+      started = false;
+      appendAnnotation('stopped');
+      break;
+    }
+
+    case 'mute': {
+      if (!controls) { appendAnnotation('not started'); break; }
+      muted = true;
+      controls.wall.stop();
+      appendAnnotation('muted');
+      break;
+    }
+
+    case 'unmute': {
+      if (!controls) { appendAnnotation('not started'); break; }
+      muted = false;
+      controls.wall.start();
+      appendAnnotation('unmuted');
+      break;
+    }
+
+    case 'offset': {
+      const days = parseFloat(args[0]);
+      if (isNaN(days)) { appendAnnotation('usage: offset <days>  e.g. offset -30'); break; }
+      if (!controls) { appendAnnotation('start first, then use offset'); break; }
+      controls.setTimeOffset(days * 86400000);
+      const sign = days >= 0 ? '+' : '';
+      appendAnnotation(`time offset: ${sign}${days.toFixed(1)} days`);
+      break;
+    }
+
+    case 'sync': {
+      if (!controls) { appendAnnotation('not started'); break; }
+      syncTarget = Math.ceil((Date.now() + 1) / SYNC_INTERVAL) * SYNC_INTERVAL;
+      syncArmed = true;
+      syncIndicator.style.display = '';
+      const remaining = ((syncTarget - Date.now()) / 1000).toFixed(1);
+      appendAnnotation(`sync armed — fires in ${remaining}s  (run in both tabs to lock)`);
+      break;
+    }
+
+    case 'help': {
+      for (const l of HELP_TEXT) appendAnnotation(l);
+      break;
+    }
+
+    default:
+      appendAnnotation(`unknown command: ${cmd}  (try help)`);
+  }
+}
+
+let lastStatusKey = '';
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Map rendering ──────────────────────────────────────────────────────────
+
+let currentLat = 0, currentLon = 0;
+
+function drawMap(lat, lon) {
+  currentLat = lat;
+  currentLon = lon;
+  const canvas = document.getElementById('p-map');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  
+  const w = canvas.width;
+  const h = canvas.height;
+  
+  // Clear
+  ctx.fillStyle = 'rgba(79, 163, 247, 0.05)';
+  ctx.fillRect(0, 0, w, h);
+  
+  // Draw equator + meridian lines
+  ctx.strokeStyle = 'rgba(79, 163, 247, 0.15)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, h / 2);
+  ctx.lineTo(w, h / 2);
+  ctx.stroke();
+  
+  ctx.beginPath();
+  ctx.moveTo(w / 2, 0);
+  ctx.lineTo(w / 2, h);
+  ctx.stroke();
+  
+  // Simple Mercator projection: lat/lon → canvas coords
+  // lon: -180 to 180 → 0 to w
+  // lat: -90 to 90 → h to 0 (inverted for canvas)
+  const x = ((lon + 180) / 360) * w;
+  const y = ((90 - lat) / 180) * h;
+  
+  // Draw dot at current location
+  ctx.fillStyle = 'rgba(79, 163, 247, 0.8)';
+  ctx.beginPath();
+  ctx.arc(x, y, 3, 0, Math.PI * 2);
+  ctx.fill();
+  
+  // Draw outline circle
+  ctx.strokeStyle = 'rgba(79, 163, 247, 0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(x, y, 5, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawCelestial(lat, lon, celestial) {
+  const canvas = document.getElementById('p-celestial');
+  if (!canvas || !celestial) return;
+  
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  
+  const w = canvas.width;
+  const h = canvas.height;
+  const cx = w / 2;
+  const cy = h / 2;
+  const radius = Math.min(w, h) / 2 - 10;
+  
+  // Clear background
+  ctx.fillStyle = 'rgba(79, 163, 247, 0.05)';
+  ctx.fillRect(0, 0, w, h);
+  
+  // Draw horizon circle
+  ctx.strokeStyle = 'rgba(79, 163, 247, 0.2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.stroke();
+  
+  // Draw cardinal directions (N/S/E/W)
+  ctx.fillStyle = 'rgba(79, 163, 247, 0.4)';
+  ctx.font = '10px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('N', cx, cy - radius - 5);
+  ctx.fillText('S', cx, cy + radius + 8);
+  ctx.fillText('E', cx + radius + 8, cy);
+  ctx.fillText('W', cx - radius - 8, cy);
+  
+  // Helper: altitude (0-90°) and azimuth (0-360°) → canvas coords
+  function altAzToXY(alt, az) {
+    if (alt < 0) return null; // Below horizon
+    const altNorm = alt / 90; // 0-1
+    const dist = (1 - altNorm) * radius; // Center is zenith
+    const angleRad = (az * Math.PI / 180) - Math.PI / 2; // 0° = north, convert to canvas coords
+    return {
+      x: cx + dist * Math.cos(angleRad),
+      y: cy + dist * Math.sin(angleRad)
+    };
+  }
+  
+  // Draw sun
+  if (celestial.sun && celestial.sun.altitude >= -5) {
+    const sunPos = altAzToXY(celestial.sun.altitude, celestial.sun.azimuth);
+    if (sunPos) {
+      ctx.fillStyle = '#ffdd00';
+      ctx.beginPath();
+      ctx.arc(sunPos.x, sunPos.y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#ffaa00';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+  
+  // Draw moon
+  if (celestial.moon && celestial.moon.altitude >= -5) {
+    const moonPos = altAzToXY(celestial.moon.altitude, celestial.moon.azimuth);
+    if (moonPos) {
+      ctx.fillStyle = '#dddddd';
+      ctx.beginPath();
+      ctx.arc(moonPos.x, moonPos.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#aaaaaa';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+  }
+  
+  // Draw planets
+  const planetColors = {
+    mercury: '#8866aa',
+    venus: '#ffdd88',
+    mars: '#dd5544',
+    jupiter: '#dd9933',
+    saturn: '#eecc88'
+  };
+  
+  if (celestial.planets) {
+    for (const [name, planet] of Object.entries(celestial.planets)) {
+      if (planet && planet.altitude >= -5) {
+        const pos = altAzToXY(planet.altitude, planet.azimuth);
+        if (pos) {
+          ctx.fillStyle = planetColors[name] || '#888888';
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y, 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+  }
+  
+  // Draw zenith marker (observer point)
+  ctx.fillStyle = 'rgba(79, 163, 247, 0.3)';
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ── rAF sync loop ────────────────────────────────────────────────────────────
+
+function rafLoop() {
+  if (syncArmed && Date.now() >= syncTarget) {
+    syncArmed = false;
+    syncIndicator.style.display = 'none';
+    controls.clock.stop();
+    controls.clock.start();
+    appendAnnotation('sync fired — clocks restarted');
+  }
+  requestAnimationFrame(rafLoop);
+}
+
+// ── Input handling ────────────────────────────────────────────────────────────
+
+function focusCmd() { cmdInput.focus(); }
+
+document.addEventListener('click', focusCmd);
+document.addEventListener('keydown', (e) => {
+  if (e.target !== cmdInput) cmdInput.focus();
+});
+
+cmdInput.addEventListener('input', () => { cmdText.textContent = cmdInput.value; });
+
+cmdInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const val = cmdInput.value;
+    if (val.trim()) {
+      cmdHistory.unshift(val);
+      if (cmdHistory.length > 50) cmdHistory.pop();
+    }
+    historyIdx = -1;
+    cmdInput.value = '';
+    cmdText.textContent = '';
+    runCommand(val);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    if (historyIdx < cmdHistory.length - 1) historyIdx++;
+    cmdInput.value = cmdHistory[historyIdx] ?? '';
+    cmdText.textContent = cmdInput.value;
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    if (historyIdx > 0) historyIdx--;
+    else { historyIdx = -1; cmdInput.value = ''; }
+    cmdText.textContent = cmdInput.value;
+  }
+});
+
+// ── Map interaction ────────────────────────────────────────────────────────────
+
+const mapCanvas = document.getElementById('p-map');
+if (mapCanvas) {
+  mapCanvas.addEventListener('click', (e) => {
+    const rect = mapCanvas.getBoundingClientRect();
+    const canvasRect = mapCanvas.getBoundingClientRect();
+    
+    // Get click position relative to canvas
+    const x = e.clientX - canvasRect.left;
+    const y = e.clientY - canvasRect.top;
+    
+    // Convert back to lat/lon (reverse Mercator)
+    const newLon = (x / mapCanvas.width) * 360 - 180;
+    const newLat = 90 - (y / mapCanvas.height) * 180;
+    
+    if (controls && controls.setLocation) {
+      const label = `${Math.abs(newLat).toFixed(2)}°${newLat >= 0 ? 'N' : 'S'} ${Math.abs(newLon).toFixed(2)}°${newLon >= 0 ? 'E' : 'W'}`;
+      controls.setLocation(newLat, newLon, label);
+      appendAnnotation(`location: ${label}`);
+      
+      // Also update URL for persistence
+      const newUrl = new URL(window.location);
+      newUrl.searchParams.set('lat', newLat.toFixed(4));
+      newUrl.searchParams.set('lon', newLon.toFixed(4));
+      window.history.replaceState({}, '', newUrl);
+    }
+  });
+}
+
+const resetBtn = document.getElementById('btn-reset-location');
+if (resetBtn) {
+  resetBtn.addEventListener('click', async () => {
+    if ('geolocation' in navigator) {
+      appendAnnotation('locating…');
+      try {
+        const pos = await new Promise((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000 })
+        );
+        const label = `${Math.abs(pos.coords.latitude).toFixed(2)}°${pos.coords.latitude >= 0 ? 'N' : 'S'} ${Math.abs(pos.coords.longitude).toFixed(2)}°${pos.coords.longitude >= 0 ? 'E' : 'W'}`;
+        
+        if (controls && controls.setLocation) {
+          controls.setLocation(pos.coords.latitude, pos.coords.longitude, label);
+          appendAnnotation(`reset to: ${label}`);
+        }
+        
+        // Update URL for persistence
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set('lat', pos.coords.latitude.toFixed(4));
+        newUrl.searchParams.set('lon', pos.coords.longitude.toFixed(4));
+        window.history.replaceState({}, '', newUrl);
+      } catch (err) {
+        appendAnnotation('geolocation unavailable or denied');
+      }
+    } else {
+      appendAnnotation('geolocation not available in this browser');
+    }
+  });
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+appendAnnotation('forever song  ·  an infinite generative score');
+appendAnnotation('');
+appendAnnotation('stream:   ♦ melodic  ◆ twinkle  ● bass  (note shown when melodic fires)');
+appendAnnotation('key:      determined by moon phase · cycles every ~2-3 days');
+appendAnnotation('meter:    determined by Venus synodic cycle · era ~117 days');
+appendAnnotation('texture:  sun elevation · Jupiter / Venus / Mars / Saturn altitudes');
+appendAnnotation('');
+appendAnnotation('for analog performance: read key + dynamics + guidance from the panel →');
+appendAnnotation('');
+for (const l of HELP_TEXT) appendAnnotation(l);
+appendAnnotation('');
+
+// Auto-start if URL has ?lat= params
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.has('lat') || urlParams.has('days')) {
+  runCommand('start');
+}
+
+focusCmd();
+</script>
+</body>
+</html>
