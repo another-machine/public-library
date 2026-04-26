@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Forever Song</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+
+      body {
+        font-family: "Cascadia Code", "Fira Code", "JetBrains Mono", "Menlo", "Courier New", monospace;
+        background: #0a0e1a;
+        color: #e0e6ed;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      #main {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+      }
+
+      #stream {
+        flex: 1;
+        overflow-y: auto;
+        padding: 8px 10px;
+        font-size: 11px;
+        line-height: 1.65;
+        color: #9ca3af;
+        border-right: 1px solid #1a2540;
+      }
+      #stream .line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .c-main    { color: #38bdf8; }
+      .c-twinkle { color: #a78bfa; }
+      .c-bass    { color: #34d399; }
+      .c-key     { color: #fbbf24; }
+      .c-dim     { color: #374151; }
+      .c-log     { color: #4b5563; }
+
+      #panel {
+        width: 270px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        background: #080c18;
+      }
+
+      canvas.p-canvas {
+        width: 100%;
+        display: block;
+        background: #040710;
+        border-bottom: 1px solid #1a2540;
+      }
+      #mapCanvas       { height: 72px; }
+      #celestialCanvas { height: 108px; }
+
+      #p-status {
+        padding: 8px 10px;
+        font-size: 11px;
+        line-height: 1.7;
+        flex: 1;
+      }
+      .p-row   { display: flex; gap: 4px; }
+      .p-label { color: #374151; min-width: 72px; }
+      .p-val   { color: #9ca3af; }
+      .p-bright{ color: #e0e6ed; font-weight: 600; }
+      .p-sep   { border-top: 1px solid #1a2540; margin: 3px 0; }
+
+      .dyn-wrap { display: inline-flex; align-items: center; gap: 5px; }
+      .dyn-bar  {
+        display: inline-block;
+        height: 4px;
+        background: #38bdf8;
+        border-radius: 2px;
+        transition: width 0.4s ease;
+        min-width: 2px;
+      }
+
+      #sync-indicator {
+        position: fixed;
+        bottom: 34px;
+        right: 6px;
+        font-size: 9px;
+        color: #f97316;
+        pointer-events: none;
+      }
+
+      #cmdline {
+        border-top: 1px solid #1a2540;
+        background: #060a14;
+        padding: 7px 10px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        flex-shrink: 0;
+      }
+      #prompt { color: #374151; }
+      #cmd {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: #e0e6ed;
+        font-family: inherit;
+        font-size: 12px;
+        outline: none;
+      }
+      #cmd::placeholder { color: #1f2d45; }
+
+      ::-webkit-scrollbar { width: 3px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #1a2540; border-radius: 2px; }
+    </style>
+  </head>
+  <body>
+    <div id="main">
+      <div id="stream"></div>
+      <div id="panel">
+        <canvas id="mapCanvas"       class="p-canvas"></canvas>
+        <canvas id="celestialCanvas" class="p-canvas"></canvas>
+        <div id="p-status"></div>
+      </div>
+    </div>
+    <div id="sync-indicator"></div>
+    <div id="cmdline">
+      <span id="prompt">&gt;</span>
+      <input id="cmd" type="text" placeholder="type help for commands…" autocomplete="off" spellcheck="false" />
+    </div>
+
+    <script type="module">
+      import { generate } from '../../../packages/amplib-cosmos/src/index';
+      import { ChromaticWall, Clock } from '../../../packages/amplib-sound-synthesis/src/index';
+      import { Scale, Note } from '../../../packages/amplib-music-theory/src/index';
+
+      // ═══════════════════ SEEDED RNG ═══════════════════════
+      // xorshift32 temporarily replaces Math.random so all tabs
+      // at the same UTC moment generate identical note sequences.
+      function withSeededRandom(seed, fn) {
+        const orig = Math.random;
+        let s = (seed ^ 0xdeadbeef) >>> 0 || 1;
+        Math.random = () => {
+          s ^= s << 13; s ^= s >> 17; s ^= s << 5;
+          return (s >>> 0) / 4294967296;
+        };
+        const result = fn();
+        Math.random = orig;
+        return result;
+      }
+
+      // ═══════════════════ STATE ════════════════════════════
+      let lat = 40.7128, lon = -74.006;
+      let timeOffset       = 0;
+      let metronomeEnabled = false;
+      let wallBeatIndex    = 0;
+      let cachedCosmos     = null;
+      let lastCosmosTs     = 0;
+      let lastUIUpdate     = 0;
+      let lastBpm          = 90;
+
+      const beatHistory = [];
+      const MAX_BEATS   = 10000;
+      const MAX_STREAM  = 500;
+
+      // ═══════════════════ AUDIO ════════════════════════════
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      const wall = new ChromaticWall({
+        audioContext: audioCtx,
+        volume: 0.75,
+        mainChance: 0.5,
+        twinkleChance: 0.5,
+      });
+
+      const clock = new Clock({ subdivision: 16 });
+
+      // Metronome (always-on oscillator, gain envelope creates click)
+      const metroOsc  = audioCtx.createOscillator();
+      const metroGain = audioCtx.createGain();
+      metroGain.gain.value = 0;
+      metroOsc.frequency.value = 880;
+      metroOsc.type = 'sine';
+      metroOsc.connect(metroGain);
+      metroGain.connect(audioCtx.destination);
+      metroOsc.start();
+
+      // ═══════════════════ COSMOS HELPERS ═══════════════════
+      function getPlanet(c, name) {
+        if (name === 'sun') {
+          const el = c.sun.elevation.value;
+          return { alt: el, az: c.sun.azimuth.value, visible: el > -18 };
+        }
+        if (name === 'moon') {
+          const alt = c.moon.altitude?.value ?? -90;
+          return { alt, az: c.moon.azimuth?.value ?? 0, visible: alt > -5 };
+        }
+        const p = c.planets[name];
+        if (!p) return { alt: -90, az: 0, visible: false };
+        return { alt: p.altitude.value, az: p.azimuth.value, visible: p.isVisible.value };
+      }
+
+      const PLANET_SYMS = [
+        ['sun',     '☉'],
+        ['moon',    '☽'],
+        ['venus',   '♀'],
+        ['mars',    '♂'],
+        ['jupiter', '♃'],
+        ['saturn',  '♄'],
+        ['mercury', '☿'],
+      ];
+
+      // ═══════════════════ PLANETARY WEIGHTS ════════════════
+      // Maps planetary altitudes → probability distribution over
+      // scale intervals I-VII. Sun/Jupiter/Saturn → consonant;
+      // waxing moon → tension; Venus → shimmer.
+      function generatePlanetaryWeights(c) {
+        const w = [0.5, 0.3, 0.4, 0.6, 0.7, 0.4, 0.2];
+
+        const sunElev = c.sun.elevation.value;
+        const sunInf  = Math.max(0, sunElev / 90);
+        w[0] += sunInf * 0.8; w[3] += sunInf * 0.6; w[4] += sunInf * 0.7;
+
+        const moonPhase = c.moon.phase.value;
+        const waxing    = moonPhase < 0.5 ? moonPhase * 2 : (1 - moonPhase) * 2;
+        w[1] -= waxing * 0.4; w[2] += waxing * 0.3; w[5] += waxing * 0.2;
+        w[0] += Math.max(0, (c.moon.altitude?.value ?? 0) / 90) * 0.3;
+
+        const venus = getPlanet(c, 'venus');
+        if (venus.visible) {
+          const v = Math.max(0, venus.alt / 90) * 0.6;
+          w[2] += v * 0.5; w[5] += v * 0.6;
+        }
+        const mars = getPlanet(c, 'mars');
+        if (mars.visible) w[4] += Math.max(0, mars.alt / 90) * 0.6 * 0.4;
+
+        const jup = getPlanet(c, 'jupiter');
+        if (jup.visible) {
+          const j = Math.max(0, jup.alt / 90) * 0.6;
+          w[3] += j * 0.5; w[4] += j * 0.3;
+        }
+        const sat = getPlanet(c, 'saturn');
+        if (sat.visible) {
+          const s = Math.max(0, sat.alt / 90) * 0.6;
+          w[0] += s * 0.3; w[3] += s * 0.4;
+        }
+
+        const total = w.reduce((a, b) => a + Math.max(0, b), 0);
+        return total > 0 ? w.map(v => Math.max(0, v) / total) : w.map(() => 1 / 7);
+      }
+
+      function selectIntervalFromWeights(weights) {
+        const r = Math.random();
+        let sum = 0;
+        for (let i = 0; i < weights.length; i++) {
+          sum += weights[i];
+          if (r < sum) return i;
+        }
+        return weights.length - 1;
+      }
+
+      function computeTension(weights) {
+        const mean     = 1 / weights.length;
+        const variance = weights.reduce((s, w) => s + Math.pow(w - mean, 2), 0) / weights.length;
+        return Math.sqrt(variance) / mean;
+      }
+
+      // ═══════════════════ SCALE SELECTION ══════════════════
+      // Venus heliocentric angle (225-day period) → 3 minor eras
+      const SCALE_POOLS = [
+        { key: 'C', mode: 'minor' },
+        { key: 'G', mode: 'minor' },
+        { key: 'D', mode: 'minor' },
+      ];
+      function getScalePool(c) {
+        const ang = c.planets.venus?.heliocentricAngle?.value ?? 0;
+        return SCALE_POOLS[Math.floor((ang / 360) * 3) % 3];
+      }
+
+      // ═══════════════════ BASS VOICE ═══════════════════════
+      const BASS_ROOTS = { C: ['C', 'G'], G: ['G', 'D'], D: ['D', 'A'] };
+
+      function triggerBass(pool, moonPhase, phasedIdx, brightness) {
+        const roll      = withSeededRandom(phasedIdx + 1000000, () => Math.random());
+        const fireChance = 0.25 + (1 - brightness) * 0.2;
+        if (roll > fireChance) return null;
+
+        const roots    = BASS_ROOTS[pool.key] || ['C', 'G'];
+        const notation = roots[Math.floor(moonPhase * roots.length) % roots.length];
+        const octave   = 2;
+        const freq     = Note.octaveStepFrequencies[octave]?.[Note.notationIndex(notation)];
+        if (!freq) return null;
+
+        const osc     = audioCtx.createOscillator();
+        const modOsc  = audioCtx.createOscillator();
+        const modGain = audioCtx.createGain();
+        const env     = audioCtx.createGain();
+        const lp      = audioCtx.createBiquadFilter();
+        const pan     = audioCtx.createStereoPanner();
+
+        osc.type             = 'sawtooth';
+        osc.frequency.value  = freq;
+        modOsc.type          = 'sine';
+        modOsc.frequency.value = 60;
+        modGain.gain.value   = freq * 0.015;
+        lp.type              = 'lowpass';
+        lp.frequency.value   = 520;
+        lp.Q.value           = 0.7;
+        pan.pan.value        = 0;
+
+        const release = brightness < 0.3 ? 1.8 : 1.0;
+        env.gain.setValueAtTime(0, audioCtx.currentTime);
+        env.gain.linearRampToValueAtTime(0.28, audioCtx.currentTime + 0.04);
+        env.gain.linearRampToValueAtTime(0,    audioCtx.currentTime + 0.04 + release);
+
+        modOsc.connect(modGain);
+        modGain.connect(osc.detune);
+        osc.connect(env);
+        env.connect(lp);
+        lp.connect(pan);
+        pan.connect(audioCtx.destination);
+
+        osc.onended = () => {
+          osc.disconnect(); modOsc.disconnect();
+          modGain.disconnect(); env.disconnect();
+          lp.disconnect(); pan.disconnect();
+        };
+        modOsc.start(); osc.start();
+        modOsc.stop(audioCtx.currentTime + 0.04 + release);
+        osc.stop(audioCtx.currentTime + 0.04 + release);
+
+        return notation + octave;
+      }
+
+      // ═══════════════════ CANVAS ═══════════════════════════
+      const mapCanvas       = document.getElementById('mapCanvas');
+      const celestialCanvas = document.getElementById('celestialCanvas');
+
+      function resizeCanvases() {
+        mapCanvas.width        = mapCanvas.clientWidth;
+        mapCanvas.height       = mapCanvas.clientHeight;
+        celestialCanvas.width  = celestialCanvas.clientWidth;
+        celestialCanvas.height = celestialCanvas.clientHeight;
+      }
+      resizeCanvases();
+      window.addEventListener('resize', resizeCanvases);
+
+      const mapCtx = mapCanvas.getContext('2d');
+      const celCtx = celestialCanvas.getContext('2d');
+
+      function drawMap(c) {
+        mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
+
+        // Observer dot
+        const ox = ((lon + 180) / 360) * mapCanvas.width;
+        const oy = ((90 - lat) / 180) * mapCanvas.height;
+        mapCtx.strokeStyle = '#2a3f5f';
+        mapCtx.lineWidth   = 1;
+        mapCtx.beginPath();
+        mapCtx.arc(ox, oy, 3, 0, Math.PI * 2);
+        mapCtx.stroke();
+
+        // Planets (heliocentric longitude → X, altitude → Y)
+        const PLANET_MAP = [
+          ['venus', '♀'], ['mars', '♂'], ['jupiter', '♃'], ['saturn', '♄'], ['mercury', '☿'],
+        ];
+        for (const [name, sym] of PLANET_MAP) {
+          const p = c.planets[name];
+          if (!p) continue;
+          const x = ((p.heliocentricAngle?.value ?? 0) / 360) * mapCanvas.width;
+          const y = mapCanvas.height * 0.5 - (p.altitude.value / 90) * (mapCanvas.height * 0.42);
+          mapCtx.fillStyle    = p.isVisible.value ? '#4ade80' : '#2d3d52';
+          mapCtx.font         = '9px monospace';
+          mapCtx.textAlign    = 'center';
+          mapCtx.textBaseline = 'middle';
+          mapCtx.fillText(sym, x, Math.max(6, Math.min(mapCanvas.height - 4, y)));
+        }
+      }
+
+      function drawCelestial(c) {
+        celCtx.clearRect(0, 0, celestialCanvas.width, celestialCanvas.height);
+
+        const cx = celestialCanvas.width  / 2;
+        const cy = celestialCanvas.height / 2;
+        const R  = Math.min(cx, cy) * 0.84;
+
+        celCtx.strokeStyle = '#1a2540';
+        celCtx.lineWidth   = 1;
+        celCtx.beginPath();
+        celCtx.arc(cx, cy, R, 0, Math.PI * 2);
+        celCtx.stroke();
+
+        celCtx.fillStyle    = '#2a3f5f';
+        celCtx.font         = '8px monospace';
+        celCtx.textAlign    = 'center';
+        celCtx.textBaseline = 'middle';
+        celCtx.fillText('N', cx,         cy - R - 6);
+        celCtx.fillText('S', cx,         cy + R + 6);
+        celCtx.fillText('E', cx + R + 6, cy);
+        celCtx.fillText('W', cx - R - 6, cy);
+
+        for (const [name, sym] of PLANET_SYMS) {
+          const pd = getPlanet(c, name);
+          if (pd.alt < -20) continue;
+          const altRad = (pd.alt * Math.PI) / 180;
+          const azRad  = (pd.az  * Math.PI) / 180;
+          const d = R * Math.cos(altRad);
+          const x = cx + d * Math.sin(azRad);
+          const y = cy - d * Math.cos(azRad);
+          celCtx.fillStyle =
+            name === 'sun'  ? '#fbbf24' :
+            name === 'moon' ? '#d1d5db' :
+            pd.alt > 0      ? '#4ade80' : '#374151';
+          celCtx.font          = '11px monospace';
+          celCtx.textAlign     = 'center';
+          celCtx.textBaseline  = 'middle';
+          celCtx.fillText(sym, x, y);
+        }
+      }
+
+      // ═══════════════════ STATUS PANEL ═════════════════════
+      const pStatus       = document.getElementById('p-status');
+      const INTERVAL_LABELS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+
+      function renderStatus(c, pool, bpm, tension, intervalIdx) {
+        const sunElev    = c.sun.elevation.value;
+        const brightness = Math.max(0, Math.min(1, (sunElev + 18) / 108));
+        const moonPhase  = c.moon.phase.value;
+        const moonDesc   = c.moon.phaseDescription?.value ?? '';
+        const tensionLabel = tension < 0.3 ? 'consonant' : tension < 0.6 ? 'mild' : 'tense';
+        const dynLabel   =
+          brightness < 0.1  ? 'ppp' :
+          brightness < 0.25 ? 'pp'  :
+          brightness < 0.45 ? 'p'   :
+          brightness < 0.6  ? 'mp'  :
+          brightness < 0.75 ? 'mf'  :
+          brightness < 0.9  ? 'f'   : 'ff';
+        const visible    = PLANET_SYMS.filter(([n]) => getPlanet(c, n).visible).map(([, s]) => s).join('');
+        const dynWidth   = Math.round(4 + brightness * 58);
+        const dateStr    = new Date(Date.now() + timeOffset).toUTCString().replace(' GMT', '');
+
+        pStatus.innerHTML = `
+          <div class="p-row"><span class="p-label">key</span><span class="p-bright">${pool.key} ${pool.mode}</span></div>
+          <div class="p-row"><span class="p-label">interval</span><span class="p-val">${INTERVAL_LABELS[intervalIdx] ?? '?'}</span></div>
+          <div class="p-row"><span class="p-label">tension</span><span class="p-val">${tension.toFixed(2)} <span class="c-dim">${tensionLabel}</span></span></div>
+          <div class="p-row"><span class="p-label">bpm</span><span class="p-val">${Math.round(bpm)}</span></div>
+          <div class="p-row">
+            <span class="p-label">dynamics</span>
+            <span class="p-val dyn-wrap"><span class="c-main">${dynLabel}</span><span class="dyn-bar" style="width:${dynWidth}px"></span></span>
+          </div>
+          <div class="p-sep"></div>
+          <div class="p-row"><span class="p-label">sun</span><span class="p-val">${sunElev.toFixed(1)}°</span></div>
+          <div class="p-row"><span class="p-label">moon</span><span class="p-val">${Math.round(moonPhase * 100)}%  ${moonDesc}</span></div>
+          <div class="p-row"><span class="p-label">sky</span><span class="p-val">${visible || '—'}</span></div>
+          <div class="p-sep"></div>
+          <div class="p-row"><span class="p-label">location</span><span class="p-val">${lat.toFixed(2)}°, ${lon.toFixed(2)}°</span></div>
+          <div class="p-row" style="font-size:10px"><span class="p-label">time</span><span class="p-val">${dateStr}</span></div>
+        `;
+      }
+
+      // ═══════════════════ BEAT STREAM ══════════════════════
+      const streamEl = document.getElementById('stream');
+
+      function appendStream(pool, intervalIdx, tension, bassLabel, fired) {
+        const tsym = tension < 0.3 ? '·' : tension < 0.6 ? '—' : '≡';
+        const mc   = fired.main    ? '<span class="c-main">♦</span>'    : '<span class="c-dim">·</span>';
+        const tc   = fired.twinkle ? '<span class="c-twinkle">◆</span>' : '<span class="c-dim">·</span>';
+        const bc   = fired.bass    ? '<span class="c-bass">●</span>'    : '<span class="c-dim">·</span>';
+        const beat = String(wallBeatIndex).padStart(6);
+        const line = document.createElement('div');
+        line.className = 'line';
+        line.innerHTML =
+          `<span class="c-dim">${beat} </span>${mc}${tc}${bc} ` +
+          `<span class="c-dim">${(INTERVAL_LABELS[intervalIdx] ?? '?').padEnd(4)}</span>` +
+          `<span class="c-key">${pool.key}m</span>` +
+          ` <span class="c-dim">${tsym}</span>` +
+          (bassLabel ? ` <span class="c-bass">${bassLabel}</span>` : '');
+        streamEl.appendChild(line);
+        streamEl.scrollTop = streamEl.scrollHeight;
+        while (streamEl.children.length > MAX_STREAM) streamEl.removeChild(streamEl.firstChild);
+      }
+
+      function appendLog(text) {
+        const line = document.createElement('div');
+        line.className = 'line c-log';
+        line.textContent = '// ' + text;
+        streamEl.appendChild(line);
+        streamEl.scrollTop = streamEl.scrollHeight;
+      }
+
+      // ═══════════════════ SCORE EXPORT ═════════════════════
+      function exportScore(minutes = 60) {
+        const now       = Date.now() + timeOffset;
+        const startTime = now - minutes * 60 * 1000;
+        const beats     = beatHistory.filter(b => b.timestamp >= startTime);
+        let md  = `# Forever Song Export\n\n`;
+        md += `**Period:** ${new Date(startTime).toUTCString()} → ${new Date(now).toUTCString()}\n`;
+        md += `**Duration:** ${minutes} min  |  **Location:** ${lat.toFixed(4)}°, ${lon.toFixed(4)}°\n`;
+        md += `**Beats captured:** ${beats.length}\n\n`;
+        if (!beats.length) { md += '*No beats recorded.*\n'; return md; }
+        md += `## Beat Log\n\n| Time | Key | Interval | Tension | Moon | Sky |\n|------|-----|----------|---------|------|-----|\n`;
+        beats.slice(0, 500).forEach(b => {
+          const t = new Date(b.timestamp).toUTCString().split(' ')[4];
+          const tl = b.tension < 0.3 ? 'consonant' : b.tension < 0.6 ? 'mild' : 'tense';
+          md += `| ${t} | ${b.key}m | ${INTERVAL_LABELS[b.intervalIdx] ?? '?'} | ${tl} | ${Math.round(b.moonPhase * 100)}% | ${b.sky || '—'} |\n`;
+        });
+        if (beats.length > 500) md += `\n*… and ${beats.length - 500} more beats*\n`;
+        return md;
+      }
+
+      // ═══════════════════ BEAT CALLBACK ════════════════════
+      clock.onBeat(() => {
+        const now = Date.now() + timeOffset;
+
+        if (!cachedCosmos || now - lastCosmosTs > 3000) {
+          try { cachedCosmos = generate({ latitude: lat, longitude: lon, timestamp: now }); }
+          catch (e) { appendLog('cosmos error: ' + e.message); return; }
+          lastCosmosTs = now;
+        }
+        const c = cachedCosmos;
+
+        // Scale
+        const pool  = getScalePool(c);
+        const scale = new Scale({ root: pool.key, mode: pool.mode });
+
+        // BPM drifts with moon phase: 70–100 BPM
+        const moonPhase = c.moon.phase.value;
+        lastBpm = lastBpm + (70 + moonPhase * 30 - lastBpm) * 0.008;
+        clock.setBPM(lastBpm);
+
+        // Phase-locked beat index (anchored to Unix epoch for cross-tab sync)
+        const beatMs    = (60 / clock.bpm) * (4 / clock.subdivision) * 1000;
+        const phasedIdx = Math.floor(now / beatMs);
+
+        // Weighted interval selection (deterministic via seeded RNG)
+        const weights     = generatePlanetaryWeights(c);
+        const intervalIdx = withSeededRandom(phasedIdx, () => selectIntervalFromWeights(weights));
+        const stepFactor  = intervalIdx / Math.max(1, scale.intervals.length - 1);
+        const tension     = computeTension(weights);
+
+        // Brightness: 0 = astronomical night, 1 = solar noon
+        const sunElev    = c.sun.elevation.value;
+        const brightness = Math.max(0, Math.min(1, (sunElev + 18) / 108));
+
+        // Update ChromaticWall modulation from planetary altitudes
+        const jupAlt = c.planets.jupiter?.altitude?.value ?? 0;
+        const venAlt = c.planets.venus?.altitude?.value  ?? 0;
+        wall.synthMain.modulationDepth    = 0.5 + Math.max(0, jupAlt / 90) * 2.5;
+        wall.synthTwinkle.modulationDepth = 0.5 + Math.max(0, venAlt / 90) * 2.0;
+        wall.mainChance    = Math.max(0.05, 0.5 - brightness * 0.4);
+        wall.twinkleChance = 0.15 + brightness * 0.6;
+
+        // Tick ChromaticWall with seeded RNG
+        const fired = { main: false, twinkle: false, bass: false };
+        withSeededRandom(phasedIdx + 500000, () => {
+          const r = wall.tick({
+            scale,
+            stepFactor,
+            highpassFactor: Math.max(0, (c.observer?.siderealTime?.unitRange ?? 0.05) * 0.3),
+            lowpassFactor:  0.2 + brightness * 0.6,
+            mainEnvelopeModifier:    { release: brightness < 0.3 ? 4.0 : 0.8 },
+            twinkleEnvelopeModifier: { release: 0.15 + brightness * 0.65 },
+          });
+          if (r) { fired.main = r.main; fired.twinkle = r.twinkle; }
+        });
+
+        // Bass
+        const bassLabel = triggerBass(pool, moonPhase, phasedIdx, brightness);
+        fired.bass = !!bassLabel;
+
+        // Metronome
+        if (metronomeEnabled) {
+          metroGain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+          metroGain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+        }
+
+        // Beat history
+        const sky = PLANET_SYMS.filter(([n]) => getPlanet(c, n).visible).map(([, s]) => s).join('');
+        beatHistory.push({ timestamp: now, key: pool.key, intervalIdx, tension, moonPhase, sky });
+        if (beatHistory.length > MAX_BEATS) beatHistory.shift();
+
+        // UI
+        appendStream(pool, intervalIdx, tension, bassLabel, fired);
+        if (now - lastUIUpdate > 180) {
+          drawMap(c);
+          drawCelestial(c);
+          renderStatus(c, pool, clock.bpm, tension, intervalIdx);
+          lastUIUpdate = now;
+        }
+
+        wallBeatIndex++;
+      });
+
+      // ═══════════════════ SYNC ═════════════════════════════
+      let syncArmed  = false;
+      let syncTarget = 0;
+      const syncIndicator = document.getElementById('sync-indicator');
+
+      function rafLoop() {
+        if (syncArmed) {
+          syncIndicator.textContent = `sync ● ${((syncTarget - Date.now()) / 1000).toFixed(1)}s`;
+          if (Date.now() >= syncTarget) {
+            syncArmed = false;
+            syncIndicator.textContent = '';
+            clock.start(); wall.start();
+            appendLog('synced ✓');
+          }
+        }
+        requestAnimationFrame(rafLoop);
+      }
+      rafLoop();
+
+      // ═══════════════════ COMMAND LINE ═════════════════════
+      const HELP_TEXT = [
+        'start                 — begin playback',
+        'stop                  — pause playback',
+        'bpm <n>               — override tempo (default: auto 70–100 from moon phase)',
+        'offset <ms>           — shift virtual time (negative = past, positive = future)',
+        'location <lat> <lon>  — set observer location',
+        'export [min]          — download beat log as markdown (default: 60 min)',
+        'metronome on|off      — toggle audible click',
+        'sync                  — restart at next 5-second boundary for cross-tab sync',
+        'help                  — show this message',
+      ];
+
+      function runCommand(raw) {
+        const [cmd, ...args] = raw.trim().split(/\s+/);
+        if (!cmd) return;
+
+        switch (cmd.toLowerCase()) {
+          case 'start':
+            audioCtx.resume();
+            clock.start();
+            wall.start();
+            appendLog('▶ playback started');
+            break;
+
+          case 'stop':
+            clock.stop();
+            wall.stop();
+            appendLog('⏸ playback stopped');
+            break;
+
+          case 'bpm': {
+            const b = parseFloat(args[0]);
+            if (!isNaN(b) && b > 0) { clock.setBPM(b); lastBpm = b; appendLog(`bpm: ${b}`); }
+            else appendLog(`current bpm: ${Math.round(clock.bpm)} (auto)`);
+            break;
+          }
+
+          case 'offset': {
+            const d = parseInt(args[0]);
+            if (!isNaN(d)) {
+              timeOffset += d;
+              cachedCosmos = null;
+              appendLog(`time offset: ${timeOffset > 0 ? '+' : ''}${timeOffset}ms → ${new Date(Date.now() + timeOffset).toUTCString()}`);
+            }
+            break;
+          }
+
+          case 'location': {
+            const la = parseFloat(args[0]), lo = parseFloat(args[1]);
+            if (!isNaN(la) && !isNaN(lo)) {
+              lat = la; lon = lo;
+              cachedCosmos = null;
+              appendLog(`location: ${lat.toFixed(4)}°, ${lon.toFixed(4)}°`);
+            } else {
+              appendLog(`location: ${lat.toFixed(4)}°, ${lon.toFixed(4)}°`);
+            }
+            break;
+          }
+
+          case 'export': {
+            const minutes = parseInt(args[0]) || 60;
+            try {
+              const md = exportScore(minutes);
+              const blob = new Blob([md], { type: 'text/markdown' });
+              const url  = URL.createObjectURL(blob);
+              const a    = document.createElement('a');
+              a.href = url; a.download = `forever-song-${Date.now()}.md`; a.click();
+              URL.revokeObjectURL(url);
+              appendLog(`exported last ${minutes} min (${beatHistory.length} beats total)`);
+            } catch (e) { appendLog(`export error: ${e.message}`); }
+            break;
+          }
+
+          case 'metronome':
+            if (args[0] === 'on')       { metronomeEnabled = true;  appendLog('metronome: on');  }
+            else if (args[0] === 'off') { metronomeEnabled = false; appendLog('metronome: off'); }
+            else appendLog(`metronome: ${metronomeEnabled ? 'on' : 'off'}`);
+            break;
+
+          case 'sync':
+            clock.stop(); wall.stop();
+            syncTarget = Math.ceil(Date.now() / 5000) * 5000;
+            syncArmed  = true;
+            appendLog(`sync armed → ${new Date(syncTarget).toISOString().split('T')[1].slice(0,8)} UTC`);
+            break;
+
+          case 'help':
+            HELP_TEXT.forEach(l => appendLog(l));
+            break;
+
+          default:
+            appendLog(`unknown: "${cmd}" — type help`);
+        }
+      }
+
+      const cmdInput = document.getElementById('cmd');
+      cmdInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { const v = cmdInput.value; cmdInput.value = ''; runCommand(v); }
+      });
+
+      // ═══════════════════ INIT ═════════════════════════════
+      const params = new URLSearchParams(location.search);
+      if (params.has('lat'))  lat        = parseFloat(params.get('lat'));
+      if (params.has('lon'))  lon        = parseFloat(params.get('lon'));
+      if (params.has('days')) timeOffset = parseFloat(params.get('days')) * 86400000;
+
+      cmdInput.focus();
+      appendLog('forever-song v0.7  ·  deterministic procedural music from the sky');
+      appendLog(`location: ${lat.toFixed(4)}°, ${lon.toFixed(4)}° — change with: location <lat> <lon>`);
+      appendLog('type start to begin  ·  type help for all commands');
+    </script>
+  </body>
+</html>
