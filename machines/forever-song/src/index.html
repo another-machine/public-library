@@ -1153,9 +1153,14 @@
             audioCtx.currentTime,
             audioBaseline.ctx + (workerPerf - audioBaseline.perf) / 1000,
           );
+          const isDownbeat = beatStep === 0;
+          metroOsc.frequency.setValueAtTime(isDownbeat ? 1320 : 880, audioAt);
           metroGain.gain.cancelScheduledValues(audioAt);
-          metroGain.gain.setValueAtTime(0.12, audioAt);
-          metroGain.gain.exponentialRampToValueAtTime(0.001, audioAt + 0.05);
+          metroGain.gain.setValueAtTime(isDownbeat ? 0.22 : 0.1, audioAt);
+          metroGain.gain.exponentialRampToValueAtTime(
+            0.001,
+            audioAt + (isDownbeat ? 0.08 : 0.04),
+          );
         }
 
         const now = Date.now() + timeOffset;

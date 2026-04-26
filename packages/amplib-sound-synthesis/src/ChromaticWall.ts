@@ -97,7 +97,7 @@ export class ChromaticWall {
     this.on = true;
     this.channelOutput.gain.linearRampToValueAtTime(
       this.volume,
-      this.audioContext.currentTime + 1
+      this.audioContext.currentTime + 1,
     );
   }
 
@@ -105,7 +105,7 @@ export class ChromaticWall {
     this.on = false;
     this.channelOutput.gain.linearRampToValueAtTime(
       0.0000001,
-      this.audioContext.currentTime + 1
+      this.audioContext.currentTime + 1,
     );
   }
 
@@ -125,25 +125,28 @@ export class ChromaticWall {
     twinkleEnvelopeModifier?: EnvelopeModifier;
   }) {
     if (!this.on) {
-      return;
+      return { main: false, twinkle: false };
     }
     this.effectHighpassFilter.frequency.linearRampToValueAtTime(
       Math.round(highpassFactor * 12000 + 100),
-      this.audioContext.currentTime + 0.05
+      this.audioContext.currentTime + 0.05,
     );
     this.effectLowpassFilter.frequency.linearRampToValueAtTime(
       Math.round(lowpassFactor * 12000 + 100),
-      this.audioContext.currentTime + 0.05
+      this.audioContext.currentTime + 0.05,
     );
 
     const step = Math.min(
       Math.floor(stepFactor * scale.intervals.length),
-      scale.intervals.length - 1
+      scale.intervals.length - 1,
     );
     const { notes } = scale.intervals[step];
     const { notation, octave } = notes[this.stepPosition % notes.length];
 
-    const selectRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+    const selectRandom = (arr: any[]) =>
+      arr[Math.floor(Math.random() * arr.length)];
+    let mainFired = false;
+    let twinkleFired = false;
     // synth
     if (Math.random() > this.mainChance) {
       const octaveOffset =
@@ -156,6 +159,7 @@ export class ChromaticWall {
         envelopeModifier: mainEnvelopeModifier || {},
       });
       this.stepPosition++;
+      mainFired = true;
     }
     // twinkle synth
     if (Math.random() > this.twinkleChance) {
@@ -167,7 +171,9 @@ export class ChromaticWall {
         synth: this.synthTwinkle,
         envelopeModifier: twinkleEnvelopeModifier || {},
       });
+      twinkleFired = true;
     }
+    return { main: mainFired, twinkle: twinkleFired };
   }
 
   toggle() {
@@ -190,7 +196,7 @@ export class ChromaticWall {
   }) {
     const { attack, release, volume } = ChromaticWall.modifiedEnvelope(
       synth.envelope,
-      envelopeModifier
+      envelopeModifier,
     );
     // Create oscillators
     const carrierOscillator = this.audioContext.createOscillator();
@@ -201,10 +207,11 @@ export class ChromaticWall {
     const pan = this.audioContext.createStereoPanner();
     pan.pan.setValueAtTime(
       Math.random() * 2 - 1,
-      this.audioContext.currentTime
+      this.audioContext.currentTime,
     );
 
-    // Set frequencies
+    // Set frequencies — guard against out-of-bounds octave producing NaN/undefined
+    if (!hz || !isFinite(hz)) return;
     carrierOscillator.frequency.value = hz;
     modulationOscillator.frequency.value = synth.modulationFrequency;
 
@@ -220,11 +227,11 @@ export class ChromaticWall {
     // Parameter automation to generate the envelope
     envelopeGain.gain.linearRampToValueAtTime(
       volume,
-      this.audioContext.currentTime + attack
+      this.audioContext.currentTime + attack,
     );
     envelopeGain.gain.linearRampToValueAtTime(
       0,
-      this.audioContext.currentTime + attack + release
+      this.audioContext.currentTime + attack + release,
     );
 
     // Connect the nodes
