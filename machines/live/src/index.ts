@@ -41,7 +41,7 @@ document.querySelectorAll("button").forEach((button) => {
 
       background.onload = async () => {
         section?.classList.remove("loading");
-        const metadata = StegaMetadata.decode({ source: media });
+        const metadata = StegaMetadata.decode({ source: background });
         if (
           !metadata ||
           (metadata.type !== StegaMetadata.StegaContentType.AUDIO &&
