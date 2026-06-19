@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -60,127 +60,86 @@ Stega64.encode({
 <span data-output="decode"></span></code></pre>
       </section>
 
-      <section class="example" id="example-stega-cassette">
-        <h2>StegaCassette encodes and decodes audio in image pixels.</h2>
+      <section id="example-stegassette">
+        <h2>
+          Stegassette encodes multi-payload entries in image pixels using the
+          STGC format.
+        </h2>
         <p>
           <code
-            >StegaCassette.encode({ source?: HTMLImageElement |
-            HTMLCanvasElement; sources?: (HTMLImageElement |
-            HTMLCanvasElement)[]; audioBuffers: Float32Array[]; sampleRate:
-            number; bitDepth: StegaCassetteBitDepth; encoding:
-            StegaCassetteEncoding; encodeMetadata?: boolean; aspectRatio?:
-            number; borderWidth?: number; }): HTMLCanvasElement |
-            HTMLCanvasElement[]</code
+            >Stegassette.encode({ source: HTMLImageElement | HTMLCanvasElement;
+            entries: Entry[]; combine?: CombineName; keymap?: KeymapName;
+            traversal?: TraversalName; bitsPerSample?: number; border?: number;
+            aspectRatio?: number; }): HTMLCanvasElement</code
           >
         </p>
-        <p></p>
         <pre><code>const audioBuffers = await <a href="#load-audio-buffers-from-audio-url">loadAudioBuffersFromAudioUrl</a>({
   url: "./example.mp3",
   audioContext,
   channels: <span data-value="channels"></span>,
   sampleRate: <span data-value="sampleRate"></span>,
 });
-const result = StegaCassette.encode({
-  source,
-  audioBuffers,
+const audioEntry = Stegassette.buildAudioEntry({
+  channels: audioBuffers,
   sampleRate: <span data-value="sampleRate"></span>,
-  bitDepth: <span data-value="bitDepth"></span>,
-  encoding: "<span data-value="encoding"></span>",
-  encodeMetadata: <span data-value="encodeMetadata"></span>,
+  bitsPerSample: <span data-value="bitsPerSample"></span>,
+});
+const encoded = Stegassette.encode({
+  source,
+  entries: [audioEntry],
+  combine: "<span data-value="combine"></span>",
+  keymap: "<span data-value="keymap"></span>",
+  traversal: "<span data-value="traversal"></span>",
+  border: <span data-value="border"></span>,
   aspectRatio: <span data-value="aspectRatio"></span>,
-  borderWidth: <span data-value="borderWidth"></span>
 });</code></pre>
 
-        <form id="form-basic"></form>
+        <form></form>
 
-        <img class="source" src="./example.jpg" style="display: none" />
         <figure><img src="./lovetakesmiles.jpg" /></figure>
-        <figure id="output-basic"></figure>
-        <audio src="./example.mp3"></audio>
+
+        <!-- Reveal display: encoded overlay develops into reconstructed base during playback -->
+        <figure id="stegassette-reveal">
+          <div class="steg-img-wrap" id="stegassette-img-wrap">
+            <canvas id="stegassette-recon-base"></canvas>
+            <canvas id="stegassette-encoded-overlay"></canvas>
+          </div>
+          <figcaption id="stegassette-caption">tap to play</figcaption>
+        </figure>
+
+        <audio src="./example.mp3" style="display: none"></audio>
 
         <p>
           <code
-            >StegaCassette.decode({ source?: HTMLImageElement |
-            HTMLCanvasElement; sources?: (HTMLImageElement |
-            HTMLCanvasElement)[]; bitDepth: StegaCassetteBitDepth; channels:
-            StegaCassetteChannels; encoding: StegaCassetteEncoding;
-            borderWidth?: number; }): Float32Array[]</code
+            >Stegassette.decode({ source: HTMLImageElement | HTMLCanvasElement |
+            StegaImageData }): { entries: DecodedEntry[]; opts: StgcOpts }</code
           >
         </p>
-        <pre><code>const metadata = <a href="#stega-metadata">StegaMetadata</a>.decode({ source }) || {};
-<span data-output="metadata">...</span>
+        <pre><code>const { entries, opts } = Stegassette.decode({ source: encoded });
+<span data-output="decode-opts">// opts: { combine, keymap, traversal } recovered from STGC header</span>
+const { channels, sampleRate } = Stegassette.parseAudioEntry(entries[0]);
+const recon = Stegassette.reconstructCover(encoded, opts);
+// recon develops on the canvas in sync with audio playback</code></pre>
 
-const audioBuffers = StegaCassette.decode({
-  source,
-  bitDepth: metadata.bitDepth || <span data-value="bitDepth"></span>,
-  channels: metadata.channels || <span data-value="channels"></span>,
-  encoding: metadata.encoding || "<span data-value="encoding"></span>",
-});
-const audio = await <a href="#play-decoded-audio-buffers">playDecodedAudioBuffers</a>({
-  audioBuffers,
-  audioContext,
-  sampleRate: metadata.sampleRate || <span data-value="sampleRate"></span>,
-});</code></pre>
-
-        <h2>Splitting audio across multiple images</h2>
-        <p>
-          <code>StegaCassette</code> can split audio data across multiple images
-          using the <code>sources</code> parameter for encoding and decoding. To
-          properly play back the audio, all images must be provided in the right
-          order. They can still be heard when provided partially (will sound
-          sped up depending on how many samples are missing) or in the wrong
-          order (will sound distored).
-        </p>
-        <pre><code>const result = StegaCassette.encode({
-  <span data-value="sourceEncodeRepresentation"></span>,
-  audioBuffers,
-  sampleRate: <span data-value="sampleRate"></span>,
-  bitDepth: <span data-value="bitDepth"></span>,
-  encoding: "<span data-value="encoding"></span>",
-});
-
-const audioBuffers = StegaCassette.decode({
-  <span data-value="sourceDecodeRepresentation"></span>,
-  bitDepth: <span data-value="bitDepth"></span>,
-  channels: <span data-value="channels"></span>,
-  encoding: "<span data-value="encoding"></span>",
-});</code></pre>
-
-        <form id="form-split"></form>
-
-        <figure id="output-split"></figure>
-
-        <h2>Obfuscating the data</h2>
-        <p>
-          <code>StegaCassette</code> encodes audio with a
-          <code>key</code> parameter to apply permutation-based encryption,
-          making the audio unplayable without the correct key. Keys can be
-          strings or <code>StegaMetadataString</code> images. You can use
-          <code>Stega64</code> to create these.
-        </p>
-        <pre><code>const result = StegaCassette.encode({
-  source,
-  audioBuffers,
-  sampleRate: <span data-value="sampleRate"></span>,
-  bitDepth: <span data-value="bitDepth"></span>,
-  encoding: "<span data-value="encoding"></span>",
-  key: <span data-value="keyRepresentation"></span>
-});
-
-const audioBuffers = StegaCassette.decode({
-  source,
-  bitDepth: <span data-value="bitDepth"></span>,
-  channels: <span data-value="channels"></span>,
-  encoding: "<span data-value="encoding"></span>",
-  key: <span data-value="keyRepresentation"></span>
-});</code></pre>
-
-        <form id="form-obfuscation"></form>
-
-        <figure id="output-obfuscation"></figure>
-        <figure id="key-image-display" class="hidden square">
-          <figcaption>Key Image</figcaption>
-        </figure>
+        <style>
+          #stegassette-img-wrap {
+            position: relative;
+            display: block;
+            max-width: min(480px, 100%);
+            line-height: 0;
+          }
+          #stegassette-recon-base {
+            display: block;
+            width: 100%;
+            height: auto;
+          }
+          #stegassette-encoded-overlay {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+          }
+        </style>
       </section>
 
       <section id="example-visualization">
@@ -240,152 +199,6 @@ const audioBuffers = StegaCassette.decode({
           </div>
         </div>
         <form></form>
-      </section>
-
-      <section>
-        <h2>StegaMetadata can be optionally encoded inside of stega images.</h2>
-        <p>
-          <code
-            >StegaMetadata.encode({ source: HTMLCanvasElement; metadata:
-            StegaMetadata }): HTMLCanvasElement</code
-          >
-        </p>
-        <p>
-          <code
-            >StegaMetadata.decode({ source: HTMLCanvasElement; }): StegaMetadata
-            | null</code
-          >
-        </p>
-
-        <pre><code>enum StegaContentType StegaContentType {
-  AUDIO = 0,
-  STRING = 1,
-  ROBUST = 2,
-  MUSIC = 3,
-  BINARY = 4,
-  KEY = 5,
-}
-
-type StegaMetadata =
-  | StegaMetadataAudio
-  | StegaMetadataString
-  | StegaMetadataRobust
-  | StegaMetadataMusic
-  | StegaMetadataBinary
-  | StegaMetadataKey;
-
-interface StegaMetadataAudio {
-  type: StegaContentType.AUDIO;
-  sampleRate: number;
-  bitDepth: StegaCassetteBitDepth;
-  channels: StegaCassetteChannels;
-  encoding: StegaCassetteEncoding;
-  borderWidth: number;
-}
-
-export interface StegaMetadataMusic extends Omit&lt;StegaMetadataAudio, "type"> {
-  type: StegaContentType.MUSIC;
-  bpm: number;
-  semitones: number;
-}
-
-interface StegaMetadataString {
-  type: StegaContentType.STRING;
-  messageCount: number;
-  encoding: Stega64Encoding;
-  borderWidth: number;
-}
-
-interface StegaMetadataRobust {
-  type: StegaContentType.ROBUST;
-  redundancyLevel: number;
-  messageCount: number;
-  blockSize: 2 | 4;
-  encoding: "hex" | "base16";
-}
-
-interface StegaMetadataBinary {
-  type: StegaContentType.BINARY;
-  dataLength: number;
-  borderWidth: number;
-  sessionId: number; // 0 = keyless, non-zero = requires matching key
-}
-
-interface StegaMetadataKey {
-  type: StegaContentType.KEY;
-  borderWidth: number;
-  sessionId: number;
-}</code></pre>
-      </section>
-
-      <section id="stega-metadata">
-        <h2>View StegaMetadata for an image.</h2>
-        <pre><code data-output="metadata">Choose an image to see its metadata here</code></pre>
-        <form>
-          <div class="drop-reader">
-            <button type="button" class="choose-image">Choose an image</button>
-          </div>
-          <button type="button" class="play-audio" disabled>Play Audio</button>
-        </form>
-        <figure></figure>
-      </section>
-
-      <section id="example-stega-binary">
-        <h2>StegaBinary encodes arbitrary binary data into images.</h2>
-        <p>
-          <code
-            >StegaBinary.encode({ source: HTMLImageElement | HTMLCanvasElement;
-            data: Uint8Array; mimeType: string; borderWidth?: number;
-            aspectRatio?: number; key?: boolean | HTMLImageElement |
-            HTMLCanvasElement; sessionId?: number; }): EncodeResult</code
-          >
-        </p>
-        <pre><code>const fileBytes; // <span data-value="fileSize">0</span> bytes from "<span data-value="fileName">select a file</span>"
-
-const { key, encoded, sessionId } = StegaBinary.encode({
-  source,
-  data: fileBytes,
-  mimeType: "<span data-value="fileMimeType">application/octet-stream</span>",
-  borderWidth: <span data-value="borderWidth">1</span>,
-  aspectRatio: <span data-value="aspectRatio">undefined</span>,
-  key: <span data-value="keyParam"></span> <span data-value="codeComment">// source image is also the key</span>
-});</code></pre>
-
-        <form></form>
-
-        <figure>
-          <figcaption>Source Image</figcaption>
-          <img src="./example.jpg" />
-        </figure>
-        <figure class="hidden">
-          <!-- Custom Key Source - populated by JS in custom key but still hidden -->
-        </figure>
-        <figure id="output-key-container">
-          <figcaption>Key Image</figcaption>
-        </figure>
-        <figure id="output-encoded-container">
-          <figcaption>Encoded Image</figcaption>
-        </figure>
-
-        <p>
-          <code
-            >StegaBinary.decode({ encoded: HTMLImageElement | HTMLCanvasElement;
-            key?: HTMLImageElement | HTMLCanvasElement; }): { mimeType: string;
-            data: Uint8Array; }</code
-          >
-        </p>
-        <pre><code>// Decode with key (for keyed or custom key)
-const { mimeType, data } = StegaBinary.decode({ encoded, key });
-
-// Decode keyless (sessionId = 0)
-const { mimeType, data } = StegaBinary.decode({ encoded });
-
-// Download decoded binary data as a file
-downloadBytes({ data, mimeType, fileName: "<span data-value="fileName">decoded.bin</span>" });</code></pre>
-
-        <pre
-          id="output-decoded"
-        ><code>Decoded output will appear here</code></pre>
       </section>
 
       <section id="stega-animator">

@@ -563,8 +563,14 @@ export async function loadAudioBuffersFromAudioUrl({
   audioContext: AudioContext;
   sampleRate?: number;
 }) {
-  const response = await fetch(url);
-  const audioData = await response.arrayBuffer();
+  const audioData = await new Promise<ArrayBuffer>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    xhr.responseType = "arraybuffer";
+    xhr.onload = () => resolve(xhr.response as ArrayBuffer);
+    xhr.onerror = () => reject(new Error(`Failed to load audio: ${url}`));
+    xhr.send();
+  });
   const audioBuffer = await audioContext.decodeAudioData(audioData);
   // Resample the audio to sample rate
   const resampledBuffer = await resampleAudioBuffer(

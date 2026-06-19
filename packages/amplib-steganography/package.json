@@ -8,20 +8,32 @@
     "type": "git",
     "url": "git+https://github.com/another-machine/public-library.git"
   },
+  "exports": {
+    ".": "./dist/index.js",
+    "./node": "./dist/node.js"
+  },
   "tsup": {
     "entry": [
-      "src/index.ts"
+      "src/index.ts",
+      "src/node.ts"
     ],
     "clean": true,
     "dts": true,
     "format": "esm",
     "minify": false,
     "sourcemap": true,
-    "splitting": false
+    "splitting": false,
+    "external": ["pngjs"]
   },
   "scripts": {
     "build": "tsup",
     "watch": "tsup --watch"
+  },
+  "optionalDependencies": {
+    "pngjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/pngjs": "^6.0.5"
   },
   "author": "Another Machine",
   "license": "MIT",

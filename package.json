@@ -10,7 +10,7 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "serve": "python3 -m http.server",
+    "serve": "python3 -m http.server 8989",
     "pack": "node scripts/pack.js"
   },
   "devDependencies": {

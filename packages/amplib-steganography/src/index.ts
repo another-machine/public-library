@@ -14,3 +14,4 @@ export * as StegaMetadata from "./StegaMetadata";
 export * as StegaCassette from "./StegaCassette";
 export * as StegaBinary from "./StegaBinary";
 export * as StegaKey from "./StegaKey";
+export * as Stegassette from "./Stegassette/browser";
