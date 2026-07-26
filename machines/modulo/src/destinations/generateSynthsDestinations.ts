@@ -198,22 +198,21 @@ export function generateSynthsDestinations({
                   min: 0,
                   max: 1,
                   initialValue: () =>
-                    numericAsString(synth.voices[0].delay.feedback.value),
+                    numericAsString(synth.delaySettings.feedback),
                 },
                 {
                   label: "wet",
                   type: "range",
                   min: 0,
                   max: 1,
-                  initialValue: () =>
-                    numericAsString(synth.voices[0].delay.wet.value),
+                  initialValue: () => numericAsString(synth.delaySettings.wet),
                 },
                 {
                   label: "time",
                   type: "select",
                   options: timeOptions,
                   initialValue: () =>
-                    Time(synth.voices[0].delay.delayTime.value).toNotation(),
+                    Time(synth.delaySettings.delayTime).toNotation(),
                 },
               ],
               onSet: (_command, [feedback, wet, time]) => {
@@ -235,15 +234,14 @@ export function generateSynthsDestinations({
                   min: 0,
                   max: 1,
                   initialValue: () =>
-                    numericAsString(synth.voices[0].reverb.roomSize.value),
+                    numericAsString(synth.reverbSettings.roomSize),
                 },
                 {
                   label: "wet",
                   type: "range",
                   min: 0,
                   max: 1,
-                  initialValue: () =>
-                    numericAsString(synth.voices[0].reverb.wet.value),
+                  initialValue: () => numericAsString(synth.reverbSettings.wet),
                 },
               ],
               onSet: (_command, [size, wet]) => {

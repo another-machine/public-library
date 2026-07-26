@@ -6,6 +6,22 @@ body {
   margin: 0;
 }
 
+/* Rainbow mode: a filter animation runs on the compositor, unlike the old
+   per-frame hue custom-property update which recalculated styles for every
+   oklch() color on the page. */
+html.rainbow body {
+  animation: rainbow-hue-rotation 6s linear infinite;
+}
+
+@keyframes rainbow-hue-rotation {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
 prompt-interface {
   padding: var(--padding-y) var(--padding-x) 0;
   width: 100%;

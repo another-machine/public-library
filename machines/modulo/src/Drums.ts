@@ -107,35 +107,17 @@ const DEFAULT_KICK_SETTINGS: ConfigurableKickParams = {
   },
 };
 
-export class ConfigurableHat {
-  type: Extract<DrumKitKey, "closed" | "open">;
-  closed: boolean;
-  node: NoiseSynth;
+abstract class ConfigurableDrum<P extends DrumParams> {
   output: Gain;
   highpass: Filter;
   lowpass: Filter;
-  crush: BitCrusher;
-  delay: FeedbackDelay;
-  params: ConfigurableHatParams;
+  crush?: BitCrusher;
+  delay?: FeedbackDelay;
+  params: P;
 
-  static initialSettings(type: Extract<DrumKitKey, "closed" | "open">) {
-    return { type, ...DEFAULT_HAT_SETTINGS };
-  }
-
-  constructor(params: ConfigurableHatParams) {
-    this.type = params.type;
+  constructor(params: P) {
     this.params = params;
-    this.node = new NoiseSynth();
     this.output = new Gain(params.volume);
-
-    // Set fixed envelope and noise settings
-    this.node.noise.type = "white";
-    this.node.envelope.attack = 0.0001;
-    this.node.envelope.decay = params.type === "closed" ? 0.17 : 0.27;
-    this.node.envelope.sustain = params.type === "closed" ? 0 : 0.1;
-    this.node.envelope.release = params.type === "closed" ? 0.05 : 0.5;
-
-    // Initialize effects
     this.highpass = new Filter({
       type: "highpass",
       ...params.settings.highpass,
@@ -144,15 +126,29 @@ export class ConfigurableHat {
       type: "lowpass",
       ...params.settings.lowpass,
     });
-    this.crush = new BitCrusher(params.settings.crush);
-    this.delay = new FeedbackDelay(params.settings.delay);
-
-    // Connect effects chain
-    this.node.connect(this.highpass);
     this.highpass.connect(this.lowpass);
-    this.lowpass.connect(this.crush);
-    this.crush.connect(this.delay);
-    this.delay.connect(this.output);
+    this.rewireEffects();
+  }
+
+  // The bit crusher (an audio worklet) and delay only exist and process audio
+  // while their wet amount is non-zero — both are expensive on mobile.
+  private rewireEffects() {
+    this.lowpass.disconnect();
+    this.crush?.disconnect();
+    this.delay?.disconnect();
+    let tail: Filter | BitCrusher | FeedbackDelay = this.lowpass;
+    if (this.params.settings.crush.wet > 0) {
+      if (!this.crush) this.crush = new BitCrusher(this.params.settings.crush);
+      tail.connect(this.crush);
+      tail = this.crush;
+    }
+    if (this.params.settings.delay.wet > 0) {
+      if (!this.delay)
+        this.delay = new FeedbackDelay(this.params.settings.delay);
+      tail.connect(this.delay);
+      tail = this.delay;
+    }
+    tail.connect(this.output);
   }
 
   updateSettings(params: DrumParams) {
@@ -160,14 +156,15 @@ export class ConfigurableHat {
       ...this.params,
       ...params,
       settings: { ...this.params.settings, ...params.settings },
-    };
-    this.highpass.set(params.settings.highpass);
-    this.lowpass.set(params.settings.lowpass);
-    this.crush.set(params.settings.crush);
-    this.delay.set(params.settings.delay);
+    } as P;
+    this.highpass.set(this.params.settings.highpass);
+    this.lowpass.set(this.params.settings.lowpass);
+    this.crush?.set(this.params.settings.crush);
+    this.delay?.set(this.params.settings.delay);
+    this.rewireEffects();
   }
 
-  exportParams() {
+  exportParams(): P {
     return this.params;
   }
 
@@ -180,32 +177,70 @@ export class ConfigurableHat {
     return (this.output.gain.value = value);
   }
 
+  dispose() {
+    this.disposeSources();
+    this.highpass.dispose();
+    this.lowpass.dispose();
+    this.crush?.dispose();
+    this.crush = undefined;
+    this.delay?.dispose();
+    this.delay = undefined;
+    this.output.dispose();
+  }
+
+  protected abstract disposeSources(): void;
+  abstract play(velocity: number | null, time: number): void;
+}
+
+export class ConfigurableHat extends ConfigurableDrum<ConfigurableHatParams> {
+  type: Extract<DrumKitKey, "closed" | "open">;
+  node: NoiseSynth;
+
+  static initialSettings(type: Extract<DrumKitKey, "closed" | "open">) {
+    return { type, ...DEFAULT_HAT_SETTINGS };
+  }
+
+  constructor(params: ConfigurableHatParams) {
+    super(params);
+    this.type = params.type;
+    this.node = new NoiseSynth();
+
+    // Set fixed envelope and noise settings
+    this.node.noise.type = "white";
+    this.node.envelope.attack = 0.0001;
+    this.node.envelope.decay = params.type === "closed" ? 0.17 : 0.27;
+    this.node.envelope.sustain = params.type === "closed" ? 0 : 0.1;
+    this.node.envelope.release = params.type === "closed" ? 0.05 : 0.5;
+
+    this.node.connect(this.highpass);
+  }
+
+  protected disposeSources() {
+    this.node.dispose();
+  }
+
   play(velocity: number | null, time: number) {
     if (velocity === null) return;
     this.node.triggerAttackRelease("16n", time, velocity);
   }
 }
 
-export class ConfigurableSnare {
+export class ConfigurableSnare extends ConfigurableDrum<ConfigurableSnareParams> {
   type: Extract<DrumKitKey, "snare">;
   node1: Synth;
   node2: NoiseSynth;
-  output: Gain;
-  highpass: Filter;
-  lowpass: Filter;
-  crush: BitCrusher;
-  delay: FeedbackDelay;
-  params: ConfigurableSnareParams;
+  private toneChain: Gain;
+  private noiseChain: Gain;
 
   static get initialSettings() {
     return DEFAULT_SNARE_SETTINGS;
   }
 
   constructor(params: ConfigurableSnareParams) {
-    this.params = params;
+    super(params);
+    this.type = params.type;
     this.node1 = new Synth();
     this.node2 = new NoiseSynth();
-    this.output = new Gain(params.volume);
 
     // Set fixed synth settings
     this.node1.oscillator.type = "sine";
@@ -223,60 +258,21 @@ export class ConfigurableSnare {
     this.node2.envelope.sustain = 0;
     this.node2.envelope.release = 0.03;
 
-    // Initialize effects
-    this.highpass = new Filter({
-      type: "highpass",
-      ...params.settings.highpass,
-    });
-    this.lowpass = new Filter({
-      type: "lowpass",
-      ...params.settings.lowpass,
-    });
-    this.crush = new BitCrusher(params.settings.crush);
-    this.delay = new FeedbackDelay(params.settings.delay);
-
     // Create parallel paths for tone and noise
-    const toneChain = new Gain(1);
-    const noiseChain = new Gain(0.5);
+    this.toneChain = new Gain(1);
+    this.noiseChain = new Gain(0.5);
 
-    // Connect tone path
-    this.node1.connect(toneChain);
-    toneChain.connect(this.highpass);
-
-    // Connect noise path
-    this.node2.connect(noiseChain);
-    noiseChain.connect(this.highpass);
-
-    // Connect shared effects chain
-    this.highpass.connect(this.lowpass);
-    this.lowpass.connect(this.crush);
-    this.crush.connect(this.delay);
-    this.delay.connect(this.output);
+    this.node1.connect(this.toneChain);
+    this.toneChain.connect(this.highpass);
+    this.node2.connect(this.noiseChain);
+    this.noiseChain.connect(this.highpass);
   }
 
-  updateSettings(params: DrumParams) {
-    this.params = {
-      ...this.params,
-      ...params,
-      settings: { ...this.params.settings, ...params.settings },
-    };
-    this.highpass.set(params.settings.highpass);
-    this.lowpass.set(params.settings.lowpass);
-    this.crush.set(params.settings.crush);
-    this.delay.set(params.settings.delay);
-  }
-
-  exportParams() {
-    return this.params;
-  }
-
-  getGain() {
-    return this.output.gain.value;
-  }
-
-  updateGain(value: number) {
-    this.params.volume = value;
-    return (this.output.gain.value = value);
+  protected disposeSources() {
+    this.node1.dispose();
+    this.node2.dispose();
+    this.toneChain.dispose();
+    this.noiseChain.dispose();
   }
 
   play(velocity: number | null, time: number) {
@@ -288,26 +284,22 @@ export class ConfigurableSnare {
   }
 }
 
-export class ConfigurableKick {
+export class ConfigurableKick extends ConfigurableDrum<ConfigurableKickParams> {
   type: Extract<DrumKitKey, "kick">;
   node1: MembraneSynth;
   node2: NoiseSynth;
-  output: Gain;
-  highpass: Filter;
-  lowpass: Filter;
-  crush: BitCrusher;
-  delay: FeedbackDelay;
-  params: ConfigurableKickParams;
+  private membraneChain: Gain;
+  private noiseChain: Gain;
 
   static get initialSettings() {
     return DEFAULT_KICK_SETTINGS;
   }
 
   constructor(params: ConfigurableKickParams) {
-    this.params = params;
+    super(params);
+    this.type = params.type;
     this.node1 = new MembraneSynth();
     this.node2 = new NoiseSynth();
-    this.output = new Gain(params.volume);
 
     // Set fixed envelope settings
     this.node1.envelope.attack = 0.001;
@@ -322,60 +314,21 @@ export class ConfigurableKick {
     this.node2.envelope.sustain = 0;
     this.node2.envelope.release = 0.03;
 
-    // Initialize effects
-    this.highpass = new Filter({
-      type: "highpass",
-      ...params.settings.highpass,
-    });
-    this.lowpass = new Filter({
-      type: "lowpass",
-      ...params.settings.lowpass,
-    });
-    this.crush = new BitCrusher(params.settings.crush);
-    this.delay = new FeedbackDelay(params.settings.delay);
-
     // Create parallel paths for membrane and noise
-    const membraneChain = new Gain(1);
-    const noiseChain = new Gain(0.2);
+    this.membraneChain = new Gain(1);
+    this.noiseChain = new Gain(0.2);
 
-    // Connect membrane path
-    this.node1.connect(membraneChain);
-    membraneChain.connect(this.highpass);
-
-    // Connect noise path
-    this.node2.connect(noiseChain);
-    noiseChain.connect(this.highpass);
-
-    // Connect shared effects chain
-    this.highpass.connect(this.lowpass);
-    this.lowpass.connect(this.crush);
-    this.crush.connect(this.delay);
-    this.delay.connect(this.output);
+    this.node1.connect(this.membraneChain);
+    this.membraneChain.connect(this.highpass);
+    this.node2.connect(this.noiseChain);
+    this.noiseChain.connect(this.highpass);
   }
 
-  updateSettings(params: DrumParams) {
-    this.params = {
-      ...this.params,
-      ...params,
-      settings: { ...this.params.settings, ...params.settings },
-    };
-    this.highpass.set(params.settings.highpass);
-    this.lowpass.set(params.settings.lowpass);
-    this.crush.set(params.settings.crush);
-    this.delay.set(params.settings.delay);
-  }
-
-  getGain() {
-    return this.output.gain.value;
-  }
-
-  updateGain(value: number) {
-    this.params.volume = value;
-    return (this.output.gain.value = value);
-  }
-
-  exportParams() {
-    return this.params;
+  protected disposeSources() {
+    this.node1.dispose();
+    this.node2.dispose();
+    this.membraneChain.dispose();
+    this.noiseChain.dispose();
   }
 
   play(velocity: number | null, time: number) {
@@ -427,17 +380,19 @@ export class Drums {
   }
 
   updateSettings({ type, settings }: DrumTypeSettings) {
-    this.kit[type].updateSettings(settings);
+    this.kit.find((drum) => drum.type === type)?.updateSettings(settings);
   }
 
   dispose() {
-    Object.values(this.kit).forEach((item) => item.output.dispose());
+    this.kit.forEach((item) => item.dispose());
+    this.output?.dispose();
+    this.output = undefined;
   }
 
   exportParams(): DrumsParams {
     const settings = this.kit.map((a) => a.exportParams());
     return {
-      volume: this.output?.gain.value || 0,
+      volume: this.output ? this.output.gain.value : this.volume,
       settings,
     };
   }
@@ -449,10 +404,11 @@ export class Drums {
   }
 
   getGain() {
-    return this.output?.gain.value || 0;
+    return this.output ? this.output.gain.value : this.volume;
   }
 
   updateGain(gain: number) {
+    this.volume = gain;
     if (this.output) {
       this.output.gain.value = gain;
     }

@@ -54,7 +54,9 @@ main[stepping="true"] .sequencer {
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
   position: relative;
-  transition: all 80ms ease-in;
+  /* Only transition color — `all` animated box-shadow/opacity on every step
+     tick, forcing continuous repaints on mobile GPUs. */
+  transition: background-color 80ms ease-in;
 
   &.cursor {
     &::after {

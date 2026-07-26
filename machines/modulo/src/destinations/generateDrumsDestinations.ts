@@ -138,20 +138,23 @@ function synthEffectsProperties(
           type: "range",
           min: 0,
           max: 1,
-          initialValue: () => numericAsString(loader().delay.feedback.value),
+          initialValue: () =>
+            numericAsString(loader().exportParams().settings.delay.feedback),
         },
         {
           label: "wet",
           type: "range",
           min: 0,
           max: 1,
-          initialValue: () => numericAsString(loader().delay.wet.value),
+          initialValue: () =>
+            numericAsString(loader().exportParams().settings.delay.wet),
         },
         {
           label: "time",
           type: "select",
           options: timeOptions,
-          initialValue: () => Time(loader().delay.delayTime.value).toNotation(),
+          initialValue: () =>
+            Time(loader().exportParams().settings.delay.delayTime).toNotation(),
         },
       ],
       onSet: (_command, [feedback, wet, time]) => {

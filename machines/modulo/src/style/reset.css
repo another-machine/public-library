@@ -6,3 +6,18 @@ button {
 button {
   box-sizing: border-box;
 }
+
+/* Mobile touch: without touch-action the browser waits on double-tap-zoom
+   detection before dispatching clicks, and long-presses trigger text
+   selection / callouts — both make rapid step-tapping feel unresponsive. */
+body,
+button {
+  touch-action: manipulation;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
