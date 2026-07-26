@@ -127,8 +127,6 @@ export class ConfigurableSynth {
   nodeB: Synth;
   panA: Panner;
   panB: Panner;
-  reverb: Freeverb;
-  delay: FeedbackDelay;
   output: Gain;
   playing = false;
 
@@ -144,14 +142,10 @@ export class ConfigurableSynth {
     this.nodeB = new Synth();
     this.panA = new Panner();
     this.panB = new Panner();
-    this.delay = new FeedbackDelay();
-    this.reverb = new Freeverb();
     this.nodeA.connect(this.panA);
     this.nodeB.connect(this.panB);
-    this.panA.connect(this.delay);
-    this.panB.connect(this.delay);
-    this.delay.connect(this.reverb);
-    this.reverb.connect(this.output);
+    this.panA.connect(this.output);
+    this.panB.connect(this.output);
     this.updateSettings(settings);
   }
 
@@ -182,6 +176,9 @@ export class ConfigurableSynth {
     this.stop(getTransport().context.currentTime);
     this.nodeA.dispose();
     this.nodeB.dispose();
+    this.panA.dispose();
+    this.panB.dispose();
+    this.output.dispose();
   }
 
   static randomOptions() {
@@ -217,7 +214,7 @@ export class ConfigurableSynth {
     };
   }
 
-  exportParams(): ConfigurableSynthParams {
+  exportParams(): Pick<ConfigurableSynthParams, "a" | "b"> {
     return {
       a: {
         pan: this.panA.pan.value,
@@ -227,15 +224,6 @@ export class ConfigurableSynth {
         pan: this.panB.pan.value,
         options: this.optionsFromNode(this.nodeB),
       },
-      delay: {
-        wet: this.delay.wet.value,
-        feedback: this.delay.feedback.value,
-        delayTime: this.delay.delayTime.value,
-      },
-      reverb: {
-        wet: this.reverb.wet.value,
-        roomSize: this.reverb.roomSize.value,
-      },
     };
   }
 
@@ -244,8 +232,6 @@ export class ConfigurableSynth {
     this.nodeB.set(settings.b.options);
     this.panA.pan.value = settings.a.pan;
     this.panB.pan.value = settings.b.pan;
-    this.reverb.set(settings.reverb);
-    this.delay.set(settings.delay);
   }
 }
 
@@ -256,6 +242,11 @@ export interface SynthsParams {
 }
 export class Synths {
   output?: Gain;
+  bus?: Gain;
+  delay?: FeedbackDelay;
+  reverb?: Freeverb;
+  delaySettings: SynthSettingsDelay;
+  reverbSettings: SynthSettingsReverb;
   voices: ConfigurableSynth[] = [];
   volume: number;
 
@@ -270,6 +261,8 @@ export class Synths {
     voices: number
   ) {
     this.volume = volume;
+    this.delaySettings = { ...settings.delay };
+    this.reverbSettings = { ...settings.reverb };
     for (let i = 0; i < voices; i++) {
       const synth = new ConfigurableSynth({
         gain: 1 / voices,
@@ -314,43 +307,76 @@ export class Synths {
     this.output = new Gain(this.volume);
     if (mixer.channel) this.output.connect(mixer.channel);
 
+    this.bus = new Gain(1);
     this.voices.forEach((synth) => {
-      if (mixer.channel && this.output) synth.output.connect(this.output);
+      if (this.bus) synth.output.connect(this.bus);
     });
+    this.rewireEffects();
+  }
+
+  // Effects only exist and process audio while their wet amount is non-zero.
+  // Reverbs and delays are expensive on mobile even when silent, so the bus
+  // wires straight through to the output whenever they are inactive.
+  private rewireEffects() {
+    if (!this.bus || !this.output) return;
+    this.bus.disconnect();
+    this.delay?.disconnect();
+    this.reverb?.disconnect();
+    let tail: Gain | FeedbackDelay | Freeverb = this.bus;
+    if (this.delaySettings.wet > 0) {
+      if (!this.delay) this.delay = new FeedbackDelay(this.delaySettings);
+      tail.connect(this.delay);
+      tail = this.delay;
+    }
+    if (this.reverbSettings.wet > 0) {
+      if (!this.reverb) this.reverb = new Freeverb(this.reverbSettings);
+      tail.connect(this.reverb);
+      tail = this.reverb;
+    }
+    tail.connect(this.output);
   }
 
   dispose() {
     this.voices.forEach((synth) => synth.dispose());
+    this.bus?.dispose();
+    this.bus = undefined;
+    this.delay?.dispose();
+    this.delay = undefined;
+    this.reverb?.dispose();
+    this.reverb = undefined;
+    this.output?.dispose();
+    this.output = undefined;
   }
 
   exportParams(): SynthsParams {
     return {
-      volume: this.output?.gain.value || 0,
-      settings: this.voices[0].exportParams(),
+      volume: this.getGain(),
+      settings: {
+        ...this.voices[0].exportParams(),
+        delay: { ...this.delaySettings },
+        reverb: { ...this.reverbSettings },
+      },
       voices: this.voices.length,
     };
   }
 
   getGain() {
-    return this.output?.gain.value || 0;
+    return this.output ? this.output.gain.value : this.volume;
   }
 
   updateDelay(updates: { wet?: number; delayTime?: Time; feedback?: number }) {
-    const delay = this.voices[0].delay;
-    const value = {
-      wet: delay.wet.value,
-      delayTime: delay.delayTime.value,
-      feedback: delay.feedback.value,
-      ...updates,
-    };
-    this.voices.forEach((synth) => {
-      synth.delay.wet.value = value.wet;
-      synth.delay.delayTime.value = value.delayTime;
-      synth.delay.feedback.value = value.feedback;
-    });
+    const wasActive = this.delaySettings.wet > 0;
+    if (updates.wet !== undefined) this.delaySettings.wet = updates.wet;
+    if (updates.feedback !== undefined)
+      this.delaySettings.feedback = updates.feedback;
+    if (updates.delayTime !== undefined)
+      this.delaySettings.delayTime = updates.delayTime;
+    this.delay?.set(this.delaySettings);
+    if (wasActive !== this.delaySettings.wet > 0) this.rewireEffects();
   }
 
   updateGain(gain: number) {
+    this.volume = gain;
     if (this.output) {
       this.output.gain.value = gain;
     }
@@ -364,16 +390,12 @@ export class Synths {
   }
 
   updateReverb(updates: { wet?: number; roomSize?: number }) {
-    const reverb = this.voices[0].reverb;
-    const value = {
-      wet: reverb.wet.value,
-      roomSize: reverb.roomSize.value,
-      ...updates,
-    };
-    this.voices.forEach((synth) => {
-      synth.reverb.wet.value = value.wet;
-      synth.reverb.roomSize.value = value.roomSize;
-    });
+    const wasActive = this.reverbSettings.wet > 0;
+    if (updates.wet !== undefined) this.reverbSettings.wet = updates.wet;
+    if (updates.roomSize !== undefined)
+      this.reverbSettings.roomSize = updates.roomSize;
+    this.reverb?.set(this.reverbSettings);
+    if (wasActive !== this.reverbSettings.wet > 0) this.rewireEffects();
   }
 
   updateSynth(update: SynthSettingsUpdate, a: boolean, b: boolean) {

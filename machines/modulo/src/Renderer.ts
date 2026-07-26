@@ -54,11 +54,14 @@ export interface RendererTheme {
 export class Renderer {
   cursorX: number | null = null;
   cursorY: number | null = null;
-  baseHue = 0;
   hueRotate = false;
   elementMain = document.createElement("main");
   elementRoot: HTMLElement;
   sequencerElements: { [key: string]: HTMLDivElement } = {};
+  sequencerButtons: { [key: string]: HTMLButtonElement[][] } = {};
+  activeColumns: { [key: string]: number | null } = {};
+  keyButtons: HTMLButtonElement[] = [];
+  padButtons: HTMLButtonElement[] = [];
   sequencers: Sequencer[] = [];
   keys: Keyboard;
   elementKeys = document.createElement("div");
@@ -96,22 +99,14 @@ export class Renderer {
     this.elementMain.appendChild(this.elementKeys);
     this.initializePads();
     this.initializeKeys();
-    this.animationLoop();
   }
 
-  animationLoop() {
-    requestAnimationFrame(this.animationLoop.bind(this));
-    if (this.hueRotate) {
-      this.baseHue += 1;
-      window.document.documentElement.style.setProperty(
-        "--color-hue-base",
-        this.baseHue.toString()
-      );
-    } else if (
-      window.document.documentElement.style.getPropertyValue("--color-hue-base")
-    ) {
-      window.document.documentElement.style.removeProperty("--color-hue-base");
-    }
+  // Rainbow mode is a compositor-friendly CSS hue-rotate animation — updating
+  // a hue custom property from script forced a full-page style recalc per frame.
+  toggleHueRotate() {
+    this.hueRotate = !this.hueRotate;
+    document.documentElement.classList.toggle("rainbow", this.hueRotate);
+    return this.hueRotate;
   }
 
   update({
@@ -200,13 +195,14 @@ export class Renderer {
     }
 
     // TODO: This clearing of theme is overkill, but fix for the fact that themes can be added and removed;
-    this.style.innerHTML = "";
+    const rules: string[] = [];
     theme.colors.forEach((color, i) => {
       for (let item in color) {
         setColor([i.toString(), item], theme.colors[i][item]);
       }
-      this.addTheme(`theme-key-${i}`, `${i}`);
+      rules.push(this.themeRule(`theme-key-${i}`, `${i}`));
     });
+    this.style.textContent = rules.join("\n");
 
     for (let type in theme.sizes) {
       const object = theme.sizes[type];
@@ -235,14 +231,14 @@ export class Renderer {
     return button;
   }
 
-  addTheme(themeClassName: string, propertyPrefix: string) {
+  themeRule(themeClassName: string, propertyPrefix: string) {
     const properties = ["b", "a", "c"].flatMap((type) =>
       ["lit", "chr", "hue"].map(
         (lch) =>
           `--color-${type}-${lch}: var(--color-${propertyPrefix}-${type}-${lch})`
       )
     );
-    this.style.innerHTML += `.${themeClassName} { ${properties.join("; ")} } `;
+    return `.${themeClassName} { ${properties.join("; ")} }`;
   }
 
   refreshTheme() {
@@ -253,11 +249,14 @@ export class Renderer {
         sequencer.isDrum() ? "drum" : "synth"
       } theme-key-${sequencer.theme}`;
     });
-    this.elementKeys.classList.add(`theme-key-${this.keys.theme}`);
-    this.elementPads.classList.add(`theme-key-${this.core.theme}`);
+    this.elementKeys.className = `theme-key-${this.keys.theme}`;
+    this.elementPads.className = `theme-key-${this.core.theme}`;
   }
 
   initializeSequencers() {
+    this.sequencerElements = {};
+    this.sequencerButtons = {};
+    this.activeColumns = {};
     this.sequencers.forEach((sequencer) => {
       const element = document.createElement("div");
       element.id = `sequencer-${sequencer.key}`;
@@ -272,8 +271,10 @@ export class Renderer {
   initializeKeys() {
     this.elementKeys.id = "keys";
     this.elementKeys.classList.add(`theme-key-${this.keys.theme}`);
+    this.keyButtons = [];
     for (let i = 0; i < 24; i++) {
       const key = document.createElement("button");
+      this.keyButtons.push(key);
       key.addEventListener("click", () => {
         this.rendererEventHandler("TAP", "KEYS", i);
       });
@@ -309,8 +310,10 @@ export class Renderer {
   initializePads() {
     this.elementPads.id = "pads";
     this.elementPads.classList.add(`theme-key-${this.core.theme}`);
+    this.padButtons = [];
     for (let i = 0; i < 8; i++) {
       const pad = this.createButton("TAP", "PADS", i);
+      this.padButtons.push(pad);
       this.elementPads.appendChild(pad);
       pad.setAttribute("state", i === 7 ? "1/4" : "0");
     }
@@ -421,21 +424,15 @@ export class Renderer {
   updateKeyboard() {
     const { stepsForScale, stepsForInterval, stepsForRoot } =
       this.keys.notes.currentModeSteps();
-    this.elementKeys
-      .querySelectorAll("[step]")
-      .forEach((a) => a.removeAttribute("step"));
-    stepsForScale.forEach((step) => {
-      const element = this.elementKeys.querySelector(
-        `button:nth-child(${step + 1})`
-      );
-      if (element) {
-        if (stepsForRoot.includes(step)) {
-          element.setAttribute("step", "root");
-        } else if (stepsForInterval.includes(step)) {
-          element.setAttribute("step", "interval");
-        } else {
-          element.setAttribute("step", "scale");
-        }
+    this.keyButtons.forEach((button, step) => {
+      if (!stepsForScale.includes(step)) {
+        button.removeAttribute("step");
+      } else if (stepsForRoot.includes(step)) {
+        button.setAttribute("step", "root");
+      } else if (stepsForInterval.includes(step)) {
+        button.setAttribute("step", "interval");
+      } else {
+        button.setAttribute("step", "scale");
       }
     });
     this.updateKeyboardActives();
@@ -443,45 +440,34 @@ export class Renderer {
 
   updateKeyboardActives() {
     const { mainStep, ghostSteps } = this.keys;
-    this.elementKeys
-      .querySelectorAll("[active]")
-      .forEach((a) => a.removeAttribute("active"));
+    this.keyButtons.forEach((button) => button.removeAttribute("active"));
     if (mainStep !== null) {
-      this.elementKeys
-        .querySelector(`button:nth-child(${mainStep + 1})`)
-        ?.setAttribute("active", "main");
+      this.keyButtons[mainStep]?.setAttribute("active", "main");
       ghostSteps.forEach((ghostStep) => {
-        this.elementKeys
-          .querySelector(`button:nth-child(${ghostStep + 1})`)
-          ?.setAttribute("active", "ghost");
+        this.keyButtons[ghostStep]?.setAttribute("active", "ghost");
       });
     }
   }
 
   updatePads(activeInterval: number) {
-    this.elementPads
-      .querySelectorAll("button:not(:nth-child(8))")
-      .forEach((child) => {
-        child.setAttribute("state", "0");
-        child.removeAttribute("active");
-      });
-    const activePad = this.elementPads.querySelector(
-      `button:nth-child(${activeInterval + 1})`
-    );
+    this.padButtons.forEach((pad, i) => {
+      if (i === 7) return;
+      pad.setAttribute("state", "0");
+      pad.removeAttribute("active");
+    });
+    const activePad = this.padButtons[activeInterval];
     activePad?.setAttribute("state", "4/4");
     activePad?.setAttribute("active", "");
   }
 
   updateStep(
-    element: HTMLDivElement,
+    sequencerKey: string,
     row: number,
     col: number,
     state: StepsSlot,
     stateMax: StepsSlot
   ) {
-    const button = element.querySelector<HTMLButtonElement>(
-      `div:nth-child(${row + 1}) > button:nth-child(${col + 1})`
-    );
+    const button = this.sequencerButtons[sequencerKey]?.[row]?.[col];
     button?.setAttribute("state", state ? `${state}/${stateMax}` : `${state}`);
   }
 
@@ -489,8 +475,7 @@ export class Renderer {
     this.sequencers.forEach((sequencer) =>
       sequencer.steps.rows.forEach((stepRow, row) => {
         stepRow.slots.forEach((step, col) => {
-          const element = this.sequencerElements[sequencer.key];
-          this.updateStep(element, row, col, step, sequencer.steps.max);
+          this.updateStep(sequencer.key, row, col, step, sequencer.steps.max);
         });
       })
     );
@@ -500,11 +485,15 @@ export class Renderer {
     Object.values(this.sequencerElements).forEach(
       (element) => (element.innerHTML = "")
     );
+    this.sequencerButtons = {};
+    this.activeColumns = {};
     let xMax = 0;
     let yMax = 0;
     this.sequencers.forEach((sequencer) => {
       xMax = Math.max(sequencer.steps.size, xMax);
       yMax = Math.max(sequencer.steps.rows.length, yMax);
+      this.sequencerButtons[sequencer.key] = [];
+      this.activeColumns[sequencer.key] = null;
     });
 
     for (let rowIndex = 0; rowIndex < yMax; rowIndex++) {
@@ -516,15 +505,23 @@ export class Renderer {
             ? document.createElement("div")
             : null;
         rows[i] = row;
-        if (row) this.sequencerElements[sequencer.key].appendChild(row);
+        if (row) {
+          this.sequencerElements[sequencer.key].appendChild(row);
+          this.sequencerButtons[sequencer.key][rowIndex] = [];
+        }
       });
 
       for (let colIndex = 0; colIndex < xMax; colIndex++) {
         this.sequencers.forEach((sequencer, i) => {
           if (rows[i] && colIndex < sequencer.steps.size) {
-            rows[i].appendChild(
-              this.createButton("TAP", sequencer.key, rowIndex, colIndex)
+            const button = this.createButton(
+              "TAP",
+              sequencer.key,
+              rowIndex,
+              colIndex
             );
+            rows[i].appendChild(button);
+            this.sequencerButtons[sequencer.key][rowIndex][colIndex] = button;
           }
         });
       }
@@ -533,27 +530,34 @@ export class Renderer {
   }
 
   renderStep(position: number) {
-    this.clearActives();
-    Object.values(this.sequencerElements).forEach((element) => {
-      const index = position % element.childNodes[0].childNodes.length;
-      element
-        .querySelectorAll(`div > button:nth-child(${index + 1})`)
-        .forEach((element) => element.setAttribute("active", "true"));
+    this.sequencers.forEach((sequencer) => {
+      const rows = this.sequencerButtons[sequencer.key];
+      if (!rows || !rows[0] || !rows[0].length) return;
+      const col = position % rows[0].length;
+      const previous = this.activeColumns[sequencer.key];
+      if (previous === col) return;
+      rows.forEach((rowButtons) => {
+        if (previous !== null && previous !== undefined) {
+          rowButtons[previous]?.removeAttribute("active");
+        }
+        rowButtons[col]?.setAttribute("active", "true");
+      });
+      this.activeColumns[sequencer.key] = col;
     });
   }
 
   clearActives() {
-    Object.values(this.sequencerElements).forEach((element) =>
-      element
-        .querySelectorAll(`div > button[active="true"]`)
-        .forEach((element) => element.removeAttribute("active"))
-    );
+    Object.entries(this.sequencerButtons).forEach(([key, rows]) => {
+      rows.forEach((rowButtons) =>
+        rowButtons.forEach((button) => button.removeAttribute("active"))
+      );
+      this.activeColumns[key] = null;
+    });
   }
 
   stop() {
     this.elementMain.removeAttribute("stepping");
-    const togglePad = this.elementPads.querySelector("button:nth-child(8)");
-
+    const togglePad = this.padButtons[7];
     togglePad?.setAttribute("state", "1/4");
     togglePad?.removeAttribute("active");
     this.clearActives();
@@ -561,7 +565,7 @@ export class Renderer {
 
   start() {
     this.elementMain.setAttribute("stepping", "true");
-    const togglePad = this.elementPads.querySelector("button:nth-child(8)");
+    const togglePad = this.padButtons[7];
     togglePad?.setAttribute("state", "4/4");
     togglePad?.setAttribute("active", "");
   }

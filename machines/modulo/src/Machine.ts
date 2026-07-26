@@ -1,3 +1,4 @@
+import { getDraw } from "tone";
 import { Clock, ClockParams } from "./Clock";
 import { Destinations } from "./destinations/Destinations";
 import { Drums } from "./Drums";
@@ -286,7 +287,9 @@ export class Machine {
   }
 
   handleTick(position: number, time: number) {
-    this.renderer.renderStep(position);
+    // The transport callback runs ahead of the audible beat and must stay
+    // tight for note scheduling — paint the step via Draw at the audible time.
+    getDraw().schedule(() => this.renderer.renderStep(position), time);
     this.sequencers.forEach((sequencer) => {
       const seqValues = sequencer.steps.values(position);
       if (sequencer.isSynth()) {
@@ -358,8 +361,7 @@ export class Machine {
   }
 
   onToggleRainbow() {
-    this.renderer.hueRotate = !this.renderer.hueRotate;
-    return this.renderer.hueRotate;
+    return this.renderer.toggleHueRotate();
   }
 
   onMidiEvent(data: MIDIEvent) {
@@ -456,7 +458,7 @@ export class Machine {
       if (sequencer) {
         sequencer.steps.tap(valueA, valueB);
         this.renderer.updateStep(
-          this.renderer.sequencerElements[sequencer.key],
+          sequencer.key,
           valueA,
           valueB,
           sequencer.steps.values(valueB)[valueA],
