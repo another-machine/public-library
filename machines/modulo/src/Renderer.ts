@@ -390,6 +390,10 @@ export class Renderer {
     let maxX = -Infinity;
     let maxY = -Infinity;
     this.elementMain.querySelectorAll("button").forEach((button) => {
+      // The editor toggle is chrome rather than part of the instrument's
+      // face — including it painted a pale full-width bar along the bottom
+      // and stretched the captured bounds to match.
+      if (button === this.elementEditorToggle) return;
       const { top, right, bottom, left } = button.getBoundingClientRect();
       minX = Math.min(minX, left);
       minY = Math.min(minY, top);
@@ -408,7 +412,9 @@ export class Renderer {
     canvas.width = width + padding * 2;
     canvas.height = height + padding * 2;
     context.fillStyle = background;
-    context.fillRect(0, 0, width, height);
+    // The whole canvas, not just the button bounds — the padding ring was
+    // left transparent, which flattens to white wherever the export lands.
+    context.fillRect(0, 0, canvas.width, canvas.height);
 
     buttons.forEach(({ top, right, bottom, left, fill }) => {
       context.fillStyle = fill;

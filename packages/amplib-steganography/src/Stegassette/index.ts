@@ -125,7 +125,7 @@ import type { CombineName, DecodedEntry, EncodeOptions, KeymapName, StegaImageDa
  * Estimate the STGC header byte length for the given encode options.
  * Used to enforce a minimum canvas width so the header always fits.
  */
-function estimatedHeaderLength(
+function estimatedHeaderPixels(
   opts: Partial<EncodeOptions>,
   plan: ReturnType<typeof normalizeChannelPlan>,
   params: TraversalParams,
@@ -143,7 +143,14 @@ function estimatedHeaderLength(
       : serializeChannelPlan(plan.slots),
     pad: plan.pad,
     pack: plan.pack,
-  }).length;
+    // nibble pairs: two border pixels per header byte, plus the ring-start
+    // B bootstrap and even-offset alignment
+  }).length * 2 + 8;
+}
+
+/** Border-ring pixel count, clamped for borders thicker than the image. */
+function ringPixelCount(W: number, H: number, B: number): number {
+  return W * H - Math.max(0, W - 2 * B) * Math.max(0, H - 2 * B);
 }
 
 export interface EncodeImageDataOptions extends EncodeOptions {
@@ -180,7 +187,7 @@ export function encodeImageData({
   const aspect = aspectRatio ?? src.width / src.height;
   const totalBytes = containerInteriorBytes(entries) + plan.pad;
   const dataPx = Math.ceil(totalBytes / plan.bytesPerPixel);
-  const B = resolveBorderWidth(border, dataPx, aspect);
+  let B = resolveBorderWidth(border, dataPx, aspect);
 
   // Merge traversal/keymap params for header-length estimation
   const params: TraversalParams = {
@@ -191,9 +198,16 @@ export function encodeImageData({
     ...(opts.kx != null ? { kx: opts.kx } : {}),
     ...(opts.ky != null ? { ky: opts.ky } : {}),
   };
-  const minFullWidth = estimatedHeaderLength(opts, plan, params, entries.length);
+  const headerPx = estimatedHeaderPixels(opts, plan, params, entries.length);
 
-  const scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, minFullWidth);
+  // The canvas is sized by the payload alone; when the border ring cannot
+  // hold the header, thicken the border instead of growing the image.
+  let scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel);
+  while (ringPixelCount(scaled.width, scaled.height, B) < headerPx) {
+    if (B > 255) throw new Error("STGC header does not fit any border");
+    B += 1;
+    scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel);
+  }
 
   return encodeContainer(entries, scaled, { ...opts, borderWidth: B, plan }, scaled);
 }
