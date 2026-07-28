@@ -7,7 +7,6 @@ prompt-interface {
   align-items: start;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--prompt-gap-y-factor) * var(--size-unit));
   justify-content: start;
   order: -1;
 
@@ -16,17 +15,20 @@ prompt-interface {
   }
 }
 
-prompt-output,
 prompt-interface,
 prompt-interface button {
   font-family: var(--font-family-mono);
   font-size: var(--font-size);
 }
 
-prompt-output,
-prompt-suggestions,
+/* Each element carries the palette of whichever theme-key class it wears, so
+   a section's colour travels with its own tab and pane. */
 prompt-ledger,
-prompt-interface button {
+prompt-ledger .ledger-tab,
+prompt-ledger .ledger-own,
+prompt-ledger .ledger-group-tabs,
+prompt-ledger .ledger-pane,
+prompt-ledger .ledger-block {
   --color-1: oklch(
     calc(
         var(--color-b-lit) + (var(--color-a-lit) - var(--color-b-lit)) * 0.0675
@@ -50,185 +52,253 @@ prompt-interface button {
   );
 }
 
-prompt-suggestions {
-  align-items: center;
+prompt-ledger {
+  /* Depth is neutral tone; hue is reserved for saying where you are. */
+  --ledger-surface: color-mix(in oklab, var(--color-text) 8%, transparent);
+  --ledger-surface-deep: color-mix(in oklab, var(--color-text) 6%, transparent);
+  --ledger-gap: calc(var(--prompt-gap-y-factor) * var(--size-unit) * 0.75);
+
   display: flex;
-  flex-shrink: 0;
-  gap: calc(var(--size-unit) * var(--prompt-gap-y-factor));
-  justify-content: start;
-  overflow-x: auto;
-  padding-top: calc(var(--outline-width) + var(--outline-offset));
-  padding-bottom: calc(var(--outline-width) + var(--outline-offset));
-  scrollbar-color: var(--color-2) var(--color-1);
-  scrollbar-color: var(--color-2) transparent;
-  scrollbar-width: thin;
-
-  button {
-    border-radius: var(--border-radius);
-    padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
-      calc(var(--prompt-padding-x-factor) * var(--size-unit));
-
-    &:not(:first-child) {
-      background: var(--color-1);
-      color: var(--color-2);
-    }
-
-    &:first-child {
-      background: var(--color-background);
-      color: var(--color-text);
-      left: 0;
-      position: sticky;
-    }
-
-    strong {
-      font-weight: bold;
-      text-decoration: underline;
-    }
-
-    &[prompt-type="command"] {
-      background: var(--color-2);
-      color: var(--color-1);
-      font-weight: bold;
-    }
-    &[prompt-type="destination"] {
-      background: var(--color-1);
-      color: var(--color-2);
-      font-weight: bold;
-    }
-  }
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  width: 100%;
 }
 
-prompt-output {
-  color: var(--color-text);
+.ledger-tabs,
+.ledger-group-tabs {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--ledger-gap);
+  overflow-x: auto;
+  scrollbar-color: var(--color-2) transparent;
+  scrollbar-width: thin;
+}
+
+.ledger-group-tabs {
+  padding-top: calc(var(--padding-y) * 0.75);
+}
+
+/* The active section's own commands and properties, between the two rows. */
+.ledger-own {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  width: 100%;
+}
 
-  > span {
+/* Level one: a pill, because round means "a place you can be". The active one
+   is the single filled plate in the whole panel. */
+.ledger-tab {
+  background: var(--color-1);
+  border-radius: 999px;
+  color: var(--color-2);
+  flex-shrink: 0;
+  font-size: calc(var(--font-size) * 0.85);
+  font-weight: bold;
+  padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
+    calc(var(--prompt-padding-x-factor) * 1.4 * var(--size-unit));
+  white-space: nowrap;
+
+  &[active] {
     background: var(--color-2);
     color: var(--color-1);
-    border-radius: var(--border-radius);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: calc(var(--prompt-padding-y-factor) * var(--size-unit))
-      calc(var(--prompt-padding-x-factor) * var(--size-unit));
-    width: 100%;
-
-    &:empty {
-      display: none;
-    }
   }
 }
 
-/* The ledger: every property in the current branch as a directly editable
-   row. Drag or arrow-key numbers, click or arrow-key options. */
-prompt-ledger {
+/* Commands are hollow pills — same family as navigation, never filled, so a
+   verb cannot read as a location. */
+.ledger-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ledger-gap);
+  padding: calc(var(--padding-y) * 0.6) var(--padding-x)
+    calc(var(--padding-y) * 0.2);
+}
+
+.ledger-action {
+  background: transparent;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0
+    calc(var(--prompt-border-factor) * var(--size-unit) * 0.6) var(--color-2);
+  color: var(--color-2);
+  font-size: calc(var(--font-size) * 0.78);
+  padding: calc(var(--prompt-padding-y-factor) * 0.35 * var(--size-unit))
+    calc(var(--prompt-padding-x-factor) * 1.2 * var(--size-unit));
+
+  &:hover {
+    background: color-mix(in oklab, var(--color-2) 22%, transparent);
+  }
+}
+
+/* Level two and below stay neutral; an active header squares its bottom so
+   the block beneath fuses to it as one pane. */
+.ledger-group-tab {
+  background: var(--color-1);
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  flex-shrink: 0;
+  font-size: calc(var(--font-size) * 0.8);
+  font-weight: bold;
+  opacity: 0.55;
+  padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
+    calc(var(--prompt-padding-x-factor) * 1.2 * var(--size-unit));
+  white-space: nowrap;
+
+  &[active] {
+    background: var(--ledger-surface);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    color: var(--color-2);
+    opacity: 1;
+  }
+}
+
+.ledger-pane {
+  background: var(--ledger-surface);
+  border-radius: 0 0 var(--border-radius) var(--border-radius);
   display: flex;
   flex: 1;
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  scrollbar-color: var(--color-2) var(--color-1);
+  padding: calc(var(--padding-y) * 0.5) 0 var(--padding-y);
   scrollbar-color: var(--color-2) transparent;
   scrollbar-width: thin;
+}
+
+.ledger-block {
+  display: flex;
+  flex-direction: column;
+  margin: calc(var(--padding-y) * 0.4) calc(var(--padding-x) * 0.5) 0;
+
+  /* nested blocks stay flush with their parent — depth is the fused shape,
+     never an indent */
+  .ledger-block {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+.ledger-block-head {
+  background: var(--color-1);
+  border-radius: var(--border-radius);
+  color: var(--color-text);
+  font-size: calc(var(--font-size) * 0.8);
+  font-weight: bold;
+  opacity: 0.55;
+  padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
+    calc(var(--prompt-padding-x-factor) * var(--size-unit));
+  text-align: left;
   width: 100%;
+}
 
-  .ledger-section {
-    color: var(--color-text);
-    font-size: calc(var(--font-size) * 0.7);
-    letter-spacing: 0.15em;
-    opacity: 0.45;
-    padding: calc(var(--padding-y) * 1.5) var(--padding-x)
-      calc(var(--padding-y) * 0.25);
-    text-transform: uppercase;
-  }
+.ledger-block-body {
+  display: none;
+  flex-direction: column;
+  padding-bottom: calc(var(--padding-y) * 0.5);
+}
 
-  button.ledger-row {
-    align-items: center;
-    border-radius: var(--border-radius);
-    cursor: ew-resize;
-    display: flex;
-    flex-shrink: 0;
-    gap: calc(var(--prompt-gap-x-factor) * var(--size-unit));
-    padding: calc(var(--padding-y) * 0.5) var(--padding-x);
-    touch-action: pan-y;
-
-    &:hover {
-      background: var(--color-1);
-    }
-
-    &.ledger-row-option {
-      cursor: pointer;
-    }
-  }
-
-  .ledger-key {
+.ledger-block[open] {
+  > .ledger-block-head {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    background: var(--ledger-surface-deep);
     color: var(--color-2);
-    font-size: calc(var(--font-size) * 0.9);
-    white-space: nowrap;
+    opacity: 1;
   }
 
-  .ledger-meter {
-    color: var(--color-1);
-    flex: 1;
-    font-size: calc(var(--font-size) * 0.8);
-    letter-spacing: 0.05em;
-    overflow: hidden;
-    text-align: right;
-    white-space: nowrap;
+  > .ledger-block-body {
+    background: var(--ledger-surface-deep);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    display: flex;
+  }
+}
 
-    b {
-      color: var(--color-2);
-      font-weight: normal;
-    }
+/* Rows: bare text, no chrome — the only thing you edit directly. */
+.ledger-row {
+  align-items: center;
+  border-radius: var(--border-radius);
+  cursor: ew-resize;
+  display: flex;
+  flex-shrink: 0;
+  gap: calc(var(--prompt-gap-x-factor) * var(--size-unit));
+  margin: 0 calc(var(--padding-x) * 0.5);
+  padding: calc(var(--padding-y) * 0.4) calc(var(--padding-x) * 0.5);
+  touch-action: pan-y;
+
+  &:hover {
+    background: color-mix(in oklab, var(--color-text) 7%, transparent);
   }
 
-  .ledger-value {
-    color: var(--color-text);
-    font-size: calc(var(--font-size) * 0.9);
-    font-variant-numeric: tabular-nums;
-    min-width: 6ch;
+  &.ledger-row-option {
+    cursor: pointer;
+  }
+}
+
+.ledger-key {
+  color: var(--color-2);
+  font-size: calc(var(--font-size) * 0.85);
+  white-space: nowrap;
+}
+
+.ledger-meter {
+  color: color-mix(in oklab, var(--color-2) 35%, transparent);
+  flex: 1;
+  font-size: calc(var(--font-size) * 0.75);
+  letter-spacing: 0.05em;
+  overflow: hidden;
+  text-align: right;
+  white-space: nowrap;
+
+  b {
+    color: var(--color-2);
+    font-weight: normal;
+  }
+}
+
+.ledger-value {
+  color: var(--color-text);
+  font-size: calc(var(--font-size) * 0.85);
+  font-variant-numeric: tabular-nums;
+  min-width: 6ch;
+  position: relative;
+  text-align: right;
+  white-space: nowrap;
+
+  [data-highlight] {
     position: relative;
-    text-align: right;
-    white-space: nowrap;
 
-    [data-highlight] {
-      position: relative;
-
-      &::before {
-        content: attr(data-highlight);
-        animation: zoomOutwards 300ms ease-in-out forwards;
-        height: 100%;
-        left: 0;
-        position: absolute;
-        top: 0;
-        transform-style: preserve-3d;
-        width: 100%;
-      }
+    &::before {
+      content: attr(data-highlight);
+      animation: zoomOutwards 300ms ease-in-out forwards;
+      height: 100%;
+      left: 0;
+      position: absolute;
+      top: 0;
+      transform-style: preserve-3d;
+      width: 100%;
     }
   }
+}
 
-  .ledger-options {
-    flex: 1;
-    font-size: calc(var(--font-size) * 0.85);
-    overflow: hidden;
-    text-align: right;
-    white-space: nowrap;
+.ledger-options {
+  flex: 1;
+  font-size: calc(var(--font-size) * 0.8);
+  overflow: hidden;
+  text-align: right;
+  white-space: nowrap;
 
-    span {
-      color: var(--color-2);
-      opacity: 0.5;
-      padding: 0 calc(var(--prompt-padding-x-factor) * 0.4 * var(--size-unit));
-    }
+  span {
+    color: var(--color-2);
+    opacity: 0.45;
+    padding: 0 calc(var(--prompt-padding-x-factor) * 0.4 * var(--size-unit));
+  }
 
-    .on {
-      background: var(--color-2);
-      border-radius: calc(var(--border-radius) * 0.5);
-      color: var(--color-1);
-      opacity: 1;
-    }
+  .on {
+    background: var(--color-2);
+    border-radius: calc(var(--border-radius) * 0.5);
+    color: var(--color-1);
+    opacity: 1;
   }
 }
 

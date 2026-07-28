@@ -14,52 +14,225 @@ type NumericInput = Extract<
 >;
 
 /**
- * The ledger renders every property in the current destination and its
- * descendants as one directly-editable row: drag or arrow-key numbers,
- * click or arrow-key options. It replaces the read-only JSON readout and
- * the per-property input forms.
+ * The whole editor surface.
+ *
+ * Root's children are a row of pills, the active one's children are a second
+ * row fused to a pane, and anything deeper is a pane block that folds. Colour
+ * marks only where you are: the active section pill is the one filled plate,
+ * and every level below it uses neutral tone with the section colour as text.
+ * Properties are directly editable rows; commands are hollow pills sitting in
+ * the scope they act on, so a verb never looks like a place.
  */
 export class PromptLedger extends HTMLElement {
-  private prompt: Prompt;
+  private prompt!: Prompt;
   private onTouch?: (label: string, value: string) => void;
   private refreshers: (() => void)[] = [];
+
+  private activeSection = "";
+  private activeGroups: { [section: string]: string } = {};
+  private openPanes: { [path: string]: boolean } = {};
+
+  private elementTabs = document.createElement("div");
+  private elementOwn = document.createElement("div");
+  private elementGroupTabs = document.createElement("div");
+  private elementPane = document.createElement("div");
 
   initialize(prompt: Prompt, onTouch?: (label: string, value: string) => void) {
     this.prompt = prompt;
     this.onTouch = onTouch;
+    this.elementTabs.className = "ledger-tabs";
+    this.elementOwn.className = "ledger-own";
+    this.elementGroupTabs.className = "ledger-group-tabs";
+    this.elementPane.className = "ledger-pane";
+    this.appendChild(this.elementTabs);
+    this.appendChild(this.elementOwn);
+    this.appendChild(this.elementGroupTabs);
+    this.appendChild(this.elementPane);
     this.render();
   }
 
+  get root(): Destination {
+    return this.prompt.destination;
+  }
+
   render() {
-    this.innerHTML = "";
     this.refreshers = [];
-    this.renderDestination(this.prompt.currentDestination, []);
+    this.elementTabs.innerHTML = "";
+    this.elementOwn.innerHTML = "";
+    this.elementGroupTabs.innerHTML = "";
+    this.elementPane.innerHTML = "";
+    this.elementOwn.className = "ledger-own";
+    this.elementGroupTabs.className = "ledger-group-tabs";
+    this.elementPane.className = "ledger-pane";
+
+    const sections = Object.keys(this.root.destinations);
+    if (!sections.length) return;
+    if (!sections.includes(this.activeSection)) {
+      this.activeSection = sections[0];
+    }
+
+    sections.forEach((name) => {
+      const destination = this.root.destinations[name];
+      const tab = document.createElement("button");
+      tab.className = "ledger-tab";
+      tab.textContent = name;
+      this.applyThemeKey(tab, destination.key);
+      if (name === this.activeSection) tab.setAttribute("active", "");
+      tab.addEventListener("click", () => {
+        this.activeSection = name;
+        this.render();
+      });
+      this.elementTabs.appendChild(tab);
+    });
+
+    const section = this.root.destinations[this.activeSection];
+    // Everything below the first row inherits the active section's palette.
+    [this.elementOwn, this.elementGroupTabs, this.elementPane].forEach(
+      (element) => this.applyThemeKey(element, section.key)
+    );
+
+    this.renderCommands(this.elementOwn, section);
+    this.renderProperties(this.elementOwn, section, this.activeSection);
+
+    const groups = Object.keys(section.destinations);
+    if (!groups.length) return;
+    const remembered = this.activeGroups[this.activeSection];
+    const activeGroup = groups.includes(remembered) ? remembered : groups[0];
+    this.activeGroups[this.activeSection] = activeGroup;
+
+    groups.forEach((name) => {
+      const tab = document.createElement("button");
+      tab.className = "ledger-group-tab";
+      tab.textContent = name;
+      if (name === activeGroup) tab.setAttribute("active", "");
+      tab.addEventListener("click", () => {
+        this.activeGroups[this.activeSection] = name;
+        this.render();
+      });
+      this.elementGroupTabs.appendChild(tab);
+    });
+
+    this.renderContents(
+      this.elementPane,
+      section.destinations[activeGroup],
+      `${this.activeSection}.${activeGroup}`
+    );
   }
 
   refreshValues() {
     this.refreshers.forEach((refresh) => refresh());
   }
 
-  private renderDestination(destination: Destination, path: string[]) {
-    const propertyKeys = Object.keys(destination.properties);
-    if (propertyKeys.length && path.length) {
-      const header = document.createElement("div");
-      header.className = "ledger-section";
-      header.textContent = path.join(".");
-      this.appendChild(header);
+  /** Jump to the first section, then group, whose name starts with `prefix`. */
+  selectByPrefix(prefix: string): boolean {
+    const sections = Object.keys(this.root.destinations);
+    const section = sections.find((name) => name.startsWith(prefix));
+    if (section && section !== this.activeSection) {
+      this.activeSection = section;
+      this.render();
+      return true;
     }
-    propertyKeys.forEach((key) =>
-      this.renderProperty(key, destination.properties[key], path)
+    const current = this.root.destinations[this.activeSection];
+    if (!current) return false;
+    const group = Object.keys(current.destinations).find((name) =>
+      name.startsWith(prefix)
     );
-    Object.keys(destination.destinations).forEach((key) =>
-      this.renderDestination(destination.destinations[key], [...path, key])
+    if (group && group !== this.activeGroups[this.activeSection]) {
+      this.activeGroups[this.activeSection] = group;
+      this.render();
+      return true;
+    }
+    return false;
+  }
+
+  private applyThemeKey(element: HTMLElement, key?: string) {
+    if (key !== undefined) element.classList.add(`theme-key-${key}`);
+  }
+
+  private renderContents(
+    container: HTMLElement,
+    destination: Destination,
+    path: string
+  ) {
+    this.renderCommands(container, destination);
+    this.renderProperties(container, destination, path);
+    Object.keys(destination.destinations).forEach((name) => {
+      this.renderPaneBlock(
+        container,
+        destination.destinations[name],
+        name,
+        `${path}.${name}`
+      );
+    });
+  }
+
+  private renderPaneBlock(
+    container: HTMLElement,
+    destination: Destination,
+    name: string,
+    path: string
+  ) {
+    const block = document.createElement("div");
+    block.className = "ledger-block";
+    this.applyThemeKey(block, destination.key);
+
+    const head = document.createElement("button");
+    head.className = "ledger-block-head";
+    head.textContent = name;
+
+    const body = document.createElement("div");
+    body.className = "ledger-block-body";
+
+    if (this.openPanes[path]) block.setAttribute("open", "");
+    head.addEventListener("click", () => {
+      this.openPanes[path] = !this.openPanes[path];
+      if (this.openPanes[path]) {
+        block.setAttribute("open", "");
+      } else {
+        block.removeAttribute("open");
+      }
+    });
+
+    this.renderContents(body, destination, path);
+    block.appendChild(head);
+    block.appendChild(body);
+    container.appendChild(block);
+  }
+
+  private renderCommands(container: HTMLElement, destination: Destination) {
+    const names = Object.keys(destination.commands);
+    if (!names.length) return;
+    const row = document.createElement("div");
+    row.className = "ledger-actions";
+    names.forEach((name) => {
+      const button = document.createElement("button");
+      button.className = "ledger-action";
+      button.textContent = name;
+      button.title = destination.commands[name].description;
+      button.addEventListener("click", () => {
+        destination.commands[name].onCommand(name, [], this.prompt);
+        this.refreshValues();
+      });
+      row.appendChild(button);
+    });
+    container.appendChild(row);
+  }
+
+  private renderProperties(
+    container: HTMLElement,
+    destination: Destination,
+    path: string
+  ) {
+    Object.keys(destination.properties).forEach((key) =>
+      this.renderProperty(container, key, destination.properties[key], path)
     );
   }
 
   private renderProperty(
+    container: HTMLElement,
     propertyKey: string,
     property: DestinationProperty,
-    path: string[]
+    path: string
   ) {
     // All of a property's inputs submit together, so their current values are
     // shared state across the property's rows.
@@ -70,24 +243,31 @@ export class PromptLedger extends HTMLElement {
         property.inputs.length > 1 && inputLabel !== propertyKey
           ? `${propertyKey} ${inputLabel}`
           : propertyKey;
-      const fullLabel = [...path, label].join(".");
 
       const submit = (value: string) => {
         values[index] = value;
         const formatted = String(property.inputsFormatter(values)).trim();
         property.onSet(propertyKey, formatted.split(/ +/), this.prompt);
-        if (this.onTouch) this.onTouch(fullLabel, value);
+        if (this.onTouch) this.onTouch(`${path}.${label}`, value);
       };
 
       if (input.type === "select") {
-        this.renderOptionRow(label, input.options, values, index, submit);
+        this.renderOptionRow(
+          container,
+          label,
+          input.options,
+          values,
+          index,
+          submit
+        );
       } else {
-        this.renderNumericRow(label, input, values, index, submit);
+        this.renderNumericRow(container, label, input, values, index, submit);
       }
     });
   }
 
   private renderNumericRow(
+    container: HTMLElement,
     label: string,
     input: NumericInput,
     values: string[],
@@ -116,7 +296,7 @@ export class PromptLedger extends HTMLElement {
     row.appendChild(key);
     row.appendChild(meter);
     row.appendChild(value);
-    this.appendChild(row);
+    container.appendChild(row);
 
     const current = () => parseFloat(values[index]) || 0;
 
@@ -137,7 +317,9 @@ export class PromptLedger extends HTMLElement {
       const quantized =
         Math.round((number - input.min) / step) * step + input.min;
       const clamped = Math.min(input.max, Math.max(input.min, quantized));
-      const normalized = parseFloat(clamped.toFixed(Math.max(digits, 3))).toString();
+      const normalized = parseFloat(
+        clamped.toFixed(Math.max(digits, 3))
+      ).toString();
       if (normalized === parseFloat(values[index]).toString()) return;
       submit(normalized);
       renderValue(flash);
@@ -183,6 +365,7 @@ export class PromptLedger extends HTMLElement {
   }
 
   private renderOptionRow(
+    container: HTMLElement,
     label: string,
     options: string[],
     values: string[],
@@ -201,7 +384,7 @@ export class PromptLedger extends HTMLElement {
 
     row.appendChild(key);
     row.appendChild(value);
-    this.appendChild(row);
+    container.appendChild(row);
 
     // Short option sets render inline; long ones compact to a cycling value.
     const inline = options.join(" ").length <= 28;
@@ -211,7 +394,9 @@ export class PromptLedger extends HTMLElement {
         value.innerHTML = options
           .map(
             (option) =>
-              `<span${option === values[index] ? ' class="on"' : ""}>${option}</span>`
+              `<span${
+                option === values[index] ? ' class="on"' : ""
+              }>${option}</span>`
           )
           .join(" ");
       } else {
@@ -221,8 +406,7 @@ export class PromptLedger extends HTMLElement {
 
     const cycle = (direction: number) => {
       const at = options.indexOf(values[index]);
-      const next =
-        options[(at + direction + options.length) % options.length];
+      const next = options[(at + direction + options.length) % options.length];
       submit(next);
       renderValue();
     };
@@ -243,7 +427,11 @@ export class PromptLedger extends HTMLElement {
   }
 
   // Replacing the node restarts the zoom-outwards flash animation.
-  private swapValueText(container: HTMLSpanElement, text: string, flash: boolean) {
+  private swapValueText(
+    container: HTMLSpanElement,
+    text: string,
+    flash: boolean
+  ) {
     if (container.textContent === text && !flash) return;
     container.innerHTML = "";
     const span = document.createElement("span");

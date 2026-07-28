@@ -120,8 +120,8 @@ export function generateCoreDestination({
           description: "Duplicate the color",
           onCommand: (_command, _args, _prompt) => {
             machine.renderer.duplicateThemeColors(i);
-            machine.promptInterface.handleBack();
             machine.destinations.refresh();
+            machine.promptInterface.refresh();
             return { valid: true };
           },
         }),
@@ -131,8 +131,8 @@ export function generateCoreDestination({
                 description: "Delete the color",
                 onCommand: (_command, _args, _prompt) => {
                   machine.renderer.removeThemeColors(i);
-                  machine.promptInterface.handleBack();
                   machine.destinations.refresh();
+                  machine.promptInterface.refresh();
                   return { valid: true };
                 },
               }),
