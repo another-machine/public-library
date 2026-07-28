@@ -175,8 +175,12 @@ export class Machine {
       ) as PromptInterface;
       this.promptInterface.initialize(this.element, this.prompt, {
         onToggle: (open) => this.renderer.setEditorOpen(open),
-        onTouch: (label, value) =>
-          this.renderer.setEditorStatus(`${label} ${value}`),
+        onTouch: (label, value) => {
+          this.renderer.setEditorStatus(`${label} ${value}`);
+          // Not every property's onSet reports a change, so persist from the
+          // one place that sees them all.
+          this.onPropertyChange();
+        },
       });
     } else {
       this.prompt.update({ destination: this.destinations.root });

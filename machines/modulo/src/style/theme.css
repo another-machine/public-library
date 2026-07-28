@@ -4,13 +4,14 @@
   --interface-gap-x-factor: 0.4;
   --interface-gap-y-factor: 0.4;
   --interface-glow-factor: 0.1;
+  /* The prompt is not themeable — it keeps one square, fixed look so the
+     machine's own layout controls stay the only thing you tune. */
   --prompt-border-factor: 0.2;
-  --prompt-corner-factor: 0.4;
   --prompt-font-factor: 1;
   --prompt-gap-x-factor: 0.4;
   --prompt-gap-y-factor: 0.4;
-  --prompt-padding-x-factor: 0.3;
-  --prompt-padding-y-factor: 0.3;
+  --prompt-padding-x-factor: 0.5;
+  --prompt-padding-y-factor: 0.5;
   --prompt-width-factor: 32;
 
   --color-hue-base: 0;

@@ -10,10 +10,7 @@ import {
 import { formatJSON, numericAsString, validators } from "./utilities";
 import { themeSelectorProperty } from "./synthUtilities";
 
-function propertyGeneratorLayoutRange(
-  machine: Machine,
-  type: "prompt" | "pads"
-) {
+function propertyGeneratorLayoutRange(machine: Machine, type: "pads") {
   return function (
     key: string,
     min = 0,
@@ -162,7 +159,6 @@ export function generateCoreDestination({
   }, {});
 
   const sizesInterfaceProperty = propertyGeneratorLayoutRange(machine, "pads");
-  const sizesPromptProperty = propertyGeneratorLayoutRange(machine, "prompt");
 
   return {
     machine: new Destination({
@@ -344,8 +340,8 @@ export function generateCoreDestination({
                     sizesInterfaceProperty("gapX", 0, 2),
                     sizesInterfaceProperty("gapY", 0, 2),
                     sizesInterfaceProperty("glow", 0, 1),
-                    sizesPromptProperty("paddingX", 0, 2),
-                    sizesPromptProperty("paddingY", 0, 2),
+                    sizesInterfaceProperty("paddingX", 0, 2),
+                    sizesInterfaceProperty("paddingY", 0, 2),
                   ],
                   onSet: (
                     _command,
@@ -362,48 +358,6 @@ export function generateCoreDestination({
                         glow: parseFloat(glow),
                         paddingX: parseFloat(paddingX),
                         paddingY: parseFloat(paddingY),
-                      });
-                      onPropertyChange();
-                    }
-                    return { valid };
-                  },
-                }),
-                prompt: new DestinationProperty({
-                  inputs: [
-                    sizesPromptProperty("border", 0, 0.5),
-                    sizesPromptProperty("corner", 0, 1),
-                    sizesPromptProperty("font", 0.5, 2),
-                    sizesPromptProperty("gapX", 0, 2),
-                    sizesPromptProperty("gapY", 0, 2),
-                    sizesPromptProperty("paddingX", 0, 2),
-                    sizesPromptProperty("paddingY", 0, 2),
-                    sizesPromptProperty("width", 20, 80),
-                  ],
-                  onSet: (
-                    _command,
-                    [
-                      border,
-                      corner,
-                      font,
-                      gapX,
-                      gapY,
-                      paddingX,
-                      paddingY,
-                      width,
-                    ],
-                    _prompt
-                  ) => {
-                    const valid = true;
-                    if (valid) {
-                      machine.renderer.updateThemeLayoutPrompt({
-                        border: parseFloat(border),
-                        corner: parseFloat(corner),
-                        font: parseFloat(font),
-                        gapX: parseFloat(gapX),
-                        gapY: parseFloat(gapY),
-                        paddingX: parseFloat(paddingX),
-                        paddingY: parseFloat(paddingY),
-                        width: parseFloat(width),
                       });
                       onPropertyChange();
                     }

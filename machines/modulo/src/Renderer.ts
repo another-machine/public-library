@@ -32,21 +32,9 @@ export interface RendererThemeSizesPads {
   paddingX: number;
   paddingY: number;
 }
-export interface RendererThemeSizesPrompt {
-  border: number;
-  corner: number;
-  font: number;
-  gapX: number;
-  gapY: number;
-  paddingX: number;
-  paddingY: number;
-  width: number;
-}
-
 export interface RendererTheme {
   colors: RendererThemeColor[];
   sizes: {
-    prompt: RendererThemeSizesPrompt;
     pads: RendererThemeSizesPads;
   };
 }
@@ -192,21 +180,14 @@ export class Renderer {
   }
 
   updateThemeLayoutPads(value: RendererThemeSizesPads) {
-    this.setTheme({
-      ...this.theme,
-      sizes: { ...this.theme.sizes, pads: value },
-    });
-  }
-
-  updateThemeLayoutPrompt(value: RendererThemeSizesPrompt) {
-    this.setTheme({
-      ...this.theme,
-      sizes: { ...this.theme.sizes, prompt: value },
-    });
+    this.setTheme({ ...this.theme, sizes: { pads: value } });
   }
 
   setTheme(theme: RendererTheme) {
-    this.theme = theme;
+    // Older saved states carry a `prompt` size group; the prompt is no longer
+    // themeable, so drop it rather than let it set stale custom properties.
+    this.theme = { colors: theme.colors, sizes: { pads: theme.sizes.pads } };
+    theme = this.theme;
 
     function setProperty(property: string, value: number) {
       document.documentElement.style.setProperty(property, value.toString());
