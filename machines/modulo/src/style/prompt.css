@@ -22,13 +22,21 @@ prompt-interface button {
 }
 
 /* Each element carries the palette of whichever theme-key class it wears, so
-   a section's colour travels with its own tab and pane. */
+   a section's colour travels with its own tab and pane. The surface tints are
+   declared here too — a custom property substitutes var() where it is
+   declared, so they must resolve alongside the palette they tint. */
 prompt-ledger,
 prompt-ledger .ledger-tab,
 prompt-ledger .ledger-own,
 prompt-ledger .ledger-group-tabs,
 prompt-ledger .ledger-pane,
 prompt-ledger .ledger-block {
+  --ledger-surface: color-mix(in oklab, var(--color-2) 13%, transparent);
+  --ledger-surface-deep: color-mix(in oklab, var(--color-2) 10%, transparent);
+  --ledger-hover: color-mix(in oklab, var(--color-2) 12%, transparent);
+  /* Pills track the prompt corner factor, just rounder than the panes. */
+  --pill-radius: calc(var(--border-radius) * 3);
+
   --color-1: oklch(
     calc(
         var(--color-b-lit) + (var(--color-a-lit) - var(--color-b-lit)) * 0.0675
@@ -53,9 +61,9 @@ prompt-ledger .ledger-block {
 }
 
 prompt-ledger {
-  /* Depth is neutral tone; hue is reserved for saying where you are. */
-  --ledger-surface: color-mix(in oklab, var(--color-text) 8%, transparent);
-  --ledger-surface-deep: color-mix(in oklab, var(--color-text) 6%, transparent);
+  /* Surfaces are a faint wash of the section's own colour rather than grey —
+     the filled pill still marks where you are, the tint just carries the
+     identity down the panel. Nested surfaces stack, so depth reads brighter. */
   --ledger-gap: calc(var(--prompt-gap-y-factor) * var(--size-unit) * 0.75);
 
   display: flex;
@@ -90,7 +98,7 @@ prompt-ledger {
    is the single filled plate in the whole panel. */
 .ledger-tab {
   background: var(--color-1);
-  border-radius: 999px;
+  border-radius: var(--pill-radius);
   color: var(--color-2);
   flex-shrink: 0;
   font-size: calc(var(--font-size) * 0.85);
@@ -111,13 +119,13 @@ prompt-ledger {
   display: flex;
   flex-wrap: wrap;
   gap: var(--ledger-gap);
-  padding: calc(var(--padding-y) * 0.6) var(--padding-x)
+  padding: calc(var(--padding-y) * 0.5) calc(var(--padding-x) * 0.5)
     calc(var(--padding-y) * 0.2);
 }
 
 .ledger-action {
   background: transparent;
-  border-radius: 999px;
+  border-radius: var(--pill-radius);
   box-shadow: inset 0 0 0
     calc(var(--prompt-border-factor) * var(--size-unit) * 0.6) var(--color-2);
   color: var(--color-2);
@@ -135,11 +143,11 @@ prompt-ledger {
 .ledger-group-tab {
   background: var(--color-1);
   border-radius: var(--border-radius);
-  color: var(--color-text);
+  color: var(--color-2);
   flex-shrink: 0;
   font-size: calc(var(--font-size) * 0.8);
   font-weight: bold;
-  opacity: 0.55;
+  opacity: 0.5;
   padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
     calc(var(--prompt-padding-x-factor) * 1.2 * var(--size-unit));
   white-space: nowrap;
@@ -161,31 +169,28 @@ prompt-ledger {
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
-  padding: calc(var(--padding-y) * 0.5) 0 var(--padding-y);
+  /* the one place a horizontal inset is applied — everything inside stays
+     flush so nesting never compounds into an indent */
+  padding: calc(var(--padding-y) * 0.5) var(--padding-x) var(--padding-y);
   scrollbar-color: var(--color-2) transparent;
   scrollbar-width: thin;
 }
 
+/* Blocks span the full inner width at every depth — depth is the fused
+   shape, never an indent. */
 .ledger-block {
   display: flex;
   flex-direction: column;
-  margin: calc(var(--padding-y) * 0.4) calc(var(--padding-x) * 0.5) 0;
-
-  /* nested blocks stay flush with their parent — depth is the fused shape,
-     never an indent */
-  .ledger-block {
-    margin-left: 0;
-    margin-right: 0;
-  }
+  margin: calc(var(--padding-y) * 0.4) 0 0;
 }
 
 .ledger-block-head {
   background: var(--color-1);
   border-radius: var(--border-radius);
-  color: var(--color-text);
+  color: var(--color-2);
   font-size: calc(var(--font-size) * 0.8);
   font-weight: bold;
-  opacity: 0.55;
+  opacity: 0.5;
   padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
     calc(var(--prompt-padding-x-factor) * var(--size-unit));
   text-align: left;
@@ -222,12 +227,11 @@ prompt-ledger {
   display: flex;
   flex-shrink: 0;
   gap: calc(var(--prompt-gap-x-factor) * var(--size-unit));
-  margin: 0 calc(var(--padding-x) * 0.5);
   padding: calc(var(--padding-y) * 0.4) calc(var(--padding-x) * 0.5);
   touch-action: pan-y;
 
   &:hover {
-    background: color-mix(in oklab, var(--color-text) 7%, transparent);
+    background: var(--ledger-hover);
   }
 
   &.ledger-row-option {
