@@ -143,7 +143,9 @@ function estimatedHeaderLength(
       : serializeChannelPlan(plan.slots),
     pad: plan.pad,
     pack: plan.pack,
-  }).length;
+    // nibble pairs: two border pixels per header byte, plus the ring-start
+    // B bootstrap and even-offset alignment
+  }).length * 2 + 8;
 }
 
 export interface EncodeImageDataOptions extends EncodeOptions {

@@ -130,27 +130,87 @@ export interface ParsedHeader extends StgcOpts {
 }
 
 /**
+ * Header bytes ride the border alpha as high/low nibble pairs, so every
+ * header pixel keeps alpha ≥ 240 and the border renders as good as opaque.
+ * A nibble n is stored as alpha 255 - n; an untouched border pixel (255)
+ * reads back as nibble 0.
+ */
+function nibbleByte(alphaHi: number, alphaLo: number): number {
+  return (((255 - alphaHi) & 0xf) << 4) | ((255 - alphaLo) & 0xf);
+}
+
+/**
  * Read the STGC header from the border alpha channel of an image.
  *
- * alpha(0,0) = B low byte; 0 = sentinel meaning 2-byte B follows in bpx[1] and bpx[2].
- * The header bytes are located by scanning for the STGC magic in border alpha values.
+ * Current images store nibble pairs (see `nibbleByte`); before that the
+ * format stored one raw byte per pixel — which rendered the header as a
+ * nearly transparent strip — so all three layouts are tried in turn:
+ * nibble pairs, then whole bytes inverted, then whole bytes raw.
+ *
+ * byte 0 of the ring = B low byte; 0 = sentinel meaning a 2-byte B follows.
+ * The header is located by scanning the ring bytes for the STGC magic.
  */
 export function unpackStgcHeaderAlpha(img: Img): ParsedHeader {
-  let B = img.getAlpha(0, 0);
+  try {
+    return unpackNibbles(img);
+  } catch (e) {
+    try {
+      return unpackWholeBytes(img, (alpha) => 255 - alpha);
+    } catch (e2) {
+      return unpackWholeBytes(img, (alpha) => alpha);
+    }
+  }
+}
+
+function unpackNibbles(img: Img): ParsedHeader {
+  // bootstrap B from the ring start — raster order makes the first pixels
+  // identical for every border width
+  const tmpBpx = getBorderPixels(img.width, img.height, 1);
+  if (tmpBpx.length < 6) throw new Error("not a STGC image");
+  const alphaAt = (i: number) =>
+    img.getAlpha(tmpBpx[i][0], tmpBpx[i][1]);
+  let B = nibbleByte(alphaAt(0), alphaAt(1));
+  if (B === 0) {
+    B =
+      nibbleByte(alphaAt(2), alphaAt(3)) |
+      (nibbleByte(alphaAt(4), alphaAt(5)) << 8);
+    if (B === 0) throw new Error("not a STGC image");
+  }
+
+  const bpx = getBorderPixels(img.width, img.height, B);
+  const bytes = new Uint8Array(bpx.length >> 1);
+  for (let i = 0; i < bytes.length; i++)
+    bytes[i] = nibbleByte(
+      img.getAlpha(bpx[i * 2][0], bpx[i * 2][1]),
+      img.getAlpha(bpx[i * 2 + 1][0], bpx[i * 2 + 1][1])
+    );
+  return parseRingBytes(bytes, B);
+}
+
+function unpackWholeBytes(
+  img: Img,
+  read: (alpha: number) => number
+): ParsedHeader {
+  let B = read(img.getAlpha(0, 0));
   if (B === 0) {
     // 2-byte B: enumerate with B=1 to find bpx[1] and bpx[2]
     const tmpBpx = getBorderPixels(img.width, img.height, 1);
     if (tmpBpx.length < 3) throw new Error("not a STGC image");
     B =
-      img.getAlpha(tmpBpx[1][0], tmpBpx[1][1]) |
-      (img.getAlpha(tmpBpx[2][0], tmpBpx[2][1]) << 8);
+      read(img.getAlpha(tmpBpx[1][0], tmpBpx[1][1])) |
+      (read(img.getAlpha(tmpBpx[2][0], tmpBpx[2][1])) << 8);
     if (B === 0) throw new Error("not a STGC image");
   }
 
   const bpx = getBorderPixels(img.width, img.height, B);
   const alphas = new Uint8Array(bpx.length);
   for (let i = 0; i < bpx.length; i++)
-    alphas[i] = img.getAlpha(bpx[i][0], bpx[i][1]);
+    alphas[i] = read(img.getAlpha(bpx[i][0], bpx[i][1]));
+  return parseRingBytes(alphas, B);
+}
+
+function parseRingBytes(alphas: Uint8Array, B: number): ParsedHeader {
+  const bpx = { length: alphas.length };
 
   // scan for the STGC magic in the alpha sequence
   let magicOff = -1;
@@ -245,15 +305,25 @@ export function applyAlphaHeader(
   offset?: number
 ): void {
   const bpx = getBorderPixels(outImg.width, outImg.height, B);
+  // Each byte rides two pixels as high/low nibbles (alpha = 255 - nibble),
+  // keeping every header pixel at alpha ≥ 240 — raw bytes per pixel rendered
+  // the header as a nearly transparent strip along the border. A zero byte
+  // lands on alpha 255 exactly, so no zero-clamping or checksum recovery is
+  // needed on this layout.
+  const putByte = (index: number, byte: number) => {
+    outImg.setAlpha(bpx[index][0], bpx[index][1], 255 - ((byte >> 4) & 0xf));
+    outImg.setAlpha(bpx[index + 1][0], bpx[index + 1][1], 255 - (byte & 0xf));
+  };
+
   let minOffset: number;
   if (B > 255) {
-    outImg.setAlpha(0, 0, 0); // sentinel
-    outImg.setAlpha(bpx[1][0], bpx[1][1], B & 0xff);
-    outImg.setAlpha(bpx[2][0], bpx[2][1], (B >> 8) & 0xff);
-    minOffset = 3;
+    putByte(0, 0); // sentinel
+    putByte(2, B & 0xff);
+    putByte(4, (B >> 8) & 0xff);
+    minOffset = 6;
   } else {
-    outImg.setAlpha(0, 0, B);
-    minOffset = 1;
+    putByte(0, B);
+    minOffset = 2;
   }
 
   if (offset == null) {
@@ -261,13 +331,13 @@ export function applyAlphaHeader(
     const H = outImg.height;
     const bottomStart = bpx.findIndex(([, py]) => py === H - 1);
     const bottomLen = outImg.width;
-    offset = bottomStart + ((bottomLen - hdrBytes.length) >> 1);
+    offset = bottomStart + ((bottomLen - hdrBytes.length * 2) >> 1);
   }
-  offset = Math.max(minOffset, offset);
+  // even ring index, so decode can pair pixels deterministically from 0
+  offset = Math.max(minOffset, offset) & ~1;
 
   for (let i = 0; i < hdrBytes.length; i++) {
-    const b = hdrBytes[i];
-    outImg.setAlpha(bpx[offset + i][0], bpx[offset + i][1], b === 0 ? 1 : b);
+    putByte(offset + i * 2, hdrBytes[i]);
   }
 }
 
