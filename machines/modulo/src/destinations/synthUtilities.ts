@@ -62,8 +62,11 @@ export const themeSelectorProperty = (
     onSet: (_command, [value]) => {
       set(parseInt(value));
       machine.renderer.refreshTheme();
-      machine.promptInterface.updateTheme(value);
+      // Each destination carries its theme key, so the tree has to be rebuilt
+      // before the editor re-reads it — otherwise the panel repaints from the
+      // previous key and only catches up on some later render.
       machine.destinations.refresh();
+      machine.promptInterface.refresh();
       return { valid: true };
     },
   }),

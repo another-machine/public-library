@@ -25,7 +25,7 @@ type NumericInput = Extract<
  */
 export class PromptLedger extends HTMLElement {
   private prompt!: Prompt;
-  private onTouch?: (label: string, value: string) => void;
+  private onChange?: () => void;
   private refreshers: (() => void)[] = [];
 
   private activeSection = "";
@@ -37,9 +37,9 @@ export class PromptLedger extends HTMLElement {
   private elementGroupTabs = document.createElement("div");
   private elementPane = document.createElement("div");
 
-  initialize(prompt: Prompt, onTouch?: (label: string, value: string) => void) {
+  initialize(prompt: Prompt, onChange?: () => void) {
     this.prompt = prompt;
-    this.onTouch = onTouch;
+    this.onChange = onChange;
     this.elementTabs.className = "ledger-tabs";
     this.elementOwn.className = "ledger-own";
     this.elementGroupTabs.className = "ledger-group-tabs";
@@ -211,7 +211,10 @@ export class PromptLedger extends HTMLElement {
       button.title = destination.commands[name].description;
       button.addEventListener("click", () => {
         destination.commands[name].onCommand(name, [], this.prompt);
+        // A command can rewrite any number of properties, so repaint from the
+        // engine and persist the result like a direct edit.
         this.refreshValues();
+        if (this.onChange) this.onChange();
       });
       row.appendChild(button);
     });
@@ -248,8 +251,12 @@ export class PromptLedger extends HTMLElement {
         values[index] = value;
         const formatted = String(property.inputsFormatter(values)).trim();
         property.onSet(propertyKey, formatted.split(/ +/), this.prompt);
-        if (this.onTouch) this.onTouch(`${path}.${label}`, value);
+        if (this.onChange) this.onChange();
       };
+
+      // Commands can rewrite a property behind the panel's back, so a refresh
+      // re-reads from the engine rather than repainting the cached value.
+      const read = () => input.initialValue();
 
       if (input.type === "select") {
         this.renderOptionRow(
@@ -258,10 +265,19 @@ export class PromptLedger extends HTMLElement {
           input.options,
           values,
           index,
-          submit
+          submit,
+          read
         );
       } else {
-        this.renderNumericRow(container, label, input, values, index, submit);
+        this.renderNumericRow(
+          container,
+          label,
+          input,
+          values,
+          index,
+          submit,
+          read
+        );
       }
     });
   }
@@ -272,7 +288,8 @@ export class PromptLedger extends HTMLElement {
     input: NumericInput,
     values: string[],
     index: number,
-    submit: (value: string) => void
+    submit: (value: string) => void,
+    read: () => string
   ) {
     const step =
       ("step" in input && input.step) ||
@@ -360,7 +377,9 @@ export class PromptLedger extends HTMLElement {
 
     renderValue(false);
     this.refreshers.push(() => {
-      if (!dragging) renderValue(false);
+      if (dragging) return;
+      values[index] = read();
+      renderValue(false);
     });
   }
 
@@ -370,7 +389,8 @@ export class PromptLedger extends HTMLElement {
     options: string[],
     values: string[],
     index: number,
-    submit: (value: string) => void
+    submit: (value: string) => void,
+    read: () => string
   ) {
     const row = document.createElement("button");
     row.className = "ledger-row ledger-row-option";
@@ -423,7 +443,10 @@ export class PromptLedger extends HTMLElement {
     });
 
     renderValue();
-    this.refreshers.push(renderValue);
+    this.refreshers.push(() => {
+      values[index] = read();
+      renderValue();
+    });
   }
 
   // Replacing the node restarts the zoom-outwards flash animation.

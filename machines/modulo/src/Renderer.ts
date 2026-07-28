@@ -94,7 +94,7 @@ export class Renderer {
 
   initializeEditorToggle() {
     this.elementEditorToggle.id = "editor-toggle";
-    this.elementEditorToggle.textContent = ">_";
+    this.elementEditorToggle.setAttribute("aria-label", "Toggle editor");
     this.elementEditorToggle.addEventListener("click", () =>
       this.rendererEventHandler("TAP", "EDITOR", 0)
     );
@@ -106,10 +106,6 @@ export class Renderer {
     } else {
       this.elementEditorToggle.removeAttribute("open");
     }
-  }
-
-  setEditorStatus(text: string) {
-    this.elementEditorToggle.textContent = text;
   }
 
   // Rainbow mode is a compositor-friendly CSS hue-rotate animation — updating

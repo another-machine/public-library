@@ -11,7 +11,7 @@ export class PromptInterface extends HTMLElement {
     prompt: Prompt,
     callbacks?: {
       onToggle?: (open: boolean) => void;
-      onTouch?: (label: string, value: string) => void;
+      onChange?: () => void;
     }
   ) {
     this.prompt = prompt;
@@ -21,7 +21,7 @@ export class PromptInterface extends HTMLElement {
     this.ledger = this.querySelector("prompt-ledger")!;
     this.setupKeyboard();
     parent.appendChild(this);
-    this.ledger.initialize(prompt, callbacks?.onTouch);
+    this.ledger.initialize(prompt, callbacks?.onChange);
     return this;
   }
 
@@ -51,12 +51,6 @@ export class PromptInterface extends HTMLElement {
     const open = this.classList.contains("open");
     if (open) this.ledger.render();
     if (this.onToggle) this.onToggle(open);
-  }
-
-  public updateTheme(_theme: string) {
-    // Section colour now travels with each tab, so there is nothing global to
-    // restyle — a rebuild picks up the new key.
-    this.refresh();
   }
 
   private setupKeyboard() {
