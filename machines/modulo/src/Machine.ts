@@ -24,11 +24,13 @@ import { Steps } from "./Steps";
 import { Synths } from "./Synths";
 import { MIDI, type MIDIEvent } from "../../../packages/amplib-devices/src";
 import {
-  Stega64,
-  StegaMetadata,
+  Stegassette,
   createDropReader,
 } from "../../../packages/amplib-steganography/src";
 import register from "./prompt/register";
+
+const SETTINGS_MIMETYPE = "text/json";
+const SETTINGS_NAME = "modulo.json";
 
 export interface MachineCore {
   theme: number;
@@ -218,26 +220,22 @@ export class Machine {
 
   loadSettingsFromImage(image: HTMLImageElement): boolean {
     try {
-      const metadata = StegaMetadata.decode({ source: image });
-      if (
-        !metadata ||
-        metadata.type === StegaMetadata.StegaContentType.STRING
-      ) {
-        const [decoded] = Stega64.decode({
-          source: image,
-          encoding: metadata?.encoding || "base64",
-          borderWidth: metadata?.borderWidth,
-        });
-        const settings = JSON.parse(decoded || "") as MachineParams;
-        this.update(settings);
-        // Save the loaded settings to localStorage
-        this.saveToLocalStorage();
-        return true;
-      }
+      const { entries } = Stegassette.decode({ source: image });
+      const entry =
+        entries.find((item) => item.mimetype === SETTINGS_MIMETYPE) ||
+        entries[0];
+      if (!entry) return false;
+      const settings = JSON.parse(
+        new TextDecoder().decode(entry.data)
+      ) as MachineParams;
+      this.update(settings);
+      // Save the loaded settings to localStorage
+      this.saveToLocalStorage();
+      return true;
     } catch (e) {
       console.log(e);
+      return false;
     }
-    return false;
   }
 
   // File-picker path for loading a settings image — on mobile this opens the
@@ -347,11 +345,15 @@ export class Machine {
   onExport(type: "image" | "json" | "url") {
     if (type === "image") {
       this.promptInterface.toggle();
-      const canvas = Stega64.encode({
+      const canvas = Stegassette.encode({
         source: this.renderer.snapshot(),
-        messages: [JSON.stringify(this.exportParams())],
-        encoding: "base64",
-        encodeMetadata: true,
+        entries: [
+          {
+            mimetype: SETTINGS_MIMETYPE,
+            name: SETTINGS_NAME,
+            data: JSON.stringify(this.exportParams()),
+          },
+        ],
       });
       // An <img> rather than the canvas itself: mobile browsers only offer
       // "Save to Photos" on long-press for images.
