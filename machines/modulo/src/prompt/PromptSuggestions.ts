@@ -35,33 +35,24 @@ export class PromptSuggestions extends HTMLElement {
 
     if (!suggestions) return;
 
+    // Properties are edited directly in the ledger, so only destinations and
+    // commands appear as chips.
     const filteredDestinations = suggestions.destinations.filter(
       (dest) => !filterText || dest.startsWith(filterText)
     );
     const filteredCommands = suggestions.commands.filter(
       (cmd) => !filterText || cmd.startsWith(filterText)
     );
-    const filteredProperties = suggestions.properties.filter(
-      (prop) => !filterText || prop.startsWith(filterText)
-    );
 
-    const totalCount =
-      filteredDestinations.length +
-      filteredCommands.length +
-      filteredProperties.length;
+    const totalCount = filteredDestinations.length + filteredCommands.length;
 
     if (totalCount === 0) {
       return;
     }
 
     if (filterText && totalCount === 1) {
-      const matchingItem =
-        filteredDestinations[0] || filteredCommands[0] || filteredProperties[0];
-      const type = filteredDestinations[0]
-        ? "destination"
-        : filteredCommands[0]
-        ? "command"
-        : "property";
+      const matchingItem = filteredDestinations[0] || filteredCommands[0];
+      const type = filteredDestinations[0] ? "destination" : "command";
 
       this.onSelect(matchingItem, type);
     } else {
@@ -74,10 +65,6 @@ export class PromptSuggestions extends HTMLElement {
           button.classList.add(`theme-key-${key}`);
         }
         this.appendChild(button);
-      });
-
-      filteredProperties.forEach((prop) => {
-        this.appendChild(this.makeToken(prop, "property"));
       });
 
       filteredCommands.forEach((cmd) => {

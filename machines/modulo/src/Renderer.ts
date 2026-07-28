@@ -62,6 +62,7 @@ export class Renderer {
   activeColumns: { [key: string]: number | null } = {};
   keyButtons: HTMLButtonElement[] = [];
   padButtons: HTMLButtonElement[] = [];
+  elementEditorToggle = document.createElement("button");
   sequencers: Sequencer[] = [];
   keys: Keyboard;
   elementKeys = document.createElement("div");
@@ -97,8 +98,30 @@ export class Renderer {
     this.initializeSequencers();
     this.elementMain.appendChild(this.elementPads);
     this.elementMain.appendChild(this.elementKeys);
+    this.elementMain.appendChild(this.elementEditorToggle);
     this.initializePads();
     this.initializeKeys();
+    this.initializeEditorToggle();
+  }
+
+  initializeEditorToggle() {
+    this.elementEditorToggle.id = "editor-toggle";
+    this.elementEditorToggle.textContent = ">_";
+    this.elementEditorToggle.addEventListener("click", () =>
+      this.rendererEventHandler("TAP", "EDITOR", 0)
+    );
+  }
+
+  setEditorOpen(open: boolean) {
+    if (open) {
+      this.elementEditorToggle.setAttribute("open", "");
+    } else {
+      this.elementEditorToggle.removeAttribute("open");
+    }
+  }
+
+  setEditorStatus(text: string) {
+    this.elementEditorToggle.textContent = text;
   }
 
   // Rainbow mode is a compositor-friendly CSS hue-rotate animation — updating
@@ -129,6 +152,7 @@ export class Renderer {
     this.initializeSequencers();
     this.elementMain.appendChild(this.elementPads);
     this.elementMain.appendChild(this.elementKeys);
+    this.elementMain.appendChild(this.elementEditorToggle);
     this.handleStepsSizeChange();
     this.refreshTheme();
   }

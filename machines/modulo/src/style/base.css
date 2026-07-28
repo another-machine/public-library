@@ -22,17 +22,53 @@ html.rainbow body {
   }
 }
 
+/* Mobile: the open editor covers the machine, except the toggle bar at the
+   bottom, which is the way back. */
 prompt-interface {
+  background: var(--color-page);
+  bottom: calc(
+    var(--pads-padding-y-factor) * var(--size-unit) + var(--editor-bar-height)
+  );
+  left: 0;
   padding: var(--padding-y) var(--padding-x) 0;
-  width: 100%;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 10;
+
+  &:not(.open) {
+    display: none;
+  }
 
   &.theme-key-undefined > prompt-suggestions > button:first-child {
     display: none;
   }
 }
 
-prompt-output {
-  display: none;
+/* The editor toggle: a short full-width bar below the keyboard. Doubles as a
+   status line for the last-touched param. */
+#editor-toggle {
+  background: var(--color-background);
+  border-radius: calc(var(--pads-corner-factor) * var(--size-unit) * 0.5);
+  color: var(--color-text);
+  flex-shrink: 0;
+  font-family: var(--font-family-mono);
+  font-size: calc(var(--size-unit) * 0.6);
+  height: var(--editor-bar-height);
+  line-height: var(--editor-bar-height);
+  opacity: 0.5;
+  overflow: hidden;
+  position: relative;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: 100%;
+  z-index: 11;
+
+  &:hover,
+  &[open] {
+    opacity: 1;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -40,17 +76,13 @@ prompt-output {
     flex-direction: row;
   }
 
+  /* Desktop: the open editor is a side pane. */
   prompt-interface {
+    background: none;
     padding: var(--padding-y) 0 var(--padding-y) var(--padding-x);
+    position: static;
     width: min(calc(var(--prompt-width-factor) * var(--size-unit)), 100%);
-
-    &:not(.open) {
-      display: none;
-    }
-  }
-
-  prompt-output {
-    display: flex;
+    z-index: auto;
   }
 }
 
@@ -67,7 +99,8 @@ button:focus-visible {
   outline-offset: var(--outline-offset) !important;
 }
 
-canvas.export {
+canvas.export,
+img.export {
   height: auto;
   image-rendering: pixelated;
   left: 50%;

@@ -1,26 +1,12 @@
-import { PromptPropertyFormInputRange } from "./PromptPropertyFormInputRange";
-import { PromptPropertyFormInputSelect } from "./PromptPropertyFormInputSelect";
-import { PromptPropertyFormInputStepNumber } from "./PromptPropertyFormInputStepNumber";
 import { PromptOutput } from "./PromptOutput";
 import { PromptInterface } from "./PromptInterface";
-import { PromptPropertyForm } from "./PromptPropertyForm";
+import { PromptLedger } from "./PromptLedger";
 import { PromptSuggestions } from "./PromptSuggestions";
 
 export default function register() {
+  if (customElements.get("prompt-suggestions")) return;
   customElements.define("prompt-suggestions", PromptSuggestions);
   customElements.define("prompt-output", PromptOutput);
-  customElements.define(
-    "prompt-form-input-range",
-    PromptPropertyFormInputRange
-  );
-  customElements.define(
-    "prompt-form-input-step-number",
-    PromptPropertyFormInputStepNumber
-  );
-  customElements.define(
-    "prompt-form-input-select",
-    PromptPropertyFormInputSelect
-  );
-  customElements.define("prompt-property-form", PromptPropertyForm);
+  customElements.define("prompt-ledger", PromptLedger);
   customElements.define("prompt-interface", PromptInterface);
 }

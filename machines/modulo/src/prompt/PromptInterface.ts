@@ -1,26 +1,33 @@
-import {
-  DestinationPropertyInput,
-  DestinationPropertyInputFormatter,
-} from "../destinations/Destination";
 import { COMMANDS, Prompt } from "./Prompt";
 import { PromptSuggestions } from "./PromptSuggestions";
 import { PromptOutput } from "./PromptOutput";
-import { PromptPropertyForm } from "./PromptPropertyForm";
+import { PromptLedger } from "./PromptLedger";
 
 export class PromptInterface extends HTMLElement {
   private output: PromptOutput;
   private prompt: Prompt;
   private suggestions: PromptSuggestions;
-  private propertyForm?: PromptPropertyForm;
+  private ledger: PromptLedger;
   private filterBuffer = "";
+  private onToggle?: (open: boolean) => void;
 
-  public initialize(parent: HTMLElement, prompt: Prompt) {
+  public initialize(
+    parent: HTMLElement,
+    prompt: Prompt,
+    callbacks?: {
+      onToggle?: (open: boolean) => void;
+      onTouch?: (label: string, value: string) => void;
+    }
+  ) {
     this.prompt = prompt;
+    this.onToggle = callbacks?.onToggle;
     this.render();
     this.setupComponents();
     this.setupGlobalKeyboardListener();
     parent.appendChild(this);
+    this.ledger.initialize(prompt, callbacks?.onTouch);
     this.updateSuggestions();
+    this.renderBreadcrumbs();
     return this;
   }
 
@@ -32,25 +39,32 @@ export class PromptInterface extends HTMLElement {
       this.updateSuggestions();
     } else {
       this.handleSuggestionSelection(COMMANDS.BACK[0], "command");
-      this.clearPropertyForm();
     }
   }
 
   public renderDestinationInfo() {
-    this.output.update(this.prompt.currentDestination.info);
+    if (this.classList.contains("open")) {
+      this.ledger.refreshValues();
+    }
   }
 
   public reset(parent: HTMLElement) {
     parent.appendChild(this);
+    this.ledger.render();
     this.updateSuggestions();
+    this.renderBreadcrumbs();
   }
 
   public toggle() {
     this.classList.toggle("open");
-    if (this.classList.contains("open")) {
+    const open = this.classList.contains("open");
+    if (open) {
       this.filterBuffer = "";
+      this.ledger.render();
       this.updateSuggestions();
+      this.renderBreadcrumbs();
     }
+    if (this.onToggle) this.onToggle(open);
   }
 
   public updateTheme(theme: string) {
@@ -65,10 +79,12 @@ export class PromptInterface extends HTMLElement {
     this.innerHTML = `
       <prompt-suggestions></prompt-suggestions>
       <prompt-output></prompt-output>
+      <prompt-ledger></prompt-ledger>
     `;
     this.output = this.querySelector("prompt-output")!;
     this.output.initialize();
     this.suggestions = this.querySelector("prompt-suggestions")!;
+    this.ledger = this.querySelector("prompt-ledger")!;
   }
 
   private setupComponents() {
@@ -140,24 +156,15 @@ export class PromptInterface extends HTMLElement {
         console.log("Command output:", result.output);
       }
       this.filterBuffer = "";
-      this.output.updateBreadcrumbs(
-        this.prompt.destinationKeys.join("/") || ""
-      );
-      this.renderDestinationInfo();
-      this.clearPropertyForm();
-    } else if (type === "property") {
-      const output = this.prompt.getNextSuggestions(value);
-      if (output.suggestions?.properties.includes(value)) {
-        const index = output.suggestions.properties.indexOf(value);
-        this.renderPropertyForm(
-          value,
-          output.suggestions.propertyInputs[index],
-          output.suggestions.propertyInputsFormatters[index]
-        );
-      }
+      this.renderBreadcrumbs();
+      this.ledger.render();
     }
 
     this.updateSuggestions();
+  }
+
+  private renderBreadcrumbs() {
+    this.output.updateBreadcrumbs(this.prompt.destinationKeys.join("/") || "");
   }
 
   private updateSuggestions() {
@@ -172,32 +179,5 @@ export class PromptInterface extends HTMLElement {
       currentKey: key,
       filterText: this.filterBuffer,
     });
-  }
-
-  private clearPropertyForm() {
-    if (this.propertyForm) {
-      this.propertyForm.remove();
-    }
-  }
-
-  private renderPropertyForm(
-    property: string,
-    inputs: DestinationPropertyInput[],
-    formatter: DestinationPropertyInputFormatter
-  ) {
-    const form = document.createElement(
-      "prompt-property-form"
-    ) as PromptPropertyForm;
-    form.configure(inputs, formatter, (value) => {
-      const result = this.prompt.handleCommandString(`${property} ${value}`);
-      if (result.output) {
-        console.log("Command output:", result.output);
-      }
-      this.renderDestinationInfo();
-    });
-
-    this.clearPropertyForm();
-    this.insertBefore(form, this.output);
-    this.propertyForm = form;
   }
 }

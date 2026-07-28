@@ -288,6 +288,37 @@ export function generateCoreDestination({
             }),
           },
         }),
+        load: new Destination({
+          info: {
+            label: "Load a saved machine state",
+            content: () =>
+              "Load settings from a Steganographic image or localStorage.",
+          },
+          commands: {
+            image: new DestinationCommand({
+              description: "Load settings from a Steganographic image.",
+              onCommand: (_command, _args, _prompt) => {
+                machine.openImageLoadDialog();
+                const output = ["Choose a settings image to load."];
+                return { valid: true, output };
+              },
+            }),
+            local: new DestinationCommand({
+              description: "Load state saved in localStorage.",
+              onCommand: (_command, _args, _prompt) => {
+                const stored = Machine.loadFromLocalStorage();
+                if (stored) {
+                  machine.update(stored);
+                  return {
+                    valid: true,
+                    output: ["Loaded state from localStorage!"],
+                  };
+                }
+                return { valid: false, output: ["No saved state found."] };
+              },
+            }),
+          },
+        }),
         theme: new Destination({
           info: {
             label: "Theme settings for the machine",
