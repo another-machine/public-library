@@ -45,6 +45,18 @@ export interface ChannelSlot {
   combine: CombineName;
 }
 
+/**
+ * Loose channel-slot input accepted by encode options: a letter ("r"),
+ * a { ch | channel, combine? } object (ch as index or letter), or a full slot.
+ */
+export type ChannelSlotInput =
+  | string
+  | {
+      ch?: ChannelIndex | string;
+      channel?: ChannelIndex | string;
+      combine?: CombineName;
+    };
+
 /** Resolved channel plan passed through encode/decode. */
 export interface ChannelPlan {
   slots: ChannelSlot[];
@@ -121,8 +133,8 @@ export interface EncodeOptions {
   traversal?: TraversalName;
   /** Explicitly resolved channel plan (overrides channels / pack). */
   plan?: ChannelPlan;
-  /** Channel slot shorthand, e.g. "rgb", "bgr", "r.additive+g.xor". */
-  channels?: string | ChannelSlot[];
+  /** Channel slot shorthand, e.g. "rgb", "bgr", "r.additive+g.xor", or an array of slots / letters / { ch|channel, combine? }. */
+  channels?: string | ChannelSlotInput[];
   /** Packing mode (default "packed"). */
   pack?: PackMode;
   /**

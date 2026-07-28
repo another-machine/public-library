@@ -5,6 +5,9 @@ const sharp = require("sharp");
 const mediaDir = path.join(__dirname, "media");
 const thumbsDir = path.join(mediaDir, "thumbs");
 
+// Longest edge of a generated thumbnail
+const MAX_DIMENSION = 1000;
+
 // Supported image extensions
 const imageExtensions = [
   ".png",
@@ -42,16 +45,10 @@ async function generateThumbnails() {
 
       console.log(`Processing: ${file}`);
 
-      const image = sharp(inputPath);
-      const metadata = await image.metadata();
-
-      // Calculate 20% of original dimensions
-      const targetWidth = Math.round(metadata.width * 0.3);
-      const targetHeight = Math.round(metadata.height * 0.3);
-
-      await image
-        .resize(targetWidth, targetHeight, {
+      const info = await sharp(inputPath)
+        .resize(MAX_DIMENSION, MAX_DIMENSION, {
           fit: "inside",
+          withoutEnlargement: true,
         })
         .jpeg({
           quality: 85,
@@ -60,7 +57,7 @@ async function generateThumbnails() {
         })
         .toFile(outputPath);
 
-      console.log(`  ✓ Created: ${outputName}`);
+      console.log(`  ✓ Created: ${outputName} (${info.width}x${info.height})`);
     }
 
     console.log("\nDone! All thumbnails generated.");

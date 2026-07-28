@@ -18,7 +18,7 @@ import { KEYMAP } from "./keymap";
 import { getPathIndices } from "./traversal";
 import type { CombineName, StegaImageData, StgcOpts } from "./types";
 
-const KEY_PRESERVING = new Set<CombineName>([
+export const KEY_PRESERVING = new Set<CombineName>([
   "xor",
   "additive",
   "subtractive",

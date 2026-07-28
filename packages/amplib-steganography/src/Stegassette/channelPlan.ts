@@ -2,6 +2,7 @@ import type {
   ChannelIndex,
   ChannelPlan,
   ChannelSlot,
+  ChannelSlotInput,
   CombineName,
   EncodeOptions,
   PackMode,
@@ -35,9 +36,12 @@ export function parseChannelPlan(token: string): ChannelSlot[] {
     .filter((s) => s.ch === 0 || s.ch === 1 || s.ch === 2);
 }
 
-/** Build ChannelSlot[] from a channel shorthand string ("rgb", "bgr") or array. */
+/**
+ * Build ChannelSlot[] from a compact token ("r.additive+g.xor"), plain
+ * letters ("rgb"/"bgr"), or an array of { ch|channel, combine } / letter strings.
+ */
 function slotsFromChannels(
-  channels: string | ChannelSlot[],
+  channels: string | ChannelSlotInput[],
   fallbackCombine: CombineName
 ): ChannelSlot[] {
   if (typeof channels === "string") {
@@ -49,9 +53,16 @@ function slotsFromChannels(
       .filter((c) => c in CH)
       .map((c) => ({ ch: CH[c] as ChannelIndex, combine: fallbackCombine }));
   }
-  return (channels || []).filter(
-    (s) => s.ch === 0 || s.ch === 1 || s.ch === 2
-  );
+  return (channels || [])
+    .map((s): { ch: number | undefined; combine: CombineName } => {
+      if (typeof s === "string")
+        return { ch: CH[s.toLowerCase()], combine: fallbackCombine };
+      const key = s.ch ?? s.channel;
+      const ch =
+        typeof key === "number" ? key : CH[String(key).toLowerCase()];
+      return { ch, combine: (s.combine as CombineName) || fallbackCombine };
+    })
+    .filter((s): s is ChannelSlot => s.ch === 0 || s.ch === 1 || s.ch === 2);
 }
 
 /**

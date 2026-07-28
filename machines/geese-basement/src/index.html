@@ -57,7 +57,11 @@
         height: 100%;
         overflow-x: auto;
         scroll-snap-type: x mandatory;
+        scrollbar-width: none;
         width: 100%;
+      }
+      main::-webkit-scrollbar {
+        display: none;
       }
       section {
         align-items: center;
@@ -102,7 +106,8 @@
           z-index: 1;
         }
 
-        img {
+        img,
+        .player {
           box-shadow: 0 0 120px black;
           display: block;
           filter: brightness(70%);
@@ -132,6 +137,34 @@
           &.hidden {
             opacity: 0;
             pointer-events: none;
+          }
+        }
+
+        .player {
+          left: 50%;
+          max-height: min(90svh, var(--og-height));
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          width: min(90svw, var(--og-width));
+
+          &.active {
+            filter: brightness(100%);
+          }
+
+          &.hidden {
+            opacity: 0;
+            pointer-events: none;
+          }
+
+          > canvas {
+            display: block;
+            height: 100%;
+            image-rendering: pixelated;
+            left: 0;
+            position: absolute;
+            top: 0;
+            width: 100%;
           }
         }
 
@@ -190,20 +223,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/01a-1764015893011.jpg"
-            alt="An ultrawide landscape photo cropping Cameron Winter and Emily Green playing electric guitars with studio instruments in the background. A wide rectangle of lime and red noise is distorting the primary center area of the image."
-            height="229"
-            width="732"
-            style="--og-width: 732px; --og-height: 229px"
+            src="media/thumbs/geese-01a.stegassette.jpg"
+            alt="An ultrawide landscape photo cropping Cameron Winter and Emily Green playing electric guitars with studio instruments in the background. A wide rectangle of fine grainy static lightly veils the center of the image."
+            height="230"
+            width="734"
+            style="--og-width: 734px; --og-height: 230px"
           />
           <img
             class="media hidden"
-            src="media/01a-1764015893011.png"
-            alt="An ultrawide landscape photo cropping Cameron Winter and Emily Green playing electric guitars with studio instruments in the background. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-01a.stegassette.png"
+            alt="An ultrawide landscape photo cropping Cameron Winter and Emily Green playing electric guitars with studio instruments in the background. A wide rectangle of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
-            height="764"
-            width="2443"
-            style="--og-width: 2443px; --og-height: 764px"
+            height="765"
+            width="2447"
+            style="--og-width: 2447px; --og-height: 765px"
             loading="lazy"
           />
         </button>
@@ -211,20 +244,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/01b-1764024269008.jpg"
-            alt="A cropped vertical shot of Cameron Winter with Emily Green out of focus in the foreground, both leaning downward in the same direction playing their guitars intensely. The shot framing lines them up at the same downward angle, with both bodies and guitars blending into each other. A tall rectangle of lime and red noise is distorting the primary center area of the image."
-            height="545"
+            src="media/thumbs/geese-01b.stegassette.jpg"
+            alt="A cropped vertical shot of Cameron Winter with Emily Green out of focus in the foreground, both leaning downward in the same direction playing their guitars intensely. The shot framing lines them up at the same downward angle, with both bodies and guitars blending into each other. A tall rectangle of fine grainy static lightly veils the center of the image."
+            height="546"
             width="405"
-            style="--og-width: 405px; --og-height: 545px"
+            style="--og-width: 405px; --og-height: 546px"
           />
           <img
             class="media hidden"
-            src="media/01b-1764024269008.png"
-            alt="A cropped vertical shot of Cameron Winter with Emily Green out of focus in the foreground, both leaning downward in the same direction playing their guitars intensely. The shot framing lines them up at the same downward angle, with both bodies and guitars blending into each other. A tall rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-01b.stegassette.png"
+            alt="A cropped vertical shot of Cameron Winter with Emily Green out of focus in the foreground, both leaning downward in the same direction playing their guitars intensely. The shot framing lines them up at the same downward angle, with both bodies and guitars blending into each other. A tall rectangle of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
-            height="957"
-            width="957"
-            style="--og-width: 957px; --og-height: 957px"
+            height="1819"
+            width="1349"
+            style="--og-width: 1349px; --og-height: 1819px"
             loading="lazy"
           />
         </button>
@@ -232,20 +265,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/02-1764016367048.jpg"
-            alt="A wide shot of Max Bassin playing drums, stick actively hitting a ride cymbal, with Dominic DiGesu out of focus and facing away from camera in the foreground with the neck of his bass in view. A wide rectangle of lime and red noise is distorting the primary center area of the image."
-            height="288"
-            width="601"
-            style="--og-width: 601px; --og-height: 288px"
+            src="media/thumbs/geese-02.stegassette.jpg"
+            alt="A wide shot of Max Bassin playing drums, stick actively hitting a ride cymbal, with Dominic DiGesu out of focus and facing away from camera in the foreground with the neck of his bass in view. A wide rectangle of fine grainy static lightly veils the center of the image."
+            height="289"
+            width="602"
+            style="--og-width: 602px; --og-height: 289px"
           />
           <img
             class="media hidden"
-            src="media/02-1764016367048.png"
-            alt="A wide shot of Max Bassin playing drums, stick actively hitting a ride cymbal, with Dominic DiGesu out of focus and facing away from camera in the foreground with the neck of his bass in view. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-02.stegassette.png"
+            alt="A wide shot of Max Bassin playing drums, stick actively hitting a ride cymbal, with Dominic DiGesu out of focus and facing away from camera in the foreground with the neck of his bass in view. A wide rectangle of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
-            height="961"
-            width="2004"
-            style="--og-width: 2004px; --og-height: 961px"
+            height="962"
+            width="2006"
+            style="--og-width: 2006px; --og-height: 962px"
             loading="lazy"
           />
         </button>
@@ -253,20 +286,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/03a-1764017181408.jpg"
-            alt="A high angle wide shot of the Geese band playing in the studio. Clockwise, Max Bassin on drums, Dominic DiGesu playing bass, Cameron Winter on guitar and singing, Emily Green playing guitar, and the back of Sam Revaz playing a Fender Rhodes. A wide rectangle of lime and red noise is distorting the primary center area of the image."
-            height="370"
-            width="735"
-            style="--og-width: 735px; --og-height: 370px"
+            src="media/thumbs/geese-03a.stegassette.jpg"
+            alt="A high angle wide shot of the Geese band playing in the studio. Clockwise, Max Bassin on drums, Dominic DiGesu playing bass, Cameron Winter on guitar and singing, Emily Green playing guitar, and the back of Sam Revaz playing a Fender Rhodes. A wide rectangle of fine grainy static lightly veils the center of the image."
+            height="371"
+            width="736"
+            style="--og-width: 736px; --og-height: 371px"
           />
           <img
             class="media hidden"
-            src="media/03a-1764017181408.png"
-            alt="A high angle wide shot of the Geese band playing in the studio. Clockwise, Max Bassin on drums, Dominic DiGesu playing bass, Cameron Winter on guitar and singing, Emily Green playing guitar, and the back of Sam Revaz playing a Fender Rhodes. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-03a.stegassette.png"
+            alt="A high angle wide shot of the Geese band playing in the studio. Clockwise, Max Bassin on drums, Dominic DiGesu playing bass, Cameron Winter on guitar and singing, Emily Green playing guitar, and the back of Sam Revaz playing a Fender Rhodes. A wide rectangle of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
-            height="1234"
-            width="2450"
-            style="--og-width: 2450px; --og-height: 1234px"
+            height="1235"
+            width="2453"
+            style="--og-width: 2453px; --og-height: 1235px"
             loading="lazy"
           />
         </button>
@@ -274,20 +307,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/03b-1764017932454.jpg"
-            alt="A rectangular image, close up crop of Emily Green's hands playing guitar. On here guitar is a sticker that says 'Would you kill her for $1,000,000????'. A landscape rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/thumbs/geese-03b.stegassette.jpg"
+            alt="A rectangular image, close up crop of Emily Green's hands playing guitar. On here guitar is a sticker that says 'Would you kill her for $1,000,000????'. A landscape rectangle of fine grainy static lightly veils the center of the image."
             height="386"
             width="490"
             style="--og-width: 490px; --og-height: 386px"
           />
           <img
             class="media hidden"
-            src="media/03b-1764017932454.png"
-            alt="A rectangular image, close up crop of Emily Green's hands playing guitar. On here guitar is a sticker that says 'Would you kill her for $1,000,000????'. A landscape rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-03b.stegassette.png"
+            alt="A rectangular image, close up crop of Emily Green's hands playing guitar. On here guitar is a sticker that says 'Would you kill her for $1,000,000????'. A landscape rectangle of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
             height="1286"
-            width="1632"
-            style="--og-width: 1632px; --og-height: 1286px"
+            width="1633"
+            style="--og-width: 1633px; --og-height: 1286px"
             loading="lazy"
           />
         </button>
@@ -295,20 +328,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/04-1764018937177.jpg"
-            alt="A vertical rectangular image, high angle shot of of Sam Revaz playing an electronic piano with Max Bassin and Dominic DiGesu playing drums and bass in the background. A rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/thumbs/geese-04.stegassette.jpg"
+            alt="A vertical rectangular image, high angle shot of of Sam Revaz playing an electronic piano with Max Bassin and Dominic DiGesu playing drums and bass in the background. A rectangle of fine grainy static lightly veils the center of the image."
             height="517"
             width="480"
             style="--og-width: 480px; --og-height: 517px"
           />
           <img
             class="media hidden"
-            src="media/04-1764018937177.png"
-            alt="A vertical rectangular image, high angle shot of of Sam Revaz playing an electronic piano with Max Bassin and Dominic DiGesu playing drums and bass in the background. A rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-04.stegassette.png"
+            alt="A vertical rectangular image, high angle shot of of Sam Revaz playing an electronic piano with Max Bassin and Dominic DiGesu playing drums and bass in the background. A rectangle of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
-            height="1722"
-            width="1599"
-            style="--og-width: 1599px; --og-height: 1722px"
+            height="1723"
+            width="1600"
+            style="--og-width: 1600px; --og-height: 1723px"
             loading="lazy"
           />
         </button>
@@ -316,19 +349,19 @@
       <section>
         <button>
           <img
-            src="media/thumbs/05a-1764020111340.jpg"
-            alt="A close up portrait image, low angle shot of Cameron Winter singing into a microphone, with the head of his guitar in the bottom right corner. A rectangle of lime and red noise is distorting the primary center area of the image."
-            height="557"
+            src="media/thumbs/geese-05a.stegassette.jpg"
+            alt="A close up portrait image, low angle shot of Cameron Winter singing into a microphone, with the head of his guitar in the bottom right corner. A rectangle of fine grainy static lightly veils the center of the image."
+            height="558"
             width="429"
-            style="--og-width: 429px; --og-height: 557px"
+            style="--og-width: 429px; --og-height: 558px"
           />
           <img
             class="media hidden"
-            src="media/05a-1764020111340.png"
-            alt="A close up portrait image, low angle shot of Cameron Winter singing into a microphone, with the head of his guitar in the bottom right corner. A rectangle of lime and red noise is distorting the primary center area of the image."
-            height="1858"
+            src="media/geese-05a.stegassette.png"
+            alt="A close up portrait image, low angle shot of Cameron Winter singing into a microphone, with the head of his guitar in the bottom right corner. A rectangle of fine grainy static lightly veils the center of the image."
+            height="1859"
             width="1431"
-            style="--og-width: 1431px; --og-height: 1858px"
+            style="--og-width: 1431px; --og-height: 1859px"
             aria-hidden="true"
             loading="lazy"
           />
@@ -337,20 +370,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/05b-1764020568957.jpg"
-            alt="A wide angle over the shoulder shot behind Max Bassin and his drum kit. In the background and out of focus is a singing Cameron Winter and Emily Green playing guitar. A rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/thumbs/geese-05b.stegassette.jpg"
+            alt="A wide angle over the shoulder shot behind Max Bassin and his drum kit. In the background and out of focus is a singing Cameron Winter and Emily Green playing guitar. A rectangle of fine grainy static lightly veils the center of the image."
             height="265"
-            width="570"
-            style="--og-width: 570px; --og-height: 265px"
+            width="571"
+            style="--og-width: 571px; --og-height: 265px"
           />
           <img
             class="media hidden"
-            src="media/05b-1764020568957.png"
-            alt="A wide angle over the shoulder shot behind Max Bassin and his drum kit. In the background and out of focus is a singing Cameron Winter and Emily Green playing guitar. A rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-05b.stegassette.png"
+            alt="A wide angle over the shoulder shot behind Max Bassin and his drum kit. In the background and out of focus is a singing Cameron Winter and Emily Green playing guitar. A rectangle of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
             height="883"
-            width="1899"
-            style="--og-width: 1899px; --og-height: 883px"
+            width="1902"
+            style="--og-width: 1902px; --og-height: 883px"
             loading="lazy"
           />
         </button>
@@ -358,20 +391,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/06-1764022758422.jpg"
-            alt="A close up square image of Max Bassin intensely playing the drums. A square of lime and red noise is distorting the primary center area of the image."
+            src="media/thumbs/geese-06.stegassette.jpg"
+            alt="A close up square image of Max Bassin intensely playing the drums. A square of fine grainy static lightly veils the center of the image."
             height="362"
             width="364"
             style="--og-width: 364px; --og-height: 362px"
           />
           <img
             class="media hidden"
-            src="media/06-1764022758422.png"
-            alt="A close up square image of Max Bassin intensely playing the drums. A square of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-06.stegassette.png"
+            alt="A close up square image of Max Bassin intensely playing the drums. A square of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
-            height="1206"
+            height="1207"
             width="1214"
-            style="--og-width: 1214px; --og-height: 1206px"
+            style="--og-width: 1214px; --og-height: 1207px"
             loading="lazy"
           />
         </button>
@@ -379,20 +412,20 @@
       <section>
         <button>
           <img
-            src="media/thumbs/07-1764023801862.jpg"
-            alt="An over the shoulder wide angle shot of Emily Green's hands playing a power chord on her guitar on the right, and the back of Sam Revaz's head out of focus in the foreground on the left. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/thumbs/geese-07.stegassette.jpg"
+            alt="An over the shoulder wide angle shot of Emily Green's hands playing a power chord on her guitar on the right, and the back of Sam Revaz's head out of focus in the foreground on the left. A wide rectangle of fine grainy static lightly veils the center of the image."
             height="298"
-            width="796"
-            style="--og-width: 796px; --og-height: 298px"
+            width="797"
+            style="--og-width: 797px; --og-height: 298px"
           />
           <img
             class="media hidden"
-            src="media/07-1764023801862.png"
-            alt="An over the shoulder wide angle shot of Emily Green's hands playing a power chord on her guitar on the right, and the back of Sam Revaz's head out of focus in the foreground on the left. A wide rectangle of lime and red noise is distorting the primary center area of the image."
+            src="media/geese-07.stegassette.png"
+            alt="An over the shoulder wide angle shot of Emily Green's hands playing a power chord on her guitar on the right, and the back of Sam Revaz's head out of focus in the foreground on the left. A wide rectangle of fine grainy static lightly veils the center of the image."
             aria-hidden="true"
-            height="993"
-            width="2654"
-            style="--og-width: 2654px; --og-height: 993px"
+            height="994"
+            width="2657"
+            style="--og-width: 2657px; --og-height: 994px"
             loading="lazy"
           />
         </button>

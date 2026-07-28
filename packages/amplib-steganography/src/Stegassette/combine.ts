@@ -121,9 +121,11 @@ export const KEY_MOD: Partial<Record<CombineName, KeyModFn>> = {
 };
 
 /**
- * Lossless combines: COMBINE(ENCODE_OP(a, k), k) === a exactly.
- * Lossy/artistic combines (midpoint, difference, noise) intentionally couple
- * image and audio — degradation is an aesthetic property of the format.
+ * Lossless combines: COMBINE(ENCODE_OP(a, k'), k') === a exactly, where k' is
+ * the KEY_MOD-rewritten key (midpoint stashes a&1 in the key LSB, so it
+ * round-trips exactly). Lossy/artistic combines (difference, noise)
+ * intentionally couple image and audio — degradation is an aesthetic property
+ * of the format.
  */
 export const LOSSLESS_COMBINES: readonly CombineName[] = [
   "xor",
@@ -134,4 +136,5 @@ export const LOSSLESS_COMBINES: readonly CombineName[] = [
   "echo",
   "veil",
   "whisper",
+  "midpoint",
 ];

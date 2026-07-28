@@ -1,12 +1,7 @@
-import {
-  StegaCassette,
-  StegaMetadata,
-  playDecodedAudioBuffers,
-} from "../../../packages/amplib-steganography/src";
+import { Stegassette } from "../../../packages/amplib-steganography/src";
 
 let audioContext: AudioContext;
-let currentSource: AudioBufferSourceNode | null = null;
-let currentSrc: string | null = null;
+let current: Stegassette.RevealPlayer | null = null;
 
 document.querySelectorAll("section").forEach((section) => {
   const button = section.querySelector("button");
@@ -18,64 +13,51 @@ document.querySelectorAll("section").forEach((section) => {
       "--background",
       `url(${thumb.getAttribute("src")})`
     );
-    button.addEventListener("click", async (e) => {
+
+    let player: Stegassette.RevealPlayer | null = null;
+    let building = false;
+
+    button.addEventListener("click", async () => {
       audioContext = audioContext || new AudioContext();
+      if (building) return;
 
-      const src = media.getAttribute("src");
-      const alreadyPlaying = currentSrc === src;
-
-      // Show full media image
-      if (media.classList.contains("hidden")) {
-        thumb.classList.add("hidden");
-        thumb.setAttribute("aria-hidden", "true");
-        media.classList.remove("hidden");
-        media.removeAttribute("aria-hidden");
+      if (!player) {
+        building = true;
+        try {
+          player = await Stegassette.createRevealPlayer({
+            source: media,
+            audioContext,
+            className: "player",
+          });
+          player.element.style.setProperty("--og-width", `${player.width}px`);
+          player.element.style.setProperty("--og-height", `${player.height}px`);
+          player.element.style.aspectRatio = `${player.width} / ${player.height}`;
+          button.appendChild(player.element);
+          thumb.classList.add("hidden");
+          thumb.setAttribute("aria-hidden", "true");
+        } catch (err) {
+          console.error("stegassette decode failed", err);
+          return;
+        } finally {
+          building = false;
+        }
       }
 
-      // Wait for image to load if not already loaded
-      if (!media.complete) {
-        await new Promise((resolve) => {
-          media.onload = resolve;
-        });
+      // Stop playback in any other section
+      if (current && current !== player) {
+        current.stop();
+        current.element.classList.remove("active");
+        current = null;
       }
 
-      const metadata = StegaMetadata.decode({ source: media });
-      if (
-        !metadata ||
-        (metadata.type !== StegaMetadata.StegaContentType.AUDIO &&
-          metadata.type !== StegaMetadata.StegaContentType.MUSIC)
-      ) {
-        console.error("Invalid metadata");
-        return;
-      }
-
-      // Decode audio
-      const audioBuffers = StegaCassette.decode({
-        source: media,
-        bitDepth: metadata.bitDepth,
-        channels: metadata.channels,
-        encoding: metadata.encoding,
-        borderWidth: metadata.borderWidth,
-      });
-
-      // Stop current playback
-      if (currentSource) {
-        document.querySelector(".media.active")?.classList.remove("active");
-        currentSource.stop();
-        currentSource = null;
-        currentSrc = null;
-      }
-
-      // Start new playback if not already playing
-      if (!alreadyPlaying) {
-        media.classList.add("active");
-        currentSrc = src;
-        currentSource = await playDecodedAudioBuffers({
-          audioBuffers,
-          audioContext,
-          sampleRate: metadata.sampleRate,
-        });
-        currentSource.loop = true;
+      if (player.playing) {
+        player.stop();
+        player.element.classList.remove("active");
+        current = null;
+      } else {
+        player.element.classList.add("active");
+        current = player;
+        await player.play();
       }
     });
   }

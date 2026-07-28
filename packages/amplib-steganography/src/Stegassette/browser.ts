@@ -43,6 +43,10 @@ function estimatedHeaderLength(
 // gets both the pure surface and the browser-specific encode/decode.
 export * from "./index";
 
+// Browser-only reveal player (audio playback with waveform removal).
+export { createRevealPlayer, RevealPlayer } from "./player";
+export type { CreateRevealPlayerParams } from "./player";
+
 // ---- helpers --------------------------------------------------
 
 /** Read an HTMLImageElement or HTMLCanvasElement into an Img buffer. */
@@ -88,7 +92,7 @@ export interface BrowserDecodeOptions {
 export function encode({
   source,
   entries,
-  border = 1,
+  border = 0,
   aspectRatio,
   ...opts
 }: BrowserEncodeOptions): HTMLCanvasElement {

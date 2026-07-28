@@ -110,7 +110,7 @@ export {
 export type { BuildAudioEntryParams, ParsedAudioEntry } from "./audio";
 
 // ---- cover reconstruction ------------------------------------
-export { reconstructCover } from "./reconstruct";
+export { reconstructCover, KEY_PRESERVING } from "./reconstruct";
 
 // ---- pure container (StegaImageData ↔ StegaImageData) --------
 import { Img } from "./Img";
@@ -162,7 +162,7 @@ export interface DecodeImageDataOptions {
 export function encodeImageData({
   source,
   entries,
-  border = 1,
+  border = 0,
   aspectRatio,
   ...opts
 }: EncodeImageDataOptions): StegaImageData {
