@@ -192,9 +192,16 @@ export function encodeContainer(
     pack: plan.pack,
   });
 
-  if (hdrBytes.length > srcImg.width)
+  // The header flows along the border ring (two pixels per byte), so the
+  // constraint is ring capacity rather than image width.
+  const ringPx =
+    srcImg.width * srcImg.height -
+    Math.max(0, srcImg.width - 2 * B) * Math.max(0, srcImg.height - 2 * B);
+  if (hdrBytes.length * 2 + 6 > ringPx)
     throw new Error(
-      `image too narrow for STGC header (need ${hdrBytes.length}px, width is ${srcImg.width})`
+      `border ring too small for STGC header (need ${
+        hdrBytes.length * 2 + 6
+      }px, ring is ${ringPx})`
     );
 
   writeInterior(outImg, key, stream, { borderWidth: B, combine, keymap, traversal, params, plan });

@@ -326,13 +326,21 @@ export function applyAlphaHeader(
     minOffset = 2;
   }
 
+  const headerPx = hdrBytes.length * 2;
+  if (minOffset + headerPx > bpx.length)
+    throw new Error("STGC header does not fit the border ring");
+
   if (offset == null) {
     // centre in bottom row: find first bottom-row pixel in border sequence
     const H = outImg.height;
     const bottomStart = bpx.findIndex(([, py]) => py === H - 1);
     const bottomLen = outImg.width;
-    offset = bottomStart + ((bottomLen - hdrBytes.length * 2) >> 1);
+    offset = bottomStart + ((bottomLen - headerPx) >> 1);
   }
+  // The ring is contiguous in index space and decode scans all of it, so a
+  // header that cannot centre in the bottom row simply starts earlier and
+  // flows across the other border pixels.
+  offset = Math.min(offset, bpx.length - headerPx);
   // even ring index, so decode can pair pixels deterministically from 0
   offset = Math.max(minOffset, offset) & ~1;
 
