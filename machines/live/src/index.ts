@@ -71,10 +71,7 @@ document.querySelectorAll<HTMLButtonElement>("nav button").forEach((button) => {
         if (el !== player!.element) el.remove();
       });
     if (!player.element.isConnected) {
-      section.insertBefore(
-        player.element,
-        section.querySelector(".loading-text")
-      );
+      section.insertBefore(player.element, section.querySelector("nav"));
     }
 
     current = player;

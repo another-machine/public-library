@@ -39,15 +39,6 @@
         }
       }
 
-      @keyframes flashing {
-        from {
-          opacity: 0;
-        }
-        to {
-          opacity: 1;
-        }
-      }
-
       @keyframes pulsing {
         from {
           opacity: 1;
@@ -109,19 +100,6 @@
           }
         }
 
-        > .loading-text {
-          color: white;
-          font-style: italic;
-          left: 50%;
-          margin: 0;
-          opacity: 0;
-          pointer-events: none;
-          position: absolute;
-          top: 50%;
-          transform: translate(-50%, -50%);
-          z-index: 99;
-        }
-
         > .background {
           display: block;
           height: calc(100% - var(--start-dimension) - var(--padding) * 3);
@@ -172,9 +150,6 @@
         &.loading {
           > .background {
             animation: pulsing 1.4s ease-in-out alternate infinite;
-          }
-          > .loading-text {
-            animation: flashing 1s ease-in-out 250ms alternate infinite;
           }
         }
 
@@ -309,7 +284,6 @@
           src="media/thumbs/01-nina-simone.stegassette.jpg"
           class="background hidden"
         />
-        <p class="loading-text">loading...</p>
 
         <nav>
           <button>
