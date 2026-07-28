@@ -37,6 +37,7 @@ prompt-ledger .ledger-block {
   --ledger-hover: color-mix(in oklab, var(--color-2) 12%, transparent);
   /* Pills track the prompt corner factor, just rounder than the panes. */
   --pill-radius: calc(var(--border-radius) * 3);
+  --block-radius: var(--border-radius);
 
   --color-1: oklch(
     calc(
@@ -187,13 +188,12 @@ prompt-ledger {
 
 .ledger-block-head {
   background: var(--color-1);
-  border-radius: var(--border-radius);
+  border-radius: var(--block-radius);
   color: var(--color-2);
   font-size: calc(var(--font-size) * 0.8);
   font-weight: bold;
   opacity: 0.5;
-  padding: calc(var(--padding-y) * 0.5)
-    var(--padding-x);
+  padding: calc(var(--padding-y) * 0.5) var(--padding-x);
   text-align: left;
   width: 100%;
 }
@@ -201,7 +201,9 @@ prompt-ledger {
 .ledger-block-body {
   display: none;
   flex-direction: column;
-  padding-bottom: calc(var(--padding-y) * 0.5);
+  /* A nested band is square and full-bleed, so it has to stop clear of the
+     parent's bottom curve or its corners poke out of it. */
+  padding-bottom: calc(var(--padding-y) * 0.5 + var(--block-radius));
 }
 
 .ledger-block[open] {
@@ -215,9 +217,18 @@ prompt-ledger {
 
   > .ledger-block-body {
     background: var(--ledger-surface-deep);
-    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    border-radius: 0 0 var(--block-radius) var(--block-radius);
     display: flex;
   }
+}
+
+/* A nested block is flush with its parent's edges, so repeating the radius
+   draws a second curve just inside the first. Deeper blocks become flat
+   bands and let the outermost pane own the curve. */
+.ledger-block-body .ledger-block > .ledger-block-head,
+.ledger-block-body .ledger-block[open] > .ledger-block-head,
+.ledger-block-body .ledger-block[open] > .ledger-block-body {
+  border-radius: 0;
 }
 
 /* Rows: bare text, no chrome — the only thing you edit directly. */
