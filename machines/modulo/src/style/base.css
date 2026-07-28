@@ -22,17 +22,44 @@ html.rainbow body {
   }
 }
 
+/* Mobile: the open editor covers the machine, except the toggle bar at the
+   bottom, which is the way back. */
 prompt-interface {
-  padding: var(--padding-y) var(--padding-x) 0;
-  width: 100%;
+  --page-padding-x: calc(var(--pads-padding-x-factor) * var(--size-unit));
+  --page-padding-y: calc(var(--pads-padding-y-factor) * var(--size-unit));
+  --page-gap-y: calc(var(--pads-gap-y-factor) * var(--size-unit));
 
-  &.theme-key-undefined > prompt-suggestions > button:first-child {
+  background: var(--color-page);
+  /* clears the toggle bar and the machine's own gap below the keys */
+  bottom: calc(
+    var(--page-padding-y) + var(--editor-bar-height) + var(--page-gap-y)
+  );
+  left: 0;
+  padding: var(--page-padding-y) var(--page-padding-x) 0;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 10;
+
+  &:not(.open) {
     display: none;
   }
 }
 
-prompt-output {
-  display: none;
+/* The editor toggle: a short, wordless full-width bar below the keyboard. */
+#editor-toggle {
+  background: var(--color-background);
+  border-radius: calc(var(--pads-corner-factor) * var(--size-unit) * 0.5);
+  flex-shrink: 0;
+  height: var(--editor-bar-height);
+  opacity: 0.5;
+  width: 100%;
+  z-index: 11;
+
+  &:hover,
+  &[open] {
+    opacity: 1;
+  }
 }
 
 @media (min-width: 1024px) {
@@ -40,17 +67,14 @@ prompt-output {
     flex-direction: row;
   }
 
+  /* Desktop: the open editor is a side pane. */
   prompt-interface {
-    padding: var(--padding-y) 0 var(--padding-y) var(--padding-x);
+    background: none;
+    padding: var(--page-padding-y) 0 var(--page-padding-y)
+      var(--page-padding-x);
+    position: static;
     width: min(calc(var(--prompt-width-factor) * var(--size-unit)), 100%);
-
-    &:not(.open) {
-      display: none;
-    }
-  }
-
-  prompt-output {
-    display: flex;
+    z-index: auto;
   }
 }
 
@@ -67,7 +91,8 @@ button:focus-visible {
   outline-offset: var(--outline-offset) !important;
 }
 
-canvas.export {
+canvas.export,
+img.export {
   height: auto;
   image-rendering: pixelated;
   left: 50%;

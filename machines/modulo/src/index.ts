@@ -149,16 +149,6 @@ function getDefaultMachineParams(): Omit<MachineParams, "element"> {
           paddingX: 0.5,
           paddingY: 0.5,
         },
-        prompt: {
-          border: 0.1,
-          corner: 0.2,
-          font: 1,
-          gapX: 0.4,
-          gapY: 0.4,
-          paddingX: 0.5,
-          paddingY: 0.5,
-          width: 32,
-        },
       },
     },
   };

@@ -173,7 +173,12 @@ export class Machine {
       this.promptInterface = document.createElement(
         "prompt-interface"
       ) as PromptInterface;
-      this.promptInterface.initialize(this.element, this.prompt);
+      this.promptInterface.initialize(this.element, this.prompt, {
+        onToggle: (open) => this.renderer.setEditorOpen(open),
+        // Not every property's onSet reports a change, so persist from the one
+        // place that sees them all.
+        onChange: () => this.onPropertyChange(),
+      });
     } else {
       this.prompt.update({ destination: this.destinations.root });
       this.promptInterface.reset(this.element);
@@ -204,29 +209,58 @@ export class Machine {
       element: document.body,
       onFailure: console.log,
       onSuccess: ({ imageElements }) => {
-        try {
-          if (imageElements[0]) {
-            const metadata = StegaMetadata.decode({ source: imageElements[0] });
-            if (
-              !metadata ||
-              metadata.type === StegaMetadata.StegaContentType.STRING
-            ) {
-              const [decoded] = Stega64.decode({
-                source: imageElements[0],
-                encoding: metadata?.encoding || "base64",
-                borderWidth: metadata?.borderWidth,
-              });
-              const settings = JSON.parse(decoded || "") as MachineParams;
-              this.update(settings);
-              // Save the loaded settings to localStorage
-              this.saveToLocalStorage();
-            }
-          }
-        } catch (e) {
-          console.log(e);
+        if (imageElements[0]) {
+          this.loadSettingsFromImage(imageElements[0]);
         }
       },
     });
+  }
+
+  loadSettingsFromImage(image: HTMLImageElement): boolean {
+    try {
+      const metadata = StegaMetadata.decode({ source: image });
+      if (
+        !metadata ||
+        metadata.type === StegaMetadata.StegaContentType.STRING
+      ) {
+        const [decoded] = Stega64.decode({
+          source: image,
+          encoding: metadata?.encoding || "base64",
+          borderWidth: metadata?.borderWidth,
+        });
+        const settings = JSON.parse(decoded || "") as MachineParams;
+        this.update(settings);
+        // Save the loaded settings to localStorage
+        this.saveToLocalStorage();
+        return true;
+      }
+    } catch (e) {
+      console.log(e);
+    }
+    return false;
+  }
+
+  // File-picker path for loading a settings image — on mobile this opens the
+  // photo library, which the drop reader can't reach.
+  openImageLoadDialog() {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.style.display = "none";
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      input.remove();
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      const image = new Image();
+      image.addEventListener("load", () => {
+        URL.revokeObjectURL(url);
+        this.loadSettingsFromImage(image);
+      });
+      image.src = url;
+    });
+    document.body.appendChild(input);
+    input.click();
   }
 
   stop() {
@@ -319,9 +353,13 @@ export class Machine {
         encoding: "base64",
         encodeMetadata: true,
       });
-      canvas.className = "export";
-      canvas.addEventListener("click", (e) => canvas.remove());
-      document.body.appendChild(canvas);
+      // An <img> rather than the canvas itself: mobile browsers only offer
+      // "Save to Photos" on long-press for images.
+      const image = document.createElement("img");
+      image.src = canvas.toDataURL("image/png");
+      image.className = "export";
+      image.addEventListener("click", () => image.remove());
+      document.body.appendChild(image);
     } else if (type === "json") {
       console.log("json", JSON.stringify(this.exportParams()));
     } else if (type === "url") {
@@ -422,6 +460,10 @@ export class Machine {
     valueA: number,
     valueB?: number
   ) {
+    if (type === "TAP" && location === "EDITOR") {
+      this.promptInterface.toggle();
+      return;
+    }
     if (type === "TAP" && location === "PADS") {
       // Coming from midi pads, defer to cursor
       if (valueA === 8) {
