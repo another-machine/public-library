@@ -1,8 +1,8 @@
 prompt-interface {
   --font-size: calc(var(--size-unit) * var(--prompt-font-factor));
   --border-radius: calc(var(--size-unit) * var(--prompt-corner-factor));
-  --padding-x: calc(var(--pads-padding-x-factor) * var(--size-unit));
-  --padding-y: calc(var(--pads-padding-y-factor) * var(--size-unit));
+  --padding-x: calc(var(--prompt-padding-x-factor) * var(--size-unit));
+  --padding-y: calc(var(--prompt-padding-y-factor) * var(--size-unit));
 
   align-items: start;
   display: flex;
@@ -33,6 +33,7 @@ prompt-ledger .ledger-pane,
 prompt-ledger .ledger-block {
   --ledger-surface: color-mix(in oklab, var(--color-2) 13%, transparent);
   --ledger-surface-deep: color-mix(in oklab, var(--color-2) 10%, transparent);
+  --ledger-surface-strong: color-mix(in oklab, var(--color-2) 26%, transparent);
   --ledger-hover: color-mix(in oklab, var(--color-2) 12%, transparent);
   /* Pills track the prompt corner factor, just rounder than the panes. */
   --pill-radius: calc(var(--border-radius) * 3);
@@ -103,8 +104,8 @@ prompt-ledger {
   flex-shrink: 0;
   font-size: calc(var(--font-size) * 0.85);
   font-weight: bold;
-  padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
-    calc(var(--prompt-padding-x-factor) * 1.4 * var(--size-unit));
+  padding: calc(var(--padding-y) * 0.5)
+    calc(var(--padding-x) * 1.4);
   white-space: nowrap;
 
   &[active] {
@@ -130,32 +131,31 @@ prompt-ledger {
     calc(var(--prompt-border-factor) * var(--size-unit) * 0.6) var(--color-2);
   color: var(--color-2);
   font-size: calc(var(--font-size) * 0.78);
-  padding: calc(var(--prompt-padding-y-factor) * 0.35 * var(--size-unit))
-    calc(var(--prompt-padding-x-factor) * 1.2 * var(--size-unit));
+  padding: calc(var(--padding-y) * 0.35)
+    calc(var(--padding-x) * 1.2);
 
   &:hover {
     background: color-mix(in oklab, var(--color-2) 22%, transparent);
   }
 }
 
-/* Level two and below stay neutral; an active header squares its bottom so
-   the block beneath fuses to it as one pane. */
+/* The group row is separated pills, not a tab strip — with each section
+   carrying its own colour, a fused strip never read as tabs. The active one
+   is a stronger wash of the same hue rather than a filled plate, so the
+   section pill above stays the only solid colour. */
 .ledger-group-tab {
   background: var(--color-1);
-  border-radius: var(--border-radius);
+  border-radius: var(--pill-radius);
   color: var(--color-2);
   flex-shrink: 0;
   font-size: calc(var(--font-size) * 0.8);
   font-weight: bold;
   opacity: 0.5;
-  padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
-    calc(var(--prompt-padding-x-factor) * 1.2 * var(--size-unit));
+  padding: calc(var(--padding-y) * 0.5) calc(var(--padding-x) * 1.2);
   white-space: nowrap;
 
   &[active] {
-    background: var(--ledger-surface);
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
+    background: var(--ledger-surface-strong);
     color: var(--color-2);
     opacity: 1;
   }
@@ -163,7 +163,8 @@ prompt-ledger {
 
 .ledger-pane {
   background: var(--ledger-surface);
-  border-radius: 0 0 var(--border-radius) var(--border-radius);
+  border-radius: var(--border-radius);
+  margin-top: calc(var(--padding-y) * 0.75);
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -191,8 +192,8 @@ prompt-ledger {
   font-size: calc(var(--font-size) * 0.8);
   font-weight: bold;
   opacity: 0.5;
-  padding: calc(var(--prompt-padding-y-factor) * 0.5 * var(--size-unit))
-    calc(var(--prompt-padding-x-factor) * var(--size-unit));
+  padding: calc(var(--padding-y) * 0.5)
+    var(--padding-x);
   text-align: left;
   width: 100%;
 }
@@ -295,7 +296,7 @@ prompt-ledger {
   span {
     color: var(--color-2);
     opacity: 0.45;
-    padding: 0 calc(var(--prompt-padding-x-factor) * 0.4 * var(--size-unit));
+    padding: 0 calc(var(--padding-x) * 0.4);
   }
 
   .on {
