@@ -81,6 +81,11 @@ prompt-ledger {
   scrollbar-width: thin;
 }
 
+/* breathing room between the section row and that section's own contents */
+.ledger-tabs {
+  margin-bottom: calc(var(--padding-y) * 0.75);
+}
+
 .ledger-group-tabs {
   padding-top: calc(var(--padding-y) * 0.75);
 }
@@ -121,7 +126,7 @@ prompt-ledger {
 .ledger-action {
   background: transparent;
   box-shadow: inset 0 0 0
-    calc(var(--prompt-border-factor) * var(--size-unit) * 0.6) var(--color-2);
+    calc(var(--prompt-border-factor) * var(--size-unit) * 0.3) var(--color-2);
   color: var(--color-2);
   font-size: calc(var(--font-size) * 0.78);
   padding: calc(var(--padding-y) * 0.35)
