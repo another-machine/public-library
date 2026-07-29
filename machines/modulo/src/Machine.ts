@@ -59,6 +59,10 @@ export class Machine {
   promptInterface!: PromptInterface;
   renderer!: Renderer;
   sequencers!: Sequencer[];
+  // Session-only mixer state — muting a channel shouldn't change what an
+  // export or save reports for its volume.
+  channelMutes = new Set<string>();
+  channelSolos = new Set<string>();
   private saveTimeout?: number;
 
   constructor(initialParams: MachineParams & { element: HTMLElement }) {
@@ -190,6 +194,31 @@ export class Machine {
     if (!firstPass && this.initialized) {
       this.debouncedSaveToLocalStorage();
     }
+
+    // Audio nodes and rail buttons were just rebuilt; re-silence whatever
+    // was muted or un-soloed before the update.
+    if (!firstPass) {
+      this.applyChannelStates();
+    }
+  }
+
+  get channelKeys(): string[] {
+    return [...this.sequencers.map((sequencer) => sequencer.key), "keys"];
+  }
+
+  applyChannelStates() {
+    const solos = this.channelSolos;
+    const states = this.channelKeys.map((key) => {
+      const muted = this.channelMutes.has(key);
+      const audible = !muted && (solos.size === 0 || solos.has(key));
+      const target =
+        key === "keys"
+          ? this.keys
+          : this.sequencers.find((sequencer) => sequencer.key === key);
+      target?.setMuted(!audible);
+      return { key, muted, soloed: solos.has(key), audible };
+    });
+    this.renderer.updateChannelStates(states);
   }
 
   setup() {
@@ -464,6 +493,19 @@ export class Machine {
   ) {
     if (type === "TAP" && location === "EDITOR") {
       this.promptInterface.toggle();
+      return;
+    }
+    if (type === "TAP" && (location === "SOLO" || location === "MUTE")) {
+      const key = this.channelKeys[valueA];
+      if (key) {
+        const set = location === "SOLO" ? this.channelSolos : this.channelMutes;
+        if (set.has(key)) {
+          set.delete(key);
+        } else {
+          set.add(key);
+        }
+        this.applyChannelStates();
+      }
       return;
     }
     if (type === "TAP" && location === "PADS") {

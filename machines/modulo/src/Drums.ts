@@ -344,6 +344,9 @@ export class Drums {
   output?: Gain;
   kit: (ConfigurableHat | ConfigurableSnare | ConfigurableKick)[] = [];
   volume: number;
+  // Mute lives outside `volume` so exports and the volume UI keep reporting
+  // the channel's set level while the output is silenced.
+  muted = false;
 
   static velocitiesForStepsSlots(
     stepsSlotArray: StepsSlot[],
@@ -371,7 +374,7 @@ export class Drums {
   }
 
   initialize({ mixer }: { mixer: Mixer }) {
-    this.output = new Gain(this.volume);
+    this.output = new Gain(this.muted ? 0 : this.volume);
     if (mixer.channel) this.output.connect(mixer.channel);
 
     this.kit.forEach((drum) => {
@@ -392,7 +395,7 @@ export class Drums {
   exportParams(): DrumsParams {
     const settings = this.kit.map((a) => a.exportParams());
     return {
-      volume: this.output ? this.output.gain.value : this.volume,
+      volume: this.volume,
       settings,
     };
   }
@@ -404,13 +407,20 @@ export class Drums {
   }
 
   getGain() {
-    return this.output ? this.output.gain.value : this.volume;
+    return this.volume;
+  }
+
+  setMuted(muted: boolean) {
+    this.muted = muted;
+    if (this.output) {
+      this.output.gain.value = muted ? 0 : this.volume;
+    }
   }
 
   updateGain(gain: number) {
     this.volume = gain;
     if (this.output) {
-      this.output.gain.value = gain;
+      this.output.gain.value = this.muted ? 0 : gain;
     }
   }
 }

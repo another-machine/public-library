@@ -22,20 +22,16 @@ html.rainbow body {
   }
 }
 
-/* Mobile: the open editor covers the machine, except the toggle bar at the
-   bottom, which is the way back. */
+/* Mobile: the open editor covers the machine; the editor toggle in the pads
+   row's rail stays above the overlay as the way back. */
 prompt-interface {
   --page-padding-x: calc(var(--pads-padding-x-factor) * var(--size-unit));
   --page-padding-y: calc(var(--pads-padding-y-factor) * var(--size-unit));
-  --page-gap-y: calc(var(--pads-gap-y-factor) * var(--size-unit));
 
   background: var(--color-page);
-  /* clears the toggle bar and the machine's own gap below the keys */
-  bottom: calc(
-    var(--page-padding-y) + var(--editor-bar-height) + var(--page-gap-y)
-  );
+  bottom: 0;
   left: 0;
-  padding: var(--page-padding-y) var(--page-padding-x) 0;
+  padding: var(--page-padding-y) var(--page-padding-x);
   position: fixed;
   right: 0;
   top: 0;
@@ -46,17 +42,11 @@ prompt-interface {
   }
 }
 
-/* The editor toggle: a short, wordless full-width bar below the keyboard. */
+/* The editor toggle lives in the pads row's rail; base look comes from
+   .channel-rail > button. */
 #editor-toggle {
-  background: var(--color-background);
-  border-radius: calc(var(--pads-corner-factor) * var(--size-unit) * 0.5);
-  flex-shrink: 0;
-  height: var(--editor-bar-height);
-  opacity: 0.5;
-  width: 100%;
   z-index: 11;
 
-  &:hover,
   &[open] {
     opacity: 1;
   }

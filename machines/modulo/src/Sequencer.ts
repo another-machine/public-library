@@ -71,6 +71,10 @@ export class DrumSequencer extends SequencerBase {
     this.drums.dispose();
   }
 
+  setMuted(muted: boolean) {
+    this.drums.setMuted(muted);
+  }
+
   isDrum(): this is DrumSequencer {
     return true;
   }
@@ -111,6 +115,10 @@ export class SynthSequencer extends SequencerBase {
 
   dispose() {
     this.synths.dispose();
+  }
+
+  setMuted(muted: boolean) {
+    this.synths.setMuted(muted);
   }
 
   stop(time: number) {

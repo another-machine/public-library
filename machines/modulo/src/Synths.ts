@@ -249,6 +249,9 @@ export class Synths {
   reverbSettings: SynthSettingsReverb;
   voices: ConfigurableSynth[] = [];
   volume: number;
+  // Mute lives outside `volume` so exports and the volume UI keep reporting
+  // the channel's set level while the output is silenced.
+  muted = false;
 
   constructor(
     {
@@ -304,7 +307,7 @@ export class Synths {
   }
 
   initialize({ mixer }: { mixer: Mixer }) {
-    this.output = new Gain(this.volume);
+    this.output = new Gain(this.muted ? 0 : this.volume);
     if (mixer.channel) this.output.connect(mixer.channel);
 
     this.bus = new Gain(1);
@@ -361,7 +364,14 @@ export class Synths {
   }
 
   getGain() {
-    return this.output ? this.output.gain.value : this.volume;
+    return this.volume;
+  }
+
+  setMuted(muted: boolean) {
+    this.muted = muted;
+    if (this.output) {
+      this.output.gain.value = muted ? 0 : this.volume;
+    }
   }
 
   updateDelay(updates: { wet?: number; delayTime?: Time; feedback?: number }) {
@@ -378,7 +388,7 @@ export class Synths {
   updateGain(gain: number) {
     this.volume = gain;
     if (this.output) {
-      this.output.gain.value = gain;
+      this.output.gain.value = this.muted ? 0 : gain;
     }
   }
 

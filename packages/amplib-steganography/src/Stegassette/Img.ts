@@ -95,10 +95,15 @@ export function getBorderPixels(
 
 /**
  * Number of data pixels (checkerboard) in an IW×IH interior.
- * O(1) formula; used to allocate exact Uint32Array paths.
+ * Even rows (y even) hold floor(W/2) data pixels (x odd); odd rows hold
+ * ceil(W/2) (x even). O(1); used to allocate exact Uint32Array paths — an
+ * over-count leaves phantom (0,0) entries at the tail of the path, which
+ * write payload onto a key pixel at exact-capacity fills.
  */
 export function dataPixelCount(W: number, H: number): number {
-  return Math.floor(W / 2) * H + (W % 2 === 0 ? 0 : Math.ceil(H / 2));
+  return (
+    Math.floor(W / 2) * Math.ceil(H / 2) + Math.ceil(W / 2) * Math.floor(H / 2)
+  );
 }
 
 /** Number of border pixels in a W×H image with border width B. */
