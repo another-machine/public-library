@@ -22,18 +22,20 @@ html.rainbow body {
   }
 }
 
-/* Mobile: the open editor covers the machine; the editor toggle in the pads
-   row's rail stays above the overlay as the way back. */
+/* Mobile: the open editor covers the machine but stops at the rail, so the
+   editor toggle and every channel's solo/mute stay reachable while editing.
+   Its right edge lands exactly on the machine sections' right edge. */
 prompt-interface {
   --page-padding-x: calc(var(--pads-padding-x-factor) * var(--size-unit));
   --page-padding-y: calc(var(--pads-padding-y-factor) * var(--size-unit));
+  --page-gap-x: calc(var(--pads-gap-x-factor) * var(--size-unit));
 
   background: var(--color-page);
   bottom: 0;
   left: 0;
   padding: var(--page-padding-y) var(--page-padding-x);
   position: fixed;
-  right: 0;
+  right: calc(var(--page-padding-x) + var(--rail-size) + var(--page-gap-x));
   top: 0;
   z-index: 10;
 

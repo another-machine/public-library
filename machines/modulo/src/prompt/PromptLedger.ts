@@ -26,6 +26,7 @@ type NumericInput = Extract<
 export class PromptLedger extends HTMLElement {
   private prompt!: Prompt;
   private onChange?: () => void;
+  private onClose?: () => void;
   private refreshers: (() => void)[] = [];
 
   private activeSection = "";
@@ -37,9 +38,10 @@ export class PromptLedger extends HTMLElement {
   private elementGroupTabs = document.createElement("div");
   private elementPane = document.createElement("div");
 
-  initialize(prompt: Prompt, onChange?: () => void) {
+  initialize(prompt: Prompt, onChange?: () => void, onClose?: () => void) {
     this.prompt = prompt;
     this.onChange = onChange;
+    this.onClose = onClose;
     this.elementTabs.className = "ledger-tabs";
     this.elementOwn.className = "ledger-own";
     this.elementGroupTabs.className = "ledger-group-tabs";
@@ -79,6 +81,13 @@ export class PromptLedger extends HTMLElement {
       this.applyThemeKey(tab, destination.key);
       if (name === this.activeSection) tab.setAttribute("active", "");
       tab.addEventListener("click", () => {
+        // Tapping the section you are already in closes the editor — on mobile
+        // it covers the machine, so the pill you just used is the nearest
+        // thing to a way back out.
+        if (name === this.activeSection) {
+          if (this.onClose) this.onClose();
+          return;
+        }
         this.activeSection = name;
         this.render();
       });

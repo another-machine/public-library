@@ -21,7 +21,7 @@ export class PromptInterface extends HTMLElement {
     this.ledger = this.querySelector("prompt-ledger")!;
     this.setupKeyboard();
     parent.appendChild(this);
-    this.ledger.initialize(prompt, callbacks?.onChange);
+    this.ledger.initialize(prompt, callbacks?.onChange, () => this.toggle());
     return this;
   }
 
