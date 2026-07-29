@@ -3,7 +3,14 @@ import { MachineCore } from "./Machine";
 import { Sequencer } from "./Sequencer";
 import { StepsSlot } from "./Steps";
 export type RendererEventType = "TAP" | "PRESS" | "RELEASE";
-export type RendererEventLocation = "KEYS" | "PADS" | string;
+export type RendererEventLocation = "KEYS" | "PADS" | "SOLO" | "MUTE" | string;
+
+export interface RendererChannelState {
+  key: string;
+  muted: boolean;
+  soloed: boolean;
+  audible: boolean;
+}
 export type RendererEventHandler = (
   eventType: RendererEventType,
   eventLocation: RendererEventLocation,
@@ -51,6 +58,15 @@ export class Renderer {
   keyButtons: HTMLButtonElement[] = [];
   padButtons: HTMLButtonElement[] = [];
   elementEditorToggle = document.createElement("button");
+  channelRails: {
+    [key: string]: {
+      element: HTMLDivElement;
+      solo: HTMLButtonElement;
+      mute: HTMLButtonElement;
+    };
+  } = {};
+  channelWrappers: { [key: string]: HTMLDivElement } = {};
+  padsRail: HTMLDivElement | null = null;
   sequencers: Sequencer[] = [];
   keys: Keyboard;
   elementKeys = document.createElement("div");
@@ -83,13 +99,12 @@ export class Renderer {
     this.keys = keys;
     this.setTheme(theme);
     this.rendererEventHandler = rendererEventHandler;
+    this.initializeEditorToggle();
     this.initializeSequencers();
-    this.elementMain.appendChild(this.elementPads);
-    this.elementMain.appendChild(this.elementKeys);
-    this.elementMain.appendChild(this.elementEditorToggle);
+    this.attachPadsChannel();
+    this.attachKeysChannel();
     this.initializePads();
     this.initializeKeys();
-    this.initializeEditorToggle();
   }
 
   initializeEditorToggle() {
@@ -98,6 +113,58 @@ export class Renderer {
     this.elementEditorToggle.addEventListener("click", () =>
       this.rendererEventHandler("TAP", "EDITOR", 0)
     );
+  }
+
+  // Every row owns a slot on the right rail: sequencers and keys get a
+  // stacked solo/mute pair, the pads row gets the editor toggle.
+  private createChannelWrapper(key: string, section: HTMLElement) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "channel";
+    wrapper.appendChild(section);
+    this.elementMain.appendChild(wrapper);
+    this.channelWrappers[key] = wrapper;
+    return wrapper;
+  }
+
+  private createSoloMuteRail(key: string, channelIndex: number, theme: number) {
+    const rail = document.createElement("div");
+    rail.className = `channel-rail theme-key-${theme}`;
+    const solo = this.createButton("TAP", "SOLO", channelIndex);
+    solo.className = "rail-solo";
+    solo.setAttribute("aria-label", `Solo ${key}`);
+    const mute = this.createButton("TAP", "MUTE", channelIndex);
+    mute.className = "rail-mute";
+    mute.setAttribute("aria-label", `Mute ${key}`);
+    rail.appendChild(solo);
+    rail.appendChild(mute);
+    this.channelRails[key] = { element: rail, solo, mute };
+    return rail;
+  }
+
+  private attachPadsChannel() {
+    const wrapper = this.createChannelWrapper("pads", this.elementPads);
+    const rail = document.createElement("div");
+    rail.className = `channel-rail theme-key-${this.core.theme}`;
+    rail.appendChild(this.elementEditorToggle);
+    wrapper.appendChild(rail);
+    this.padsRail = rail;
+  }
+
+  private attachKeysChannel() {
+    const wrapper = this.createChannelWrapper("keys", this.elementKeys);
+    wrapper.appendChild(
+      this.createSoloMuteRail("keys", this.sequencers.length, this.keys.theme)
+    );
+  }
+
+  updateChannelStates(states: RendererChannelState[]) {
+    states.forEach(({ key, muted, soloed, audible }) => {
+      const rail = this.channelRails[key];
+      if (!rail) return;
+      rail.solo.toggleAttribute("engaged", soloed);
+      rail.mute.toggleAttribute("engaged", muted);
+      this.channelWrappers[key]?.toggleAttribute("silenced", !audible);
+    });
   }
 
   setEditorOpen(open: boolean) {
@@ -134,9 +201,8 @@ export class Renderer {
     this.elementRoot.appendChild(this.style);
     this.setTheme(theme);
     this.initializeSequencers();
-    this.elementMain.appendChild(this.elementPads);
-    this.elementMain.appendChild(this.elementKeys);
-    this.elementMain.appendChild(this.elementEditorToggle);
+    this.attachPadsChannel();
+    this.attachKeysChannel();
     this.handleStepsSizeChange();
     this.refreshTheme();
   }
@@ -249,22 +315,38 @@ export class Renderer {
       element.className = `sequencer sequencer-${
         sequencer.isDrum() ? "drum" : "synth"
       } theme-key-${sequencer.theme}`;
+      const rail = this.channelRails[sequencer.key];
+      if (rail) {
+        rail.element.className = `channel-rail theme-key-${sequencer.theme}`;
+      }
     });
     this.elementKeys.className = `theme-key-${this.keys.theme}`;
     this.elementPads.className = `theme-key-${this.core.theme}`;
+    const keysRail = this.channelRails["keys"];
+    if (keysRail) {
+      keysRail.element.className = `channel-rail theme-key-${this.keys.theme}`;
+    }
+    if (this.padsRail) {
+      this.padsRail.className = `channel-rail theme-key-${this.core.theme}`;
+    }
   }
 
   initializeSequencers() {
     this.sequencerElements = {};
     this.sequencerButtons = {};
     this.activeColumns = {};
-    this.sequencers.forEach((sequencer) => {
+    this.channelRails = {};
+    this.channelWrappers = {};
+    this.sequencers.forEach((sequencer, index) => {
       const element = document.createElement("div");
       element.id = `sequencer-${sequencer.key}`;
       element.className = `sequencer sequencer-${
         sequencer.isDrum() ? "drum" : "synth"
       } theme-key-${sequencer.theme}`;
-      this.elementMain.appendChild(element);
+      const wrapper = this.createChannelWrapper(sequencer.key, element);
+      wrapper.appendChild(
+        this.createSoloMuteRail(sequencer.key, index, sequencer.theme)
+      );
       this.sequencerElements[sequencer.key] = element;
     });
   }
@@ -390,10 +472,10 @@ export class Renderer {
     let maxX = -Infinity;
     let maxY = -Infinity;
     this.elementMain.querySelectorAll("button").forEach((button) => {
-      // The editor toggle is chrome rather than part of the instrument's
-      // face — including it painted a pale full-width bar along the bottom
-      // and stretched the captured bounds to match.
-      if (button === this.elementEditorToggle) return;
+      // Rail controls (solo/mute, editor toggle) are chrome rather than part
+      // of the instrument's face — including them painted stray bars and
+      // stretched the captured bounds.
+      if (button.closest(".channel-rail")) return;
       const { top, right, bottom, left } = button.getBoundingClientRect();
       minX = Math.min(minX, left);
       minY = Math.min(minY, top);

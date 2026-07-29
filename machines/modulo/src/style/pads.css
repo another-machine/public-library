@@ -200,27 +200,74 @@ main[stepping="true"] .sequencer {
   }
 }
 
-.sequencer {
+/* Each row of the machine — sequencers, pads, keys — pairs its section with
+   a rail of controls on the right. */
+.channel {
   display: flex;
-  flex-direction: column;
-  gap: calc(var(--pads-gap-y-factor) * var(--size-unit));
-  width: 100%;
+  gap: calc(var(--pads-gap-x-factor) * var(--size-unit));
+  min-height: 0;
 
-  &:has(> :last-child:nth-child(1)) {
+  &:has(> .sequencer > :last-child:nth-child(1)),
+  &:has(> #pads) {
     flex: 1;
   }
-  &:has(> :last-child:nth-child(2)) {
+  &:has(> .sequencer > :last-child:nth-child(2)),
+  &:has(> #keys) {
     flex: 2;
   }
-  &:has(> :last-child:nth-child(3)) {
+  &:has(> .sequencer > :last-child:nth-child(3)) {
     flex: 3;
   }
-  &:has(> :last-child:nth-child(4)) {
+  &:has(> .sequencer > :last-child:nth-child(4)) {
     flex: 4;
   }
-  &:has(> :last-child:nth-child(5)) {
+  &:has(> .sequencer > :last-child:nth-child(5)) {
     flex: 5;
   }
+
+  &[silenced] > .sequencer,
+  &[silenced] > #keys {
+    opacity: 0.35;
+  }
+}
+
+.channel-rail {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: calc(var(--pads-gap-y-factor) * var(--size-unit) * 0.5);
+  width: var(--rail-size);
+
+  > button {
+    background: oklch(
+      var(--color-b-lit) var(--color-b-chr)
+        calc(var(--color-hue-base) + var(--color-b-hue)) / 1
+    );
+    border-radius: calc(var(--pads-corner-factor) * var(--size-unit) * 0.5);
+    flex: 1;
+    opacity: 0.5;
+    position: relative;
+
+    &:hover {
+      opacity: 1;
+    }
+
+    &[engaged] {
+      background: oklch(
+        var(--color-a-lit) var(--color-a-chr)
+          calc(var(--color-hue-base) + var(--color-a-hue)) / 1
+      );
+      opacity: 1;
+    }
+  }
+}
+
+.sequencer {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: calc(var(--pads-gap-y-factor) * var(--size-unit));
+  min-width: 0;
 
   > div {
     display: flex;
@@ -238,9 +285,9 @@ main[stepping="true"] .sequencer {
     1 / 14 * 100% - (var(--pads-gap-x-factor) * var(--size-unit)) * 13 / 14
   );
   display: flex;
-  flex: 2;
+  flex: 1;
+  min-width: 0;
   position: relative;
-  width: 100%;
 
   > button {
     --border-radius: calc(var(--pads-corner-factor) * var(--size-unit) * 0.25)
@@ -343,7 +390,7 @@ main[stepping="true"] .sequencer {
   flex-wrap: wrap;
   gap: calc(var(--pads-gap-x-factor) * var(--size-unit));
   flex: 1;
-  width: 100%;
+  min-width: 0;
   z-index: 2;
 
   > button {

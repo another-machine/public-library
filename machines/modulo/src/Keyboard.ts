@@ -60,6 +60,11 @@ export class Keyboard {
     this.ghosts.dispose();
   }
 
+  setMuted(muted: boolean) {
+    this.main.setMuted(muted);
+    this.ghosts.setMuted(muted);
+  }
+
   exportParams(): KeyboardParams {
     return {
       theme: this.theme,
