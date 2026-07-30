@@ -3,15 +3,25 @@
   "description": ".",
   "version": "0.0.0",
   "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "private": "false",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/another-machine/public-library.git"
   },
   "exports": {
-    ".": "./dist/index.js",
-    "./node": "./dist/node.js",
-    "./job-schema": "./dist/jobSchema.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./job-schema": {
+      "types": "./dist/jobSchema.d.ts",
+      "default": "./dist/jobSchema.js"
+    }
   },
   "tsup": {
     "entry": [
@@ -20,7 +30,7 @@
       "src/jobSchema.js"
     ],
     "clean": true,
-    "dts": false,
+    "dts": true,
     "format": "esm",
     "minify": false,
     "sourcemap": true,

@@ -1,0 +1,38 @@
+{
+  // Exists for the declaration build (`tsup --dts`). The JS bundles are built by
+  // esbuild, which never type-checks, which is how the .d.ts build stayed broken
+  // for months without anything downstream noticing.
+  //
+  // Two settings are load-bearing rather than boilerplate:
+  //
+  //   moduleResolution: "bundler" — StegaCassette.ts imports the sibling package
+  //     by source directory ("../../amplib-procedural-generation/src"). Under
+  //     node16/nodenext that extensionless directory import is an error (TS2792).
+  //     "bundler" is also the honest description of how this package is consumed:
+  //     Parcel for machines/*, tsup for the IIFE bundle.
+  //
+  //   allowJs — src/jobSchema.js is a real entry point and is deliberately plain
+  //     JS (see its header: a mechanical move from the lab, kept untranslated so
+  //     it cannot silently diverge). Without this the dts build fails TS6504.
+  //     checkJs stays off: declarations are inferred from it, it is not type-checked.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    "allowJs": true,
+    "checkJs": false,
+
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts", "src/**/*.js"]
+}

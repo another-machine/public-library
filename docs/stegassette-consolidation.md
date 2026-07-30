@@ -147,7 +147,7 @@ Regression check: all **233** existing assertions pass (`test-roundtrip` 36, `te
 
 Two findings logged, neither caused by this work:
 
-- `packages/amplib-steganography` **`.d.ts` build has been broken for some time** — `StegaCassette.ts` fails on `Cannot find module '../../amplib-procedural-generation/src'` and `Type 'Float32Array' is not generic`. The ESM JS build succeeds, so nothing downstream noticed. This must be fixed before Phase 5's npm publish, and it is a good argument for retiring `StegaCassette` (step 11).
+- ~~`packages/amplib-steganography` **`.d.ts` build has been broken for some time**~~ — **fixed 2026-07-30, in place** (see Phase 1 step 5's note). `StegaCassette.ts` failed on `Cannot find module '../../amplib-procedural-generation/src'` and `Type 'Float32Array' is not generic`. The ESM JS build succeeds, so nothing downstream noticed. Fixed *without* retiring `StegaCassette`, which the iOS app still needs (§1).
 - The gallery's media has **diverged from the lab's**: 9 of its PNGs differ byte-wise from `jobs/live/`, and 4 (`10`–`13`, spelled `.stegasette`) do not exist in the lab at all. The gallery is a frozen June snapshot, self-consistent but no longer reproducible from the job files. Reconcile in step 14, and decide which side is canonical before re-publishing media.
 
 ### Phase 1 — freeze parity, then make the package the truth
@@ -226,7 +226,19 @@ Two findings logged, neither caused by this work:
 
    Verified in a browser via plain `<script src>` against a real cartridge: 68 exports present, correct `CODEC_VERSION`, container round-trip byte-exact under `difference`/`hilbert`/`poles`, the `keyMap` guard still fires after bundling, a real 787² cartridge decodes to 4 entries with 511,572 audio samples at 11.6 kHz, `reconstructCover` completes in 318 ms, and `createRevealPlayer` builds a working player element in 161 ms.
 
-   > Note: `tsup`'s `dts` step is now set to `false`. It had been failing on `StegaCassette.ts` and emitting **no** `.d.ts` files at all, while still exiting non-zero — which blocked the global build from ever running. The package advertises no `types` field, so nothing shipped changes. `npm run build:types` is where the fix lands.
+   > ~~Note: `tsup`'s `dts` step is now set to `false`.~~ **Resolved 2026-07-30 — `dts` is back to `true` and the package ships declarations.** Three independent causes, none of them `StegaCassette` being obsolete:
+   >
+   > - **TS2792** (`Cannot find module '../../amplib-procedural-generation/src'`) — the package had **no `tsconfig.json` at all**, so the dts build ran on compiler defaults and resolved that sibling-source directory import under `node16`, where extensionless directory imports are an error. Added `packages/amplib-steganography/tsconfig.json` with `moduleResolution: "bundler"` — which is also the honest description of how this package is consumed (Parcel, tsup).
+   > - **TS6504** — `src/jobSchema.js` is a real entry and deliberately plain JS, which the dts build rejected. Same tsconfig, `allowJs: true` / `checkJs: false`: declarations are *inferred* from it, it is not type-checked, so the "no hand-translation" rule in step 3 is preserved.
+   > - **TS2315** (`Type 'Float32Array' is not generic`) — a genuine **version pincer**, worth writing down before anyone bumps TypeScript. The repo pins `typescript@^5.5.4`; generic typed arrays (`Float32Array<ArrayBuffer>`) only exist in **5.7+**. Those six annotations were written against a newer compiler than the repo installs.
+   >
+   >   Upgrading is *not* the cheap fix, and this was measured rather than assumed: under `typescript@5.9`, `StegaCassette.ts` goes clean but **`Stegassette/revealSurface.ts` newly fails** — `Uint8ClampedArray<ArrayBufferLike>` is no longer assignable to `ImageData` (a `SharedArrayBuffer` can't be an `ArrayBuffer`). An upgrade trades one error set for another *and* puts the **eight sibling packages that currently build `dts` clean** at risk. So the fix stayed local and the monorepo stays on one compiler.
+   >
+   >   The six annotations were dropped, plus explicit `Float32Array` annotations on the two `decode()` locals that receive them. That last part matters: the generics were **not decorative** — under 5.7+ the call sites at `StegaCassette.ts:1406-1407` assign back into narrowly-inferred locals, so removing the annotations alone would fix 5.5.4 and silently re-break on upgrade. Verified clean under **both 5.5.4 and 5.9**, so this file is no longer a blocker whenever the TypeScript bump does happen.
+   >
+   > Also wired the declarations into `exports` (`types` conditions) and added a top-level `types` field — emitting `.d.ts` files that no resolver can find would only be half a fix.
+   >
+   > **Verified:** `npm run test:parity` → **1476 assertions, 0 failures**; `machines/{modulo,live,geese-basement,stega}` and `docs` all build; the eight sibling `dts` builds still pass; and a synthetic consumer type-checks against the emitted declarations across both entry points, with a deliberate bad assignment still erroring (so the types are real, not silently `any`). The emitted `.d.ts` **inlines** the `PermutationEngine` types rather than referencing `../../amplib-procedural-generation` — which would have broken an npm consumer, and is the one thing worth re-checking if that import ever changes shape.
 
 6. ✅ **`codec-check` knows about the published bundle.** `npm run codec:check:remote` fetches `amplib.app/lib/stegassette.js` and compares `CODEC_VERSION`. Bytes can never match — that bundle is built from the TypeScript port — so the version is the only comparable, which is precisely why the two `CODEC_VERSION` constants must move in lockstep. Currently reports a clean 404 with remediation, since the workflow change is not yet deployed.
 
@@ -237,7 +249,7 @@ Two findings logged, neither caused by this work:
 7. **`stega-now`** — decode and playback only, smallest surface. Verify against a cartridge from each job set.
 8. **`stegassette-website`** — optional now that it is frozen and out of scope. If touched at all, replace the hand-rolled `public/scripts/steg-reconstruction.js` with `reconstructCover` and verify against its 16 PNGs (Phase 0 established they all decode). Otherwise leave it.
 9. **`labs/index.html` + batch runners** — the hard one: encode path, the inline-Blob worker's `importScripts`, `OffscreenCanvas`, and Node CJS `require`. The IIFE global build exists specifically so `<script src>` and `importScripts` keep working unchanged. Verify: re-run `jobs:rhir:png` and diff output PNGs byte-for-byte.
-10. **`machines/stega`** — retire the machine, but **keep `StegaCassette.ts` in the package**: the untracked iOS app in `~/projects/another-machine/stega-player` is a Swift port of that format and would be stranded (see §1). Repoint the `docs/src/index.html` entry at `stega.now`, and fix the `.d.ts` build in place rather than by deletion.
+10. **`machines/stega`** — retire the machine, but **keep `StegaCassette.ts` in the package**: the untracked iOS app in `~/projects/another-machine/stega-player` is a Swift port of that format and would be stranded (see §1). Repoint the `docs/src/index.html` entry at `stega.now`. ~~and fix the `.d.ts` build in place rather than by deletion~~ — ✅ **the `.d.ts` build was fixed in place 2026-07-30**, so retiring the machine is now purely a web-surface change with nothing type-related riding on it. `StegaCassette` stays, and is now *typed* for the first time.
 
 **Gate after each:** byte-identical output on a known job. Flip one, verify, commit — do not batch.
 
@@ -289,7 +301,7 @@ Also in that repo: `amplib.app.live.png` (664 KB) and `amplib.app.geese-basement
 
 ### Phase 6 — optional
 
-22. Fix the `.d.ts` build and publish `@amplib/steganography` to npm for Node and bundler consumers.
+22. ~~Fix the `.d.ts` build and~~ publish `@amplib/steganography` to npm for Node and bundler consumers. The `.d.ts` half is ✅ **done (2026-07-30)** — the package builds and ships declarations, with `types` conditions in `exports`. Publishing is what remains, and it now has the working declaration build it was waiting on.
 
 ## 6a. Galleries stay as pages — settled
 

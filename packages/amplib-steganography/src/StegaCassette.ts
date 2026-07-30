@@ -685,8 +685,8 @@ function applyPermutation(
   rightChannel: Float32Array | null,
   key: string | HTMLImageElement | HTMLCanvasElement
 ): {
-  left: Float32Array<ArrayBuffer>;
-  right: Float32Array<ArrayBuffer> | null;
+  left: Float32Array;
+  right: Float32Array | null;
 } {
   const keyString = extractKeyString(key);
 
@@ -698,7 +698,7 @@ function applyPermutation(
     leftPermutation.permute(Array.from(leftChannel))
   );
 
-  let right: Float32Array<ArrayBuffer> | null = null;
+  let right: Float32Array | null = null;
   if (rightChannel) {
     const rightPermutation = new PermutationEngine({
       seed: keyString,
@@ -720,8 +720,8 @@ function reversePermutation(
   rightResult: Float32Array | null,
   key: string | HTMLImageElement | HTMLCanvasElement
 ): {
-  left: Float32Array<ArrayBuffer>;
-  right: Float32Array<ArrayBuffer> | null;
+  left: Float32Array;
+  right: Float32Array | null;
 } {
   const keyString = extractKeyString(key);
 
@@ -733,7 +733,7 @@ function reversePermutation(
     leftPermutation.unpermute(Array.from(leftResult))
   );
 
-  let right: Float32Array<ArrayBuffer> | null = null;
+  let right: Float32Array | null = null;
   if (rightResult) {
     const rightPermutation = new PermutationEngine({
       seed: keyString,
@@ -1397,8 +1397,10 @@ export function decode(options: DecodeOptions): Float32Array[] {
     );
   }
 
-  let leftResult = new Float32Array(leftSamples);
-  let rightResult = stereo ? new Float32Array(rightSamples) : null;
+  let leftResult: Float32Array = new Float32Array(leftSamples);
+  let rightResult: Float32Array | null = stereo
+    ? new Float32Array(rightSamples)
+    : null;
 
   // Apply inverse permutation if key provided
   if (key) {
