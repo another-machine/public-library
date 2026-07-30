@@ -47,7 +47,15 @@ async function rawImg(
 ): Promise<Img> {
   // Lazy / display:none images may never load (and decode() can reject on
   // them) — load a fresh eager Image from the same URL instead.
-  if ("naturalWidth" in source && source.naturalWidth === 0) {
+  //
+  // `complete` is the readiness test, NOT naturalWidth. An image partway
+  // through loading already reports its intrinsic size, because that comes out
+  // of the PNG header long before the pixels finish decoding — so a lazy image
+  // caught mid-flight has a non-zero naturalWidth and is still unusable, and
+  // createImageBitmap rejects with "The image source is not usable". Checking
+  // only naturalWidth made this a race: it passed when the click came late
+  // enough and threw "not a STGC image" when it didn't.
+  if ("naturalWidth" in source && (!source.complete || source.naturalWidth === 0)) {
     const fresh = new Image();
     fresh.crossOrigin = source.crossOrigin;
     fresh.src = source.currentSrc || source.src;
