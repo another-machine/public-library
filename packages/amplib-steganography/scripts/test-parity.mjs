@@ -466,7 +466,23 @@ for (const file of jobFiles) {
   jobs.forEach((job, i) => {
     const id = `${file}#${i}`;
     jobCount++;
-    for (const fn of ["resolveConfig", "validateConfig", "jobMode", "framesSpec", "splitSpec", "splitAudioPath"]) {
+    // resolveConfig now emits BOTH keymap spellings, which the lab's config.js
+    // does not. That is a deliberate, documented deviation — the batch runner
+    // and test suite feed encodeOpts straight into encodeContainer, which reads
+    // `keymap`, while the lab's own readers still read `keyMap`. Assert the
+    // deviation is EXACTLY that and nothing else.
+    {
+      const la = LABJOBS.resolveConfig(job);
+      const pk = PKGJOBS.resolveConfig(job);
+      check(`${id} resolveConfig emits both keymap spellings, equal`,
+        pk.encodeOpts.keymap === pk.encodeOpts.keyMap && pk.encodeOpts.keymap === la.encodeOpts.keyMap,
+        `pkg keymap=${pk.encodeOpts.keymap} keyMap=${pk.encodeOpts.keyMap} vs lab keyMap=${la.encodeOpts.keyMap}`);
+      const { keymap: _drop, ...pkOpts } = pk.encodeOpts;
+      check(`${id} resolveConfig otherwise identical`,
+        deepEq({ ...la, encodeOpts: la.encodeOpts }, { ...pk, encodeOpts: pkOpts }),
+        `lab ${show(la)?.slice(0, 140)} vs pkg ${show({ ...pk, encodeOpts: pkOpts })?.slice(0, 140)}`);
+    }
+    for (const fn of ["validateConfig", "jobMode", "framesSpec", "splitSpec", "splitAudioPath"]) {
       let a, b, ea = null, eb = null;
       try { a = LABJOBS[fn](job); } catch (e) { ea = e.message; }
       try { b = PKGJOBS[fn](job); } catch (e) { eb = e.message; }
@@ -588,46 +604,45 @@ for (const srcSr of [8000, 22050, 44100, 48000]) {
     differ.length === 0, differ.join(", "));
 }
 
-// ── The job-schema → codec seam ────────────────────────────────────────────
+// ── The job-schema → codec seam, now closed ───────────────────────────────
 //
-// resolveConfig emits `encodeOpts.keyMap` (the lab's spelling), because it is a
-// faithful move and the lab's encode-batch.js reads that key. The package's
-// codec wants `keymap`. So encodeOpts CANNOT be passed straight through, and
-// Phase 2 must translate at that boundary.
-//
-// This is exactly what the resolveKeymapName guard is for: assert the seam
-// fails loudly rather than silently encoding with "adjacent".
+// resolveConfig's encodeOpts used to emit only the lab's `keyMap`, so feeding
+// it straight to encodeContainer threw (by design — the guard, rather than a
+// silent fall-back to "adjacent"). The batch runner and the test suite both do
+// exactly that, so the schema now emits BOTH spellings and the seam is closed.
 {
   const { encodeOpts } = PKGJOBS.resolveConfig({ combine: "xor", keymap: "poles" });
   check(
-    "resolveConfig still emits the lab's `keyMap` spelling (faithful move)",
-    "keyMap" in encodeOpts && !("keymap" in encodeOpts),
-    Object.keys(encodeOpts).join(",")
+    "resolveConfig emits both keymap spellings",
+    encodeOpts.keymap === "poles" && encodeOpts.keyMap === "poles",
+    `keymap=${encodeOpts.keymap} keyMap=${encodeOpts.keyMap}`
   );
 
-  const src = imgB();
   let threw = null;
+  let out = null;
   try {
-    B.encodeContainer(entries(), src, { ...encodeOpts, borderWidth: 1 }, src);
+    const src = imgB();
+    out = B.encodeContainer(entries(), src, { ...encodeOpts, borderWidth: 1 }, src);
   } catch (e) {
     threw = e.message;
   }
-  check(
-    "feeding encodeOpts straight to the codec THROWS (seam caught, not silent)",
-    threw !== null && /keymap/i.test(threw),
-    threw === null ? "no error — the guard is not covering this path" : threw
-  );
-
-  // and the translated form works
-  const { keyMap, ...rest } = encodeOpts;
-  let ok = false;
-  try {
-    B.encodeContainer(entries(), imgB(), { ...rest, keymap: keyMap, borderWidth: 1 }, imgB());
-    ok = true;
-  } catch (e) {
-    ok = e.message;
+  check("encodeOpts now feeds the codec directly", threw === null, String(threw));
+  if (out) {
+    const { entries: back, opts } = B.decodeContainer(new B.Img(out.width, out.height, new Uint8Array(out.data)));
+    check("and the requested keymap is what actually got used", opts.keymap === "poles", opts.keymap);
+    check("payload survives that path", sameBytes(back[0].data, PAYLOAD));
   }
-  check("translating keyMap → keymap makes it work", ok === true, String(ok));
+
+  // The guard must still fire for a bare `keyMap` — closing the seam must not
+  // have disarmed it, or the silent-"adjacent" failure comes back.
+  let guarded = null;
+  try {
+    const src = imgB();
+    B.encodeContainer(entries(), src, { combine: "xor", keyMap: "poles", borderWidth: 1 }, src);
+  } catch (e) {
+    guarded = e.message;
+  }
+  check("the guard still rejects a BARE keyMap", guarded !== null && /keymap/i.test(guarded), String(guarded));
 }
 
 console.log("");

@@ -212,10 +212,19 @@ function resolveConfig(job = {}) {
     params.ky = j.ky | 0;
   }
 
+  // Both spellings, deliberately. Job FILES spell it `keymap`; the lab's
+  // steg-core.js read `keyMap`; this package's codec reads `keymap` and throws
+  // if it sees only `keyMap` (rather than silently defaulting to "adjacent").
+  // encodeOpts is fed straight into encodeContainer by the batch runner and the
+  // test suite, so emitting only one spelling breaks one side or the other.
+  // The pair can go once nothing reads `keyMap` anywhere.
+  const keymap = j.keymap || "adjacent";
+
   const encodeOpts = {
     combine: j.combine || "xor",
     traversal: j.traversal || "raster",
-    keyMap: j.keymap || "adjacent",
+    keymap,
+    keyMap: keymap,
     borderWidth,
     borderFraction,
     params,
