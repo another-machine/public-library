@@ -515,6 +515,52 @@ for (const srcSr of [8000, 22050, 44100, 48000]) {
 }
 
 
+// ── stgcHeaderWidth ────────────────────────────────────────────────────────
+//
+// The minimum canvas width the STGC header needs. Callers that size their own
+// canvas (stega-now's album builder, the `me` recorder) need it before they
+// know the payload — possible because the header's length depends only on the
+// effect settings. It was private in the package and exported by the lab, so
+// consumers had to reimplement it; now it is exported under the lab's name.
+{
+  let ok = 0;
+  const bad = [];
+  for (const combine of A.COMBINE_NAMES)
+    for (const traversal of A.TRAVERSAL_NAMES)
+      for (const keymap of A.KEYMAP_NAMES)
+        for (const pack of ["packed", "aligned", "mono"]) {
+          const la = A.stgcHeaderWidth({ combine, traversal, keyMap: keymap, pack });
+          const pk = B.stgcHeaderWidth({ combine, traversal, keymap, pack });
+          if (la === pk) ok++;
+          else bad.push(`${combine}/${traversal}/${keymap}/${pack}: ${la} vs ${pk}`);
+        }
+  check(`stgcHeaderWidth matches across all ${ok + bad.length} option combinations`, bad.length === 0, bad.slice(0, 3).join("; "));
+}
+
+// ── computeRecon (lab) === reconstructCover (package) ──────────────────────
+//
+// The lab takes a precomputed pathIdx, the package computes it internally, so
+// the migration is a call-site rename rather than a missing feature — but only
+// if the pixels actually agree.
+{
+  let ok = 0;
+  const bad = [];
+  for (const combine of A.COMBINE_NAMES)
+    for (const keymap of ["adjacent", "poles", "mirror-x"]) {
+      const opts = { combine, traversal: "raster", keymap, borderWidth: 1 };
+      const src = imgB();
+      const enc = B.encodeContainer(entries(), src, opts, src);
+      const { opts: dec } = B.decodeContainer(new B.Img(enc.width, enc.height, new Uint8Array(enc.data)));
+      const IW = enc.width - 2 * dec.borderWidth, IH = enc.height - 2 * dec.borderWidth;
+      const pathIdx = A.getPathIndices(IW, IH, dec.traversal, dec.params || {});
+      const la = A.computeRecon(new A.Img(enc.width, enc.height, new Uint8Array(enc.data)), pathIdx, { ...dec, keyMap: dec.keymap });
+      const pk = B.reconstructCover(new B.Img(enc.width, enc.height, new Uint8Array(enc.data)), dec);
+      if (la.width === pk.width && la.height === pk.height && sameBytes(la.data, pk.data)) ok++;
+      else bad.push(`${combine}/${keymap}`);
+    }
+  check(`computeRecon === reconstructCover across ${ok + bad.length} combos`, bad.length === 0, bad.join(", "));
+}
+
 // ── The job-schema → codec seam ────────────────────────────────────────────
 //
 // resolveConfig emits `encodeOpts.keyMap` (the lab's spelling), because it is a

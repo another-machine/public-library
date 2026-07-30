@@ -146,6 +146,36 @@ import { packStgcHeader } from "./header";
 import type { CombineName, DecodedEntry, EncodeOptions, KeymapName, StegaImageData, StgcOpts, TraversalParams } from "./types";
 
 /**
+ * Border-ring pixels the STGC header needs for the given encode options.
+ *
+ * Doubles as the minimum canvas width: a tiny payload would otherwise size the
+ * canvas below what the header itself requires, and encoding would refuse.
+ * Callers that size their own canvas need this before they know the payload,
+ * which is possible because the header's length depends only on the effect
+ * settings, not the data.
+ *
+ * Exported as `stgcHeaderWidth` to match the name the lab's steg-core.js uses,
+ * so call sites migrating from it do not have to change.
+ */
+export function stgcHeaderWidth(
+  opts: Partial<EncodeOptions> = {}
+): number {
+  const plan =
+    opts.plan ??
+    normalizeChannelPlan(
+      { combine: opts.combine, pack: opts.pack, channels: opts.channels },
+      opts.bytesPerSample ?? 3,
+      0
+    );
+  const params: TraversalParams = { ...(opts.params || {}) };
+  // Widest possible seed, so this stays a floor rather than an estimate.
+  if ((opts.traversal || "raster") === "fisher-yates" && params.seed == null) {
+    params.seed = 0xffffffff;
+  }
+  return estimatedHeaderPixels(opts, plan, params, 0);
+}
+
+/**
  * Estimate the STGC header byte length for the given encode options.
  * Used to enforce a minimum canvas width so the header always fits.
  */
