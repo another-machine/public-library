@@ -561,6 +561,33 @@ for (const srcSr of [8000, 22050, 44100, 48000]) {
   check(`computeRecon === reconstructCover across ${ok + bad.length} combos`, bad.length === 0, bad.join(", "));
 }
 
+// ── KEY_MOD combines against colliding keymaps ─────────────────────────────
+//
+// Some combines rewrite the key pixel (midpoint, echo, difference, noise,
+// veil, whisper), and some keymaps let two data pixels land on one key. Those
+// pairings are LOSSY by construction — the second write destroys the bits the
+// first stashed. That is pre-existing behaviour, not a bug to fix here, but
+// the two implementations must be lossy in exactly the same way, or a
+// migrated call site would produce different corruption.
+{
+  let agree = 0;
+  const differ = [];
+  for (const combine of A.COMBINE_NAMES)
+    for (const keymap of A.KEYMAP_NAMES) {
+      const opts = { combine, traversal: "center-out", keymap, borderWidth: 2, params: {} };
+      const sa = imgA();
+      const ea = A.encodeContainer(entries(), sa, sa, toLabOpts(opts));
+      const oa = A.decodeContainer(ea, ea).entries[0].data;
+      const sb = imgB();
+      const eb = B.encodeContainer(entries(), sb, opts, sb);
+      const ob = B.decodeContainer(new B.Img(eb.width, eb.height, new Uint8Array(eb.data))).entries[0].data;
+      if (sameBytes(oa, ob)) agree++;
+      else differ.push(`${combine}/${keymap}`);
+    }
+  check(`KEY_MOD x keymap: identical outcomes across all ${agree + differ.length} pairings (lossy ones included)`,
+    differ.length === 0, differ.join(", "));
+}
+
 // ── The job-schema → codec seam ────────────────────────────────────────────
 //
 // resolveConfig emits `encodeOpts.keyMap` (the lab's spelling), because it is a
