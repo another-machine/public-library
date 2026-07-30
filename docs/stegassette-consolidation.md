@@ -1,6 +1,6 @@
 # Stegassette / stega.now / amplib — consolidation plan
 
-Status (2026-07-30): **Phase 0 complete. Phase 1 complete** — all six steps. Next: Phase 2 (flip consumers). Target shape revised — see §3.
+Status (2026-07-30): **Phases 0–4 are complete and live.** The phase write-ups below cover Phases 0 and 1 in detail; Phases 2, 3 and 4 landed afterwards and are recorded in the commit logs of `public-library`, `stega-now`, `labs-stegassette` and the new `stegassette-jobs` rather than here. Net result: one implementation of STGC published as a bundle, `amplib.app` is the library, `stega.now` serves every stegassette surface, and the content pipeline has its own repo.
 
 ## 1. Where things stand
 
