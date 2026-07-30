@@ -99,6 +99,29 @@ jobs:
       # moving geese-basement into site
       - run: mv ./machines/geese-basement/dist ./site/geese-basement
 
+      # Publishing the codec bundle at amplib.app/lib/stegassette.js.
+      # This is how the library distributes itself to the static sites that
+      # cannot consume an ESM package: stega.now, its galleries, and the lab's
+      # editor all load the codec with a plain <script src>. Consumers vendor a
+      # copy and verify it against this URL — see docs/stegassette-consolidation.md.
+      - run: npm i
+        working-directory: packages/amplib-steganography
+      - run: npm run build
+        working-directory: packages/amplib-steganography
+      - run: mkdir -p ./site/lib
+      - run: cp ./packages/amplib-steganography/dist/stegassette.global.js ./site/lib/stegassette.js
+      # The job schema ships separately: the editor and batch runner need it,
+      # the player and galleries do not, so it stays out of the codec bundle.
+      - run: cp ./packages/amplib-steganography/dist/jobSchema.global.js ./site/lib/stegassette-jobs.js
+      # A version-stamped copy alongside it, so a consumer can pin one build
+      # while `stegassette.js` keeps tracking the latest.
+      - name: Publish a version-stamped copy
+        run: |
+          V=$(node --input-type=module -e "import('./packages/amplib-steganography/dist/node.js').then(m => process.stdout.write(m.Stegassette.CODEC_VERSION))")
+          echo "codec version: $V"
+          cp ./site/lib/stegassette.js "./site/lib/stegassette-$V.js"
+          cp ./site/lib/stegassette-jobs.js "./site/lib/stegassette-jobs-$V.js"
+
       - name: Setup Pages
         uses: actions/configure-pages@v3
       - name: Upload artifact

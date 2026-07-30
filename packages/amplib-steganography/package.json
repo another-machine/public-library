@@ -10,24 +10,31 @@
   },
   "exports": {
     ".": "./dist/index.js",
-    "./node": "./dist/node.js"
+    "./node": "./dist/node.js",
+    "./job-schema": "./dist/jobSchema.js"
   },
   "tsup": {
     "entry": [
       "src/index.ts",
-      "src/node.ts"
+      "src/node.ts",
+      "src/jobSchema.js"
     ],
     "clean": true,
-    "dts": true,
+    "dts": false,
     "format": "esm",
     "minify": false,
     "sourcemap": true,
     "splitting": false,
-    "external": ["pngjs"]
+    "external": [
+      "pngjs"
+    ]
   },
   "scripts": {
-    "build": "tsup",
-    "watch": "tsup --watch"
+    "build": "tsup && npm run build:global",
+    "build:global": "tsup src/stegassette.ts --format iife --global-name Stegassette --out-dir dist --sourcemap --no-dts --clean false && tsup src/jobSchema.js --format iife --global-name StegassetteJobs --out-dir dist --sourcemap --no-dts --clean false",
+    "watch": "tsup --watch",
+    "test:parity": "npm run build && node scripts/test-parity.mjs",
+    "build:types": "tsup --dts-only"
   },
   "optionalDependencies": {
     "pngjs": "^7.0.0"

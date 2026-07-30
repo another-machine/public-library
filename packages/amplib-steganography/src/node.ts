@@ -18,11 +18,34 @@
 // pngjs is only available in this Node bundle (optional dependency)
 import { PNG } from "pngjs";
 import { createReadStream, createWriteStream } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
 import { Img } from "./Stegassette/Img";
+import { decodeWav, encodeWav } from "./wav";
+import type { WavData } from "./wav";
 import type { StegaImageData } from "./Stegassette/types";
 
 // Re-export the entire pure Stegassette core so consumers get one import
 export * as Stegassette from "./Stegassette/index";
+
+// WAV I/O lives on the Node entry only — the browser has decodeAudioData.
+export { decodeWav, encodeWav } from "./wav";
+export type { WavData } from "./wav";
+
+/** Read a WAV file from disk into its format fields and raw PCM payload. */
+export async function readWav(path: string): Promise<WavData> {
+  return decodeWav(new Uint8Array(await readFile(path)));
+}
+
+/** Write raw PCM bytes to disk as a WAV file. */
+export async function writeWav(
+  path: string,
+  pcm: Uint8Array,
+  sampleRate: number,
+  channels: number,
+  bitsPerSample: number
+): Promise<void> {
+  await writeFile(path, encodeWav(pcm, sampleRate, channels, bitsPerSample));
+}
 
 /**
  * Read a PNG file from disk and return a StegaImageData (RGBA Uint8Array).

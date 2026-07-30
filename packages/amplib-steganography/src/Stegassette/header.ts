@@ -11,7 +11,13 @@ import type { ChannelPlan, CombineName, KeymapName, StgcOpts, TraversalName, Tra
 const STGC_MAGIC = [0x53, 0x54, 0x47, 0x43] as const; // "STGC"
 const STGC_VERSION = 1;
 
-export { STGC_MAGIC, STGC_VERSION };
+// CODEC_VERSION identifies this *implementation*, not the on-disk format (that's
+// STGC_VERSION). It is kept deliberately in lockstep with CODEC_VERSION in the
+// lab's lib/steg-core.js: the two are separate implementations of one format,
+// and a mismatch means they have drifted. Bump both together.
+const CODEC_VERSION = "2026.07.29";
+
+export { CODEC_VERSION, STGC_MAGIC, STGC_VERSION };
 
 interface DescriptorOpts {
   combine: CombineName;

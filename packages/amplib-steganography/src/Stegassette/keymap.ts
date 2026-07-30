@@ -43,6 +43,42 @@ function snapToKey(px: number, py: number, IW: number, IH: number): [number, num
   return [px, py > 0 ? py - 1 : Math.min(py + 1, IH - 1)];
 }
 
+/**
+ * Validate and default the `keymap` option at a PUBLIC boundary.
+ *
+ * Catches one specific migration hazard: the lab's `steg-core.js` names this
+ * option `keyMap`, this package names it `keymap`. That is the only naming
+ * divergence in the whole option surface, so a call site ported from the lab
+ * that keeps `keyMap` falls through to the `"adjacent"` default and silently
+ * encodes with the wrong keymap — self-consistent output, correctly labelled
+ * in the header, and quietly not what was asked for. Fail loudly instead.
+ *
+ * Must be called where caller-supplied options first arrive (encodeContainer,
+ * encodeImageData). By the time options reach writeInterior/readInterior they
+ * have been normalized and the misspelling is already lost.
+ */
+export function resolveKeymapName(opts: { keymap?: KeymapName }): KeymapName {
+  const loose = opts as Record<string, unknown>;
+  if (loose.keyMap !== undefined && loose.keymap === undefined) {
+    throw new Error(
+      'Stegassette options use `keymap` (lowercase "m"), not `keyMap`. ' +
+        "The lab's steg-core.js spells it `keyMap`; passing that here would " +
+        'silently fall back to "adjacent".'
+    );
+  }
+  const name = (opts.keymap || "adjacent") as KeymapName;
+  if (!KEYMAP[name]) throw new Error(`unknown keymap: ${name}`);
+  return name;
+}
+
+/** Look up the keymap function for already-normalized internal options. */
+export function resolveKeymap(opts: {
+  keymap?: KeymapName;
+  params?: TraversalParams;
+}): KeymapFn {
+  return KEYMAP[resolveKeymapName(opts)];
+}
+
 export const KEYMAP: Record<KeymapName, KeymapFn> = {
   // one pixel left on even rows, one right on odd rows, reflected back inside
   // the interior at the edges (always lands on an in-bounds key pixel)

@@ -2,7 +2,7 @@ import { Img } from "./Img";
 import { COMBINE, ENCODE_OP, KEY_MOD } from "./combine";
 import { buildInteriorStream, containerInteriorBytes, entryTableSize, parseEntryTable } from "./entries";
 import { applyAlphaHeader, isDefaultPlan, packStgcHeader, serializeChannelPlan, unpackStgcHeaderAlpha } from "./header";
-import { KEYMAP } from "./keymap";
+import { resolveKeymap, resolveKeymapName } from "./keymap";
 import { normalizeChannelPlan } from "./channelPlan";
 import { getPathIndices } from "./traversal";
 import type {
@@ -37,8 +37,7 @@ function writeInterior(
   const IW = img.width - 2 * B, IH = img.height - 2 * B;
   const path = getPathIndices(IW, IH, opts.traversal || "raster", opts.params);
   const { slots, broadcast } = opts.plan;
-  const km = KEYMAP[opts.keymap || "adjacent"];
-  if (!km) throw new Error(`unknown keymap: ${opts.keymap}`);
+  const km = resolveKeymap(opts);
   const params = opts.params;
   let ai = 0;
 
@@ -95,8 +94,7 @@ function readInterior(
   const IW = img.width - 2 * B, IH = img.height - 2 * B;
   const path = getPathIndices(IW, IH, opts.traversal || "raster", opts.params);
   const { slots, broadcast } = opts.plan;
-  const km = KEYMAP[opts.keymap || "adjacent"];
-  if (!km) throw new Error(`unknown keymap: ${opts.keymap}`);
+  const km = resolveKeymap(opts);
   const params = opts.params;
   const out = new Uint8Array(byteLength);
   let ai = 0;
@@ -172,7 +170,7 @@ export function encodeContainer(
     params.seed = (Math.random() * 0x100000000) >>> 0;
   }
 
-  const keymap: KeymapName = opts.keymap || "adjacent";
+  const keymap: KeymapName = resolveKeymapName(opts);
   const traversal = opts.traversal || "raster";
   const combine: CombineName = opts.combine || "xor";
 

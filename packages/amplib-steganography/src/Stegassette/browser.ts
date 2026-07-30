@@ -12,6 +12,7 @@
 import { createCanvasAndContext } from "../utilities";
 import { Img } from "./Img";
 import { encodeContainer, decodeContainer } from "./container";
+import { resolveKeymapName } from "./keymap";
 import { autoScaleImg, resolveBorderWidth } from "./geometry";
 import { normalizeChannelPlan, isDefaultPlan, serializeChannelPlan } from "./channelPlan";
 import { containerInteriorBytes, entryTableSize } from "./entries";
@@ -26,7 +27,7 @@ function estimatedHeaderPixels(
 ): number {
   return packStgcHeader({
     combine: (opts.combine || "xor") as CombineName,
-    keymap: (opts.keymap || "adjacent") as KeymapName,
+    keymap: resolveKeymapName(opts),
     traversal: opts.traversal || "raster",
     interiorByteLength: 0,
     entryCount,
@@ -51,8 +52,17 @@ function ringPixelCount(W: number, H: number, B: number): number {
 export * from "./index";
 
 // Browser-only reveal player (audio playback with waveform removal).
-export { createRevealPlayer, RevealPlayer } from "./player";
+export { createRevealPlayer, createSeekableReveal, RevealPlayer } from "./player";
 export type { CreateRevealPlayerParams } from "./player";
+
+// The shared reveal mechanism, and the caller-driven level built on it.
+export {
+  RevealSurface,
+  SeekableReveal,
+  animateReveal,
+  revealSpanForEntry,
+} from "./revealSurface";
+export type { RevealSpan, RevealSurfaceOptions } from "./revealSurface";
 
 // ---- helpers --------------------------------------------------
 

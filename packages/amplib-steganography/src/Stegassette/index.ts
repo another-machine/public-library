@@ -45,7 +45,7 @@ export {
 } from "./combine";
 
 // ---- keymaps -------------------------------------------------
-export { KEYMAP, KEYMAP_NAMES } from "./keymap";
+export { KEYMAP, KEYMAP_NAMES, resolveKeymapName } from "./keymap";
 
 // ---- traversals ----------------------------------------------
 export { TRAVERSAL_NAMES, getPath, getPathIndices } from "./traversal";
@@ -62,6 +62,7 @@ export {
 
 // ---- header --------------------------------------------------
 export {
+  CODEC_VERSION,
   STGC_MAGIC,
   STGC_VERSION,
   applyAlphaHeader,
@@ -109,12 +110,35 @@ export {
 } from "./audio";
 export type { BuildAudioEntryParams, ParsedAudioEntry } from "./audio";
 
+// ---- encode-side audio pipeline (env-agnostic tail) ----------
+export {
+  NORMALIZE_DEFAULT_DB,
+  deinterleave,
+  prepareAudioEntry,
+  resolveAudioRates,
+  resolveNormalize,
+} from "./audioPrep";
+export type {
+  AudioRateMode,
+  PrepareAudioEntryParams,
+  ResolveAudioRatesParams,
+  ResolvedAudioRates,
+} from "./audioPrep";
+
 // ---- cover reconstruction ------------------------------------
 export { reconstructCover, KEY_PRESERVING } from "./reconstruct";
 
 // ---- pure container (StegaImageData ↔ StegaImageData) --------
 import { Img } from "./Img";
 import { encodeContainer, decodeContainer } from "./container";
+import { resolveKeymapName } from "./keymap";
+
+// The container primitives are public: callers that size their own canvas
+// (the lab's editor and batch runner both do, via autoScaleImg) need to
+// encode at this level rather than through encodeImageData's auto-scaling.
+// NOTE the argument order differs from the lab's steg-core.js, which takes
+// (entries, srcImg, keyImg, opts) — here opts comes third.
+export { encodeContainer, decodeContainer };
 import { autoScaleImg, resolveBorderWidth } from "./geometry";
 import { normalizeChannelPlan, isDefaultPlan, serializeChannelPlan } from "./channelPlan";
 import { containerInteriorBytes, entryTableSize } from "./entries";
@@ -133,7 +157,7 @@ function estimatedHeaderPixels(
 ): number {
   return packStgcHeader({
     combine: (opts.combine || "xor") as CombineName,
-    keymap: (opts.keymap || "adjacent") as KeymapName,
+    keymap: resolveKeymapName(opts),
     traversal: opts.traversal || "raster",
     interiorByteLength: 0, // doesn't affect length
     entryCount,

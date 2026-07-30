@@ -2,11 +2,14 @@
  * Browser reveal player for Stegassette images.
  *
  * Plays the audio hidden in an encoded image while visually removing the
- * waveform: a base canvas holds the reconstructed cover (reconstructCover),
- * an overlay canvas holds the encoded image, and as playback advances the
- * overlay is cleared pixel-by-pixel in audio order — revealing the original
- * image in sync with the sound. Ported from the labs stegassette editor
- * (index.html pload/pplay/pframe).
+ * waveform, revealing the original cover in sync with the sound. Ported from
+ * the labs stegassette editor (index.html pload/pplay/pframe).
+ *
+ * The pixel mechanism — stacked base/overlay canvases, traversal-ordered
+ * erasure, batched uploads — lives in ./revealSurface and is shared with
+ * SeekableReveal, which the standalone player drives from its own playhead.
+ * This class is the self-driving level: it owns the AudioBuffers and the clock
+ * for one or more audio tracks.
  *
  * DOM-dependent: exported via ./browser, not the pure core.
  */
@@ -14,10 +17,8 @@
 import { Img } from "./Img";
 import { decodeContainer } from "./container";
 import { isAudioEntry, parseAudioEntry } from "./audio";
-import { computeRevealOrder } from "./pcm";
-import { reconstructCover } from "./reconstruct";
-import { getPathIndices } from "./traversal";
-import { KEYMAP } from "./keymap";
+import { RevealSurface, SeekableReveal, revealSpanForEntry } from "./revealSurface";
+import type { RevealSpan } from "./revealSurface";
 import type { DecodedEntry, StgcOpts } from "./types";
 
 export interface CreateRevealPlayerParams {
@@ -32,9 +33,7 @@ interface RevealTrack {
   channels: Float32Array[];
   sampleRate: number;
   dur: number;
-  audioStartPxIdx: number;
-  audioEndPxIdx: number;
-  revealOrder: Int32Array;
+  span: RevealSpan;
   fillIdx: number;
   buffer: AudioBuffer | null;
 }
@@ -87,6 +86,7 @@ async function rawImg(
 }
 
 export class RevealPlayer {
+  readonly surface: RevealSurface;
   readonly element: HTMLDivElement;
   readonly baseCanvas: HTMLCanvasElement;
   readonly overlayCanvas: HTMLCanvasElement;
@@ -98,14 +98,7 @@ export class RevealPlayer {
   readonly duration: number;
 
   private audioContext: AudioContext;
-  private baseCtx: CanvasRenderingContext2D;
-  private overlayCtx: CanvasRenderingContext2D;
-  private encodedCanvas: HTMLCanvasElement;
-  private pathIdx: Uint32Array;
   private tracks: RevealTrack[];
-  private B: number;
-  private IW: number;
-  private IH: number;
   private sources: AudioBufferSourceNode[] = [];
   private rafId: number | null = null;
   private t0 = 0;
@@ -123,38 +116,21 @@ export class RevealPlayer {
     this.entries = entries;
     this.width = img.width;
     this.height = img.height;
-    this.B = opts.borderWidth;
-    this.IW = img.width - 2 * this.B;
-    this.IH = img.height - 2 * this.B;
-    this.pathIdx = getPathIndices(
-      this.IW,
-      this.IH,
-      opts.traversal,
-      opts.params ?? {}
-    );
 
-    const bpp = opts.plan?.bytesPerPixel ?? 3;
+    this.surface = new RevealSurface(img, opts, { className });
+    this.element = this.surface.element;
+    this.baseCanvas = this.surface.baseCanvas;
+    this.overlayCanvas = this.surface.overlayCanvas;
+
+    const bpp = this.surface.bytesPerPixel;
+    const pathLen = this.surface.pathIdx.length;
     this.tracks = entries.filter(isAudioEntry).map((entry) => {
       const parsed = parseAudioEntry(entry);
-      const audioStartPxIdx = Math.floor(entry.dataOffset / bpp);
-      const audioEndPxIdx = Math.min(
-        Math.ceil((entry.dataOffset + entry.data.length) / bpp),
-        this.pathIdx.length
-      );
       return {
         channels: parsed.channels,
         sampleRate: parsed.sampleRate,
         dur: parsed.channels[0].length / parsed.sampleRate,
-        audioStartPxIdx,
-        audioEndPxIdx,
-        revealOrder: computeRevealOrder({
-          pathLen: audioEndPxIdx - audioStartPxIdx,
-          channels: parsed.channels.length,
-          bits: parsed.bitsPerSample,
-          layout: parsed.layout,
-          blockSize: parsed.blockSize,
-          bytesPerPixel: bpp,
-        }),
+        span: revealSpanForEntry(entry, bpp, pathLen),
         fillIdx: 0,
         buffer: null,
       };
@@ -164,81 +140,22 @@ export class RevealPlayer {
     }
     this.duration = this.tracks[0].dur;
 
-    // Encoded image kept at native size for overlay redraws
-    this.encodedCanvas = document.createElement("canvas");
-    this.encodedCanvas.width = img.width;
-    this.encodedCanvas.height = img.height;
-    const encCtx = this.encodedCanvas.getContext("2d")!;
-    const encImageData = new ImageData(
-      new Uint8ClampedArray(img.data.buffer, img.data.byteOffset, img.data.length),
-      img.width,
-      img.height
-    );
-    encCtx.putImageData(encImageData, 0, 0);
-
-    // Wrapper with stacked base (reconstruction) + overlay (encoded) canvases
-    this.element = document.createElement("div");
-    this.element.className = className;
-    this.baseCanvas = document.createElement("canvas");
-    this.baseCanvas.className = "base";
-    this.overlayCanvas = document.createElement("canvas");
-    this.overlayCanvas.className = "overlay";
-    this.baseCanvas.width = this.overlayCanvas.width = img.width;
-    this.baseCanvas.height = this.overlayCanvas.height = img.height;
-    this.element.append(this.baseCanvas, this.overlayCanvas);
-    this.baseCtx = this.baseCanvas.getContext("2d")!;
-    this.overlayCtx = this.overlayCanvas.getContext("2d")!;
-
-    // Base layer: reconstructed cover, smoothly upscaled if half-res
-    const recon = reconstructCover(img, opts);
-    const tmp = document.createElement("canvas");
-    tmp.width = recon.width;
-    tmp.height = recon.height;
-    const tmpCtx = tmp.getContext("2d")!;
-    const reconData =
-      recon.data instanceof Uint8ClampedArray
-        ? recon.data
-        : new Uint8ClampedArray(
-            recon.data.buffer,
-            recon.data.byteOffset,
-            recon.data.length
-          );
-    tmpCtx.putImageData(new ImageData(reconData, recon.width, recon.height), 0, 0);
-    this.baseCtx.imageSmoothingEnabled = true;
-    this.baseCtx.drawImage(tmp, 0, 0, img.width, img.height);
-
-    this.drawEncodedOverlay();
+    this.restart();
   }
 
-  /** Paint the full encoded image on the overlay, border cleared so the reconstruction rings it. */
-  private drawEncodedOverlay() {
-    const { width: W, height: H, B } = this;
-    this.overlayCtx.drawImage(this.encodedCanvas, 0, 0);
-    if (B > 0) {
-      this.overlayCtx.clearRect(0, 0, W, B);
-      this.overlayCtx.clearRect(0, H - B, W, B);
-      this.overlayCtx.clearRect(0, 0, B, H);
-      this.overlayCtx.clearRect(W - B, 0, B, H);
-    }
-  }
-
-  /** Clear the overlay at an interior path value and its keymapped partner. */
-  private clearOverlayAt(v: number) {
-    const { IW, IH, B, opts } = this;
-    const lx = v % IW;
-    const ly = (v / IW) | 0;
-    this.overlayCtx.clearRect(lx + B, ly + B, 1, 1);
-    const [klx, kly] = KEYMAP[opts.keymap](lx, ly, IW, IH, opts.params ?? {});
-    this.overlayCtx.clearRect(klx + B, kly + B, 1, 1);
-  }
-
-  /** Instantly reveal pixels that carry no audio (entry table, text entries, slack). */
-  private fillNonAudioPixels() {
-    const minStart = Math.min(...this.tracks.map((t) => t.audioStartPxIdx));
-    const maxEnd = Math.max(...this.tracks.map((t) => t.audioEndPxIdx));
-    for (let i = 0; i < minStart; i++) this.clearOverlayAt(this.pathIdx[i]);
-    for (let i = maxEnd; i < this.pathIdx.length; i++)
-      this.clearOverlayAt(this.pathIdx[i]);
+  /**
+   * Back to fully encoded, then instantly reveal everything no track covers —
+   * the entry table, text entries, and any slack past the payloads are not
+   * part of the timed sweep.
+   */
+  private restart(): void {
+    this.surface.reset();
+    const minStart = Math.min(...this.tracks.map((t) => t.span.startPxIdx));
+    const maxEnd = Math.max(...this.tracks.map((t) => t.span.endPxIdx));
+    this.surface.clearRange(0, minStart);
+    this.surface.clearRange(maxEnd, this.surface.pathIdx.length);
+    this.surface.flush();
+    for (const t of this.tracks) t.fillIdx = 0;
   }
 
   private frame = () => {
@@ -248,21 +165,23 @@ export class RevealPlayer {
       const loop = Math.floor(raw / this.duration);
       if (loop > this.loopCount) {
         this.loopCount = loop;
-        this.drawEncodedOverlay();
-        this.fillNonAudioPixels();
-        for (const t of this.tracks) t.fillIdx = 0;
+        this.restart();
       }
       for (const t of this.tracks) {
-        const pathLen = t.audioEndPxIdx - t.audioStartPxIdx;
+        const { startPxIdx, endPxIdx, revealOrder } = t.span;
+        const pathLen = endPxIdx - startPxIdx;
         const elapsed = raw % t.dur;
         const revealIdx = Math.min(
           Math.floor((elapsed / t.dur) * pathLen),
           pathLen - 1
         );
-        for (let i = t.fillIdx; i <= revealIdx; i++)
-          this.clearOverlayAt(this.pathIdx[t.audioStartPxIdx + t.revealOrder[i]]);
+        for (let i = t.fillIdx; i <= revealIdx; i++) {
+          this.surface.clearAt(startPxIdx + (revealOrder ? revealOrder[i] : i));
+        }
         t.fillIdx = Math.max(t.fillIdx, revealIdx + 1);
       }
+      // One upload per frame, covering everything this frame touched.
+      this.surface.flush();
     }
     this.rafId = requestAnimationFrame(this.frame);
   };
@@ -270,8 +189,7 @@ export class RevealPlayer {
   async play() {
     if (this.playing) return;
     await this.audioContext.resume();
-    this.drawEncodedOverlay();
-    this.fillNonAudioPixels();
+    this.restart();
     this.loopCount = 0;
     this.t0 = this.audioContext.currentTime + 0.02;
     this.sources = this.tracks.map((t) => {
@@ -284,7 +202,6 @@ export class RevealPlayer {
         for (let ch = 0; ch < t.channels.length; ch++)
           t.buffer.getChannelData(ch).set(t.channels[ch]);
       }
-      t.fillIdx = 0;
       const node = this.audioContext.createBufferSource();
       node.buffer = t.buffer;
       node.loop = true;
@@ -309,7 +226,8 @@ export class RevealPlayer {
     }
     this.sources = [];
     this.playing = false;
-    this.drawEncodedOverlay();
+    this.surface.reset();
+    this.surface.flush();
   }
 
   async toggle() {
@@ -334,4 +252,31 @@ export async function createRevealPlayer(
   const img = await rawImg(params.source);
   const decoded = decodeContainer(img);
   return new RevealPlayer(img, decoded, params);
+}
+
+/**
+ * Decode an image and build a caller-driven reveal for it — the counterpart to
+ * createRevealPlayer for callers that own their own playhead, or that want to
+ * reveal a specific entry (or the whole interior, with `entry: null`).
+ */
+export async function createSeekableReveal({
+  source,
+  entry = null,
+  className,
+}: {
+  source: HTMLImageElement | HTMLCanvasElement;
+  entry?: DecodedEntry | null;
+  className?: string;
+}): Promise<{
+  reveal: SeekableReveal;
+  entries: DecodedEntry[];
+  opts: StgcOpts;
+}> {
+  const img = await rawImg(source);
+  const decoded = decodeContainer(img);
+  return {
+    reveal: new SeekableReveal(img, decoded.opts, entry, { className }),
+    entries: decoded.entries,
+    opts: decoded.opts,
+  };
 }
