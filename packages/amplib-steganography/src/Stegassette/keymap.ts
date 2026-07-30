@@ -31,12 +31,15 @@ export const KEYMAP_NAMES: readonly KeymapName[] = [
  */
 function snapToKey(px: number, py: number, IW: number, IH: number): [number, number] {
   if (!isDataPixel(px, py)) return [px, py];
-  const first = py % 2 === 0 ? px - 1 : px + 1;
-  if (first >= 0 && first < IW) return [first, py];
-  const second = py % 2 === 0 ? px + 1 : px - 1;
-  if (second >= 0 && second < IW) return [second, py];
-  // 1-wide interior: the row holds no key pixel, so step to the row above/below
-  // (checkerboard parity flips, making the same x a key pixel there).
+  const inRow = py % 2 === 0 ? px - 1 : px + 1;
+  if (inRow >= 0 && inRow < IW) return [inRow, py];
+  // Orphan: this column has no in-row partner — the last column of every odd
+  // row on an odd-width interior, or a 1-wide interior. Step a row: the
+  // checkerboard parity flips, so the same column is a key pixel there, and it
+  // is one no other data pixel claims (on the neighbouring row the keys run
+  // 0, 2, … IW-3). Reflecting back in-row instead handed two data pixels the
+  // same key, which a key-modifying combine cannot survive — the second write
+  // destroys the bits the first stashed, so that byte is unrecoverable.
   return [px, py > 0 ? py - 1 : Math.min(py + 1, IH - 1)];
 }
 
