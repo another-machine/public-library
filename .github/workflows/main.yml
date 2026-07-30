@@ -113,6 +113,11 @@ jobs:
       # The job schema ships separately: the editor and batch runner need it,
       # the player and galleries do not, so it stays out of the codec bundle.
       - run: cp ./packages/amplib-steganography/dist/jobSchema.global.js ./site/lib/stegassette-jobs.js
+      # The Node build, for consumers that run outside a browser (the jobs
+      # pipeline). ESM, with fs/pngjs left external — vendored the same way the
+      # browser bundles are, rather than pulled from a registry at runtime.
+      - run: cp ./packages/amplib-steganography/dist/node.js ./site/lib/stegassette-node.js
+      - run: cp ./packages/amplib-steganography/dist/jobSchema.js ./site/lib/stegassette-jobs.mjs
       # A version-stamped copy alongside it, so a consumer can pin one build
       # while `stegassette.js` keeps tracking the latest.
       - name: Publish a version-stamped copy
@@ -121,6 +126,7 @@ jobs:
           echo "codec version: $V"
           cp ./site/lib/stegassette.js "./site/lib/stegassette-$V.js"
           cp ./site/lib/stegassette-jobs.js "./site/lib/stegassette-jobs-$V.js"
+          cp ./site/lib/stegassette-node.js "./site/lib/stegassette-node-$V.js"
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
