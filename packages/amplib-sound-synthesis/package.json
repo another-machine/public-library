@@ -1,7 +1,7 @@
 {
   "name": "@amplib/sound-synthesis",
   "description": "Making sound with the Web Audio API. FM voices, layers, drums, and the bus topology to hang them on.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
