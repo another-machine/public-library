@@ -1,37 +1,57 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Steganography | another machine</title>
     <style>
-      @import "../style.css";
+      @import "../amplib-docs.css";
+
+      /* Everything this page needs beyond the system. The waveform canvases are
+         drawn at a fixed pixel height by the example, so they are the one place
+         a page-local size is unavoidable. */
+      @layer docs.app {
+        #viz-full-waveform,
+        #viz-waveform-64,
+        #viz-lines-64 {
+          block-size: 100px;
+        }
+
+        #viz-pixels-64 {
+          aspect-ratio: 1;
+        }
+      }
     </style>
   </head>
   <body>
-    <header>
-      <h1>
-        <a href="/">another machine</a> Steganography
+    <header class="masthead">
+      <h1>Steganography</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
         <a
           href="https://github.com/another-machine/public-library/tree/main/packages/amplib-steganography"
-          >GitHub</a
+          >GitHub &#8599;</a
         >
-      </h1>
+      </div>
     </header>
 
-    <main>
+    <main class="doc">
       <section id="example-stega64">
-        <h2>Stega64 encodes and decodes messages in image pixels.</h2>
-        <p>
-          <code
-            >Stega64.encode({ source: HTMLImageElement | HTMLCanvasElement;
-            messages: string[]; encoding: Stega64Encoding; encodeMetadata:
-            boolean; minWidth?: number; minHeight?: number; borderWidth?:
-            number; }): HTMLCanvasElement</code
-          >
+        <h2>Stega64</h2>
+        <p class="ht-type-prose u-dim">
+          Stega64 encodes and decodes messages in image pixels.
         </p>
-        <pre><code>const source = await <a href="#load-image-from-image-url">loadImageFromImageUrl</a>({
-  url: "./example.jpg" 
+        <p class="signature">
+          Stega64.encode({ source: HTMLImageElement | HTMLCanvasElement;
+          messages: string[]; encoding: Stega64Encoding; encodeMetadata:
+          boolean; minWidth?: number; minHeight?: number; borderWidth?: number;
+          }): HTMLCanvasElement
+        </p>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">const source = await <a href="#load-image-from-image-url">loadImageFromImageUrl</a>({
+  url: "./example.jpg"
 });
 Stega64.encode({
   source,
@@ -42,38 +62,49 @@ Stega64.encode({
   minHeight: <span data-value="minHeight"></span>,
   borderWidth: <span data-value="borderWidth"></span>,
   aspectRatio: <span data-value="aspectRatio"></span>
-})</code></pre>
+})</pre>
 
-        <form></form>
+            <div class="ht-arrange-grid">
+              <!-- Caption first in both: the example appends its canvas to the
+                   end of the output figure, so a trailing caption would be
+                   pushed around by the render. -->
+              <figure class="frame u-pixelated">
+                <figcaption class="frame__caption">source</figcaption>
+                <img class="ht-media-raw" src="./example.jpg" />
+              </figure>
+              <figure class="frame u-pixelated">
+                <figcaption class="frame__caption">encoded</figcaption>
+              </figure>
+            </div>
+          </div>
 
-        <figure><img src="./example.jpg" /></figure>
-        <figure></figure>
+          <form class="fieldset-stack"></form>
+        </div>
 
-        <p>
-          <code
-            >Stega64.decode({ source: HTMLImageElement | HTMLCanvasElement;
-            encoding: Stega64Encoding; borderWidth?: number; }): String</code
-          >
+        <p class="signature">
+          Stega64.decode({ source: HTMLImageElement | HTMLCanvasElement;
+          encoding: Stega64Encoding; borderWidth?: number; }): String
         </p>
-
-        <pre><code>const result = Stega64.decode({ source });
-<span data-output="decode"></span></code></pre>
+        <pre class="code">const result = Stega64.decode({ source });
+<span data-output="decode"></span></pre>
       </section>
 
       <section id="example-stegassette">
-        <h2>
+        <h2>Stegassette</h2>
+        <p class="ht-type-prose u-dim">
           Stegassette encodes multi-payload entries in image pixels using the
           STGC format.
-        </h2>
-        <p>
-          <code
-            >Stegassette.encode({ source: HTMLImageElement | HTMLCanvasElement;
-            entries: Entry[]; combine?: CombineName; keymap?: KeymapName;
-            traversal?: TraversalName; bitsPerSample?: number; border?: number;
-            aspectRatio?: number; }): HTMLCanvasElement</code
-          >
         </p>
-        <pre><code>const audioBuffers = await <a href="#load-audio-buffers-from-audio-url">loadAudioBuffersFromAudioUrl</a>({
+        <p class="signature">
+          Stegassette.encode({ source: HTMLImageElement | HTMLCanvasElement;
+          entries: Entry[]; combine?: CombineName; keymap?: KeymapName;
+          traversal?: TraversalName; bitsPerSample?: number; border?: number;
+          aspectRatio?: number; }): HTMLCanvasElement
+        </p>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">const audioBuffers = await <a href="#load-audio-buffers-from-audio-url">loadAudioBuffersFromAudioUrl</a>({
   url: "./example.mp3",
   audioContext,
   channels: <span data-value="channels"></span>,
@@ -92,126 +123,132 @@ const encoded = Stegassette.encode({
   traversal: "<span data-value="traversal"></span>",
   border: <span data-value="border"></span>,
   aspectRatio: <span data-value="aspectRatio"></span>,
-});</code></pre>
+});</pre>
 
-        <form></form>
+            <div class="ht-arrange-grid">
+              <figure class="frame u-pixelated">
+                <img
+                  class="ht-media-raw"
+                  src="./lovetakesmiles.jpg"
+                />
+                <figcaption class="frame__caption">source</figcaption>
+              </figure>
 
-        <figure><img src="./lovetakesmiles.jpg" /></figure>
+              <!-- The reveal: the reconstruction develops under the encoded
+                   overlay as the audio plays. ht-arrange-layer stacks both
+                   canvases in one grid cell, so the taller one still sizes the
+                   box and no page-local absolute positioning is needed. -->
+              <figure class="frame u-pixelated" id="stegassette-reveal">
+                <div class="ht-arrange-layer" id="stegassette-img-wrap">
+                  <canvas
+                    class="ht-media-raw ht-media-flush"
+                    id="stegassette-recon-base"
+                  ></canvas>
+                  <canvas
+                    class="ht-media-raw ht-media-flush"
+                    id="stegassette-encoded-overlay"
+                  ></canvas>
+                </div>
+                <figcaption class="frame__caption" id="stegassette-caption">
+                  tap to play
+                </figcaption>
+              </figure>
+            </div>
 
-        <!-- Reveal display: encoded overlay develops into reconstructed base during playback -->
-        <figure id="stegassette-reveal">
-          <div class="steg-img-wrap" id="stegassette-img-wrap">
-            <canvas id="stegassette-recon-base"></canvas>
-            <canvas id="stegassette-encoded-overlay"></canvas>
+            <audio src="./example.mp3" hidden></audio>
           </div>
-          <figcaption id="stegassette-caption">tap to play</figcaption>
-        </figure>
 
-        <audio src="./example.mp3" style="display: none"></audio>
+          <form class="fieldset-stack"></form>
+        </div>
 
-        <p>
-          <code
-            >Stegassette.decode({ source: HTMLImageElement | HTMLCanvasElement |
-            StegaImageData }): { entries: DecodedEntry[]; opts: StgcOpts }</code
-          >
+        <p class="signature">
+          Stegassette.decode({ source: HTMLImageElement | HTMLCanvasElement |
+          StegaImageData }): { entries: DecodedEntry[]; opts: StgcOpts }
         </p>
-        <pre><code>const { entries, opts } = Stegassette.decode({ source: encoded });
+        <pre class="code">const { entries, opts } = Stegassette.decode({ source: encoded });
 <span data-output="decode-opts">// opts: { combine, keymap, traversal } recovered from STGC header</span>
 const { channels, sampleRate } = Stegassette.parseAudioEntry(entries[0]);
 const recon = Stegassette.reconstructCover(encoded, opts);
-// recon develops on the canvas in sync with audio playback</code></pre>
-
-        <style>
-          #stegassette-img-wrap {
-            position: relative;
-            display: block;
-            max-width: min(480px, 100%);
-            line-height: 0;
-          }
-          #stegassette-recon-base {
-            display: block;
-            width: 100%;
-            height: auto;
-          }
-          #stegassette-encoded-overlay {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-          }
-        </style>
+// recon develops on the canvas in sync with audio playback</pre>
       </section>
 
       <section id="example-visualization">
-        <h2>Encoding audio waveforms in image pixels.</h2>
-        <p>
+        <h2>StegaCassette</h2>
+        <p class="ht-type-prose u-dim">
+          Encoding audio waveforms in image pixels.
+        </p>
+        <p class="ht-type-small u-dim">
           This is a demonstration of how waveforms are stored inside of pixels
           using <code>StegaCassette</code>.
         </p>
+
         <audio src="./example-mono-24bit-48khz-765731.wav"></audio>
-        <div class="left-side">
-          <div class="visualization-container">
-            <figure>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <figure class="frame u-pixelated">
               <canvas id="viz-full-waveform"></canvas>
-              <figcaption>
+              <figcaption class="frame__caption">
                 Source waveform (drag to move the playhead)
               </figcaption>
             </figure>
-          </div>
-          <div class="visualization-container">
-            <div class="stack">
-              <figure>
-                <figcaption>
-                  <strong>64 sample</strong> waveform |
-                  <strong><span data-value="milliseconds">1.3</span>ms</strong>
-                  of audio
-                </figcaption>
-                <canvas id="viz-waveform-64"></canvas>
-                <canvas id="viz-lines-64"></canvas>
-                <figcaption>
-                  <strong><span data-value="bitDepth">24</span>-bit</strong> |
-                  <strong><span data-value="pixels">64</span> colors</strong>
-                  with red, green, and blue channels separated above |
+
+            <figure class="frame u-pixelated">
+              <figcaption class="frame__caption">
+                <strong>64 sample</strong> waveform |
+                <strong><span data-value="milliseconds">1.3</span>ms</strong>
+                of audio
+              </figcaption>
+              <canvas id="viz-waveform-64"></canvas>
+              <canvas id="viz-lines-64"></canvas>
+              <figcaption class="frame__caption">
+                <strong><span data-value="bitDepth">24</span>-bit</strong> |
+                <strong><span data-value="pixels">64</span> colors</strong>
+                with red, green, and blue channels separated above |
+                <strong
+                  ><span data-value="samplesPerPixel">1 sample</span></strong
+                >
+                per pixel
+              </figcaption>
+            </figure>
+
+            <div class="ht-arrange-grid">
+              <figure class="frame u-pixelated">
+                <figcaption class="frame__caption">
+                  <strong>64 sample</strong> waveform as a
                   <strong
-                    ><span data-value="samplesPerPixel">1 sample</span></strong
+                    ><span data-value="dimension">8</span>&times;<span
+                      data-value="dimension"
+                      >8</span
+                    >px image</strong
                   >
-                  per pixel
+                </figcaption>
+                <canvas id="viz-pixels-64"></canvas>
+              </figure>
+              <figure class="frame u-pixelated" id="viz-source-encoded">
+                <figcaption class="frame__caption">
+                  Source waveform encoded into image
                 </figcaption>
               </figure>
             </div>
           </div>
-          <div class="visualization-container">
-            <figure class="square">
-              <figcaption>
-                <strong>64 sample</strong> waveform as a
-                <strong
-                  ><span data-value="dimension">8</span>&times;<span
-                    data-value="dimension"
-                    >8</span
-                  >px image</strong
-                >
-              </figcaption>
-              <canvas id="viz-pixels-64"></canvas>
-            </figure>
-            <figure class="square" id="viz-source-encoded">
-              <figcaption>Source waveform encoded into image</figcaption>
-            </figure>
-          </div>
+
+          <form class="fieldset-stack"></form>
         </div>
-        <form></form>
       </section>
 
       <section id="stega-animator">
-        <h2>Animate steganographic image</h2>
-        <p>
-          <code
-            >new StegaAnimator({ resolution: number; source: HTMLImageElement |
-            HTMLCanvasElement; fadeAmount?: number; rotationMode?: "2d" | "3d";
-            shape?: "circle" | "square" | "implicit"; })</code
-          >
+        <h2>StegaAnimator</h2>
+        <p class="ht-type-prose u-dim">Animate steganographic image</p>
+        <p class="signature">
+          new StegaAnimator({ resolution: number; source: HTMLImageElement |
+          HTMLCanvasElement; fadeAmount?: number; rotationMode?: "2d" | "3d";
+          shape?: "circle" | "square" | "implicit"; })
         </p>
 
-        <pre><code>const animator = new StegaAnimator({
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">const animator = new StegaAnimator({
   source,
   resolution: <span data-value="resolution"></span>,
   fadeAmount: <span data-value="fadeAmount"></span>,
@@ -236,72 +273,69 @@ const killLoop = animator.animationLoop([
     rate: <span data-value="rate"></span>,
   },
 ]);
-killLoop();</code></pre>
+killLoop();</pre>
 
-        <form></form>
+            <figure class="frame u-pixelated"></figure>
+          </div>
 
-        <figure></figure>
+          <form class="fieldset-stack"></form>
+        </div>
       </section>
 
       <section id="load-audio-buffers-from-audio-url">
-        <h2>Load an audio buffer from a url string</h2>
-        <p>
-          <code
-            >async loadAudioBuffersFromAudioUrl({ url: string; audioContext:
-            AudioContext; channels: StegaCassetteChannels; sampleRate?: number;
-            }): Promise&lt;Float32Array[]></code
-          >
+        <h2>loadAudioBuffersFromAudioUrl</h2>
+        <p class="ht-type-prose u-dim">Load an audio buffer from a url string</p>
+        <p class="signature">
+          async loadAudioBuffersFromAudioUrl({ url: string; audioContext:
+          AudioContext; channels: StegaCassetteChannels; sampleRate?: number; }):
+          Promise&lt;Float32Array[]>
         </p>
-        <pre><code>const audioContext = new AudioContext();
+        <pre class="code">const audioContext = new AudioContext();
 const audioBuffer = await loadAudioBuffersFromAudioUrl({
   url: "./example.mp3",
   audioContext,
   sampleRate: audioContext.sampleRate,
-});</code></pre>
+});</pre>
       </section>
 
       <section id="load-image-from-image-url">
-        <h2>Load an image from a url string</h2>
-        <p>
-          <code
-            >async loadImageFromImageUrl({ url: string }):
-            Promise&lt;HTMLImageElement></code
-          >
+        <h2>loadImageFromImageUrl</h2>
+        <p class="ht-type-prose u-dim">Load an image from a url string</p>
+        <p class="signature">
+          async loadImageFromImageUrl({ url: string }):
+          Promise&lt;HTMLImageElement>
         </p>
-        <pre><code>const audioBuffer = await loadImageFromImageUrl({
+        <pre class="code">const audioBuffer = await loadImageFromImageUrl({
   url: "./example.jpg"
-});</code></pre>
+});</pre>
       </section>
 
       <section id="play-decoded-audio-buffers">
-        <h2>Play decoded audio buffers</h2>
-        <p>
-          <code
-            >async playDecodedAudioBuffers({ audioBuffers: Float32Array[];
-            audioContext: AudioContext; sampleRate?: number; }):
-            Promise&lt;AudioBufferSourceNode></code
-          >
+        <h2>playDecodedAudioBuffers</h2>
+        <p class="ht-type-prose u-dim">Play decoded audio buffers</p>
+        <p class="signature">
+          async playDecodedAudioBuffers({ audioBuffers: Float32Array[];
+          audioContext: AudioContext; sampleRate?: number; }):
+          Promise&lt;AudioBufferSourceNode>
         </p>
-        <pre><code>const source = await playDecodedAudioBuffers({
+        <pre class="code">const source = await playDecodedAudioBuffers({
   audioBuffers,
   audioContext,
   sampleRate: audioContext.sampleRate,
 });
-source.stop();</code></pre>
+source.stop();</pre>
       </section>
 
       <section>
-        <h2>Turn an HTML element into a file drop area</h2>
-        <p>
-          <code
-            >createDropReader({ element: HTMLElement; onSuccess: (element:
-            HTMLImageElement | HTMLAudioElement) => void; onFailure?: (message:
-            string) => void; onDragEnter?: () => void; onDragLeave?: () => void;
-            onDrop?: () => void; types?: (AudioType | ImageType)[]; }):
-            void</code
-          >
+        <h2>createDropReader</h2>
+        <p class="ht-type-prose u-dim">Turn an HTML element into a file drop area</p>
+        <p class="signature">
+          createDropReader({ element: HTMLElement; onSuccess: (element:
+          HTMLImageElement | HTMLAudioElement) => void; onFailure?: (message:
+          string) => void; onDragEnter?: () => void; onDragLeave?: () => void;
+          onDrop?: () => void; types?: (AudioType | ImageType)[]; }): void
         </p>
-        <pre><code>const element = document.body;
+        <pre class="code">const element = document.body;
 createDropReader({
   element,
   onSuccess: (image) => element.appendChild(image),
@@ -310,21 +344,20 @@ createDropReader({
   onDragLeave: () => element.classList.remove("droppable"),
   onDrop: () => element.classList.remove("droppable"),
   types: ["image/*"]
-});</code></pre>
+});</pre>
       </section>
 
       <section>
-        <h2>Turn an HTML input into a file input</h2>
-        <p>
-          <code
-            >createFileReader({ element: HTMLInputElement; onSuccess: (element:
-            HTMLImageElement | HTMLAudioElement) => void; onBinarySuccess?:
-            (result: { data: Uint8Array; mimeType: string; fileName: string })
-            => void; onFailure?: (message: string) => void; types?: (AudioType |
-            ImageType | VideoType | "*/*")[]; }): void</code
-          >
+        <h2>createFileReader</h2>
+        <p class="ht-type-prose u-dim">Turn an HTML input into a file input</p>
+        <p class="signature">
+          createFileReader({ element: HTMLInputElement; onSuccess: (element:
+          HTMLImageElement | HTMLAudioElement) => void; onBinarySuccess?:
+          (result: { data: Uint8Array; mimeType: string; fileName: string }) =>
+          void; onFailure?: (message: string) => void; types?: (AudioType |
+          ImageType | VideoType | "*/*")[]; }): void
         </p>
-        <pre><code>const element = document.createElement("input");
+        <pre class="code">const element = document.createElement("input");
 createFileReader({
   element,
   onSuccess: (image) => document.body.appendChild(image),
@@ -339,56 +372,52 @@ createFileReader({
     console.log(`Loaded ${fileName} (${mimeType}): ${data.length} bytes`);
   },
   types: ["*/*"]
-});</code></pre>
+});</pre>
       </section>
 
       <section>
-        <h2>Read a file as binary bytes</h2>
-        <p>
-          <code
-            >readFileAsBytes({ file: File }): Promise&lt;{ data: Uint8Array;
-            mimeType: string; fileName: string }></code
-          >
+        <h2>readFileAsBytes</h2>
+        <p class="ht-type-prose u-dim">Read a file as binary bytes</p>
+        <p class="signature">
+          readFileAsBytes({ file: File }): Promise&lt;{ data: Uint8Array;
+          mimeType: string; fileName: string }>
         </p>
-        <pre><code>const input = document.createElement("input");
+        <pre class="code">const input = document.createElement("input");
 input.type = "file";
 input.onchange = async () => {
   const file = input.files[0];
   const { data, mimeType, fileName } = await readFileAsBytes({ file });
   console.log(`Read ${fileName} (${mimeType}): ${data.length} bytes`);
-};</code></pre>
+};</pre>
       </section>
 
       <section>
-        <h2>Convert binary data to a Blob URL</h2>
-        <p>
-          <code
-            >bytesToBlobUrl({ data: Uint8Array; mimeType: string }):
-            string</code
-          >
+        <h2>bytesToBlobUrl</h2>
+        <p class="ht-type-prose u-dim">Convert binary data to a Blob URL</p>
+        <p class="signature">
+          bytesToBlobUrl({ data: Uint8Array; mimeType: string }): string
         </p>
-        <pre><code>const url = bytesToBlobUrl({ data: myBytes, mimeType: "image/png" });
+        <pre class="code">const url = bytesToBlobUrl({ data: myBytes, mimeType: "image/png" });
 const img = document.createElement("img");
 img.src = url;
 document.body.appendChild(img);
 
 // Remember to revoke when done
-URL.revokeObjectURL(url);</code></pre>
+URL.revokeObjectURL(url);</pre>
       </section>
 
       <section>
-        <h2>Download binary data as a file</h2>
-        <p>
-          <code
-            >downloadBytes({ data: Uint8Array; mimeType: string; fileName:
-            string }): void</code
-          >
+        <h2>downloadBytes</h2>
+        <p class="ht-type-prose u-dim">Download binary data as a file</p>
+        <p class="signature">
+          downloadBytes({ data: Uint8Array; mimeType: string; fileName: string
+          }): void
         </p>
-        <pre><code>downloadBytes({
+        <pre class="code">downloadBytes({
   data: myBytes,
   mimeType: "application/pdf",
   fileName: "document.pdf"
-});</code></pre>
+});</pre>
       </section>
     </main>
 

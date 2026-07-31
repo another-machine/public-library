@@ -92,14 +92,19 @@ export function createForm<T extends Record<string, string | number>>({
     });
   }
 
+  // A .field row: label and control as siblings, label first. The form itself
+  // carries .fieldset-stack in the markup, so a row only has to be a row.
   for (const inputKey in inputs) {
     const input = inputs[inputKey];
     const label = document.createElement("label");
+    const row = document.createElement("div");
+    row.className = "field";
+    row.appendChild(label);
+    label.textContent = input.name;
     if (input.hidden) {
-      label.className = "hidden";
+      row.hidden = true;
     }
-    label.innerHTML = `<span>${input.name}</span>`;
-    form.appendChild(label);
+    form.appendChild(row);
 
     const id = `input-${Math.round(Math.random() * 1000000)}-${input.name
       .replace(/^[a-z0-9]+/i, "-")
@@ -123,7 +128,7 @@ export function createForm<T extends Record<string, string | number>>({
           () => element.value as T[typeof inputKey]
         )
       );
-      label.appendChild(element);
+      row.appendChild(element);
     } else if (input.type === "number" || input.type === "range") {
       const element = document.createElement("input");
       if (input.readOnly) {
@@ -150,7 +155,7 @@ export function createForm<T extends Record<string, string | number>>({
           () => parseFloat(element.value) as T[typeof inputKey]
         )
       );
-      label.appendChild(element);
+      row.appendChild(element);
     } else if (input.type === "select") {
       const element = document.createElement("select");
       if (input.readOnly) {
@@ -170,7 +175,7 @@ export function createForm<T extends Record<string, string | number>>({
           0
         )
       );
-      label.appendChild(element);
+      row.appendChild(element);
     }
   }
 

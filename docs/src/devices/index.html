@@ -1,121 +1,128 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Devices | another machine</title>
     <style>
-      @import "../style.css";
+      @import "../amplib-docs.css";
     </style>
   </head>
   <body>
-    <header>
-      <h1>
-        <a href="/">another machine</a> Devices
+    <header class="masthead">
+      <h1>Devices</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
         <a
           href="https://github.com/another-machine/public-library/tree/main/packages/amplib-devices"
-          >GitHub</a
+          >GitHub &#8599;</a
         >
-      </h1>
+      </div>
     </header>
 
-    <main>
+    <main class="doc">
       <section id="example-orientation">
         <h2>DeviceOrientation</h2>
-        <p>
-          <code
-            >new DeviceOrientation({ handler: (args: DeviceOrientationEventArgs)
-            => void; });
-          </code>
+        <p class="signature">
+          new DeviceOrientation({ handler: (args: DeviceOrientationEventArgs) =>
+          void; });
         </p>
-        <p>
-          <code
-            >interface DeviceOrientationEventArgs { absolute: boolean; alpha:
-            number | null; beta: number | null; gamma: number | null; }
-          </code>
+        <p class="signature">
+          interface DeviceOrientationEventArgs { absolute: boolean; alpha:
+          number | null; beta: number | null; gamma: number | null; }
         </p>
-        <pre><code>new DeviceOrientation({
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">new DeviceOrientation({
   handler: (params) => {
     result.innerHTML = JSON.stringify(params, null, 2);
   }
-}).initialize();</code></pre>
+}).initialize();</pre>
 
-        <form></form>
+            <pre class="code"><span data-output="orientation-result">// Waiting for initialization...</span></pre>
+          </div>
 
-        <pre><code><span data-output="orientation-result">// Waiting for initialization...</span></code></pre>
+          <form class="fieldset-stack"></form>
+        </div>
       </section>
 
       <section id="example-movement">
         <h2>DeviceMovement</h2>
-        <p>
-          <code
-            >new DeviceMovement({ handler: (args: DeviceMovementEventArgs) =>
-            void; });
-          </code>
+        <p class="signature">
+          new DeviceMovement({ handler: (args: DeviceMovementEventArgs) =>
+          void; });
         </p>
-        <p>
-          <code
-            >interface DeviceMovementEventArgs { acceleration:
-            DeviceMotionEventAcceleration | null; accelerationIncludingGravity:
-            DeviceMotionEventAcceleration | null; rotationRate:
-            DeviceMotionEventRotationRate | null; interval: number; }
-          </code>
+        <p class="signature">
+          interface DeviceMovementEventArgs { acceleration:
+          DeviceMotionEventAcceleration | null; accelerationIncludingGravity:
+          DeviceMotionEventAcceleration | null; rotationRate:
+          DeviceMotionEventRotationRate | null; interval: number; }
         </p>
-        <pre><code>new DeviceMovement({
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">new DeviceMovement({
   handler: (params) => {
     result.innerHTML = JSON.stringify(params, null, 2);
   }
-}).initialize();</code></pre>
+}).initialize();</pre>
 
-        <form></form>
+            <pre class="code"><span data-output="movement-result">// Waiting for initialization...</span></pre>
+          </div>
 
-        <pre><code><span data-output="movement-result">// Waiting for initialization...</span></code></pre>
+          <form class="fieldset-stack"></form>
+        </div>
       </section>
 
       <section id="example-midi">
         <h2>MIDI</h2>
-        <p>
-          <code>new MIDI({ onEvent: (event: MIDIEvent) => void; }); </code>
+        <p class="signature">
+          new MIDI({ onEvent: (event: MIDIEvent) => void; });
         </p>
-        <p>
-          <code
-            >MIDIEvent { channel: number | null; device: Partial&lt;MIDIPort>;
-            a: EventData | null; b: EventData | null; type: string; }
-          </code>
+        <p class="signature">
+          MIDIEvent { channel: number | null; device: Partial&lt;MIDIPort>; a:
+          EventData | null; b: EventData | null; type: string; }
         </p>
-        <pre><code>new MIDI({
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">new MIDI({
   onEvent: (params) => {
     result.innerHTML = JSON.stringify(params, null, 2);
   }
-}).initialize();</code></pre>
+}).initialize();</pre>
 
-        <form></form>
+            <pre class="code"><span data-output="midi-result">// Waiting for initialization...</span></pre>
+          </div>
 
-        <pre><code><span data-output="midi-result">// Waiting for initialization...</span></code></pre>
+          <form class="fieldset-stack"></form>
+        </div>
       </section>
 
       <section id="example-userMediaStream">
         <h2>UserMediaStream</h2>
-        <p>
-          <code>new UserMediaStream(); </code>
+        <p class="signature">new UserMediaStream();</p>
+        <p class="signature">
+          start(MediaStreamConstraints: { audio?: boolean |
+          MediaTrackConstraints; peerIdentity?: string; preferCurrentTab?:
+          boolean; video?: boolean | MediaTrackConstraints; })
         </p>
-        <p>
-          <code
-            >start(MediaStreamConstraints: { audio?: boolean |
-            MediaTrackConstraints; peerIdentity?: string; preferCurrentTab?:
-            boolean; video?: boolean | MediaTrackConstraints; })
-          </code>
-        </p>
-        <pre><code>const stream = new UserMediaStream();
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">const stream = new UserMediaStream();
 const video = document.createElement("video");
 video.srcObject = await stream.start({ audio: true, video: true });
 video.autoplay = true;
 video.controls = true;
-result.appendChild(video);</code></pre>
+result.appendChild(video);</pre>
 
-        <form></form>
+            <figure class="frame"></figure>
+          </div>
 
-        <figure></figure>
+          <form class="fieldset-stack"></form>
+        </div>
       </section>
     </main>
 

@@ -1,48 +1,52 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sound Transformation | another machine</title>
     <style>
-      @import "../style.css";
+      @import "../amplib-docs.css";
     </style>
   </head>
   <body>
-    <header>
-      <h1>
-        <a href="/">another machine</a> Sound Transformation
+    <header class="masthead">
+      <h1>Sound Transformation</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
         <a
           href="https://github.com/another-machine/public-library/tree/main/packages/amplib-sound-transformation"
-          >GitHub</a
+          >GitHub &#8599;</a
         >
-      </h1>
+      </div>
     </header>
 
-    <main>
+    <main class="doc">
       <section>
-        <h2>SoundTransformation manipulates an audio buffer source node.</h2>
-        <p>
-          <code
-            >SoundTransformation({ audioContext: AudioContext }): { initialize({
-            audioBuffer: AudioBufferSourceNode; processorJSPath?: string;
-            processorScriptTag?: HTMLScriptElement; }): void}</code
-          >
+        <h2>SoundTransformation</h2>
+        <p class="ht-type-prose u-dim">
+          SoundTransformation manipulates an audio buffer source node.
+        </p>
+        <p class="signature">
+          SoundTransformation({ audioContext: AudioContext }): { initialize({
+          audioBuffer: AudioBufferSourceNode; processorJSPath?: string;
+          processorScriptTag?: HTMLScriptElement; }): void }
         </p>
 
-        <pre><code>const transformation = new SoundTransformation({
+        <div class="ht-arrange-sidebar">
+          <pre class="code">const transformation = new SoundTransformation({
   audioContext
 });
-transformation.initialize({ 
+transformation.initialize({
   audioBuffer,
   processorJSPath: "./path/to/processor"
 });
 transformation.adjustPitchBySemitones(<span data-value="semitones"></span>);
-transformation.adjustSpeedToBPM(<span data-value="bpm"></span>);</code></pre>
+transformation.adjustSpeedToBPM(<span data-value="bpm"></span>);</pre>
 
-        <form></form>
+          <form class="fieldset-stack"></form>
+        </div>
 
-        <audio style="display: none" src="./example.mp3" controls></audio>
+        <audio src="./example.mp3" controls hidden></audio>
       </section>
     </main>
 

@@ -1,246 +1,264 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Procedural Generation | another machine</title>
     <style>
-      @import "../style.css";
+      @import "../amplib-docs.css";
     </style>
   </head>
   <body>
-    <header>
-      <h1>
-        <a href="/">another machine</a> Procedural Generation
+    <header class="masthead">
+      <h1>Procedural Generation</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
         <a
           href="https://github.com/another-machine/public-library/tree/main/packages/amplib-procedural-generation"
-          >GitHub</a
+          >GitHub &#8599;</a
         >
-      </h1>
+      </div>
     </header>
 
-    <main>
+    <main class="doc">
       <section>
-        <h2>
+        <h2>GoldenRatio</h2>
+        <p class="ht-type-prose u-dim">
           GoldenRatio performs deterministic procedural generation in
           aesthetically pleasing distributions.
-        </h2>
-        <p>
-          <code>new GoldenRatio({ seed?: number })</code>
         </p>
-        <pre><code>const generator = new GoldenRatio();</code></pre>
+        <p class="signature">new GoldenRatio({ seed?: number })</p>
+        <pre class="code">const generator = new GoldenRatio();</pre>
 
-        <h3>
-          shouldEventOccur determines if a time occurs in an organic window
-        </h3>
-        <p>
-          <code
-            >shouldEventOccur({ time: number; eventWindow?: number;
-            cycleLength?: number }): boolean</code
-          >
+        <h3>shouldEventOccur</h3>
+        <p class="ht-type-prose u-dim">
+          Determines if a time occurs in an organic window.
         </p>
-        <pre><code>generator.shouldEventOccur({ 
-  time: <span data-output="gr-time"></span>,
+        <p class="signature">
+          shouldEventOccur({ time: number; eventWindow?: number; cycleLength?:
+          number }): boolean
+        </p>
+        <pre class="code">generator.shouldEventOccur({
+  time: <span data-output="gr-time" data-inline></span>,
   eventWindow: 1000,
   cycleLength: 10000
 });
 
-<span data-output="gr-1"></span></code></pre>
+<span data-output="gr-1"></span></pre>
 
-        <h3>
-          generate returns a deterministic but seemingly random value between
-          min and max
-        </h3>
-        <p>
-          <code
-            >generate({ time: number; min?: number; max?: number }):
-            number</code
-          >
+        <h3>generate</h3>
+        <p class="ht-type-prose u-dim">
+          Returns a deterministic but seemingly random value between min and
+          max.
         </p>
-        <pre><code>generator.generate({ 
-  time: <span data-output="gr-time"></span>
+        <p class="signature">
+          generate({ time: number; min?: number; max?: number }): number
+        </p>
+        <pre class="code">generator.generate({
+  time: <span data-output="gr-time" data-inline></span>
 });
 
-<span data-output="gr-2"></span></code></pre>
+<span data-output="gr-2"></span></pre>
 
-        <h3>noise2d returns a noise value at coordinates x, y</h3>
-        <p>
-          <code>noise2d({ x: number; y: number }): number</code>
+        <h3>noise2d</h3>
+        <p class="ht-type-prose u-dim">
+          Returns a noise value at coordinates x, y.
         </p>
-        <pre><code>generator.noise2d({ 
-  x: <span data-output="gr-x"></span>,
-  y: <span data-output="gr-y"></span>
+        <p class="signature">noise2d({ x: number; y: number }): number</p>
+        <pre class="code">generator.noise2d({
+  x: <span data-output="gr-x" data-inline></span>,
+  y: <span data-output="gr-y" data-inline></span>
 });
 
-<span data-output="gr-3"></span></code></pre>
+<span data-output="gr-3"></span></pre>
       </section>
 
       <section>
-        <h2>
+        <h2>HarmonicSuperposition</h2>
+        <p class="ht-type-prose u-dim">
           HarmonicSuperposition uses sine wave superpositions to organically
-          trigger events
-        </h2>
-        <p>
-          <code
-            >new HarmonicSuperposition({ baseFrequency: number; components: {
-            amplitude: number; relativeFrequency: number; }[]; threshold:
-            number; onThresholdCrossed?: (time: number, value: number) => void;
-            })</code
-          >
+          trigger events.
         </p>
-        <pre><code>const generator = new HarmonicSuperposition({
+        <p class="signature">
+          new HarmonicSuperposition({ baseFrequency: number; components: {
+          amplitude: number; relativeFrequency: number; }[]; threshold: number;
+          onThresholdCrossed?: (time: number, value: number) => void; })
+        </p>
+        <pre class="code">const generator = new HarmonicSuperposition({
   baseFrequency: 0.001,
   threshold: 1.5,
   components: [
-    { amplitude: 1.0, relativeFrequency: 1.0 }, 
-    { amplitude: 0.5, relativeFrequency: 2.7 }, 
+    { amplitude: 1.0, relativeFrequency: 1.0 },
+    { amplitude: 0.5, relativeFrequency: 2.7 },
     { amplitude: 0.3, relativeFrequency: 4.1 }
   ]
 });
 
-generator.calculate(<span data-output="hs-time"></span>);
+generator.calculate(<span data-output="hs-time" data-inline></span>);
 
-<span data-output="hs-1">...waiting for threshold to be crossed</span></code></pre>
+<span data-output="hs-1">...waiting for threshold to be crossed</span></pre>
 
-        <h3>
-          tuneForEventsPerHour returns an instance of HarmonicSuperposition
-        </h3>
-        <p>
-          <code
-            >HarmonicSuperposition.tuneForEventsPerHour({ desiredEventsPerHour:
-            number, simulationHours: number, onThresholdCrossed?: (time: number,
-            value: number) => void }): HarmonicSuperposition</code
-          >
+        <h3>tuneForEventsPerHour</h3>
+        <p class="ht-type-prose u-dim">
+          Returns an instance of HarmonicSuperposition.
         </p>
-        <pre><code>const generator = HarmonicSuperposition.tuneForEventsPerHour({
+        <p class="signature">
+          HarmonicSuperposition.tuneForEventsPerHour({ desiredEventsPerHour:
+          number, simulationHours: number, onThresholdCrossed?: (time: number,
+          value: number) => void }): HarmonicSuperposition
+        </p>
+        <pre class="code">const generator = HarmonicSuperposition.tuneForEventsPerHour({
   desiredEventsPerHour: 45,
   simulationHours: 24
 });
 
 <span data-output="hs-2-config"></span>
 
-generator.calculate(<span data-output="hs-time"></span>);
+generator.calculate(<span data-output="hs-time" data-inline></span>);
 
-<span data-output="hs-2">...waiting for threshold to be crossed</span></code></pre>
+<span data-output="hs-2">...waiting for threshold to be crossed</span></pre>
       </section>
 
       <section id="instantiate">
-        <h2>RandomEngine manages seeded randomness.</h2>
-        <p><code>new RandomEngine({ seed: string; size: number })</code></p>
-        <pre><code>const engine = new RandomEngine({ 
-  seed: "<span data-value="seed"></span>", 
+        <h2>RandomEngine</h2>
+        <p class="ht-type-prose u-dim">RandomEngine manages seeded randomness.</p>
+        <p class="signature">new RandomEngine({ seed: string; size: number })</p>
+
+        <div class="ht-arrange-sidebar">
+          <pre class="code">const engine = new RandomEngine({
+  seed: "<span data-value="seed"></span>",
   size: <span data-value="size"></span>
-});</code></pre>
+});</pre>
 
-        <form>
-          <label for="seed">
-            <input id="seed" type="text" value="Seed Here" /> seed
-          </label>
+          <form class="fieldset-stack">
+            <div class="field">
+              <label for="seed">seed</label>
+              <input id="seed" type="text" value="Seed Here" />
+            </div>
+            <div class="field">
+              <label for="size">size</label>
+              <input id="size" type="number" min="1" max="10" value="5" />
+            </div>
+          </form>
+        </div>
 
-          <label for="size">
-            <input id="size" type="number" min="1" max="10" value="5" /> size
-          </label>
-        </form>
+        <h3>random</h3>
+        <p class="ht-type-prose u-dim">Progress engine cores forward.</p>
+        <p class="signature">random(direction?: number): number[]</p>
 
-        <h3>Progress engine cores forward.</h3>
-        <p><code>random(direction?: number): number[]</code></p>
-        <pre><code>engine.position = <span data-output="1-0"></span>
+        <div class="ht-arrange-sidebar">
+          <pre class="code">engine.position = <span data-output="1-0" data-inline></span>
 engine.random(<span data-value="random"></span>);
 <span data-output="1-1"></span>
-engine.position = <span data-output="1-2"></span></code></pre>
+engine.position = <span data-output="1-2" data-inline></span></pre>
 
-        <form>
-          <label for="random">
-            <input id="random" type="number" min="-100" max="100" value="10" />
-            direction
-          </label>
-        </form>
+          <form class="fieldset-stack">
+            <div class="field">
+              <label for="random">direction</label>
+              <input id="random" type="number" min="-100" max="100" value="10" />
+            </div>
+          </form>
+        </div>
 
-        <h3>Move engine cores to a specific position.</h3>
-        <p><code>move(position: number): number[]</code></p>
-        <pre><code>engine.position = <span data-output="2-0"></span>
+        <h3>move</h3>
+        <p class="ht-type-prose u-dim">
+          Move engine cores to a specific position.
+        </p>
+        <p class="signature">move(position: number): number[]</p>
+
+        <div class="ht-arrange-sidebar">
+          <pre class="code">engine.position = <span data-output="2-0" data-inline></span>
 engine.move(<span data-value="move"></span>);
 <span data-output="2-1"></span>
-engine.position = <span data-output="2-2"></span></code></pre>
+engine.position = <span data-output="2-2" data-inline></span></pre>
 
-        <form>
-          <label for="move">
-            <input id="move" type="number" min="0" max="1000" value="100" />
-            position
-          </label>
-        </form>
+          <form class="fieldset-stack">
+            <div class="field">
+              <label for="move">position</label>
+              <input id="move" type="number" min="0" max="1000" value="100" />
+            </div>
+          </form>
+        </div>
 
-        <h3>3d perlin noise per engine core.</h3>
-        <p>
-          <code>perlin(x?: number; y?: number; z?: number;): number[]</code>
+        <h3>perlin</h3>
+        <p class="ht-type-prose u-dim">3d perlin noise per engine core.</p>
+        <p class="signature">
+          perlin(x?: number; y?: number; z?: number;): number[]
         </p>
-        <pre><code>engine.perlin(<span data-value="perlinX"></span>, <span data-value="perlinY"></span>, <span data-value="perlinZ"></span>)
-<span data-output="3-0"></span></code></pre>
-        <form>
-          <label for="perlinX">
-            <input
-              id="perlinX"
-              type="number"
-              step="0.001"
-              min="0.001"
-              max="10"
-              value="0.01"
-            />
-            x
-          </label>
-          <label for="perlinY">
-            <input
-              id="perlinY"
-              type="number"
-              step="0.001"
-              min="0"
-              max="10"
-              value="0"
-            />
-            y
-          </label>
-          <label for="perlinZ">
-            <input
-              id="perlinZ"
-              type="number"
-              step="0.001"
-              min="0"
-              max="10"
-              value="0"
-            />
-            z
-          </label>
-        </form>
+
+        <div class="ht-arrange-sidebar">
+          <pre class="code">engine.perlin(<span data-value="perlinX"></span>, <span data-value="perlinY"></span>, <span data-value="perlinZ"></span>)
+<span data-output="3-0"></span></pre>
+
+          <form class="fieldset-stack">
+            <div class="field">
+              <label for="perlinX">x</label>
+              <input
+                id="perlinX"
+                type="number"
+                step="0.001"
+                min="0.001"
+                max="10"
+                value="0.01"
+              />
+            </div>
+            <div class="field">
+              <label for="perlinY">y</label>
+              <input
+                id="perlinY"
+                type="number"
+                step="0.001"
+                min="0"
+                max="10"
+                value="0"
+              />
+            </div>
+            <div class="field">
+              <label for="perlinZ">z</label>
+              <input
+                id="perlinZ"
+                type="number"
+                step="0.001"
+                min="0"
+                max="10"
+                value="0"
+              />
+            </div>
+          </form>
+        </div>
       </section>
 
       <section>
-        <h2>Timecode generates temporary Base32 codes.</h2>
-        <p>
-          <code
-            >new Timecode({ length: number; seed: string; seconds: number; }): {
-            generate(time?: number) => { code: string; expiry: number; position:
-            number} }</code
-          >
+        <h2>Timecode</h2>
+        <p class="ht-type-prose u-dim">
+          Timecode generates temporary Base32 codes.
+        </p>
+        <p class="signature">
+          new Timecode({ length: number; seed: string; seconds: number; }): {
+          generate(time?: number) => { code: string; expiry: number; position:
+          number } }
         </p>
 
-        <pre><code>const timecode = new Timecode({ 
+        <div class="ht-arrange-sidebar">
+          <pre class="code">const timecode = new Timecode({
   length: <span data-value="length"></span>,
   seconds: <span data-value="seconds"></span>,
-  seed: "<span data-value="seed"></span>", 
+  seed: "<span data-value="seed"></span>",
 });
 timecode.generate()
-<span data-output="4-0"></span></code></pre>
-        <form>
-          <label for="length">
-            <input id="length" type="number" min="1" max="10" value="5" />
-            length
-          </label>
+<span data-output="4-0"></span></pre>
 
-          <label for="seconds">
-            <input id="seconds" type="number" min="1" max="60" value="5" />
-            seconds
-          </label>
-        </form>
+          <form class="fieldset-stack">
+            <div class="field">
+              <label for="length">length</label>
+              <input id="length" type="number" min="1" max="10" value="5" />
+            </div>
+            <div class="field">
+              <label for="seconds">seconds</label>
+              <input id="seconds" type="number" min="1" max="60" value="5" />
+            </div>
+          </form>
+        </div>
       </section>
     </main>
 

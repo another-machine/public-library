@@ -1,32 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Music Composition | another machine</title>
     <style>
-      @import "../style.css";
+      @import "../amplib-docs.css";
     </style>
   </head>
   <body>
-    <header>
-      <h1>
-        <a href="/">another machine</a> Music Composition
+    <header class="masthead">
+      <h1>Music Composition</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
         <a
           href="https://github.com/another-machine/public-library/tree/main/packages/amplib-music-composition"
-          >GitHub</a
+          >GitHub &#8599;</a
         >
-      </h1>
+      </div>
     </header>
 
-    <main>
+    <main class="doc">
       <section>
-        <h2>Create a random voice.</h2>
-        <p>
-          <code>new VoiceGenerator({ random: () => number })</code>
-        </p>
-        <pre><code>Ensemble.generateEnsemble({ selector: Math.random });
-<span data-output="ensemble"></span></code></pre>
+        <h2>VoiceGenerator</h2>
+        <p class="ht-type-prose u-dim">Create a random voice.</p>
+        <p class="signature">new VoiceGenerator({ random: () => number })</p>
+        <pre class="code">Ensemble.generateEnsemble({ selector: Math.random });
+<span data-output="ensemble"></span></pre>
       </section>
     </main>
 

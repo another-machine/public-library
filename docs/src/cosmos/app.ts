@@ -15,10 +15,6 @@ const data = {
 
 export async function example() {
   const section = document.querySelector("section")!;
-  const canvas = section.querySelector("canvas")!;
-  canvas.width = 1800;
-  canvas.height = 600;
-  const context = canvas.getContext("2d")!;
   const form = section.querySelector("form")!;
   const output = section.querySelector('[data-output="report-output"]')!;
   const date = section.querySelector('[data-output="date-output"]')!;
@@ -54,7 +50,13 @@ export async function example() {
     const timestamp = Date.now();
     const result = generate({ ...data, timestamp });
     date.innerHTML = timestamp.toString();
-    // visualizeSolarSystem(canvas, context, result, "top");
+
+    // The solar-system visualisation is not built yet. To bring it back, put a
+    // <figure class="frame"><canvas></canvas></figure> in the markup, look it
+    // up here, size it 1800x600, and call:
+    //   visualizeSolarSystem(canvas, context, result, "top");
+    // The canvas came out of the markup because it painted nothing, and an
+    // empty frame reads as a broken example rather than a pending one.
 
     output.innerHTML = JSON.stringify(result, null, 2);
   }

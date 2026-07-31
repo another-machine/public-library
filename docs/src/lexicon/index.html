@@ -1,41 +1,49 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lexicon | another machine</title>
     <style>
-      @import "../style.css";
+      @import "../amplib-docs.css";
     </style>
   </head>
   <body>
-    <header>
-      <h1>
-        <a href="/">another machine</a> Lexicon
+    <header class="masthead">
+      <h1>Lexicon</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
         <a
           href="https://github.com/another-machine/public-library/tree/main/packages/amplib-lexicon"
-          >GitHub</a
+          >GitHub &#8599;</a
         >
-      </h1>
+      </div>
     </header>
 
-    <main>
+    <main class="doc">
       <section>
-        <h2>Constraints are best used to describe single topics</h2>
-        <p><code>constraints: string[]</code></p>
-        <pre><code>const constraints = <span data-output="constraints"></span></code></pre>
+        <h2>constraints</h2>
+        <p class="ht-type-prose u-dim">
+          Constraints are best used to describe single topics.
+        </p>
+        <p class="signature">constraints: string[]</p>
+        <pre class="code">const constraints = <span data-output="constraints"></span></pre>
       </section>
 
       <section>
-        <h2>Prompts are best used to describe multiple topics</h2>
-        <p><code>prompts: string[]</code></p>
-        <pre><code>const prompts = <span data-output="prompts"></span></code></pre>
+        <h2>prompts</h2>
+        <p class="ht-type-prose u-dim">
+          Prompts are best used to describe multiple topics.
+        </p>
+        <p class="signature">prompts: string[]</p>
+        <pre class="code">const prompts = <span data-output="prompts"></span></pre>
       </section>
 
       <section>
-        <h2>Topics are grouped by association</h2>
-        <p><code>topics: string[][]</code></p>
-        <pre><code>const topics = <span data-output="topics"></span></code></pre>
+        <h2>topics</h2>
+        <p class="ht-type-prose u-dim">Topics are grouped by association.</p>
+        <p class="signature">topics: string[][]</p>
+        <pre class="code">const topics = <span data-output="topics"></span></pre>
       </section>
     </main>
 

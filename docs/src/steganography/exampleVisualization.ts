@@ -4,9 +4,23 @@ import {
 } from "../../../packages/amplib-steganography/src";
 import { createForm } from "../createForm";
 
-const COLOR_SHAPE = "#333";
-const COLOR_BACKGROUND = "#eee";
-const COLOR_PLAYHEAD = "#6e1152";
+// Canvas chrome — the frame around the data, not the data. A stylesheet can't
+// reach inside a canvas, so these resolve a theme token through a probe element
+// and fall back to the literal when the page sets no tokens. The rgb() fills
+// further down are the encoded pixels themselves and stay literal always.
+function themeColor(token: string, fallback: string): string {
+  const probe = document.createElement("span");
+  probe.style.display = "none";
+  probe.style.color = `var(${token}, ${fallback})`;
+  document.documentElement.appendChild(probe);
+  const resolved = getComputedStyle(probe).color;
+  probe.remove();
+  return resolved || fallback;
+}
+
+const COLOR_SHAPE = themeColor("--ht-ink-dim", "#333");
+const COLOR_BACKGROUND = themeColor("--ht-sunken", "#eee");
+const COLOR_PLAYHEAD = themeColor("--ht-ink", "#6e1152");
 const SIZE_LINE = 3;
 
 export default async function example() {

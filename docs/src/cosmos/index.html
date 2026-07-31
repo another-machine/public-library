@@ -1,47 +1,48 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" data-theme="auto">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Cosmos | another machine</title>
     <style>
-      @import "../style.css";
+      @import "../amplib-docs.css";
     </style>
   </head>
   <body>
-    <header>
-      <h1>
-        <a href="/">another machine</a> Cosmos
+    <header class="masthead">
+      <h1>Cosmos</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
         <a
           href="https://github.com/another-machine/public-library/tree/main/packages/amplib-cosmos"
-          >GitHub</a
+          >GitHub &#8599;</a
         >
-      </h1>
+      </div>
     </header>
 
-    <main>
+    <main class="doc">
       <section>
-        <h2>
+        <h2>generate</h2>
+        <p class="ht-type-prose u-dim">
           Cosmos provides astronomical data for a given time and location.
-        </h2>
-        <p>
-          <code
-            >generate({ latitude: number; longitude: number; timestamp: number;
-            })</code
-          >
+        </p>
+        <p class="signature">
+          generate({ latitude: number; longitude: number; timestamp: number; })
         </p>
 
-        <pre><code>generate({ 
-  latitude: <span data-value="latitude"></span>, 
-  longitude: <span data-value="longitude"></span>, 
-  timestamp: <span data-output="date-output"></span> 
-});</code></pre>
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">generate({
+  latitude: <span data-value="latitude"></span>,
+  longitude: <span data-value="longitude"></span>,
+  timestamp: <span data-output="date-output" data-inline></span>
+});</pre>
 
-        <form></form>
+            <pre class="code"><span data-output="report-output"></span></pre>
+          </div>
 
-        <canvas style="width: 100%; height: auto"></canvas>
-
-        <pre><code><span data-output="report-output"></span></code></pre>
+          <form class="fieldset-stack"></form>
+        </div>
       </section>
     </main>
 

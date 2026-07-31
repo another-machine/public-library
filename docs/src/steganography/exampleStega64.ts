@@ -73,7 +73,9 @@ export default async function example({
           ? undefined
           : parseFloat(data.aspectRatio),
     });
-    output.innerHTML = "";
+    // Replace only the previous canvas, not the whole figure — a figcaption
+    // belongs to the markup and must survive a re-encode.
+    output.querySelector("canvas")?.remove();
     output.appendChild(result);
     onResult(result);
     const decode = document.querySelector('[data-output="decode"]')!;
