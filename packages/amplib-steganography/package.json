@@ -1,13 +1,20 @@
 {
   "name": "@amplib/steganography",
-  "description": ".",
-  "version": "0.0.0",
+  "description": "Encoding data into images and decoding it back. The Stegassette (STGC) format carries audio and arbitrary entries in one PNG.",
+  "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "private": "false",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://amplib.app/steganography",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/another-machine/public-library.git"
+    "url": "git+https://github.com/another-machine/public-library.git",
+    "directory": "packages/amplib-steganography"
   },
   "exports": {
     ".": {
@@ -44,7 +51,8 @@
     "build:global": "tsup src/stegassette.ts --format iife --global-name Stegassette --out-dir dist --sourcemap --no-dts --clean false && tsup src/jobSchema.js --format iife --global-name StegassetteJobs --out-dir dist --sourcemap --no-dts --clean false",
     "watch": "tsup --watch",
     "test:parity": "npm run build && node scripts/test-parity.mjs",
-    "build:types": "tsup --dts-only"
+    "build:types": "tsup --dts-only",
+    "prepack": "npm run build"
   },
   "optionalDependencies": {
     "pngjs": "^7.0.0"
@@ -53,6 +61,6 @@
     "@types/pngjs": "^6.0.5"
   },
   "author": "Another Machine",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module"
 }

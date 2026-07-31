@@ -279,6 +279,8 @@ Cheaper than it looks. Both `index.ts` files use exactly **one** package API —
 
 ### Phase 5a — the link updates
 
+**Done 2026-07-31.** Both sites were updated in one pass, and the pass went further than repointing: `anothermachine.info` and the amplib.app homepage now list the stegassette surfaces — `stega.now`, `/make`, `/me`, `/audio-console`, `/live` — as separate entries under their own heading, rather than one "Stega" entry that described only the audio case. The player takes any entry type (HTML app, image, text, audio), and the old copy did not say so. In the same pass, machine and page titles went lower-hyphenated, `avva` was un-commented on the website and repointed at `avva.amplib.app`, and the website's `modulo` link moved to `modulo.amplib.app`. The inventory below is the record of what changed.
+
 Two sites carry links that break when `live`, `geese-basement`, and `stega` leave amplib.app. Full inventory:
 
 **`another-machine/website` → `anothermachine.info`** (GH Pages, `CNAME`, own repo):

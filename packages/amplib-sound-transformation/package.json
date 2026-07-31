@@ -24,7 +24,7 @@
     "watch": "tsup --watch"
   },
   "author": "Another Machine",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "dependencies": {
     "fft.js": "^4.0.4",

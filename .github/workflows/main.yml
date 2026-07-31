@@ -60,12 +60,6 @@ jobs:
       - run: npm run build
         working-directory: machines/mindmeld
 
-      # compiling modulo
-      - run: npm i
-        working-directory: machines/modulo
-      - run: npm run build
-        working-directory: machines/modulo
-
       # compiling sonic-pixels
       - run: npm i
         working-directory: machines/sonic-pixels
@@ -78,18 +72,18 @@ jobs:
       - run: mv ./machines/lexicon-standoff/dist ./site/lexicon-standoff
       # moving mindmeld into site
       - run: mv ./machines/mindmeld/dist ./site/mindmeld
-      # moving modulo into site
-      - run: mv ./machines/modulo/dist ./site/modulo
       # moving sonic-pixels into site
       - run: mv ./machines/sonic-pixels/dist ./site/sonic-pixels
 
-      # live and geese-basement moved to stega.now. These paths were linked
-      # from anothermachine.info and have been shared, so they forward rather
-      # than 404 — GitHub Pages has no _redirects equivalent, so they are real
-      # pages with a meta refresh and a canonical link.
+      # live and geese-basement moved to stega.now, and modulo to its own
+      # subdomain. These paths were linked from anothermachine.info and have
+      # been shared, so they forward rather than 404 — GitHub Pages has no
+      # _redirects equivalent, so they are real pages with a meta refresh and a
+      # canonical link.
       - run: cp -R ./redirects/stega ./site/stega
       - run: cp -R ./redirects/live ./site/live
       - run: cp -R ./redirects/geese-basement ./site/geese-basement
+      - run: cp -R ./redirects/modulo ./site/modulo
 
       # Publishing the codec bundle at amplib.app/lib/stegassette.js.
       # This is how the library distributes itself to the static sites that

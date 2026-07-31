@@ -25,7 +25,7 @@
     "test": "tsx test/run.ts"
   },
   "author": "Another Machine",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "devDependencies": {
     "tsx": "^4.19.2"

@@ -6,4 +6,4 @@
 
 Some machines and packages made for the web. Be sure to rewind before you return.
 
-Packages are not yet published to npm. Experiences are scattered around a few places today. This space is very much a work in progress. The goal is to consolidate everything here.
+The first packages are on npm under the [`@amplib`](https://www.npmjs.com/org/amplib) scope — `@amplib/steganography`, `@amplib/music-theory` and `@amplib/devices`. The rest still build from source here. Experiences are scattered around a few places today. This space is very much a work in progress. The goal is to consolidate everything here.

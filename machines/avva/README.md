@@ -3,12 +3,15 @@
 One machine turns music into color, the other color into music. Point them at
 each other, and then get in-between.
 
-**AVVA now lives at [another-machine/avva](https://github.com/another-machine/avva).**
+**AVVA now lives at [another-machine/avva](https://github.com/another-machine/avva),
+and is served at [avva.amplib.app](https://avva.amplib.app).**
 
 It outgrew a machine directory. Every other machine here is a static Parcel
 build that the deploy workflow drops into a subdirectory of the site; AVVA has a
 WebSocket relay and a second controller app, so it cannot be one. It was never
-in the workflow and never deployed from here.
+in the workflow and never deployed from here — which is why it needed a
+subdomain of its own rather than a path on `amplib.app`. Nothing here forwards,
+because `amplib.app/avva` never existed to break.
 
 This directory stays because its URL has been shared and because deleting it
 would only turn a link into a 404. The Parcel stub that used to sit alongside

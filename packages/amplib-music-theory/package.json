@@ -1,12 +1,20 @@
 {
   "name": "@amplib/music-theory",
   "description": "Chromatic musical scale generator.",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "main": "dist/index.js",
-  "private": "false",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://amplib.app/music-theory",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/another-machine/public-library.git"
+    "url": "git+https://github.com/another-machine/public-library.git",
+    "directory": "packages/amplib-music-theory"
   },
   "tsup": {
     "entry": [
@@ -22,10 +30,11 @@
   "scripts": {
     "build": "tsup",
     "watch": "tsup --watch",
-    "test": "tsx test/run.ts"
+    "test": "tsx test/run.ts",
+    "prepack": "npm run build"
   },
   "author": "Another Machine",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "devDependencies": {
     "tsx": "^4.19.2"

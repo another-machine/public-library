@@ -1,12 +1,20 @@
 {
   "name": "@amplib/devices",
   "description": "A simplified interface for engaging with common MIDI devices and mapping actions to specific messages, user media, and device orientation.",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "main": "dist/index.js",
-  "private": "false",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://amplib.app/devices",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/another-machine/public-library.git"
+    "url": "git+https://github.com/another-machine/public-library.git",
+    "directory": "packages/amplib-devices"
   },
   "tsup": {
     "entry": [
@@ -21,9 +29,10 @@
   },
   "scripts": {
     "build": "tsup",
-    "watch": "tsup --watch"
+    "watch": "tsup --watch",
+    "prepack": "npm run build"
   },
   "author": "Another Machine",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module"
 }

@@ -27,7 +27,7 @@
     "test:determinism": "../../scripts/tz-determinism.sh"
   },
   "author": "Another Machine",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "dependencies": {
     "astronomy-engine": "^2.1.19"
