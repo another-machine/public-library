@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sound Synthesis | another machine</title>
+    <style>
+      @import "../amplib-docs.css";
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1>Sound Synthesis</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-sound-synthesis"
+          >GitHub &#8599;</a
+        >
+      </div>
+    </header>
+
+    <main class="doc">
+      <section>
+        <h2>AudioGraph, FMVoice, DrumMachine</h2>
+        <p class="ht-type-prose u-dim">
+          An AudioGraph owns the bus topology; voices connect into its named
+          buses and everything downstream is already wired. Here eight FMVoice
+          objects arpeggiate into the pluck bus while a DrumMachine schedules
+          percussion into the layer sum.
+        </p>
+        <p class="signature">
+          new AudioGraph({ audioContext: AudioContext }) &middot; new FMVoice({
+          audioContext, destination, ratio?, index? }) &middot; new
+          DrumMachine({ drumSynth, bpm?, pattern? })
+        </p>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">const graph = new AudioGraph({ audioContext });
+graph.bypassInsert();
+
+const voice = new FMVoice({
+  audioContext,
+  destination: graph.pluckBus,
+  ratio: <span data-value="ratio"></span>,
+  index: <span data-value="index"></span>
+});
+voice.pluck(220, { ampDecayTau: <span data-value="decay"></span> });
+
+const drums = new DrumMachine({
+  drumSynth,
+  bpm: <span data-value="bpm"></span>,
+  pattern: "<span data-value="pattern"></span>"
+});
+drums.start();</pre>
+
+            <h3>Status</h3>
+            <pre class="code"><span data-output="status">stopped</span></pre>
+
+            <h3>Limiter</h3>
+            <p class="ht-type-prose u-dim">
+              The graph runs a DynamicsCompressor from the start and swaps in
+              the lookahead limiter only once its worklet has actually loaded.
+              A worklet that fails to load costs the sound nothing.
+            </p>
+            <pre class="code"><span data-output="limiter"></span></pre>
+
+            <h3>Voices are pooled</h3>
+            <p class="ht-type-prose u-dim">
+              FMVoice starts its oscillators once and keeps them running. The
+              arpeggio re-plucks eight voices in rotation rather than building
+              an oscillator pair per note &mdash; the 3&nbsp;ms retrigger
+              crossfade in <code>pluck</code> only works on a carrier that is
+              already going.
+            </p>
+          </div>
+
+          <form class="fieldset-stack"></form>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { example } from "./app.ts";
+      example();
+    </script>
+  </body>
+</html>

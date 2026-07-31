@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hue Wheel | another machine</title>
+    <style>
+      @import "../amplib-docs.css";
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1>Hue Wheel</h1>
+      <div class="ht-arrange-row">
+        <a href="/">another machine</a>
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-hue-wheel"
+          >GitHub &#8599;</a
+        >
+      </div>
+    </header>
+
+    <main class="doc">
+      <section>
+        <h2>Palette</h2>
+        <p class="ht-type-prose u-dim">
+          A Palette divides the hue wheel into equal sectors, so that any hue
+          names a slot and any slot names a hue. Slots hold whatever you put in
+          them &mdash; the wheel never inspects them. Sectors are divided in
+          perceptual (oklch) hue rather than display (HSV) hue, and the two
+          wheels below are the same palette drawn both ways.
+        </p>
+        <p class="ht-type-prose u-dim">
+          There is no weight field. Every sector is the same size, so a value
+          takes a wider arc by appearing more than once &mdash; and because
+          position matters, repeats that are <em>separated</em> put the same
+          value in two different regions of the wheel instead of widening one.
+          The default <code>g1,g2,g2,g1,g3</code> shows both at once: g2 is one
+          double-width band, while the two g1 sectors stay apart.
+        </p>
+        <p class="signature">
+          new Palette({ slots: T[]; rootHue?: number; crossZone?: number })
+        </p>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <div class="ht-arrange-grid">
+              <div class="ht-arrange-stack">
+                <p class="ht-type-eyebrow">Display hue</p>
+                <canvas data-canvas="display" class="ht-media-square"></canvas>
+                <p class="ht-type-small u-faint">
+                  Angle is HSV hue. Equal sectors, unequal arcs.
+                </p>
+              </div>
+              <div class="ht-arrange-stack">
+                <p class="ht-type-eyebrow">Perceptual hue</p>
+                <canvas
+                  data-canvas="perceptual"
+                  class="ht-media-square"
+                ></canvas>
+                <p class="ht-type-small u-faint">
+                  Angle is oklch hue. The same sectors, evenly spaced.
+                </p>
+              </div>
+            </div>
+
+            <pre class="code">const palette = new Palette({
+  slots: "<span data-value="slots"></span>".split(","),
+  rootHue: <span data-value="rootHue"></span>,
+  crossZone: <span data-value="crossZone"></span>
+});
+palette.hueToSlot(<span data-value="displayHue"></span>);</pre>
+
+            <h3>Slot at this hue</h3>
+            <pre class="code"><span data-output="slot"></span></pre>
+
+            <h3>Blend</h3>
+            <p class="ht-type-prose u-dim">
+              Near a sector edge the lookup returns two slots rather than
+              switching instantly. The darkened band on the inside of each ring
+              is where that happens &mdash; darkest right on a boundary, where
+              the two slots are an even 50/50, fading to nothing by the time one
+              slot has the hue to itself. Drag <em>cross zone</em> to widen or
+              close it; at 0 the bands vanish and slots switch abruptly, at 0.5
+              they meet in the middle and no hue is ever a single slot.
+            </p>
+            <p class="ht-type-prose u-dim">
+              A neighbour's weight is capped at 0.5, so a slot never loses its
+              majority. The seam <em>inside</em> a repeated band never shades,
+              because a value is not crossfaded with itself &mdash; those seams
+              are drawn faint so the repetition stays legible without implying a
+              transition that does not happen.
+            </p>
+            <pre class="code"><span data-output="blend"></span></pre>
+
+            <h3>Bands</h3>
+            <p class="ht-type-prose u-dim">
+              A band is a run of adjacent sectors sharing a value &mdash; what
+              you would actually draw or label. Adjacent repeats merge into one;
+              separated repeats stay apart. The default list is five sectors but
+              only four bands. Bands wrap, so one straddling 0&deg; is reported
+              once rather than as two fragments; try
+              <code>g1,g2,g3,g1</code> to see that.
+            </p>
+            <pre class="code"><span data-output="bands"></span></pre>
+
+            <h3>Attaching meaning with map</h3>
+            <p class="ht-type-prose u-dim">
+              The wheel is generic, so a slot's value can be anything. Here the
+              identical geometry is rebuilt with chords in the slots and passed
+              through
+              <code>map(parseChord)</code> from
+              <code>@amplib/music-theory</code>, which recognises a named chord
+              when the notes form one. This is what AVVA does &mdash; the wheel
+              supplies the mapping, the machine supplies the harmony.
+            </p>
+            <pre class="code">Palette.fromString("CEG,CEG,FAC,GBD").map(parseChord)
+
+<span data-output="chord"></span></pre>
+          </div>
+
+          <form class="fieldset-stack"></form>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { example } from "./app.ts";
+      example();
+    </script>
+  </body>
+</html>
