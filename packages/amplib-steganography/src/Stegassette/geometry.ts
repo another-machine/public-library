@@ -53,17 +53,26 @@ export function cropImg(
 export function interiorDims(
   dataPx: number,
   aspect: number,
-  B = 0
+  B = 0,
+  keyless = false
 ): { IW: number; IH: number } {
-  // Solve aspect·h² − 2B(aspect+1)·h + (4B² − 2·dataPx) = 0 for full height h = IH+2B
+  // The interior holds `density × IW × IH` data pixels: half under a keyed
+  // encode, where a checkerboard is reserved for key pixels, and all of them
+  // when the key is generated from position. This factor is the whole size
+  // difference between the two modes.
+  const density = keyless ? 1 : 2;
+  const capacity = keyless
+    ? (W: number, H: number) => W * H
+    : dataPixelCount;
+  // Solve aspect·h² − 2B(aspect+1)·h + (4B² − density·dataPx) = 0 for full height h = IH+2B
   const qb = -2 * B * (aspect + 1);
-  const qc = 4 * B * B - 2 * dataPx;
+  const qc = 4 * B * B - density * dataPx;
   const disc = Math.max(0, qb * qb - 4 * aspect * qc);
   const h = (-qb + Math.sqrt(disc)) / (2 * aspect);
   let IH = Math.max(2, Math.round(h - 2 * B));
   let IW = Math.max(2, Math.round(aspect * (IH + 2 * B) - 2 * B));
   // grow whichever side keeps the full-canvas aspect closest to target
-  while (dataPixelCount(IW, IH) < dataPx) {
+  while (capacity(IW, IH) < dataPx) {
     const dW = Math.abs((IW + 1 + 2 * B) / (IH + 2 * B) - aspect);
     const dH = Math.abs((IW + 2 * B) / (IH + 1 + 2 * B) - aspect);
     if (dW <= dH) IW++;
@@ -82,13 +91,14 @@ export function interiorDims(
 export function resolveBorderWidth(
   spec: number,
   dataPx: number,
-  aspect: number
+  aspect: number,
+  keyless = false
 ): number {
   const f = Number(spec) || 0;
   if (f > 0 && f < 1) {
     const ff = Math.min(f, 0.45, 0.45 / aspect);
     const fullW = Math.sqrt(
-      (2 * dataPx) / ((1 - 2 * ff) * (1 / aspect - 2 * ff)),
+      ((keyless ? 1 : 2) * dataPx) / ((1 - 2 * ff) * (1 / aspect - 2 * ff)),
     );
     return Math.max(1, Math.round(ff * fullW));
   }
@@ -112,11 +122,12 @@ export function autoScaleImg(
   B = 1,
   aspectOverride: number | null = null,
   bytesPerPixel = 3,
-  minFullWidth = 1
+  minFullWidth = 1,
+  keyless = false
 ): Img {
   const dataPx = Math.ceil(totalBytes / bytesPerPixel);
   const aspect = aspectOverride != null ? aspectOverride : img.width / img.height;
-  let { IW, IH } = interiorDims(dataPx, aspect, B);
+  let { IW, IH } = interiorDims(dataPx, aspect, B, keyless);
   // Clamp to ensure the full canvas is at least minFullWidth wide (e.g. for the STGC header).
   const minIW = Math.max(2, minFullWidth - 2 * B);
   if (IW < minIW) IW = minIW;

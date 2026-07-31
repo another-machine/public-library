@@ -21,7 +21,63 @@ export const KEYMAP_NAMES: readonly KeymapName[] = [
   "mirror-y",
   "offset",
   "rotate",
+  // Keyless: there is no key pixel at all.
+  "none",
 ];
+
+/**
+ * Keymaps that generate their key instead of locating it.
+ *
+ * These change the shape of the encode, not just where the key is read from:
+ * no pixel is reserved as a key, so the traversal visits the whole interior and
+ * the image needs half the area. Three consequences, all enforced elsewhere:
+ * combines with a KEY_MOD are rejected (they need a key pixel to stash bits
+ * into), reconstructCover has nothing to recover, and the reveal develops
+ * against a flat fill rather than the cover.
+ */
+export const KEYLESS_KEYMAPS: ReadonlySet<KeymapName> = new Set(["none"]);
+
+/** True when this keymap generates its key from position. */
+export function isKeylessKeymap(name: KeymapName | undefined): boolean {
+  return name != null && KEYLESS_KEYMAPS.has(name);
+}
+
+/**
+ * Key fields for keyless keymaps: (x, y, channel) → key byte.
+ *
+ * A field has to be a pure function of position and the descriptor's own
+ * params, because decode recomputes it from nothing but the header — that is
+ * what lets the key cost zero pixels.
+ *
+ * There is one, and it is the constant 0: the identity element for xor,
+ * additive and bitshift, so the pixel holds the payload byte verbatim.
+ *
+ * A position-varying field (an ordered dither, a gradient, a seeded hash) is a
+ * valid member of this table and was prototyped — but it earns nothing. The
+ * payload's own entropy dominates whatever it is combined with, so the result
+ * is noise either way, and the thing that actually keeps a picture is leaving a
+ * channel out of the plan (see EncodeOptions.channels). Adding one later is a
+ * new name in KEYMAP_NAMES and an entry here; nothing else has to move.
+ */
+export type KeyFieldFn = (
+  x: number,
+  y: number,
+  channel: number,
+  IW: number,
+  IH: number,
+  params?: TraversalParams
+) => number;
+
+export const KEY_FIELD: Record<"none", KeyFieldFn> = {
+  none: () => 0,
+};
+
+/** The key field for a keyless keymap. Throws if it is not one. */
+export function resolveKeyField(name: KeymapName): KeyFieldFn {
+  const f = KEY_FIELD[name as "none"];
+  if (!f) throw new Error(`keymap "${name}" does not generate a key field`);
+  return f;
+}
 
 /**
  * Snap a target (px, py) to the nearest IN-INTERIOR key pixel. Keys must never
@@ -67,19 +123,40 @@ export function resolveKeymapName(opts: { keymap?: KeymapName }): KeymapName {
     );
   }
   const name = (opts.keymap || "adjacent") as KeymapName;
-  if (!KEYMAP[name]) throw new Error(`unknown keymap: ${name}`);
+  if (!KEYMAP[name as LocatingKeymapName] && !isKeylessKeymap(name))
+    throw new Error(`unknown keymap: ${name}`);
   return name;
 }
 
-/** Look up the keymap function for already-normalized internal options. */
+/**
+ * Look up the pixel-locating keymap function for already-normalized options.
+ *
+ * Throws for keyless keymaps rather than returning a fallback: there is no key
+ * pixel to locate, and silently pairing against "adjacent" would encode against
+ * a key the decoder never reads. Callers branch on isKeylessKeymap first.
+ */
 export function resolveKeymap(opts: {
   keymap?: KeymapName;
   params?: TraversalParams;
 }): KeymapFn {
-  return KEYMAP[resolveKeymapName(opts)];
+  const name = resolveKeymapName(opts);
+  if (isKeylessKeymap(name))
+    throw new Error(
+      `keymap "${name}" generates its key from position and has no key pixel; ` +
+        `use resolveKeyField(name) instead`
+    );
+  return KEYMAP[name as LocatingKeymapName];
 }
 
-export const KEYMAP: Record<KeymapName, KeymapFn> = {
+/**
+ * Keymaps that locate a key pixel. Deliberately narrower than KeymapName, so
+ * indexing KEYMAP with a raw KeymapName is a compile error rather than an
+ * undefined at runtime — a keyless name reaching this table would pair every
+ * byte against a key the decoder never reads.
+ */
+export type LocatingKeymapName = Exclude<KeymapName, "none">;
+
+export const KEYMAP: Record<LocatingKeymapName, KeymapFn> = {
   // one pixel left on even rows, one right on odd rows, reflected back inside
   // the interior at the edges (always lands on an in-bounds key pixel)
   adjacent: (dx, dy, IW, IH) => snapToKey(dx, dy, IW, IH),

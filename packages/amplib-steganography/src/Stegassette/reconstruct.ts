@@ -14,7 +14,7 @@
  * per channel, and mixed plans are decimated to half-res at the end.
  */
 
-import { KEYMAP } from "./keymap";
+import { KEYMAP, isKeylessKeymap, type LocatingKeymapName } from "./keymap";
 import { getPathIndices } from "./traversal";
 import type { CombineName, StegaImageData, StgcOpts } from "./types";
 
@@ -56,6 +56,31 @@ export function reconstructCover(
     opts.plan?.slots ??
     ([0, 1, 2] as const).map((c) => ({ ch: c, combine: opts.combine }));
   for (const s of slots) chCombine[s.ch] = s.combine;
+
+  // ── Keyless ─────────────────────────────────────────────────────────────
+  // No pixel was held back to carry a cover value, so nothing can be recovered
+  // for a channel that carries payload — blank those rather than return a
+  // plausible-looking interpolation of noise.
+  //
+  // Only those, though. A partial channel plan (say `channels: "r"`) leaves the
+  // channels outside the plan completely untouched, so G and B still hold the
+  // original cover at FULL resolution — better than the half-res reconstruction
+  // a keyed encode can offer. Blanking them would throw away the one real
+  // picture such an encode has.
+  if (isKeylessKeymap(opts.keymap)) {
+    const out = new Uint8ClampedArray(px.length);
+    out.set(px);
+    const carries = chCombine.map((c) => c != null);
+    if (carries.some(Boolean)) {
+      for (let y = B; y < H - B; y++)
+        for (let x = B; x < W - B; x++) {
+          const o = (y * W + x) * 4;
+          for (let c = 0; c < 3; c++) if (carries[c]) out[o + c] = 0;
+          out[o + 3] = 255;
+        }
+    }
+    return { data: out, width: W, height: H };
+  }
 
   const realOnly = chCombine.every((c) => c == null || KEY_PRESERVING.has(c));
   const hasKeyPreserving = chCombine.some(
@@ -109,7 +134,7 @@ export function reconstructCover(
   function keyXY(pi: number): [number, number] {
     const v = pathIdx[pi];
     const lx = v % IW, ly = (v / IW) | 0;
-    const [klx, kly] = KEYMAP[opts.keymap](lx, ly, IW, IH, opts.params ?? {});
+    const [klx, kly] = KEYMAP[opts.keymap as LocatingKeymapName](lx, ly, IW, IH, opts.params ?? {});
     return [klx + B, kly + B];
   }
 

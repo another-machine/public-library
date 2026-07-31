@@ -1,5 +1,5 @@
 import {
-  StegaCassette,
+  Stegassette,
   loadAudioBuffersFromAudioUrl,
 } from "../../../packages/amplib-steganography/src";
 import { createForm } from "../createForm";
@@ -23,8 +23,35 @@ const COLOR_BACKGROUND = themeColor("--ht-sunken", "#eee");
 const COLOR_PLAYHEAD = themeColor("--ht-ink", "#6e1152");
 const SIZE_LINE = 3;
 
+/** How many samples the strip shows at once. */
+const WINDOW_SAMPLES = 64;
+
+/**
+ * Where a sample's bytes land in the encoded image.
+ *
+ * The encode is deliberately degenerate so the pixels *are* the payload: a
+ * black cover under `combine: "xor"` leaves every key channel at 0, and
+ * `a ^ 0 === a`, so each data channel holds one raw PCM byte verbatim. Any
+ * other cover would show the payload blended with the image instead, which is
+ * the normal case but not what this section is trying to make visible.
+ */
+interface PixelMap {
+  /** Traversal order: interior pixel index → linear interior coordinate. */
+  path: Uint32Array;
+  /** Byte offset of the audio payload within the interior stream. */
+  dataOffset: number;
+  bytesPerPixel: number;
+  bytesPerSample: number;
+  /** Interior width/height and border, for turning a path value into x/y. */
+  interiorWidth: number;
+  border: number;
+  /** Cached pixel bytes of the whole encoded canvas. */
+  pixels: Uint8ClampedArray;
+  canvasWidth: number;
+}
+
 export default async function example() {
-  const section = document.getElementById("example-visualization")!;
+  const section = document.getElementById("example-audio-in-pixels")!;
   const audio = section.querySelector("audio")!;
   const form = section.querySelector("form")!;
   const fullWaveformCanvas = section.querySelector(
@@ -51,16 +78,16 @@ export default async function example() {
   let manualProgress = 0;
 
   const state = {
-    bitDepth: "24",
+    bitsPerSample: "24",
     sampleRate: 48000,
     playbackRate: "1",
   };
 
   let waveformImageData: ImageData | null = null;
-  let encodedCanvas: HTMLCanvasElement | null = null;
+  let pixelMap: PixelMap | null = null;
 
   const { setValue } = createForm<{
-    bitDepth: string;
+    bitsPerSample: string;
     sampleRate: number;
     playbackRate: string;
     pixels: number;
@@ -72,7 +99,7 @@ export default async function example() {
     actions: [
       {
         name: "Toggle Audio",
-        action: async (element) => {
+        action: async () => {
           if (isPlaying) {
             pause();
           } else {
@@ -82,11 +109,11 @@ export default async function example() {
       },
     ],
     inputs: {
-      bitDepth: {
+      bitsPerSample: {
         type: "select",
         options: ["8", "16", "24"],
-        value: state.bitDepth,
-        name: "bitDepth",
+        value: state.bitsPerSample,
+        name: "bitsPerSample",
       },
       sampleRate: {
         type: "range",
@@ -109,7 +136,10 @@ export default async function example() {
       },
       milliseconds: {
         type: "number",
-        value: 1,
+        // Derived, not a literal: createForm writes every input's initial value
+        // into its [data-value] spans, so a placeholder would show as fact
+        // until the first sampleRate change.
+        value: Number(((WINDOW_SAMPLES / state.sampleRate) * 1000).toFixed(1)),
         name: "milliseconds",
         hidden: true,
       },
@@ -122,29 +152,29 @@ export default async function example() {
       dimension: { type: "text", value: "8", hidden: true, name: "dimension" },
     },
     onInput: async (values, changed) => {
-      state.bitDepth = values.bitDepth;
+      state.bitsPerSample = values.bitsPerSample;
       state.sampleRate = values.sampleRate;
       state.playbackRate = values.playbackRate;
-      if (changed.includes("bitDepth")) {
-        setValue(
-          "pixels",
-          values.bitDepth === "24" ? 64 : values.bitDepth === "16" ? 43 : 22
-        );
+      if (changed.includes("bitsPerSample")) {
+        // 3 bytes per pixel, so the window's pixel count follows the sample width.
+        const bytesPerSample = Number(values.bitsPerSample) / 8;
+        const pixelCount = Math.ceil((WINDOW_SAMPLES * bytesPerSample) / 3);
+        setValue("pixels", pixelCount);
         setValue(
           "samplesPerPixel",
-          values.bitDepth === "24"
+          values.bitsPerSample === "24"
             ? "1 sample"
-            : values.bitDepth === "16"
+            : values.bitsPerSample === "16"
             ? "1.5 samples"
             : "3 samples"
         );
-        setValue(
-          "dimension",
-          values.bitDepth === "24" ? "8" : values.bitDepth === "16" ? "7" : "5"
-        );
+        setValue("dimension", String(Math.ceil(Math.sqrt(pixelCount))));
       }
       if (changed.includes("sampleRate")) {
-        setValue("milliseconds", ((64 / values.sampleRate) * 1000).toFixed(1));
+        setValue(
+          "milliseconds",
+          ((WINDOW_SAMPLES / values.sampleRate) * 1000).toFixed(1)
+        );
       }
       await update();
     },
@@ -220,26 +250,63 @@ export default async function example() {
       sampleRate: state.sampleRate,
     });
 
-    // Encode using StegaCassette with solid encoding
-    const blackCanvas = createBlackCanvas();
-    encodedCanvas = StegaCassette.encode({
-      source: blackCanvas,
-      audioBuffers: resampledAudioBuffers,
-      sampleRate: state.sampleRate,
-      bitDepth: parseInt(state.bitDepth) as 8 | 16 | 24,
-      encoding: "solid",
-      encodeMetadata: false,
-      aspectRatio: 1, // Square
-      borderWidth: 0,
+    const bitsPerSample = parseInt(state.bitsPerSample) as 8 | 16 | 24;
+    const encoded = Stegassette.encode({
+      source: createBlackCanvas(),
+      entries: [
+        Stegassette.buildAudioEntry({
+          channels: resampledAudioBuffers,
+          sampleRate: state.sampleRate,
+          bitsPerSample,
+          name: "example.pcm",
+        }),
+      ],
+      combine: "xor",
+      keymap: "adjacent",
+      traversal: "raster",
+      border: 1,
+      aspectRatio: 1,
     });
+
+    pixelMap = buildPixelMap(encoded, bitsPerSample);
 
     // Append to figure element for styling
     const figure = section.querySelector("#viz-source-encoded")!;
-    const canvas = figure.querySelector("canvas");
-    if (canvas) {
-      canvas.remove();
-    }
-    figure.appendChild(encodedCanvas);
+    figure.querySelector("canvas")?.remove();
+    figure.appendChild(encoded);
+  }
+
+  /**
+   * Read back everything needed to locate a sample in the encoded image.
+   * The options come from the image itself rather than from the encode call —
+   * a STGC image is self-describing, and reading it that way keeps this honest.
+   */
+  function buildPixelMap(
+    encoded: HTMLCanvasElement,
+    bitsPerSample: 8 | 16 | 24
+  ): PixelMap {
+    const { entries, opts } = Stegassette.decode({ source: encoded });
+    if (!entries.length) throw new Error("encoded image carried no entries");
+    const border = opts.borderWidth;
+    const interiorWidth = encoded.width - 2 * border;
+    const interiorHeight = encoded.height - 2 * border;
+    const context = encoded.getContext("2d")!;
+
+    return {
+      path: Stegassette.getPathIndices(
+        interiorWidth,
+        interiorHeight,
+        opts.traversal,
+        opts.params ?? {}
+      ),
+      dataOffset: entries[0].dataOffset,
+      bytesPerPixel: opts.plan?.bytesPerPixel ?? 3,
+      bytesPerSample: bitsPerSample / 8,
+      interiorWidth,
+      border,
+      pixels: context.getImageData(0, 0, encoded.width, encoded.height).data,
+      canvasWidth: encoded.width,
+    };
   }
 
   function createBlackCanvas(): HTMLCanvasElement {
@@ -335,7 +402,7 @@ export default async function example() {
   }
 
   function drawSubVisualizations(progress: number) {
-    if (!resampledAudioBuffers.length || !encodedCanvas) return;
+    if (!resampledAudioBuffers.length || !pixelMap) return;
 
     const data = resampledAudioBuffers[0];
     const totalSamples = data.length;
@@ -344,79 +411,58 @@ export default async function example() {
       Math.floor(progress * totalSamples),
       totalSamples - 1
     );
-    const samples = new Float32Array(64);
+    const samples = new Float32Array(WINDOW_SAMPLES);
 
-    // Fill 64 samples starting from current position
-    for (let i = 0; i < 64; i++) {
-      if (currentSampleIndex + i < totalSamples) {
-        samples[i] = data[currentSampleIndex + i];
-      } else {
-        samples[i] = 0;
-      }
+    // Fill the window starting from the current position
+    for (let i = 0; i < WINDOW_SAMPLES; i++) {
+      const index = currentSampleIndex + i;
+      samples[i] = index < totalSamples ? data[index] : 0;
     }
 
     drawWaveform64(samples);
-    const pixels = getPixelsFromEncodedCanvas(currentSampleIndex);
+    const pixels = getPixelsForSampleWindow(currentSampleIndex);
     drawLines64(pixels);
     drawPixels64(pixels);
   }
 
-  function getPixelsFromEncodedCanvas(
+  /**
+   * The pixels covering WINDOW_SAMPLES samples starting at `startSampleIndex`,
+   * followed through the traversal path the header declared.
+   */
+  function getPixelsForSampleWindow(
     startSampleIndex: number
   ): { r: number; g: number; b: number }[] {
-    if (!encodedCanvas) return [];
+    if (!pixelMap) return [];
+    const {
+      path,
+      dataOffset,
+      bytesPerPixel,
+      bytesPerSample,
+      interiorWidth,
+      border,
+      pixels,
+      canvasWidth,
+    } = pixelMap;
 
-    const ctx = encodedCanvas.getContext("2d")!;
-    const bitDepth = parseInt(state.bitDepth) as 8 | 16 | 24;
+    const startByte = dataOffset + startSampleIndex * bytesPerSample;
+    const startPixel = Math.floor(startByte / bytesPerPixel);
+    const pixelCount = Math.ceil((WINDOW_SAMPLES * bytesPerSample) / 3);
 
-    // Calculate how many pixels represent 64 samples
-    let pixelCount: number;
-    if (bitDepth === 24) {
-      pixelCount = 64; // 1 sample per pixel
-    } else if (bitDepth === 16) {
-      pixelCount = Math.ceil((64 / 3) * 2); // 3 samples per 2 pixels
-    } else {
-      pixelCount = Math.ceil(64 / 3); // 3 samples per pixel
+    const out: { r: number; g: number; b: number }[] = [];
+    for (let i = 0; i < pixelCount; i++) {
+      const pathIndex = startPixel + i;
+      if (pathIndex >= path.length) break;
+      const v = path[pathIndex];
+      const x = (v % interiorWidth) + border;
+      const y = ((v / interiorWidth) | 0) + border;
+      const offset = (y * canvasWidth + x) * 4;
+      out.push({
+        r: pixels[offset],
+        g: pixels[offset + 1],
+        b: pixels[offset + 2],
+      });
     }
-
-    // Calculate starting pixel index (skip first pixel as it's used for reference)
-    let startPixelIndex: number;
-    if (bitDepth === 24) {
-      startPixelIndex = startSampleIndex + 1; // +1 to skip reference pixel
-    } else if (bitDepth === 16) {
-      startPixelIndex = Math.floor((startSampleIndex / 3) * 2) + 1;
-    } else {
-      startPixelIndex = Math.floor(startSampleIndex / 3) + 1;
-    }
-
-    // Get pixels from canvas (solid encoding uses left-to-right, top-to-bottom)
-    const pixels: { r: number; g: number; b: number }[] = [];
-    const imageData = ctx.getImageData(
-      0,
-      0,
-      encodedCanvas.width,
-      encodedCanvas.height
-    );
-    const data = imageData.data;
-
-    for (
-      let i = 0;
-      i < pixelCount && i < encodedCanvas.width * encodedCanvas.height;
-      i++
-    ) {
-      const pixelIndex = startPixelIndex + i;
-      const dataIndex = pixelIndex * 4;
-
-      if (dataIndex + 2 < data.length) {
-        pixels.push({
-          r: data[dataIndex],
-          g: data[dataIndex + 1],
-          b: data[dataIndex + 2],
-        });
-      }
-    }
-
-    return pixels;
+    return out;
   }
 
   function drawWaveform64(samples: Float32Array) {
@@ -430,13 +476,13 @@ export default async function example() {
     ctx.fillStyle = COLOR_BACKGROUND;
     ctx.fillRect(0, 0, width, height);
 
-    const step = width / 64;
+    const step = width / WINDOW_SAMPLES;
     const halfStep = step * 0.5;
     const amp = height / 2;
 
     ctx.beginPath();
     ctx.moveTo(halfStep, amp);
-    for (let i = 0; i < 64; i++) {
+    for (let i = 0; i < WINDOW_SAMPLES; i++) {
       const x = i * step + halfStep;
       const y = (1 - samples[i]) * amp; // Invert y because canvas y goes down
       ctx.lineTo(x, y);
@@ -447,7 +493,7 @@ export default async function example() {
 
     // Draw points
     ctx.fillStyle = COLOR_SHAPE;
-    for (let i = 0; i < 64; i++) {
+    for (let i = 0; i < WINDOW_SAMPLES; i++) {
       const x = i * step + halfStep;
       const y = (1 - samples[i]) * amp;
       ctx.fillRect(x - SIZE_LINE / 2, y - SIZE_LINE, SIZE_LINE, SIZE_LINE * 2);
@@ -466,6 +512,7 @@ export default async function example() {
     ctx.fillRect(0, 0, width, height);
 
     const count = pixels.length;
+    if (!count) return;
     const step = width / count;
 
     // Top third for separate RGB channels (3 rows)
@@ -499,6 +546,7 @@ export default async function example() {
       ctx.fillRect(i * step, combinedStartY, step, combinedHeight);
     }
   }
+
   function drawPixels64(pixels: { r: number; g: number; b: number }[]) {
     const canvas = pixels64Canvas;
     const ctx = canvas.getContext("2d")!;
@@ -510,11 +558,10 @@ export default async function example() {
     ctx.fillStyle = COLOR_BACKGROUND;
     ctx.fillRect(0, 0, width, height);
 
-    // If 24-bit, 64 samples = 64 pixels. 8x8 is perfect.
-    // If 8-bit, 64 samples = 22 pixels. 5x5 is 25.
-    // If 16-bit, 64 samples = 43 pixels. 7x7 is 49.
-
+    // 24-bit: 64 samples = 64 pixels, so 8×8 is exact.
+    // 16-bit: 43 pixels into 7×7. 8-bit: 22 pixels into 5×5.
     const count = pixels.length;
+    if (!count) return;
     const gridSize = Math.ceil(Math.sqrt(count));
     const cellSize = width / gridSize;
 
@@ -533,9 +580,9 @@ export default async function example() {
     }
 
     // Apply bit depth quantization
-    const quantizedBuffer = applyBitDepth(
+    const quantizedBuffer = applyBitsPerSample(
       resampledAudioBuffers[0],
-      parseInt(state.bitDepth) as 8 | 16 | 24
+      parseInt(state.bitsPerSample) as 8 | 16 | 24
     );
 
     // Create AudioBuffer at the current sample rate
@@ -579,13 +626,13 @@ export default async function example() {
     isPlaying = false;
   }
 
-  function applyBitDepth(
+  function applyBitsPerSample(
     samples: Float32Array,
-    bitDepth: 8 | 16 | 24
+    bitsPerSample: 8 | 16 | 24
   ): Float32Array {
     const result = new Float32Array(samples.length);
     const maxValue =
-      bitDepth === 8 ? 127.5 : bitDepth === 16 ? 32767.5 : 8388607.5;
+      bitsPerSample === 8 ? 127.5 : bitsPerSample === 16 ? 32767.5 : 8388607.5;
 
     for (let i = 0; i < samples.length; i++) {
       const sample = samples[i];

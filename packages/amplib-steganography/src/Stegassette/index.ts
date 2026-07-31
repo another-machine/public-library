@@ -45,7 +45,16 @@ export {
 } from "./combine";
 
 // ---- keymaps -------------------------------------------------
-export { KEYMAP, KEYMAP_NAMES, resolveKeymapName } from "./keymap";
+export {
+  KEYMAP,
+  KEYMAP_NAMES,
+  KEYLESS_KEYMAPS,
+  KEY_FIELD,
+  isKeylessKeymap,
+  resolveKeyField,
+  resolveKeymapName,
+} from "./keymap";
+export type { KeyFieldFn, LocatingKeymapName } from "./keymap";
 
 // ---- traversals ----------------------------------------------
 export { TRAVERSAL_NAMES, getPath, getPathIndices } from "./traversal";
@@ -131,7 +140,7 @@ export { reconstructCover, KEY_PRESERVING } from "./reconstruct";
 // ---- pure container (StegaImageData ↔ StegaImageData) --------
 import { Img } from "./Img";
 import { encodeContainer, decodeContainer } from "./container";
-import { resolveKeymapName } from "./keymap";
+import { isKeylessKeymap, resolveKeymapName } from "./keymap";
 
 // The container primitives are public: callers that size their own canvas
 // (the lab's editor and batch runner both do, via autoScaleImg) need to
@@ -238,10 +247,14 @@ export function encodeImageData({
       entryTableSize(entries)
     );
 
+  // Keyless reserves no key pixels, so every sizing decision below
+  // needs it: half the interior area, and a border fraction measured
+  // against that smaller canvas.
+  const keyless = isKeylessKeymap(resolveKeymapName(opts));
   const aspect = aspectRatio ?? src.width / src.height;
   const totalBytes = containerInteriorBytes(entries) + plan.pad;
   const dataPx = Math.ceil(totalBytes / plan.bytesPerPixel);
-  let B = resolveBorderWidth(border, dataPx, aspect);
+  let B = resolveBorderWidth(border, dataPx, aspect, keyless);
 
   // Merge traversal/keymap params for header-length estimation
   const params: TraversalParams = {
@@ -256,11 +269,11 @@ export function encodeImageData({
 
   // The canvas is sized by the payload alone; when the border ring cannot
   // hold the header, thicken the border instead of growing the image.
-  let scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel);
+  let scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless);
   while (ringPixelCount(scaled.width, scaled.height, B) < headerPx) {
     if (B > 255) throw new Error("STGC header does not fit any border");
     B += 1;
-    scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel);
+    scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless);
   }
 
   return encodeContainer(entries, scaled, { ...opts, borderWidth: B, plan }, scaled);

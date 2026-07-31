@@ -1,8 +1,10 @@
-import example1 from "./exampleStega64.ts";
-import example3 from "./exampleStegaAnimator.ts";
-import example6 from "./exampleStegassette.ts";
-import exampleVisualization from "./exampleVisualization.ts";
+import exampleStegassetteText from "./exampleStegassetteText.ts";
+import exampleStegassetteAudio from "./exampleStegassette.ts";
+import exampleStegaAnimator from "./exampleStegaAnimator.ts";
+import exampleAudioInPixels from "./exampleAudioInPixels.ts";
 
-exampleVisualization();
-example1({ onResult: example3 });
-example6();
+// The animator has no source of its own — it animates whatever the text
+// example last encoded, so it is wired to that example's result.
+exampleStegassetteText({ onResult: exampleStegaAnimator });
+exampleStegassetteAudio();
+exampleAudioInPixels();

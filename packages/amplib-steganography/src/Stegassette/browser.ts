@@ -12,7 +12,7 @@
 import { createCanvasAndContext } from "../utilities";
 import { Img } from "./Img";
 import { encodeContainer, decodeContainer } from "./container";
-import { resolveKeymapName } from "./keymap";
+import { isKeylessKeymap, resolveKeymapName } from "./keymap";
 import { autoScaleImg, resolveBorderWidth } from "./geometry";
 import { normalizeChannelPlan, isDefaultPlan, serializeChannelPlan } from "./channelPlan";
 import { containerInteriorBytes, entryTableSize } from "./entries";
@@ -129,10 +129,14 @@ export function encode({
       entryTableSize(entries)
     );
 
+  // Keyless reserves no key pixels, so every sizing decision below
+  // needs it: half the interior area, and a border fraction measured
+  // against that smaller canvas.
+  const keyless = isKeylessKeymap(resolveKeymapName(opts));
   const aspect = aspectRatio ?? src.width / src.height;
   const totalBytes = containerInteriorBytes(entries) + plan.pad;
   const dataPx = Math.ceil(totalBytes / plan.bytesPerPixel);
-  let B = resolveBorderWidth(border, dataPx, aspect);
+  let B = resolveBorderWidth(border, dataPx, aspect, keyless);
 
   const params: TraversalParams = {
     ...(opts.params || {}),
@@ -151,7 +155,9 @@ export function encode({
     totalBytes,
     B,
     aspectRatio ?? null,
-    plan.bytesPerPixel
+    plan.bytesPerPixel,
+    1,
+    keyless
   );
   while (ringPixelCount(scaled.width, scaled.height, B) < headerPx) {
     if (B > 255) throw new Error("STGC header does not fit any border");
@@ -161,7 +167,9 @@ export function encode({
       totalBytes,
       B,
       aspectRatio ?? null,
-      plan.bytesPerPixel
+      plan.bytesPerPixel,
+      1,
+      keyless
     );
   }
 

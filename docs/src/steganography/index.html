@@ -36,16 +36,34 @@
     </header>
 
     <main class="doc">
-      <section id="example-stega64">
-        <h2>Stega64</h2>
+      <section id="intro">
         <p class="ht-type-prose u-dim">
-          Stega64 encodes and decodes messages in image pixels.
+          <strong>Stegassette</strong> encodes payloads in image pixels using
+          the STGC format. An encoded image can carry text,
+          audio, or arbitrary bytes. For every pixel carrying information, another pixel is required to decode it.
+          The image also describes its encoding: the combine op, keymap,
+          traversal and border width are written into the border, so
+          <code>decode</code> needs nothing but the image.
+        </p>
+        <p class="ht-type-small u-dim">
+          <strong>Combine</strong> is the reversible operation that pairs a payload
+          byte with a key pixel. Some ops trade reversible fidelity for visual results. 
+          <strong>Keymap</strong> locates a key pixel for each data pixel. 
+          <strong>Traversal</strong> is the order
+          data pixels are visited.
+        </p>
+      </section>
+
+      <section id="example-stegassette-text">
+        <h2>Stegassette</h2>
+        <p class="ht-type-prose u-dim">
+          Encoding a basic text entry.
         </p>
         <p class="signature">
-          Stega64.encode({ source: HTMLImageElement | HTMLCanvasElement;
-          messages: string[]; encoding: Stega64Encoding; encodeMetadata:
-          boolean; minWidth?: number; minHeight?: number; borderWidth?: number;
-          }): HTMLCanvasElement
+          Stegassette.encode({ source: HTMLImageElement | HTMLCanvasElement;
+          entries: Entry[]; combine?: CombineName; keymap?: KeymapName;
+          traversal?: TraversalName; border?: number; aspectRatio?: number; }):
+          HTMLCanvasElement
         </p>
 
         <div class="ht-arrange-sidebar">
@@ -53,16 +71,19 @@
             <pre class="code">const source = await <a href="#load-image-from-image-url">loadImageFromImageUrl</a>({
   url: "./example.jpg"
 });
-Stega64.encode({
+const encoded = Stegassette.encode({
   source,
-  encoding: "<span data-value="encoding"></span>",
-  encodeMetadata: <span data-value="encodeMetadata"></span>,
-  messages: ["<span data-value="message"></span>"],
-  minWidth: <span data-value="minWidth"></span>,
-  minHeight: <span data-value="minHeight"></span>,
-  borderWidth: <span data-value="borderWidth"></span>,
-  aspectRatio: <span data-value="aspectRatio"></span>
-})</pre>
+  entries: [{
+    mimetype: "text/plain",
+    name: "message.txt",
+    data: "<span data-value="message"></span>",
+  }],
+  combine: "<span data-value="combine"></span>",
+  keymap: "<span data-value="keymap"></span>",
+  traversal: "<span data-value="traversal"></span>",
+  border: <span data-value="border"></span>,
+  aspectRatio: <span data-value="aspectRatio"></span>,
+});</pre>
 
             <div class="ht-arrange-grid">
               <!-- Caption first in both: the example appends its canvas to the
@@ -82,24 +103,30 @@ Stega64.encode({
         </div>
 
         <p class="signature">
-          Stega64.decode({ source: HTMLImageElement | HTMLCanvasElement;
-          encoding: Stega64Encoding; borderWidth?: number; }): String
+          Stegassette.decode({ source: HTMLImageElement | HTMLCanvasElement |
+          StegaImageData }): { entries: DecodedEntry[]; opts: StgcOpts }
         </p>
-        <pre class="code">const result = Stega64.decode({ source });
-<span data-output="decode"></span></pre>
+        <pre class="code">const { entries, opts } = Stegassette.decode({ source: encoded });
+const message = new TextDecoder().decode(entries[0].data);
+<span data-output="decode-text"></span></pre>
+
+        <p class="ht-type-small u-dim">
+          The STGC header is in the border ring, so small images might be widened until the header fits rather than the canvas being
+          grown to suit it.
+        </p>
       </section>
 
-      <section id="example-stegassette">
-        <h2>Stegassette</h2>
+      <section id="example-stegassette-audio">
+        <h2>Audio entries</h2>
         <p class="ht-type-prose u-dim">
-          Stegassette encodes multi-payload entries in image pixels using the
-          STGC format.
+          <code>buildAudioEntry</code> turns decoded PCM channels into an entry.
+          The mimetype carries sample rate, bit depth and channel layout, so a
+          decoded image can rebuild the buffer on its own.
         </p>
         <p class="signature">
-          Stegassette.encode({ source: HTMLImageElement | HTMLCanvasElement;
-          entries: Entry[]; combine?: CombineName; keymap?: KeymapName;
-          traversal?: TraversalName; bitsPerSample?: number; border?: number;
-          aspectRatio?: number; }): HTMLCanvasElement
+          Stegassette.buildAudioEntry({ channels: Float32Array[]; sampleRate:
+          number; bitsPerSample?: 8 | 16 | 24; layout?: "planar" | "interleaved"
+          | "block"; blockSize?: number; name?: string; }): Entry
         </p>
 
         <div class="ht-arrange-sidebar">
@@ -121,16 +148,15 @@ const encoded = Stegassette.encode({
   combine: "<span data-value="combine"></span>",
   keymap: "<span data-value="keymap"></span>",
   traversal: "<span data-value="traversal"></span>",
+  channels: "<span data-value="channelPlan"></span>",
   border: <span data-value="border"></span>,
   aspectRatio: <span data-value="aspectRatio"></span>,
-});</pre>
+});
+<span data-output="encode-shape"></span></pre>
 
             <div class="ht-arrange-grid">
               <figure class="frame u-pixelated">
-                <img
-                  class="ht-media-raw"
-                  src="./lovetakesmiles.jpg"
-                />
+                <img class="ht-media-raw" src="./lovetakesmiles.jpg" />
                 <figcaption class="frame__caption">source</figcaption>
               </figure>
 
@@ -162,24 +188,49 @@ const encoded = Stegassette.encode({
         </div>
 
         <p class="signature">
-          Stegassette.decode({ source: HTMLImageElement | HTMLCanvasElement |
-          StegaImageData }): { entries: DecodedEntry[]; opts: StgcOpts }
+          Stegassette.parseAudioEntry(entry: DecodedEntry | Entry): { channels:
+          Float32Array[]; sampleRate: number; bitsPerSample: 8 | 16 | 24;
+          layout: "planar" | "interleaved" | "block"; blockSize: number; }
         </p>
         <pre class="code">const { entries, opts } = Stegassette.decode({ source: encoded });
 <span data-output="decode-opts">// opts: { combine, keymap, traversal } recovered from STGC header</span>
 const { channels, sampleRate } = Stegassette.parseAudioEntry(entries[0]);
 const recon = Stegassette.reconstructCover(encoded, opts);
 // recon develops on the canvas in sync with audio playback</pre>
-      </section>
 
-      <section id="example-visualization">
-        <h2>StegaCassette</h2>
-        <p class="ht-type-prose u-dim">
-          Encoding audio waveforms in image pixels.
+        <p class="ht-type-small u-dim">
+          <strong>keymap</strong> decides where each byte's key comes from, and
+          the last two options change the shape of the encode rather than just
+          its look. <code>adjacent</code> through <code>rotate</code> reserve a
+          checkerboard of key pixels — half the interior — which is what lets
+          <code>reconstructCover</code> bring the picture back.
+          <code>none</code> has no key pixel at all, so nothing is reserved:
+          the image is half the size. What the reveal develops into then depends
+          entirely on the channel plan below.
         </p>
         <p class="ht-type-small u-dim">
-          This is a demonstration of how waveforms are stored inside of pixels
-          using <code>StegaCassette</code>.
+          <strong>channels</strong> is the lever that gets a picture back, and
+          it takes any subset of r/g/b in any order. Channels outside the plan
+          are never written, so <code>"rg"</code> leaves blue holding the
+          original cover at <em>full</em> resolution — better than the half-res
+          averaging a keyed encode reconstructs, and still smaller than one.
+          <code>"r"</code> keeps green and blue, and costs more pixels than
+          reserving key pixels would. Only <code>"rgb"</code> leaves nothing,
+          and that is the one case where the reveal empties to black.
+          Order matters too: it decides which payload byte lands in which
+          channel, so <code>"bgr"</code> and <code>"rgb"</code> are the same
+          size and a different colour. The line under the encode reports what
+          each choice actually cost.
+        </p>
+      </section>
+
+      <section id="example-audio-in-pixels">
+        <h2>Audio in pixels</h2>
+        <p class="ht-type-small u-dim">
+          The encode below is just a demonstration. The pixels
+          <em>are</em> the actual payload: a black cover under <code>xor</code> leaves
+          every key channel at zero, and <code>a ^ 0 === a</code>, so each
+          channel holds one raw PCM byte verbatim.
         </p>
 
         <audio src="./example-mono-24bit-48khz-765731.wav"></audio>
@@ -202,7 +253,7 @@ const recon = Stegassette.reconstructCover(encoded, opts);
               <canvas id="viz-waveform-64"></canvas>
               <canvas id="viz-lines-64"></canvas>
               <figcaption class="frame__caption">
-                <strong><span data-value="bitDepth">24</span>-bit</strong> |
+                <strong><span data-value="bitsPerSample">24</span>-bit</strong> |
                 <strong><span data-value="pixels">64</span> colors</strong>
                 with red, green, and blue channels separated above |
                 <strong
@@ -239,7 +290,10 @@ const recon = Stegassette.reconstructCover(encoded, opts);
 
       <section id="stega-animator">
         <h2>StegaAnimator</h2>
-        <p class="ht-type-prose u-dim">Animate steganographic image</p>
+        <p class="ht-type-prose u-dim">
+          Animate a steganographic image. The source below is the encoded canvas
+          from the first example.
+        </p>
         <p class="signature">
           new StegaAnimator({ resolution: number; source: HTMLImageElement |
           HTMLCanvasElement; fadeAmount?: number; rotationMode?: "2d" | "3d";
@@ -282,36 +336,47 @@ killLoop();</pre>
         </div>
       </section>
 
-      <section id="load-audio-buffers-from-audio-url">
-        <h2>loadAudioBuffersFromAudioUrl</h2>
-        <p class="ht-type-prose u-dim">Load an audio buffer from a url string</p>
-        <p class="signature">
-          async loadAudioBuffersFromAudioUrl({ url: string; audioContext:
-          AudioContext; channels: StegaCassetteChannels; sampleRate?: number; }):
-          Promise&lt;Float32Array[]>
+      <!-- One section, many entries. These are ancillary to the codec, and the
+           system's h3 step — set off by space rather than a second rule — is
+           what says "still inside Helpers" for all eight of them. -->
+      <section id="helpers">
+        <h2>Helpers</h2>
+        <p class="ht-type-prose u-dim">
+          Loading, playback, and file I/O around the codec. None of them are
+          required to encode or decode — they are the plumbing every example on
+          this page ends up needing.
         </p>
-        <pre class="code">const audioContext = new AudioContext();
-const audioBuffer = await loadAudioBuffersFromAudioUrl({
-  url: "./example.mp3",
-  audioContext,
-  sampleRate: audioContext.sampleRate,
-});</pre>
-      </section>
 
-      <section id="load-image-from-image-url">
-        <h2>loadImageFromImageUrl</h2>
+        <h3 id="load-image-from-image-url">loadImageFromImageUrl</h3>
         <p class="ht-type-prose u-dim">Load an image from a url string</p>
         <p class="signature">
           async loadImageFromImageUrl({ url: string }):
           Promise&lt;HTMLImageElement>
         </p>
-        <pre class="code">const audioBuffer = await loadImageFromImageUrl({
+        <pre class="code">const source = await loadImageFromImageUrl({
   url: "./example.jpg"
 });</pre>
-      </section>
 
-      <section id="play-decoded-audio-buffers">
-        <h2>playDecodedAudioBuffers</h2>
+        <h3 id="load-audio-buffers-from-audio-url">
+          loadAudioBuffersFromAudioUrl
+        </h3>
+        <p class="ht-type-prose u-dim">
+          Load, downmix and resample an audio file into planar Float32 channels
+        </p>
+        <p class="signature">
+          async loadAudioBuffersFromAudioUrl({ url: string; audioContext:
+          AudioContext; channels: 1 | 2; sampleRate?: number; }):
+          Promise&lt;Float32Array[]>
+        </p>
+        <pre class="code">const audioContext = new AudioContext();
+const audioBuffers = await loadAudioBuffersFromAudioUrl({
+  url: "./example.mp3",
+  audioContext,
+  channels: 2,
+  sampleRate: audioContext.sampleRate,
+});</pre>
+
+        <h3 id="play-decoded-audio-buffers">playDecodedAudioBuffers</h3>
         <p class="ht-type-prose u-dim">Play decoded audio buffers</p>
         <p class="signature">
           async playDecodedAudioBuffers({ audioBuffers: Float32Array[];
@@ -324,11 +389,11 @@ const audioBuffer = await loadAudioBuffersFromAudioUrl({
   sampleRate: audioContext.sampleRate,
 });
 source.stop();</pre>
-      </section>
 
-      <section>
-        <h2>createDropReader</h2>
-        <p class="ht-type-prose u-dim">Turn an HTML element into a file drop area</p>
+        <h3 id="create-drop-reader">createDropReader</h3>
+        <p class="ht-type-prose u-dim">
+          Turn an HTML element into a file drop area
+        </p>
         <p class="signature">
           createDropReader({ element: HTMLElement; onSuccess: (element:
           HTMLImageElement | HTMLAudioElement) => void; onFailure?: (message:
@@ -345,10 +410,8 @@ createDropReader({
   onDrop: () => element.classList.remove("droppable"),
   types: ["image/*"]
 });</pre>
-      </section>
 
-      <section>
-        <h2>createFileReader</h2>
+        <h3 id="create-file-reader">createFileReader</h3>
         <p class="ht-type-prose u-dim">Turn an HTML input into a file input</p>
         <p class="signature">
           createFileReader({ element: HTMLInputElement; onSuccess: (element:
@@ -373,10 +436,8 @@ createFileReader({
   },
   types: ["*/*"]
 });</pre>
-      </section>
 
-      <section>
-        <h2>readFileAsBytes</h2>
+        <h3 id="read-file-as-bytes">readFileAsBytes</h3>
         <p class="ht-type-prose u-dim">Read a file as binary bytes</p>
         <p class="signature">
           readFileAsBytes({ file: File }): Promise&lt;{ data: Uint8Array;
@@ -389,10 +450,8 @@ input.onchange = async () => {
   const { data, mimeType, fileName } = await readFileAsBytes({ file });
   console.log(`Read ${fileName} (${mimeType}): ${data.length} bytes`);
 };</pre>
-      </section>
 
-      <section>
-        <h2>bytesToBlobUrl</h2>
+        <h3 id="bytes-to-blob-url">bytesToBlobUrl</h3>
         <p class="ht-type-prose u-dim">Convert binary data to a Blob URL</p>
         <p class="signature">
           bytesToBlobUrl({ data: Uint8Array; mimeType: string }): string
@@ -404,10 +463,8 @@ document.body.appendChild(img);
 
 // Remember to revoke when done
 URL.revokeObjectURL(url);</pre>
-      </section>
 
-      <section>
-        <h2>downloadBytes</h2>
+        <h3 id="download-bytes">downloadBytes</h3>
         <p class="ht-type-prose u-dim">Download binary data as a file</p>
         <p class="signature">
           downloadBytes({ data: Uint8Array; mimeType: string; fileName: string

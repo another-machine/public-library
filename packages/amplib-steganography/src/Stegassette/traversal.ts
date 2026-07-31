@@ -3,9 +3,13 @@ import type { TraversalName, TraversalParams } from "./types";
 
 type FilterFn = (x: number, y: number) => boolean;
 
-/** Count pixels matching `filter`. O(1) for the universal isDataPixel case. */
+/** Every interior pixel is a data pixel — the keyless case. */
+const allPixels: FilterFn = () => true;
+
+/** Count pixels matching `filter`. O(1) for the two universal filters. */
 function countFiltered(W: number, H: number, filter: FilterFn): number {
   if (filter === isDataPixel) return dataPixelCount(W, H);
+  if (filter === allPixels) return W * H;
   let n = 0;
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) if (filter(x, y)) n++;
@@ -223,29 +227,34 @@ export function getPathIndices(
   W: number,
   H: number,
   traversal: TraversalName,
-  params: TraversalParams = {}
+  params: TraversalParams = {},
+  keyless = false
 ): Uint32Array {
+  // Keyless keymaps reserve no key pixels, so the path covers the whole
+  // interior rather than the checkerboard half of it. Every path builder
+  // already takes this filter; only the default differs.
+  const f: FilterFn = keyless ? allPixels : isDataPixel;
   switch (traversal) {
     case "raster":
-      return rasterPath(W, H);
+      return rasterPath(W, H, f);
     case "boustrophedon":
-      return boustrophedonPath(W, H);
+      return boustrophedonPath(W, H, f);
     case "spiral":
-      return spiralPath(W, H);
+      return spiralPath(W, H, f);
     case "angle":
-      return anglePath(W, H, isDataPixel, params.a ?? 1, params.b ?? 1);
+      return anglePath(W, H, f, params.a ?? 1, params.b ?? 1);
     case "fisher-yates":
-      return fisherYatesPath(W, H, isDataPixel, params.seed);
+      return fisherYatesPath(W, H, f, params.seed);
     case "center-out":
-      return centerOutPath(W, H);
+      return centerOutPath(W, H, f);
     case "hilbert":
-      return hilbertPath(W, H);
+      return hilbertPath(W, H, f);
     case "polar":
-      return polarPath(W, H);
+      return polarPath(W, H, f);
     case "bayer":
-      return bayerPath(W, H);
+      return bayerPath(W, H, f);
     default:
-      return rasterPath(W, H);
+      return rasterPath(W, H, f);
   }
 }
 

@@ -12,14 +12,27 @@ export type CombineName =
   | "veil"
   | "whisper";
 
-/** Which key pixel pairs with each data pixel. */
+/**
+ * Where each data pixel's key comes from.
+ *
+ * The first six *locate* a key pixel elsewhere in the interior, which is what
+ * makes the cover recoverable — and what costs half the interior, since a
+ * checkerboard of pixels has to be held back to serve as keys.
+ *
+ * "none" has no key at all — the key is a constant zero, so a reversible
+ * combine leaves the payload byte in the pixel verbatim. No pixel is held back,
+ * so every interior pixel carries payload and the image is roughly half the
+ * area. The cover is gone with it, unless a partial channel plan keeps some
+ * channels out of the payload (see EncodeOptions.channels).
+ */
 export type KeymapName =
   | "adjacent"
   | "poles"
   | "mirror-x"
   | "mirror-y"
   | "offset"
-  | "rotate";
+  | "rotate"
+  | "none";
 
 /** Order in which data pixels are visited during encode / decode. */
 export type TraversalName =

@@ -26,7 +26,7 @@
 
 import { Img } from "./Img";
 import { isAudioEntry, parseAudioEntry } from "./audio";
-import { KEYMAP } from "./keymap";
+import { KEYMAP, isKeylessKeymap, type LocatingKeymapName } from "./keymap";
 import { computeRevealOrder } from "./pcm";
 import { reconstructCover } from "./reconstruct";
 import { getPathIndices } from "./traversal";
@@ -69,6 +69,8 @@ export class RevealSurface {
   private B: number;
   private IW: number;
   private IH: number;
+  /** True when the encode generates its key from position (no key pixels). */
+  private keyless: boolean;
 
   // Bounding box of pixels touched since the last flush, so a frame only
   // re-uploads the region that actually changed.
@@ -77,14 +79,25 @@ export class RevealSurface {
   private dx1 = -1;
   private dy1 = -1;
 
-  constructor(img: Img, opts: StgcOpts, { className = "stegassette-player" }: RevealSurfaceOptions = {}) {
+  constructor(
+    img: Img,
+    opts: StgcOpts,
+    { className = "stegassette-player" }: RevealSurfaceOptions = {}
+  ) {
     const W = (this.width = img.width);
     const H = (this.height = img.height);
     this.opts = opts;
     this.B = opts.borderWidth;
     this.IW = W - 2 * this.B;
     this.IH = H - 2 * this.B;
-    this.pathIdx = getPathIndices(this.IW, this.IH, opts.traversal, opts.params ?? {});
+    this.keyless = isKeylessKeymap(opts.keymap);
+    this.pathIdx = getPathIndices(
+      this.IW,
+      this.IH,
+      opts.traversal,
+      opts.params ?? {},
+      this.keyless
+    );
     this.bytesPerPixel = opts.plan?.bytesPerPixel ?? 3;
 
     this.element = document.createElement("div");
@@ -95,14 +108,24 @@ export class RevealSurface {
     this.overlayCanvas.className = "overlay";
     this.element.append(this.baseCanvas, this.overlayCanvas);
 
-    // Base layer: the reconstructed cover, smoothly upscaled when it comes
-    // back at half resolution (which key-preserving combines allow).
+    // Base layer: whatever of the cover can be recovered, smoothly upscaled
+    // when it comes back at half resolution (which key-preserving combines
+    // allow). One path for every mode, because "how much survives" is a
+    // property of the encode that reconstructCover already answers:
+    //
+    //   keyed              → the cover, at half resolution
+    //   keyless, full plan → the border ring, interior blank (reveals to black)
+    //   keyless, partial   → the channels left out of the plan, at FULL
+    //                        resolution, since they were never written
+    //
+    // A blanket keyless fill lived here and was wrong for the third case: it
+    // painted over real cover that no combine had ever touched.
+    const baseCtx = this.baseCanvas.getContext("2d")!;
     const recon = reconstructCover(img, opts);
     const small = canvas(recon.width, recon.height);
     small
       .getContext("2d")!
       .putImageData(new ImageData(asClamped(recon.data), recon.width, recon.height), 0, 0);
-    const baseCtx = this.baseCanvas.getContext("2d")!;
     baseCtx.imageSmoothingEnabled = true;
     baseCtx.drawImage(small, 0, 0, W, H);
 
@@ -119,7 +142,10 @@ export class RevealSurface {
   reset(): void {
     this.px.set(this.encoded);
     const { width: W, height: H, B } = this;
-    if (B > 0) {
+    // Keyless keeps its ring opaque. Its reconstruction is full-resolution, so
+    // the ring underneath is the same pixels either way — but leaving the
+    // encoded ring in place avoids resampling a border that is already exact.
+    if (B > 0 && !this.keyless) {
       // Alpha 0 across the ring; the base canvas shows through.
       for (let y = 0; y < H; y++) {
         const inRing = y < B || y >= H - B;
@@ -160,7 +186,16 @@ export class RevealSurface {
     const y = ly + B;
     this.px[(y * W + x) * 4 + 3] = 0;
     this.touch(x, y);
-    const [klx, kly] = KEYMAP[opts.keymap](lx, ly, IW, IH, opts.params ?? {});
+    // Keyless has no partner to clear — every interior pixel is a data pixel,
+    // so the checkerboard this pairing exists to avoid cannot arise.
+    if (this.keyless) return;
+    const [klx, kly] = KEYMAP[opts.keymap as LocatingKeymapName](
+      lx,
+      ly,
+      IW,
+      IH,
+      opts.params ?? {}
+    );
     const kx = klx + B;
     const ky = kly + B;
     this.px[(ky * W + kx) * 4 + 3] = 0;

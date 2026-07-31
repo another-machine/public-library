@@ -6,14 +6,28 @@ Origin: [ja-k-e/stega](https://github.com/ja-k-e/stega).
 
 ## Modules
 
-| Module          | Description                                                                                                                                                                             |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Stega64`       | Text messages encoded in image pixels                                                                                                                                                   |
-| `StegaCassette` | Audio encoded in image pixels (legacy; see Stegassette for the newer format)                                                                                                            |
-| `StegaBinary`   | Arbitrary binary data encoded in image pixels                                                                                                                                           |
-| `StegaKey`      | Key image creation for keyed encoding                                                                                                                                                   |
-| `StegaMetadata` | Metadata sidecar encoded in image border pixels                                                                                                                                         |
-| `Stegassette`   | Multi-payload STGC format: audio + arbitrary entries, self-describing alpha header, 11 combine ops, 9 traversals, 6 keymaps. See [Stegassette.md](./Stegassette.md) for format details. |
+`Stegassette` is the current format and the only one carried by the
+[published docs](https://amplib.app/steganography), alongside `StegaAnimator`
+and the helper functions. It subsumes what the pre-STGC modules each did
+separately — text, audio, and arbitrary bytes are all just entries.
+
+| Module         | Description                                                                                                                                                                            |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Stegassette`  | Multi-payload STGC format: audio + arbitrary entries, self-describing alpha header, 11 combine ops, 9 traversals, 6 keymaps. See [Stegassette.md](./Stegassette.md) for format details. |
+| `StegaAnimator`| Animates an encoded image on a canvas                                                                                                                                                  |
+
+The pre-STGC modules below still ship, and still have consumers — `machines/sonic-pixels`
+uses `StegaCassette` + `StegaMetadata`, and the iOS `StegaKit` in `stega-player` is a
+Swift port of this API. They are no longer documented on the site, and new work should
+use `Stegassette`.
+
+| Module          | Description                                        |
+| --------------- | -------------------------------------------------- |
+| `Stega64`       | Text messages encoded in image pixels              |
+| `StegaCassette` | Audio encoded in image pixels                      |
+| `StegaBinary`   | Arbitrary binary data encoded in image pixels      |
+| `StegaKey`      | Key image creation for keyed encoding              |
+| `StegaMetadata` | Metadata sidecar encoded in image border pixels    |
 
 ## Usage
 
@@ -43,6 +57,19 @@ const { entries, opts } = Stegassette.decode({ source: canvas });
 const { channels, sampleRate } = Stegassette.parseAudioEntry(entries[0]);
 ```
 
+An entry is a mimetype, an optional name, and bytes — a string is encoded as
+UTF-8 — so text needs no separate module:
+
+```typescript
+const canvas = Stegassette.encode({
+  source: image,
+  entries: [{ mimetype: "text/plain", name: "message.txt", data: "Hello world" }],
+});
+
+const { entries } = Stegassette.decode({ source: canvas });
+const message = new TextDecoder().decode(entries[0].data);
+```
+
 ### Node.js (read/write PNG files)
 
 ```typescript
@@ -54,7 +81,7 @@ await writePng("output.png", out);
 const { entries } = Stegassette.decodeImageData({ source: out });
 ```
 
-### StegaCassette (legacy)
+### StegaCassette (pre-STGC)
 
 ```typescript
 import { StegaCassette } from "@amplib/steganography";

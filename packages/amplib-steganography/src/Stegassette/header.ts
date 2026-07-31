@@ -12,10 +12,19 @@ const STGC_MAGIC = [0x53, 0x54, 0x47, 0x43] as const; // "STGC"
 const STGC_VERSION = 1;
 
 // CODEC_VERSION identifies this *implementation*, not the on-disk format (that's
-// STGC_VERSION). It is kept deliberately in lockstep with CODEC_VERSION in the
-// lab's lib/steg-core.js: the two are separate implementations of one format,
-// and a mismatch means they have drifted. Bump both together.
-const CODEC_VERSION = "2026.07.29";
+// STGC_VERSION). It is what consumers vendoring dist/stegassette.global.js check
+// their copy against, so it has to move whenever the surface they depend on
+// does — otherwise a stale bundle reports itself as current.
+//
+// (It used to be kept in lockstep with the lab's lib/steg-core.js, a second
+// implementation of the same format. That file is gone and the lab consumes
+// this package, so there is nothing left to keep in step with.)
+//
+// 2026.07.31 — added the "none" keymap: a keyless encode with no key pixel,
+// roughly half the area, and no recoverable cover unless a partial channel plan
+// leaves channels out of the payload. STGC_VERSION is unchanged: every existing
+// image still decodes identically, and the descriptor stores keymaps by name.
+const CODEC_VERSION = "2026.07.31";
 
 export { CODEC_VERSION, STGC_MAGIC, STGC_VERSION };
 

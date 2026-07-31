@@ -26,6 +26,8 @@ type FormData = {
   combine: string;
   keymap: string;
   traversal: string;
+  /** Which colour channels carry payload — the rest keep the cover. */
+  channelPlan: "rgb" | "rg" | "r";
   bitsPerSample: "8" | "16" | "24";
   channels: "1" | "2";
   sampleRate: number;
@@ -34,7 +36,7 @@ type FormData = {
 };
 
 export default async function example() {
-  const section = document.getElementById("example-stegassette")!;
+  const section = document.getElementById("example-stegassette-audio")!;
   const sourceImg = section.querySelector<HTMLImageElement>("figure img")!;
   const form = section.querySelector("form")!;
   const caption = section.querySelector<HTMLElement>("#stegassette-caption")!;
@@ -89,13 +91,12 @@ export default async function example() {
     const lx = v % IW,
       ly = (v / IW) | 0;
     overlayCtx.clearRect(lx + B, ly + B, 1, 1);
-    const [klx, kly] = Stegassette.KEYMAP[opts.keymap](
-      lx,
-      ly,
-      IW,
-      IH,
-      opts.params ?? {},
-    );
+    // A keyless encode has no paired key pixel: every interior pixel is a data
+    // pixel, so there is no partner to clear alongside this one.
+    if (Stegassette.isKeylessKeymap(opts.keymap)) return;
+    const [klx, kly] = Stegassette.KEYMAP[
+      opts.keymap as Stegassette.LocatingKeymapName
+    ](lx, ly, IW, IH, opts.params ?? {});
     overlayCtx.clearRect(klx + B, kly + B, 1, 1);
   }
 
@@ -198,11 +199,15 @@ export default async function example() {
       const B = opts.borderWidth;
       const IW = W - 2 * B,
         IH = H - 2 * B;
+      // The keyless flag is load-bearing, not cosmetic: without it the path
+      // covers only the checkerboard half of the interior, so every reveal
+      // position after the first would point at the wrong pixel.
       const pathIdx = Stegassette.getPathIndices(
         IW,
         IH,
         opts.traversal,
         opts.params ?? {},
+        Stegassette.isKeylessKeymap(opts.keymap),
       );
       const bpp = opts.plan?.bytesPerPixel ?? 3;
       const audioStartPxIdx = Math.floor(entry.dataOffset / bpp);
@@ -249,12 +254,35 @@ export default async function example() {
       node.start(t0);
       audioSrc = node;
       playing = true;
-      setCaption("tap to stop");
+      setCaption(
+        Stegassette.isKeylessKeymap(opts.keymap)
+          ? "tap to stop — keyless: the data empties as it plays"
+          : "tap to stop",
+      );
       rafId = requestAnimationFrame(revealFrame);
     } finally {
       decoding = false;
     }
   });
+
+  /**
+   * The combine actually used, given the selected keymap.
+   *
+   * Both dropdowns are free, but the six combines that rewrite the key pixel
+   * need a key pixel to rewrite — a keyless keymap has none, and the encode
+   * would throw. Fall back to xor so every pairing of the two controls does
+   * something, and say so in the code block rather than failing silently.
+   */
+  function resolveCombine(data: FormData): Stegassette.CombineName {
+    const combine = data.combine as Stegassette.CombineName;
+    if (
+      Stegassette.isKeylessKeymap(data.keymap as Stegassette.KeymapName) &&
+      Stegassette.KEY_MOD[combine]
+    ) {
+      return "xor";
+    }
+    return combine;
+  }
 
   // ── Form ────────────────────────────────────────────────────────────────
   const { values } = createForm<FormData>({
@@ -278,16 +306,25 @@ export default async function example() {
         value: "xor",
         name: "combine",
       },
+      // Which colour channels carry payload. Channels left out of the plan are
+      // never written, so they keep the cover at full resolution — the one way
+      // a keyless encode gets a real picture back.
+      // Any subset of r/g/b in any order. The subset decides how many bytes a
+      // pixel holds and which channels keep the cover; the order decides which
+      // payload byte lands in which channel, which is what sets the colour cast.
+      channelPlan: {
+        type: "select",
+        options: ["rgb", "bgr", "grb", "rg", "gb", "br", "r", "g", "b"],
+        value: "rgb",
+        name: "channelPlan",
+      },
       keymap: {
         type: "select",
-        options: [
-          "adjacent",
-          "poles",
-          "mirror-x",
-          "mirror-y",
-          "rotate",
-          "offset",
-        ],
+        // The last two are keyless — they generate the key from position
+        // instead of reserving a pixel for it, which halves the image and
+        // leaves no cover to develop. Taken from the package so the list
+        // cannot drift from what the codec accepts.
+        options: [...Stegassette.KEYMAP_NAMES],
         value: "adjacent",
         name: "keymap",
       },
@@ -344,15 +381,51 @@ export default async function example() {
 
   sourceImg.onload = () => run(values);
 
+  /**
+   * What the current settings actually cost, read back off the encoded image.
+   *
+   * The two levers trade against each other and the trade is not obvious from
+   * the option names, so it is measured rather than described: a keyless keymap
+   * halves the pixel count and takes the cover with it, while dropping a
+   * channel from the plan hands the cover back at full resolution and costs
+   * pixels. Reported together because that is the only way to see the exchange.
+   */
+  function reportEncodeShape(
+    W: number,
+    H: number,
+    opts: Stegassette.StgcOpts,
+  ) {
+    const slots = opts.plan?.slots ?? [];
+    const carrying = new Set(slots.map((s) => s.ch));
+    const kept = (["r", "g", "b"] as const).filter((_, i) => !carrying.has(i as 0 | 1 | 2));
+    const keyless = Stegassette.isKeylessKeymap(opts.keymap);
+    const px = (W * H) / 1000;
+
+    const lines = [
+      `// ${W}×${H} = ${px.toFixed(0)}k px · ${opts.plan?.bytesPerPixel ?? 3} byte/px`,
+      keyless
+        ? `// keyless — no key pixels reserved, so every interior pixel carries payload`
+        : `// keyed — half the interior is reserved for key pixels`,
+      kept.length
+        ? `// ${kept.join("+")} never written: cover survives there at full resolution`
+        : `// every channel carries payload${keyless ? " — nothing of the cover survives" : ""}`,
+    ];
+    section
+      .querySelectorAll<HTMLElement>(`[data-output="encode-shape"]`)
+      .forEach((el) => (el.innerText = lines.join("\n")));
+  }
+
   // ── Encode + reconstruct + display ──────────────────────────────────────
   async function run(data: FormData) {
     if (!sourceImg.naturalWidth || !sourceImg.naturalHeight) return;
     stopPlayback();
     revealState = null;
 
+    // The resolved combine, not the raw selection — the code block has to show
+    // what actually ran, or it reads as a lie whenever the fallback fires.
     section
       .querySelectorAll<HTMLElement>(`[data-value="combine"]`)
-      .forEach((el) => (el.innerText = data.combine));
+      .forEach((el) => (el.innerText = resolveCombine(data)));
     section
       .querySelectorAll<HTMLElement>(`[data-value="keymap"]`)
       .forEach((el) => (el.innerText = data.keymap));
@@ -381,7 +454,7 @@ export default async function example() {
               : String(parseAspect(data.aspectRatio)?.toFixed(4))),
       );
 
-    const encodeKey = `${data.combine}|${data.keymap}|${data.traversal}|${data.bitsPerSample}|${data.channels}|${data.sampleRate}|${data.border}|${data.aspectRatio}`;
+    const encodeKey = `${data.combine}|${data.keymap}|${data.traversal}|${data.channelPlan}|${data.bitsPerSample}|${data.channels}|${data.sampleRate}|${data.border}|${data.aspectRatio}`;
     if (encodeKey === cachedEncodeKey && encodedCanvas) {
       displayEncoded();
       return;
@@ -413,9 +486,10 @@ export default async function example() {
             name: "example.pcm",
           }),
         ],
-        combine: data.combine as Stegassette.CombineName,
+        combine: resolveCombine(data),
         keymap: data.keymap as Stegassette.KeymapName,
         traversal: data.traversal as Stegassette.TraversalName,
+        channels: data.channelPlan,
         border: data.border,
         aspectRatio: parseAspect(data.aspectRatio) ?? undefined,
       });
@@ -446,6 +520,7 @@ export default async function example() {
 
     // Decode and reconstruct the cover
     const { opts } = Stegassette.decode({ source: encodedCanvas });
+    reportEncodeShape(W, H, opts);
     const encImg = Stegassette.imgFromSource(encodedCanvas);
     const recon = Stegassette.reconstructCover(encImg, opts);
 
@@ -467,12 +542,16 @@ export default async function example() {
 
     // Draw encoded image into overlay (clearing border so recon shows through).
     // Don't call drawEncodedOverlay() here — revealState isn't set yet.
+    // Keyless keeps its ring opaque: the border is the only real picture such
+    // an encode has, and clearing it would swap that for the blank interior.
     const B = opts.borderWidth;
     overlayCtx.drawImage(encodedCanvas, 0, 0);
-    overlayCtx.clearRect(0, 0, W, B);
-    overlayCtx.clearRect(0, H - B, W, B);
-    overlayCtx.clearRect(0, 0, B, H);
-    overlayCtx.clearRect(W - B, 0, B, H);
+    if (!Stegassette.isKeylessKeymap(opts.keymap)) {
+      overlayCtx.clearRect(0, 0, W, B);
+      overlayCtx.clearRect(0, H - B, W, B);
+      overlayCtx.clearRect(0, 0, B, H);
+      overlayCtx.clearRect(W - B, 0, B, H);
+    }
 
     setCaption("tap to play");
     imgWrap.style.cursor = "pointer";

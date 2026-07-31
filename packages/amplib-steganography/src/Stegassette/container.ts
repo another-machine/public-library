@@ -2,7 +2,29 @@ import { Img } from "./Img";
 import { COMBINE, ENCODE_OP, KEY_MOD } from "./combine";
 import { buildInteriorStream, containerInteriorBytes, entryTableSize, parseEntryTable } from "./entries";
 import { applyAlphaHeader, isDefaultPlan, packStgcHeader, serializeChannelPlan, unpackStgcHeaderAlpha } from "./header";
-import { resolveKeymap, resolveKeymapName } from "./keymap";
+import { isKeylessKeymap, resolveKeyField, resolveKeymap, resolveKeymapName } from "./keymap";
+
+/**
+ * Combines that rewrite the key pixel, and so cannot be used keyless.
+ *
+ * These ops split the payload: part into the data pixel, the rest stashed in
+ * the key pixel. A keyless encode has no second pixel to stash into, so the
+ * stashed bits would be unrecoverable — the payload would round-trip wrong
+ * rather than merely looking different. Rejected loudly instead.
+ */
+function assertCombinesAllowed(
+  keymap: KeymapName,
+  slots: ChannelPlan["slots"]
+): void {
+  if (!isKeylessKeymap(keymap)) return;
+  const bad = [...new Set(slots.filter((s) => KEY_MOD[s.combine]).map((s) => s.combine))];
+  if (bad.length)
+    throw new Error(
+      `combine ${bad.map((c) => `"${c}"`).join(", ")} cannot be used with keymap ` +
+        `"${keymap}": it rewrites the key pixel, and a keyless encode has none. ` +
+        `Use xor, additive, subtractive, bitshift or signed.`
+    );
+}
 import { normalizeChannelPlan } from "./channelPlan";
 import { getPathIndices } from "./traversal";
 import type {
@@ -35,9 +57,11 @@ function writeInterior(
 ): void {
   const B = opts.borderWidth;
   const IW = img.width - 2 * B, IH = img.height - 2 * B;
-  const path = getPathIndices(IW, IH, opts.traversal || "raster", opts.params);
+  const keyless = isKeylessKeymap(opts.keymap);
+  const path = getPathIndices(IW, IH, opts.traversal || "raster", opts.params, keyless);
   const { slots, broadcast } = opts.plan;
-  const km = resolveKeymap(opts);
+  const km = keyless ? null : resolveKeymap(opts);
+  const field = keyless ? resolveKeyField(opts.keymap) : null;
   const params = opts.params;
   let ai = 0;
 
@@ -46,10 +70,14 @@ function writeInterior(
     const v = path[pi];
     const lx = v % IW, ly = (v / IW) | 0;
     const dx = lx + B, dy = ly + B;
-    const [klx, kly] = km(lx, ly, IW, IH, params);
+    const [klx, kly] = km ? km(lx, ly, IW, IH, params) : [lx, ly];
     const kx = klx + B, ky = kly + B;
 
-    const k = keyImg.get(kx, ky);
+    // Keyless generates the key per channel from position rather than reading
+    // a pixel, so no pixel is consumed and none is written back.
+    const k: [number, number, number] = field
+      ? [field(lx, ly, 0, IW, IH, params), field(lx, ly, 1, IW, IH, params), field(lx, ly, 2, IW, IH, params)]
+      : keyImg.get(kx, ky);
     const cur = img.get(dx, dy);
     const outD: [number, number, number] = [cur[0], cur[1], cur[2]];
     const outK: [number, number, number] = [k[0], k[1], k[2]];
@@ -80,7 +108,10 @@ function writeInterior(
     }
 
     img.set(dx, dy, outD[0], outD[1], outD[2]);
-    if (keyTouched) img.set(kx, ky, outK[0], outK[1], outK[2]);
+    // keyTouched can only be set by a KEY_MOD combine, and those are rejected
+    // for keyless encodes before we get here — writing (kx, ky) would clobber
+    // the data pixel itself, since keyless maps a pixel to its own position.
+    if (keyTouched && !keyless) img.set(kx, ky, outK[0], outK[1], outK[2]);
   }
 }
 
@@ -92,9 +123,11 @@ function readInterior(
 ): Uint8Array {
   const B = opts.borderWidth;
   const IW = img.width - 2 * B, IH = img.height - 2 * B;
-  const path = getPathIndices(IW, IH, opts.traversal || "raster", opts.params);
+  const keyless = isKeylessKeymap(opts.keymap);
+  const path = getPathIndices(IW, IH, opts.traversal || "raster", opts.params, keyless);
   const { slots, broadcast } = opts.plan;
-  const km = resolveKeymap(opts);
+  const km = keyless ? null : resolveKeymap(opts);
+  const field = keyless ? resolveKeyField(opts.keymap) : null;
   const params = opts.params;
   const out = new Uint8Array(byteLength);
   let ai = 0;
@@ -103,10 +136,15 @@ function readInterior(
     if (ai >= byteLength) break;
     const v = path[pi];
     const lx = v % IW, ly = (v / IW) | 0;
-    const [klx, kly] = km(lx, ly, IW, IH, params);
+    const [klx, kly] = km ? km(lx, ly, IW, IH, params) : [lx, ly];
     const dx = lx + B, dy = ly + B;
     const kx = klx + B, ky = kly + B;
-    const e_ = img.get(dx, dy), k = keyImg.get(kx, ky);
+    const e_ = img.get(dx, dy);
+    // Recomputed from position, exactly as at encode — this is what lets the
+    // key cost no pixels: the decoder derives it from the header alone.
+    const k: [number, number, number] = field
+      ? [field(lx, ly, 0, IW, IH, params), field(lx, ly, 1, IW, IH, params), field(lx, ly, 2, IW, IH, params)]
+      : keyImg.get(kx, ky);
 
     // broadcast: decode from first slot only (all channels carry the same byte)
     if (broadcast) {
@@ -173,6 +211,7 @@ export function encodeContainer(
   const keymap: KeymapName = resolveKeymapName(opts);
   const traversal = opts.traversal || "raster";
   const combine: CombineName = opts.combine || "xor";
+  assertCombinesAllowed(keymap, plan.slots);
 
   const hdrBytes = packStgcHeader({
     combine,
