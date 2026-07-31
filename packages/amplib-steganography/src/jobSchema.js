@@ -50,7 +50,14 @@ import {
 //
 // Format matches CODEC_VERSION (YYYY.MM.DD). Bump on any change to the job
 // file shape or to how a field resolves.
-const SCHEMA_VERSION = "2026.07.30";
+//
+// 2026.07.31 — the keymap enum gained "none" (keyless). ENUMS.keymap is
+// KEYMAP_NAMES, imported from the codec, so a codec keymap is a schema change:
+// this file's published bytes move with it, and a pin that did not move would
+// mean two different validation surfaces under one filename. That it shares a
+// date with CODEC_VERSION here is coincidence — both changed today — not the
+// old coupling where this number WAS the codec's.
+const SCHEMA_VERSION = "2026.07.31";
 
 // Canonical field defaults (omitted fields fall back to these).
 const DEFAULTS = {

@@ -20,6 +20,8 @@
  * Run: node scripts/test-parity.mjs
  */
 
+import { readFile } from "node:fs/promises";
+
 const { Stegassette: S } = await import("../dist/node.js");
 
 let pass = 0;
@@ -310,13 +312,25 @@ check("CODEC_VERSION is set and dated", /^\d{4}\.\d{2}\.\d{2}$/.test(S.CODEC_VER
   const J = await import("../dist/jobSchema.js");
 
   // The schema's version is what its published pins are named after, so it
-  // has to exist and be dated — and it must NOT be the codec's, which is the
-  // coupling that let a schema change rewrite an existing pin.
+  // has to exist and be dated.
   check("SCHEMA_VERSION is set and dated",
     /^\d{4}\.\d{2}\.\d{2}$/.test(J.SCHEMA_VERSION || ""), J.SCHEMA_VERSION);
-  check("SCHEMA_VERSION is its own number, not the codec's",
-    J.SCHEMA_VERSION !== S.CODEC_VERSION,
-    `both are ${J.SCHEMA_VERSION} — bump one`);
+
+  // The hazard is COUPLING — this number being the codec's, which is what let a
+  // schema change republish an existing pinned filename with different bytes.
+  //
+  // This used to assert the two values differ. That is a proxy, and on
+  // 2026.07.31 it produced a false positive: both changed the same day, so two
+  // independent constants held the same date and a correct state failed. Assert
+  // the coupling itself instead, against the source, where it is unambiguous.
+  // The authoritative guard is the workflow's "A published pin must never
+  // change meaning" step, which diffs each pin against what is already live.
+  const schemaSrc = await readFile(
+    new URL("../src/jobSchema.js", import.meta.url), "utf8");
+  check("SCHEMA_VERSION is declared independently of the codec's",
+    /SCHEMA_VERSION\s*=\s*"\d{4}\.\d{2}\.\d{2}"/.test(schemaSrc) &&
+      !/SCHEMA_VERSION\s*=\s*[^"]*CODEC_VERSION/.test(schemaSrc),
+    "jobSchema must not derive SCHEMA_VERSION from CODEC_VERSION");
 
   const arr = [{ out: "a" }, { out: "b" }];
   check("an array passes through", sameList(J.resolveJobs(arr).map((j) => j.out), ["a", "b"]));
