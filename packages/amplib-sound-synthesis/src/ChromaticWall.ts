@@ -1,4 +1,4 @@
-import { Note, Scale } from "../../amplib-music-theory/src/index";
+import { Note, Scale } from "@amplib/music-theory";
 import { FMVoice } from "./FMVoice";
 
 interface Envelope {

@@ -7,11 +7,16 @@ import { Palette } from "@amplib/hue-wheel";
 
 const palette = new Palette({ slots: ["g1", "g2", "g2", "g1", "g3"] });
 
-palette.hueToSlot(210).slot.value; // "g2" — which slot this hue names
-palette.hueToBlend(210); // the same, blended near a sector edge
-palette.slotToHue(0); // the display hue at the centre of sector 0
+palette.hueToSlot(130).slot.value; // "g2" — which slot this hue names
+palette.hueToBlend(35); // near a sector edge: g1 at 0.94, g2 at 0.06
+palette.slotToHue(0); // 16.98 — the display hue at the centre of sector 0
 palette.bands; // the four visual bands these five sectors make
 ```
+
+The sectors are equal in *perceptual* hue, not display hue, so they do not land
+on multiples of 360/5 in the numbers you pass in — `slotToHue` walks
+`16.98, 58.63, 172.88, 206.29, 295.36` rather than `0, 72, 144, 216, 288`. A
+display hue of 210 is perceptually 256, which is sector 3, not sector 2.
 
 Slots hold whatever you put in them. Attach meaning with `map`:
 

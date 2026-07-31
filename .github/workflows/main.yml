@@ -42,6 +42,11 @@ jobs:
         working-directory: packages/amplib-sound-transformation
       - run: npm i
         working-directory: packages/amplib-cosmos
+      # sound-synthesis depends on @amplib/music-theory from npm rather than
+      # inlining a copy of it — ChromaticWall takes a `Scale` as a parameter, so
+      # a consumer holding both must hold the same one.
+      - run: npm i
+        working-directory: packages/amplib-sound-synthesis
       - run: npm i
       - run: npm i
         working-directory: docs

@@ -11,10 +11,14 @@ type ClockOptions = {
 export class Clock {
   private worker: Worker;
   private started: boolean;
-  private swing: number;
   private callbacks: Set<BeatCallback>;
-  public subdivision: number;
   public bpm: number;
+  // Assigned by the setResolution() call at the end of the constructor, which
+  // TypeScript cannot see through. The assertions say "assigned via a helper",
+  // not "might be undefined" — reaching either before construction finishes is
+  // impossible.
+  private swing!: number;
+  public subdivision!: number;
 
   constructor(options: ClockOptions = {}) {
     this.callbacks = new Set();
