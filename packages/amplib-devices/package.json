@@ -1,7 +1,7 @@
 {
   "name": "@amplib/devices",
   "description": "A simplified interface for engaging with common MIDI devices and mapping actions to specific messages, user media, and device orientation.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
