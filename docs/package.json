@@ -7,7 +7,7 @@
     "build": "parcel build src/*.html src/**/*.html --no-cache --no-scope-hoist"
   },
   "devDependencies": {
-    "@parcel/transformer-worklet": "^2.12.0",
-    "parcel": "^2.12.0"
+    "@parcel/transformer-worklet": "^2.16.4",
+    "parcel": "^2.16.4"
   }
 }
