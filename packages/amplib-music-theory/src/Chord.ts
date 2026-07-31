@@ -13,12 +13,15 @@ export type ChordType =
 export type ChordTypeLabel = "" | "m" | "m7" | "M7" | "+" | "°" | "7";
 
 export class Chord {
-  key: string;
-  label: string;
+  // Assigned through initializeFromNotes, which every branch of the
+  // constructor calls. TypeScript cannot see definite assignment through a
+  // method call, so these are asserted rather than left to look optional.
+  key!: string;
+  label!: string;
   typeLabel: string;
-  notation: Notation;
-  notes: IntervalNote[];
-  type: ChordType;
+  notation!: Notation;
+  notes!: IntervalNote[];
+  type!: ChordType;
 
   constructor(step: number, type: ChordType) {
     this.typeLabel = Chord.labelFromType(type);

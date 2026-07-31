@@ -1,4 +1,5 @@
 import { Note, Scale } from "../../amplib-music-theory/src/index";
+import { FMVoice } from "./FMVoice";
 
 interface Envelope {
   attack: number;
@@ -12,21 +13,42 @@ interface EnvelopeModifier {
   volume?: number;
 }
 
-interface FMSynthSettings {
+export interface FMSynthSettings {
   envelope: Envelope;
   carrier: { type: OscillatorType };
   modulation: { type: OscillatorType };
-  modulationDepth: number;
-  modulationFrequency: number;
+  /** Modulator frequency as a multiple of the carrier. 1 is harmonic. */
+  ratio: number;
+  /** Modulation index. Higher is brighter and buzzier. */
+  index: number;
 }
 
-interface ChromaticWallParams {
+export interface ChromaticWallParams {
   audioContext: AudioContext;
   volume: number;
   mainChance: number;
   twinkleChance: number;
+  /**
+   * Voices held open for plucking. Notes steal the least recently used voice,
+   * so this is the ceiling on how many can overlap before the oldest gets cut
+   * off. The default comfortably covers the longest release at typical tick
+   * rates.
+   */
+  voiceCount?: number;
 }
 
+/**
+ * A drifting wall of notes drawn from a scale, thickened by a sparser layer of
+ * high twinkles.
+ *
+ * Notes are played by a fixed pool of FMVoice objects rather than by building
+ * an oscillator pair per note. The audible difference is in the timbre: this
+ * used to run its modulator at a fixed 14.3 Hz into `carrier.detune`, which at
+ * ±10 cents is a slow vibrato rather than frequency modulation. FMVoice runs
+ * the modulator at a ratio of the carrier and into `carrier.frequency`, which
+ * puts real sidebands in the tone. Set `index` to 0 on either synth to get
+ * back a plain oscillator.
+ */
 export class ChromaticWall {
   audioContext: AudioContext;
   volume: number;
@@ -38,16 +60,16 @@ export class ChromaticWall {
     envelope: { attack: 0.01, release: 0.8, volume: 0.4 },
     carrier: { type: "triangle" },
     modulation: { type: "sine" },
-    modulationDepth: 1,
-    modulationFrequency: 14.3,
+    ratio: 1,
+    index: 1.2,
   };
 
   synthTwinkle: FMSynthSettings = {
     envelope: { attack: 0.001, release: 0.2, volume: 0.1 },
     carrier: { type: "sine" },
     modulation: { type: "sawtooth" },
-    modulationDepth: 1,
-    modulationFrequency: 14.3,
+    ratio: 2,
+    index: 0.8,
   };
 
   stepPosition = 0;
@@ -56,22 +78,27 @@ export class ChromaticWall {
   effectHighpassFilter: BiquadFilterNode;
   effectLowpassFilter: BiquadFilterNode;
 
+  private readonly voices: { voice: FMVoice; panner: StereoPannerNode }[];
+  private nextVoice = 0;
+
   constructor({
     audioContext,
     volume,
     mainChance,
     twinkleChance,
+    voiceCount = 16,
   }: ChromaticWallParams) {
     this.audioContext = audioContext;
     this.volume = volume;
     this.mainChance = mainChance;
     this.twinkleChance = twinkleChance;
-    this.channelOutput = this.audioContext.createGain();
-    this.effectLowpassFilter = this.audioContext.createBiquadFilter();
-    this.effectHighpassFilter = this.audioContext.createBiquadFilter();
+
+    this.channelOutput = audioContext.createGain();
+    this.effectHighpassFilter = audioContext.createBiquadFilter();
+    this.effectLowpassFilter = audioContext.createBiquadFilter();
     this.effectLowpassFilter.connect(this.effectHighpassFilter);
     this.effectHighpassFilter.connect(this.channelOutput);
-    this.channelOutput.connect(this.audioContext.destination);
+    this.channelOutput.connect(audioContext.destination);
 
     this.channelOutput.gain.value = this.volume;
 
@@ -81,6 +108,20 @@ export class ChromaticWall {
     this.effectHighpassFilter.type = "highpass";
     this.effectHighpassFilter.frequency.value = 0;
     this.effectHighpassFilter.Q.value = 1;
+
+    this.voices = Array.from({ length: voiceCount }, () => {
+      const panner = audioContext.createStereoPanner();
+      panner.connect(this.effectLowpassFilter);
+      const voice = new FMVoice({
+        audioContext,
+        destination: panner,
+        ratio: this.synthMain.ratio,
+        index: this.synthMain.index,
+        carrierType: this.synthMain.carrier.type,
+        modulatorType: this.synthMain.modulation.type,
+      });
+      return { voice, panner };
+    });
   }
 
   static modifiedEnvelope(envelope: Envelope, modifiers: EnvelopeModifier) {
@@ -143,9 +184,12 @@ export class ChromaticWall {
     const { notes } = scale.intervals[step];
     const { notation, octave } = notes[this.stepPosition % notes.length];
 
-    const selectRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
-    // synth
+    const selectRandom = <T>(array: T[]): T =>
+      array[Math.floor(Math.random() * array.length)];
+
     if (Math.random() > this.mainChance) {
+      // Weighted low: the wall should sit mostly in the middle of its range,
+      // with the higher offsets as occasional colour rather than an even spread.
       const octaveOffset =
         selectRandom([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5]) + 1;
       this.triggerNote({
@@ -157,7 +201,7 @@ export class ChromaticWall {
       });
       this.stepPosition++;
     }
-    // twinkle synth
+
     if (Math.random() > this.twinkleChance) {
       const octaveOffset = Math.round(Math.random() * 2) + 4;
       this.triggerNote({
@@ -178,7 +222,6 @@ export class ChromaticWall {
     }
   }
 
-  // TODO: Transform this into something that tracks playing notes, doesn't know when it is releasing
   triggerNote({
     hz,
     synth,
@@ -188,66 +231,48 @@ export class ChromaticWall {
     synth: FMSynthSettings;
     envelopeModifier: EnvelopeModifier;
   }) {
+    if (!Number.isFinite(hz) || hz <= 0) return;
+
     const { attack, release, volume } = ChromaticWall.modifiedEnvelope(
       synth.envelope,
       envelopeModifier
     );
-    // Create oscillators
-    const carrierOscillator = this.audioContext.createOscillator();
-    carrierOscillator.type = synth.carrier.type;
-    const modulationOscillator = this.audioContext.createOscillator();
-    modulationOscillator.type = synth.modulation.type;
 
-    const pan = this.audioContext.createStereoPanner();
-    pan.pan.setValueAtTime(
+    const { voice, panner } = this.voices[this.nextVoice];
+    this.nextVoice = (this.nextVoice + 1) % this.voices.length;
+
+    panner.pan.setValueAtTime(
       Math.random() * 2 - 1,
       this.audioContext.currentTime
     );
 
-    // Set frequencies
-    carrierOscillator.frequency.value = hz;
-    modulationOscillator.frequency.value = synth.modulationFrequency;
+    // The voice pool is shared, so the tone has to be set per note rather than
+    // once at construction — a twinkle and a main note can land on the same
+    // voice one after the other.
+    voice.carrier.type = synth.carrier.type;
+    voice.modulator.type = synth.modulation.type;
+    voice.ratio = synth.ratio;
+    voice.index = synth.index;
 
-    // Gain node for modulation depth
-    const modulationDepthGain = this.audioContext.createGain();
-    modulationDepthGain.gain.value = 10 * synth.modulationDepth;
+    // The old envelope was a pair of linear ramps hitting `volume` at `attack`
+    // and zero at `attack + release`. pluck uses setTargetAtTime, which is
+    // exponential and lands within a few percent of its target after three
+    // time constants — hence the division. Close enough that the phrasing is
+    // unchanged, and it decays like an instrument rather than a straight line.
+    voice.pluck(hz, {
+      peak: volume,
+      attackTau: Math.max(0.001, attack / 3),
+      ampDecayTau: Math.max(0.01, release / 3),
+    });
+  }
 
-    // Gain node for envelope
-    const envelopeGain = this.audioContext.createGain();
-    envelopeGain.gain.cancelScheduledValues(this.audioContext.currentTime);
-    envelopeGain.gain.setValueAtTime(0, this.audioContext.currentTime);
-
-    // Parameter automation to generate the envelope
-    envelopeGain.gain.linearRampToValueAtTime(
-      volume,
-      this.audioContext.currentTime + attack
-    );
-    envelopeGain.gain.linearRampToValueAtTime(
-      0,
-      this.audioContext.currentTime + attack + release
-    );
-
-    // Connect the nodes
-    modulationOscillator.connect(modulationDepthGain);
-    // This is the FM thing
-    modulationDepthGain.connect(carrierOscillator.detune);
-    carrierOscillator.connect(envelopeGain);
-    envelopeGain.connect(pan);
-    pan.connect(this.effectLowpassFilter);
-
-    carrierOscillator.onended = () => {
-      carrierOscillator.disconnect();
-      modulationOscillator.disconnect();
-      modulationDepthGain.disconnect();
-      envelopeGain.disconnect();
-    };
-
-    // Make sound
-    modulationOscillator.start();
-    carrierOscillator.start();
-
-    // Schedule automatic oscillation stop
-    modulationOscillator.stop(this.audioContext.currentTime + attack + release);
-    carrierOscillator.stop(this.audioContext.currentTime + attack + release);
+  disconnect(): void {
+    for (const { voice, panner } of this.voices) {
+      voice.disconnect();
+      panner.disconnect();
+    }
+    this.effectLowpassFilter.disconnect();
+    this.effectHighpassFilter.disconnect();
+    this.channelOutput.disconnect();
   }
 }
