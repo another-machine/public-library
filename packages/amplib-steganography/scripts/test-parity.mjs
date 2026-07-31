@@ -124,6 +124,15 @@ check("CODEC_VERSION is set and dated", /^\d{4}\.\d{2}\.\d{2}$/.test(S.CODEC_VER
 {
   const J = await import("../dist/jobSchema.js");
 
+  // The schema's version is what its published pins are named after, so it
+  // has to exist and be dated — and it must NOT be the codec's, which is the
+  // coupling that let a schema change rewrite an existing pin.
+  check("SCHEMA_VERSION is set and dated",
+    /^\d{4}\.\d{2}\.\d{2}$/.test(J.SCHEMA_VERSION || ""), J.SCHEMA_VERSION);
+  check("SCHEMA_VERSION is its own number, not the codec's",
+    J.SCHEMA_VERSION !== S.CODEC_VERSION,
+    `both are ${J.SCHEMA_VERSION} — bump one`);
+
   const arr = [{ out: "a" }, { out: "b" }];
   check("an array passes through", sameList(J.resolveJobs(arr).map((j) => j.out), ["a", "b"]));
 

@@ -37,6 +37,21 @@ import {
   normalizeChannelPlan,
 } from "./Stegassette/index";
 
+// The schema versions INDEPENDENTLY of the codec, and must: the two change
+// for different reasons. CODEC_VERSION pins the STGC wire format — bump it
+// and every image ever encoded is implicated. This pins the job-file shape,
+// which images know nothing about.
+//
+// They were once the same number, because the published copies of this file
+// were stamped `stegassette-jobs-$CODEC_VERSION.js`. A schema change with no
+// codec change then republished an EXISTING pinned filename with different
+// bytes — a pin that silently changes meaning is worse than no pin, since
+// the whole point is that a consumer can hold one and stop thinking about it.
+//
+// Format matches CODEC_VERSION (YYYY.MM.DD). Bump on any change to the job
+// file shape or to how a field resolves.
+const SCHEMA_VERSION = "2026.07.30";
+
 // Canonical field defaults (omitted fields fall back to these).
 const DEFAULTS = {
   // file refs — batch-only; the editor ignores these on import (it uses
@@ -628,6 +643,7 @@ function expandJobs(jobs, ctxFor) {
 }
 
 export {
+  SCHEMA_VERSION,
   DEFAULTS,
   ENUMS,
   NORMALIZE_DEFAULT_DB,

@@ -104,13 +104,49 @@ jobs:
       - run: cp ./packages/amplib-steganography/dist/jobSchema.js ./site/lib/stegassette-jobs.mjs
       # A version-stamped copy alongside it, so a consumer can pin one build
       # while `stegassette.js` keeps tracking the latest.
-      - name: Publish a version-stamped copy
+      #
+      # The codec and the job schema carry SEPARATE versions because they
+      # change for separate reasons. Stamping the schema with CODEC_VERSION
+      # meant a schema-only change rewrote an already-published pin — see
+      # SCHEMA_VERSION in src/jobSchema.js.
+      - name: Publish version-stamped copies
         run: |
           V=$(node --input-type=module -e "import('./packages/amplib-steganography/dist/node.js').then(m => process.stdout.write(m.Stegassette.CODEC_VERSION))")
-          echo "codec version: $V"
+          S=$(node --input-type=module -e "import('./packages/amplib-steganography/dist/jobSchema.js').then(m => process.stdout.write(m.SCHEMA_VERSION))")
+          echo "codec version: $V    schema version: $S"
           cp ./site/lib/stegassette.js "./site/lib/stegassette-$V.js"
-          cp ./site/lib/stegassette-jobs.js "./site/lib/stegassette-jobs-$V.js"
           cp ./site/lib/stegassette-node.js "./site/lib/stegassette-node-$V.js"
+          cp ./site/lib/stegassette-jobs.js "./site/lib/stegassette-jobs-$S.js"
+          cp ./site/lib/stegassette-jobs.mjs "./site/lib/stegassette-jobs-$S.mjs"
+
+      # A pin is a promise: these bytes, forever. Republishing a stamped file
+      # with different content breaks that quietly — nothing 404s, nothing
+      # warns, the consumer just gets a different library than the one it
+      # verified. So compare every stamped file against what is already live
+      # and fail the deploy rather than overwrite. The fix when this fires is
+      # always to bump the version, never to delete the check.
+      - name: A published pin must never change meaning
+        run: |
+          fail=0
+          shopt -s nullglob
+          for f in ./site/lib/*-[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*; do
+            name=$(basename "$f")
+            live=$(mktemp)
+            code=$(curl -sS -o "$live" -w '%{http_code}' "https://amplib.app/lib/$name" || echo 000)
+            if [ "$code" = "200" ]; then
+              if cmp -s "$f" "$live"; then
+                echo "ok        $name (unchanged)"
+              else
+                echo "PIN MOVED $name is already published with different bytes — bump the version"
+                fail=1
+              fi
+            elif [ "$code" = "404" ]; then
+              echo "new       $name"
+            else
+              echo "warn      $name — could not check (HTTP $code), not treating as a failure"
+            fi
+          done
+          exit $fail
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
