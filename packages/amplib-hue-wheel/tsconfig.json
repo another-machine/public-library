@@ -1,0 +1,27 @@
+{
+  // Exists for the declaration build (`tsup --dts`). The JS bundle is built by
+  // esbuild, which never type-checks — so without this file the .d.ts step is
+  // the only thing standing between a type error and a published package.
+  //
+  // moduleResolution: "bundler" — matches the sibling packages, and matches how
+  // this one is consumed (Parcel for docs/* and machines/*, tsup for the
+  // bundle). It imports @amplib/music-theory by relative source path, the same
+  // way ChromaticWall does, so nothing here resolves through node_modules.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "noEmit": false,
+    "outDir": "dist"
+  },
+  "include": ["src/**/*.ts"]
+}

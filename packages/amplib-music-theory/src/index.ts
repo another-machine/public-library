@@ -3,3 +3,4 @@ export * from "./Interval";
 export * from "./Mode";
 export * from "./Note";
 export * from "./Scale";
+export * from "./parseChord";

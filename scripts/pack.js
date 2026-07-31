@@ -2,6 +2,7 @@ import { execSync } from "child_process";
 
 const directories = [
   "amplib-devices",
+  "amplib-hue-wheel",
   "amplib-lexicon",
   "amplib-music-detection",
   "amplib-music-theory",
