@@ -7,6 +7,9 @@
  * (start/end), matching batch jobs; the editor converts its internal seconds at
  * the boundary.
  *
+ * A jobs file is an array of jobs, a single job, or { defaults, jobs } — see
+ * resolveJobs, which is the only place that third shape is understood.
+ *
  * MECHANICALLY MOVED from the lab's `lib/config.js`. The function bodies are
  * deliberately untouched — this is a wrapper change (IIFE + CJS dual pattern →
  * ESM named exports) plus the removal of the defensive `Core &&` guards, which
@@ -580,12 +583,40 @@ function expandJob(job = {}, ctx = {}) {
   });
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// jobs files — shared settings, overridden per job
+// ══════════════════════════════════════════════════════════════════════
+// A jobs file is one of:
+//
+//   [ job, job, … ]                    an array of jobs
+//   job                                a single job
+//   { "defaults": { … }, "jobs": [ … ] }
+//
+// The third form lifts settings every job shares — a project usually picks
+// one look and keeps it — so a job carries only what makes it that job.
+// It is the same inheritance a split already gives its `parts`: a key set
+// on the job wins over the same key in `defaults`.
+//
+// The merge is one level deep, so a job's `entries`, `split`, `frames` or
+// `channels` REPLACE the default rather than merging into it. Those are
+// whole specs; half-overriding one would be a guessing game.
+//
+// Nothing else in the schema knows about this shape — resolveJobs is the
+// only door, and everything downstream sees plain jobs.
+function resolveJobs(file) {
+  if (file && !Array.isArray(file) && Array.isArray(file.jobs)) {
+    const defaults = file.defaults || {};
+    return file.jobs.map((job) => ({ ...defaults, ...job }));
+  }
+  return Array.isArray(file) ? file : [file];
+}
+
 // expandJobs(jobs, ctxFor) — flatten a whole jobs file. `ctxFor(job, spec)`
 // is called only for split jobs and supplies { durationMs, srcSr } for the
 // auto modes (the batch runners probe with ffprobe; the editor knows the
 // decoded buffer). Returning nothing is fine when the split is explicit.
 function expandJobs(jobs, ctxFor) {
-  const list = Array.isArray(jobs) ? jobs : [jobs];
+  const list = resolveJobs(jobs);
   const out = [];
   for (const job of list) {
     const spec = splitSpec(job);
@@ -617,4 +648,5 @@ export {
   planChunks,
   expandJob,
   expandJobs,
+  resolveJobs,
 };

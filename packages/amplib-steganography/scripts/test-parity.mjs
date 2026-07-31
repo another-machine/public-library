@@ -114,6 +114,52 @@ check("CODEC_VERSION is set and dated", /^\d{4}\.\d{2}\.\d{2}$/.test(S.CODEC_VER
   check("self-keyed round trip is exact", sameList([...back[0].data], [...payload]));
 }
 
+// ── jobs-file shapes ───────────────────────────────────────────────────────
+//
+// A jobs file may be an array, a single job, or { defaults, jobs }. The first
+// two shapes predate the third and are what every existing file on disk and
+// every paste into the editor still looks like, so resolveJobs must leave
+// them exactly as they were — and a job must always win over a default, or a
+// project's shared look would silently overwrite the one job that differs.
+{
+  const J = await import("../dist/jobSchema.js");
+
+  const arr = [{ out: "a" }, { out: "b" }];
+  check("an array passes through", sameList(J.resolveJobs(arr).map((j) => j.out), ["a", "b"]));
+
+  const one = { out: "solo", combine: "veil" };
+  const [solo] = J.resolveJobs(one);
+  check("a single job is wrapped", solo.out === "solo" && solo.combine === "veil");
+
+  const file = {
+    defaults: { combine: "midpoint", traversal: "raster", border: 0.05 },
+    jobs: [{ out: "a" }, { out: "b", combine: "xor" }],
+  };
+  const [a, b] = J.resolveJobs(file);
+  check("defaults reach a job that omits them",
+    a.combine === "midpoint" && a.traversal === "raster" && a.border === 0.05);
+  check("a job overrides a default", b.combine === "xor");
+  check("overriding one key keeps the rest", b.traversal === "raster" && b.border === 0.05);
+  check("defaults do not leak `jobs`/`defaults` keys", a.jobs === undefined && a.defaults === undefined);
+
+  const src = { defaults: { combine: "veil" }, jobs: [{ out: "a" }] };
+  J.resolveJobs(src)[0].combine = "mutated";
+  check("resolveJobs does not mutate the file", src.defaults.combine === "veil");
+
+  // Whole specs replace rather than merge — half-overriding an entries list
+  // or a split block would be a guessing game.
+  const [rep] = J.resolveJobs({
+    defaults: { entries: [{ text: "shared" }] },
+    jobs: [{ entries: [{ text: "mine" }] }],
+  });
+  check("a job's entries replace the default's", rep.entries.length === 1 && rep.entries[0].text === "mine");
+
+  // expandJobs is the front door for whole files, so it must understand the
+  // shape too — a non-split job comes out of expandJob unchanged.
+  const flat = J.expandJobs({ defaults: { keymap: "poles" }, jobs: [{ out: "a" }, { out: "b" }] });
+  check("expandJobs resolves defaults", flat.length === 2 && flat.every((j) => j.keymap === "poles"));
+}
+
 console.log("");
 if (failures.length) {
   console.error(`${pass} passed, ${failures.length} FAILED`);
