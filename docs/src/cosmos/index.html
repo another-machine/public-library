@@ -24,10 +24,14 @@
       <section>
         <h2>generate</h2>
         <p class="ht-type-prose u-dim">
-          Cosmos provides astronomical data for a given time and location.
+          Cosmos reports the state of the sky for a given time and place, with
+          every value normalised for driving sound. It is a pure function of
+          its arguments &mdash; the same latitude, longitude, and timestamp
+          produce the same result on any machine, in any timezone.
         </p>
         <p class="signature">
-          generate({ latitude: number; longitude: number; timestamp: number; })
+          generate({ latitude?: number; longitude?: number; elevation?: number;
+          timestamp?: Date | number; skipPlanets?: boolean; })
         </p>
 
         <div class="ht-arrange-sidebar">
@@ -38,6 +42,23 @@
   timestamp: <span data-output="date-output" data-inline></span>
 });</pre>
 
+            <h3>Seed</h3>
+            <p class="ht-type-prose u-dim">
+              Derived from quantised inputs, so two devices in the same place
+              and hour agree without coordinating. Feed it to
+              <code>@amplib/procedural-generation</code>.
+            </p>
+            <pre class="code"><span data-output="seed-output"></span></pre>
+
+            <h3>Signals by timescale</h3>
+            <p class="ht-type-prose u-dim">
+              The same values regrouped by how fast they move &mdash;
+              rotational for rhythm, lunar for phrasing, annual for key,
+              epochal for long-form structure.
+            </p>
+            <pre class="code"><span data-output="signals-output"></span></pre>
+
+            <h3>Full report</h3>
             <pre class="code"><span data-output="report-output"></span></pre>
           </div>
 

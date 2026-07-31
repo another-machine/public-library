@@ -1,378 +1,246 @@
+/**
+ * The planets.
+ *
+ * This is the part of the old library that was not an approximation so much as
+ * a fabrication. It placed every planet at heliocentric angle zero on
+ * 2000-01-01 (no mean longitude at epoch), assumed circular orbits, and then
+ * synthesised sky positions as `sunAltitude + 30·sin(...)` and
+ * `sunAzimuth + 180·sin(...)`. Jupiter reached altitude 119.9°, Venus sat 73°
+ * above New York at noon — 26° beyond its maximum possible elongation from the
+ * Sun — and `Math.asin(0.723 / distance)` returned NaN for Venus in 21% of
+ * samples, whenever it came inside its own orbital radius of us.
+ *
+ * Everything here now comes from the ephemeris. Positions are topocentric,
+ * corrected for light travel time, parallax, aberration, and refraction.
+ */
+
 import {
-  J2000_EPOCH,
-  MILLISECONDS_PER_DAY,
   ASTRONOMICAL_UNIT_IN_KM,
+  CIVIL_TWILIGHT_ALTITUDE,
+  MAGNITUDE_BRIGHTEST,
+  MAGNITUDE_FAINTEST,
+  MAGNITUDE_NAKED_EYE_LIMIT,
+  PLANET_DECLINATION_LIMIT,
+  PLANET_DOMAINS,
+  PLANET_ORBITAL_PERIOD_DAYS,
+  PLANET_RADIUS_KM,
 } from "./constants";
-import { generateEarthSunDistance } from "./generateEarth";
-import { generateSolarElevation, generateSolarAzimuth } from "./generateSun";
 import {
-  createStringValue,
+  getElongation,
+  getHeliocentricPosition,
+  getIllumination,
+  getRiseSet,
+  getSkyPosition,
+  PLANET_NAMES,
+  type PlanetName,
+} from "./ephemeris";
+import type { Observer } from "astronomy-engine";
+import {
+  createAltitudeValue,
+  createAzimuthValue,
   createBooleanValue,
+  createCyclicValue,
+  createEventValue,
   createNumberValue,
-  formatWithUnits,
-  getDayOfYear,
-  Position3DValue,
-} from "./utilities";
+  createVectorValue,
+  radiansToDegrees,
+  type BooleanValue,
+  type CyclicValue,
+  type EventValue,
+  type NumberValue,
+  type VectorValue,
+} from "./values";
 
-// Define simplified planet data
-const planets: {
-  [key: string]: {
-    meanDistance: number; // AU
-    period: number; // years
-    baseMagnitude: number; // at 1 AU
-    diameter: number; // km
-    isInner: boolean; // Whether it's an inner planet (Mercury, Venus)
-    inclination: number; // Orbital inclination in degrees
-  };
-} = {
-  Mercury: {
-    meanDistance: 0.387,
-    period: 0.241,
-    baseMagnitude: -0.5,
-    diameter: 4879,
-    isInner: true,
-    inclination: 7.0, // Mercury has a 7° inclination to the ecliptic
-  },
-  Venus: {
-    meanDistance: 0.723,
-    period: 0.615,
-    baseMagnitude: -4.4,
-    diameter: 12104,
-    isInner: true,
-    inclination: 3.4,
-  },
-  Mars: {
-    meanDistance: 1.524,
-    period: 1.881,
-    baseMagnitude: -2.0,
-    diameter: 6779,
-    isInner: false,
-    inclination: 1.9,
-  },
-  Jupiter: {
-    meanDistance: 5.203,
-    period: 11.86,
-    baseMagnitude: -9.4,
-    diameter: 139820,
-    isInner: false,
-    inclination: 1.3,
-  },
-  Saturn: {
-    meanDistance: 9.537,
-    period: 29.46,
-    baseMagnitude: -8.9,
-    diameter: 116460,
-    isInner: false,
-    inclination: 2.5,
-  },
-  Uranus: {
-    meanDistance: 19.191,
-    period: 84.01,
-    baseMagnitude: -7.2,
-    diameter: 50724,
-    isInner: false,
-    inclination: 0.8,
-  },
-  Neptune: {
-    meanDistance: 30.069,
-    period: 164.8,
-    baseMagnitude: -6.9,
-    diameter: 49244,
-    isInner: false,
-    inclination: 1.8,
-  },
-};
+export { PLANET_NAMES, type PlanetName };
 
-export function createPosition3DValue(
-  value: { x: number; y: number; z: number },
-  description: string
-): Position3DValue {
-  return { description, value };
+export interface PlanetResult {
+  name: PlanetName;
+  /** Apparent altitude, degrees. Refracted. */
+  altitude: NumberValue;
+  geometricAltitude: NumberValue;
+  azimuth: CyclicValue;
+  declination: NumberValue;
+  rightAscension: CyclicValue;
+  /** Apparent visual magnitude. Lower is brighter. */
+  magnitude: NumberValue;
+  /**
+   * Magnitude inverted onto [0, 1] so that 1 is brightest. `magnitude`
+   * keeps the astronomical convention where smaller means brighter, which is
+   * the wrong way round for driving amplitude — this is the version you
+   * actually want to patch into a gain.
+   */
+  brightness: NumberValue;
+  /** Apparent angular diameter, arcseconds. */
+  angularDiameter: NumberValue;
+  /** Illuminated fraction of the disc, [0, 1]. Meaningful for all planets. */
+  phase: NumberValue;
+  /** Angular separation from the Sun as seen from Earth, degrees [0, 180]. */
+  elongation: NumberValue;
+  /** Distance from Earth, AU. */
+  distance: NumberValue;
+  /** Distance from the Sun, AU. */
+  heliocentricDistance: NumberValue;
+  /**
+   * Heliocentric ecliptic longitude, degrees. Cyclic over the planet's
+   * orbital period — this is the signal that carries multi-year structure,
+   * and the one to use for angular relationships between planets.
+   */
+  heliocentricLongitude: CyclicValue;
+  /**
+   * Heliocentric ecliptic position in AU. `x` points at the March equinox,
+   * `z` is perpendicular to the ecliptic, so `(x, y)` is a top-down plot.
+   */
+  heliocentricPosition: VectorValue;
+  isAboveHorizon: BooleanValue;
+  /**
+   * Above the horizon, brighter than the naked-eye limit, and the sky dark
+   * enough to see it. The old `isVisible` checked only the first two, so all
+   * seven planets reported visible at local noon.
+   */
+  isVisible: BooleanValue;
+  rise: EventValue;
+  set: EventValue;
+  transit: EventValue;
+  /** Nominal orbital period in days. Constant; useful for the timescale layer. */
+  orbitalPeriodDays: number;
 }
 
-interface PlanetVisibilityInfo {
-  isVisible: boolean;
-  altitude: number;
-  azimuth: number;
-  magnitude: number;
-  angularDiameter: number;
-  phase: number;
-  // Add heliocentric position data
-  heliocentric: {
-    distance: number; // Distance from Sun in AU
-    angle: number; // Angle in orbital plane (radians)
-    x: number; // X coordinate in heliocentric system (AU)
-    y: number; // Y coordinate in heliocentric system (AU)
-    z: number; // Z coordinate in heliocentric system (AU)
+export type PlanetsResult = Record<PlanetName, PlanetResult>;
+
+function generatePlanet(
+  name: PlanetName,
+  timestamp: number,
+  observer: Observer,
+  sunAltitude: number
+): PlanetResult {
+  const position = getSkyPosition(name, timestamp, observer);
+  const illumination = getIllumination(name, timestamp);
+  const heliocentric = getHeliocentricPosition(name, timestamp);
+  const elongation = getElongation(name, timestamp);
+  const { rise, set, transit } = getRiseSet(name, timestamp, observer);
+  const domain = PLANET_DOMAINS[name];
+
+  const distanceKm = position.distanceAu * ASTRONOMICAL_UNIT_IN_KM;
+  const angularDiameter =
+    radiansToDegrees(2 * Math.atan(PLANET_RADIUS_KM[name] / distanceKm)) * 3600;
+
+  const isAboveHorizon = position.altitude > 0;
+  const isVisible =
+    isAboveHorizon &&
+    illumination.magnitude < MAGNITUDE_NAKED_EYE_LIMIT &&
+    sunAltitude < CIVIL_TWILIGHT_ALTITUDE;
+
+  // Two normalisations of the same number, for two different jobs.
+  //
+  // `magnitude` uses one scale spanning every planet, so its `unitRange` is
+  // comparable across bodies — Venus really is brighter than Neptune, and the
+  // numbers say so. `brightness` normalises each planet against its own
+  // observed range, so every planet's variation fills [0, 1] and is usable as
+  // a control signal. On the shared scale Uranus only ever moves through 5% of
+  // the range, which is true but useless to patch into a gain.
+  const magnitudeValue = createNumberValue({
+    value: illumination.magnitude,
+    unit: "magnitude",
+    min: MAGNITUDE_BRIGHTEST,
+    max: MAGNITUDE_FAINTEST,
+  });
+  const ownScale = createNumberValue({
+    value: illumination.magnitude,
+    unit: "magnitude",
+    min: domain.minMagnitude,
+    max: domain.maxMagnitude,
+  });
+
+  // Angular size bounds follow from the distance bounds — nearest gives the
+  // largest disc — so there is nothing extra to tabulate.
+  const angularDiameterAt = (distanceAu: number) =>
+    radiansToDegrees(
+      2 * Math.atan(PLANET_RADIUS_KM[name] / (distanceAu * ASTRONOMICAL_UNIT_IN_KM))
+    ) * 3600;
+
+  return {
+    name,
+    altitude: createAltitudeValue(position.altitude),
+    geometricAltitude: createAltitudeValue(position.geometricAltitude),
+    azimuth: createAzimuthValue(position.azimuth),
+    declination: createNumberValue({
+      value: position.declination,
+      unit: "degrees",
+      min: -PLANET_DECLINATION_LIMIT,
+      max: PLANET_DECLINATION_LIMIT,
+    }),
+    rightAscension: createCyclicValue({
+      value: position.rightAscension,
+      unit: "hours",
+      period: 24,
+    }),
+    magnitude: magnitudeValue,
+    brightness: {
+      ...ownScale,
+      unitRange: 1 - ownScale.unitRange,
+      bipolarRange: -ownScale.bipolarRange,
+    },
+    angularDiameter: createNumberValue({
+      value: angularDiameter,
+      unit: "arcseconds",
+      min: angularDiameterAt(domain.maxGeocentric),
+      max: angularDiameterAt(domain.minGeocentric),
+    }),
+    phase: createNumberValue({
+      value: illumination.phaseFraction,
+      unit: "ratio",
+      min: domain.minPhase,
+      max: 1,
+    }),
+    elongation: createNumberValue({
+      value: elongation,
+      unit: "degrees",
+      min: 0,
+      max: 180,
+    }),
+    distance: createNumberValue({
+      value: position.distanceAu,
+      unit: "au",
+      min: domain.minGeocentric,
+      max: domain.maxGeocentric,
+    }),
+    heliocentricDistance: createNumberValue({
+      value: illumination.heliocentricDistanceAu,
+      unit: "au",
+      min: domain.perihelion,
+      max: domain.aphelion,
+    }),
+    heliocentricLongitude: createCyclicValue({
+      value: heliocentric.longitude,
+      unit: "degrees",
+      period: 360,
+    }),
+    heliocentricPosition: createVectorValue(heliocentric, "au"),
+    isAboveHorizon: createBooleanValue(isAboveHorizon),
+    isVisible: createBooleanValue(isVisible),
+    rise: createEventValue(rise, timestamp),
+    set: createEventValue(set, timestamp),
+    transit: createEventValue(transit, timestamp),
+    orbitalPeriodDays: PLANET_ORBITAL_PERIOD_DAYS[name],
   };
-  heliocentricDistance: number;
-  heliocentricAngle: number;
-  heliocentricPosition3D: Position3DValue;
 }
 
 export function generatePlanets({
-  latitude,
-  longitude,
   timestamp,
+  observer,
+  sunAltitude,
 }: {
-  latitude: number;
-  longitude: number;
   timestamp: number;
-}): {
-  [k: string]: any;
-} {
-  const planetNames = [
-    "Mercury",
-    "Venus",
-    "Mars",
-    "Jupiter",
-    "Saturn",
-    "Uranus",
-    "Neptune",
-  ];
-
-  const details = {};
-
-  for (const planet of planetNames) {
-    try {
-      const visibility = getPlanetVisibility(
-        planet,
-        latitude,
-        longitude,
-        timestamp
-      );
-
-      details[planet.toLowerCase()] = {
-        name: createStringValue(planet, `The name of the planet is ${planet}`),
-        isVisible: createBooleanValue(
-          visibility.isVisible,
-          visibility.isVisible
-            ? `${planet} is visible`
-            : `${planet} is not visible`
-        ),
-        altitude: createNumberValue({
-          value: visibility.altitude,
-          unitRange: Math.max(0, (visibility.altitude + 90) / 180), // 0-1 scale
-          bipolarRange: visibility.altitude / 90, // -1 to 1 scale (-90° to +90°)
-          description: `Altitude above horizon: ${formatWithUnits(
-            visibility.altitude,
-            "degrees"
-          )}`,
-        }),
-        azimuth: createNumberValue({
-          value: visibility.azimuth,
-          unitRange: visibility.azimuth / 360, // Normalize 0-360 range to 0-1
-          description: `Azimuth: ${formatWithUnits(
-            visibility.azimuth,
-            "degrees"
-          )}`,
-        }),
-        magnitude: createNumberValue({
-          value: visibility.magnitude,
-          // Normalize magnitude (typical visible range is -27 to 6, where lower is brighter)
-          // Map -27 to 0 and 6 to 1
-          unitRange: (visibility.magnitude + 27) / 33,
-          description: `Apparent magnitude: ${visibility.magnitude.toFixed(1)}`,
-        }),
-        angularDiameter: createNumberValue({
-          value: visibility.angularDiameter,
-          // Normalize using typical range of 0 to 50 arcseconds
-          unitRange: visibility.angularDiameter / 50,
-          description: `Angular diameter: ${formatWithUnits(
-            visibility.angularDiameter,
-            "arcseconds"
-          )}`,
-        }),
-        phase:
-          planet === "Mercury" || planet === "Venus"
-            ? createNumberValue({
-                value: visibility.phase,
-                unitRange: visibility.phase, // Already unitRange 0-1
-                description: `Illuminated fraction: ${(
-                  visibility.phase * 100
-                ).toFixed(0)}%`,
-              })
-            : null,
-        // Add separate values for distance and angle
-        heliocentricDistance: createNumberValue({
-          value: visibility.heliocentric.distance,
-          unitRange: visibility.heliocentric.distance / 30.0, // Normalized to Neptune's distance
-          description: `Heliocentric distance: ${formatWithUnits(
-            visibility.heliocentric.distance,
-            "AU"
-          )}`,
-        }),
-        heliocentricAngle: createNumberValue({
-          value: (visibility.heliocentric.angle * 180) / Math.PI, // Convert to degrees
-          unitRange: visibility.heliocentric.angle / (2 * Math.PI), // Normalize to 0-1
-          description: `Heliocentric angle: ${formatWithUnits(
-            (visibility.heliocentric.angle * 180) / Math.PI,
-            "degrees"
-          )}`,
-        }),
-        // Add 3D position value
-        heliocentricPosition3D: createPosition3DValue(
-          {
-            x: visibility.heliocentric.position.x,
-            y: visibility.heliocentric.position.y,
-            z: visibility.heliocentric.position.z,
-          },
-          `Heliocentric position of ${planet} in 3D space (AU)`
-        ),
-      };
-    } catch (error) {
-      console.error(`Error calculating visibility for ${planet}:`, error);
-    }
+  observer: Observer;
+  sunAltitude: number;
+}): PlanetsResult {
+  const result = {} as PlanetsResult;
+  for (const name of PLANET_NAMES) {
+    // No try/catch here. The old version wrapped each planet and logged to the
+    // console on failure, which silently dropped keys from the result object
+    // and left consumers reading `undefined.value`. If the ephemeris throws,
+    // that is a bug worth surfacing.
+    result[name] = generatePlanet(name, timestamp, observer, sunAltitude);
   }
-
-  return details;
-}
-
-/**
- * Calculate planet visibility with 3D heliocentric positions
- * @param planetName - Name of the planet
- * @param latitude - Observer's latitude in degrees
- * @param longitude - Observer's longitude in degrees
- * @param timestamp - Current timestamp
- */
-function getPlanetVisibility(
-  planetName: string,
-  latitude: number,
-  longitude: number,
-  timestamp: number
-) {
-  const planet = planets[planetName];
-
-  // Simplified orbital position calculation based on date
-  // This is a very basic approximation
-  const daysSinceJ2000 = (timestamp - J2000_EPOCH) / MILLISECONDS_PER_DAY;
-  const yearsSinceJ2000 = daysSinceJ2000 / 365.25;
-
-  // Calculate mean anomaly (simplified)
-  const orbitalProgress = (yearsSinceJ2000 % planet.period) / planet.period;
-  const orbitalAngle = orbitalProgress * 2 * Math.PI;
-
-  // Calculate heliocentric position (position relative to the Sun)
-  // First calculate position in the orbital plane
-  const heliocentricX = planet.meanDistance * Math.cos(orbitalAngle);
-  const heliocentricY = planet.meanDistance * Math.sin(orbitalAngle);
-
-  // Account for orbital inclination to calculate z-coordinate
-  const inclinationRadians = (planet.inclination * Math.PI) / 180;
-  // Simple approximation: z varies sinusoidally with orbital angle
-  const heliocentricZ =
-    planet.meanDistance * Math.sin(orbitalAngle) * Math.sin(inclinationRadians);
-
-  // Earth's position
-  // const earthOrbitalProgress = (yearsSinceJ2000 % 1) / 1; // Earth period = 1 year
-  // const earthOrbitalAngle = earthOrbitalProgress * 2 * Math.PI;
-  // const earthX = Math.cos(earthOrbitalAngle);
-  // const earthY = Math.sin(earthOrbitalAngle);
-  // const earthZ = 0; // Simplification: Earth's orbit defines the reference plane
-
-  // Simple approximation of planet's position relative to Earth
-  // This is extremely simplified and only gives approximate results
-  const sunEarthAngle = (getDayOfYear(timestamp) / 365.25) * 2 * Math.PI;
-  let planetEarthAngle = sunEarthAngle + orbitalAngle;
-
-  if (!planet.isInner) {
-    // Outer planets: earth is between sun and planet when aligned
-    planetEarthAngle = orbitalAngle - sunEarthAngle;
-  }
-
-  // Estimate distance to planet (very approximate)
-  const earthSunDist =
-    generateEarthSunDistance(timestamp) / ASTRONOMICAL_UNIT_IN_KM;
-  let distanceToEarth = 0;
-
-  if (planet.isInner) {
-    distanceToEarth = Math.sqrt(
-      earthSunDist * earthSunDist +
-        planet.meanDistance * planet.meanDistance -
-        2 * earthSunDist * planet.meanDistance * Math.cos(planetEarthAngle)
-    );
-  } else {
-    distanceToEarth = Math.sqrt(
-      earthSunDist * earthSunDist +
-        planet.meanDistance * planet.meanDistance -
-        2 * earthSunDist * planet.meanDistance * Math.cos(planetEarthAngle)
-    );
-  }
-
-  // Estimate magnitude
-  const magnitude = planet.baseMagnitude + 5 * Math.log10(distanceToEarth);
-
-  // Estimate phase (only relevant for inner planets)
-  let phase = 1.0;
-  if (planet.isInner) {
-    // Phase angle
-    const phaseAngle = Math.acos(
-      (distanceToEarth * distanceToEarth +
-        planet.meanDistance * planet.meanDistance -
-        earthSunDist * earthSunDist) /
-        (2 * distanceToEarth * planet.meanDistance)
-    );
-    phase = (1 + Math.cos(phaseAngle)) / 2;
-  }
-
-  // Calculate angular diameter
-  const angularDiameter =
-    (planet.diameter / (distanceToEarth * ASTRONOMICAL_UNIT_IN_KM)) *
-    (180 / Math.PI) *
-    3600; // Convert to arcseconds
-
-  // Approximate altitude and azimuth based on time of day and planet position
-  // This is a very rough approximation
-
-  // Use solar position as reference and shift based on orbital position
-  const sunAlt = generateSolarElevation(latitude, longitude, timestamp);
-  const sunAz = generateSolarAzimuth(latitude, longitude, timestamp);
-
-  // Offset from sun (simplified)
-  let altitudeOffset = 0;
-  let azimuthOffset = 0;
-
-  if (planet.isInner) {
-    // Inner planets are never far from the sun
-    const elongation =
-      (Math.asin(planet.meanDistance / distanceToEarth) * 180) / Math.PI;
-    azimuthOffset = elongation * Math.sin(orbitalAngle);
-    altitudeOffset = elongation * Math.cos(orbitalAngle);
-  } else {
-    // Outer planets can be anywhere in the sky
-    azimuthOffset = 180 * Math.sin(planetEarthAngle);
-    altitudeOffset = 30 * Math.sin(planetEarthAngle + Math.PI / 2);
-  }
-
-  let altitude = sunAlt + altitudeOffset;
-  let azimuth = (sunAz + azimuthOffset) % 360;
-
-  // Time-of-day adjustment
-  const hourOfDay = new Date(timestamp).getHours();
-  if (hourOfDay >= 18 || hourOfDay <= 6) {
-    // Night time - planets may be visible
-    altitude = Math.max(-10, altitude); // Allow slightly below horizon for refraction
-  }
-
-  // Determine visibility
-  const isVisible = altitude > 0 && magnitude < 6;
-
-  // Return both geocentric and heliocentric data
-  return {
-    isVisible,
-    altitude,
-    azimuth,
-    magnitude,
-    angularDiameter,
-    phase,
-    heliocentric: {
-      distance: planet.meanDistance,
-      angle: orbitalAngle,
-      position: {
-        x: heliocentricX,
-        y: heliocentricY,
-        z: heliocentricZ,
-      },
-    },
-  };
+  return result;
 }

@@ -21,9 +21,18 @@
   },
   "scripts": {
     "build": "tsup",
-    "watch": "tsup --watch"
+    "watch": "tsup --watch",
+    "test": "tsx test/run.ts && ../../scripts/tz-determinism.sh",
+    "test:accuracy": "tsx test/run.ts",
+    "test:determinism": "../../scripts/tz-determinism.sh"
   },
   "author": "Another Machine",
   "license": "MIT",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "astronomy-engine": "^2.1.19"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2"
+  }
 }

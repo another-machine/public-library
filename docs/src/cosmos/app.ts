@@ -1,5 +1,9 @@
 import { Geolocation } from "../../../packages/amplib-devices/src";
-import { generate } from "../../../packages/amplib-cosmos/src";
+import {
+  generate,
+  describeLines,
+  type CosmosResult,
+} from "../../../packages/amplib-cosmos/src";
 import { createForm } from "../createForm";
 
 type FormData = {
@@ -10,7 +14,6 @@ type FormData = {
 const data = {
   latitude: 0,
   longitude: 0,
-  date: Date.now(),
 };
 
 export async function example() {
@@ -18,6 +21,8 @@ export async function example() {
   const form = section.querySelector("form")!;
   const output = section.querySelector('[data-output="report-output"]')!;
   const date = section.querySelector('[data-output="date-output"]')!;
+  const seed = section.querySelector('[data-output="seed-output"]')!;
+  const signals = section.querySelector('[data-output="signals-output"]')!;
   form.innerHTML = "";
 
   const { values, setValue } = createForm<FormData>({
@@ -36,7 +41,6 @@ export async function example() {
     setValue("longitude", longitude);
   }
 
-  let timestamp = Date.now();
   onInput(values);
   loop();
 
@@ -49,15 +53,52 @@ export async function example() {
     requestAnimationFrame(loop);
     const timestamp = Date.now();
     const result = generate({ ...data, timestamp });
+
     date.innerHTML = timestamp.toString();
-
-    // The solar-system visualisation is not built yet. To bring it back, put a
-    // <figure class="frame"><canvas></canvas></figure> in the markup, look it
-    // up here, size it 1800x600, and call:
-    //   visualizeSolarSystem(canvas, context, result, "top");
-    // The canvas came out of the markup because it painted nothing, and an
-    // empty frame reads as a broken example rather than a pending one.
-
-    output.innerHTML = JSON.stringify(result, null, 2);
+    seed.innerHTML = renderSeed(result);
+    signals.innerHTML = renderSignals(result);
+    // describeLines() is the opt-in text layer. generate() itself allocates no
+    // strings, which is what makes calling it every frame reasonable.
+    output.innerHTML = describeLines(result);
   }
+}
+
+function renderSeed({ seed }: CosmosResult): string {
+  const seconds = Math.max(0, seed.millisecondsRemaining / 1000);
+  return [
+    `code    ${seed.code}`,
+    `integer ${seed.integer}`,
+    `expires in ${seconds.toFixed(1)} s`,
+  ].join("\n");
+}
+
+/**
+ * A bar per signal, grouped by how fast it moves. This is the view that makes
+ * the timescale bands legible: the rotational bars visibly crawl while the
+ * epochal ones sit still.
+ */
+function renderSignals(result: CosmosResult): string {
+  const width = 24;
+  const lines: string[] = [];
+
+  for (const band of Object.values(result.timescales)) {
+    lines.push(`${band.band} (${formatPeriod(band.periodSeconds)})`);
+    for (const signal of band.signals) {
+      const filled = Math.round(signal.value.unitRange * width);
+      const bar = "█".repeat(filled) + "░".repeat(width - filled);
+      const name = signal.path.padEnd(38);
+      const marker = signal.cyclic ? "~" : " ";
+      lines.push(`  ${marker} ${name} ${bar} ${signal.value.unitRange.toFixed(3)}`);
+    }
+    lines.push("");
+  }
+
+  lines.push("~ marks a cyclic signal, which also carries sin and cos");
+  return lines.join("\n");
+}
+
+function formatPeriod(seconds: number): string {
+  if (seconds < 172800) return `${(seconds / 3600).toFixed(1)} h`;
+  if (seconds < 63072000) return `${(seconds / 86400).toFixed(1)} d`;
+  return `${(seconds / 31557600).toFixed(1)} y`;
 }
