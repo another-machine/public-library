@@ -93,6 +93,27 @@ interface UnlayoutParams {
 }
 
 /**
+ * Stream position of sample `s` of channel `c` under the block layout: blocks
+ * of `K` samples per channel across `M` channels, `full` samples per channel
+ * covered by whole blocks, `tail = N - full` left over.
+ *
+ * The trailing block is SHORT whenever N is not a multiple of K, and it must be
+ * strided by `tail` rather than by `K`. Striding it by K walks past the end of
+ * the N*M stream for every channel above 0 — typed-array writes there are
+ * silently dropped and reads come back undefined, which is why the symptom was
+ * NaNs in the last N % K frames rather than wrong sample values. `tail === 0`
+ * never reaches the second branch, so exact-multiple streams (and interleaved,
+ * where K is 1) permute exactly as they always have.
+ */
+function blockPos(
+  s: number, c: number, K: number, M: number, full: number, tail: number
+): number {
+  return s < full
+    ? Math.floor(s / K) * K * M + c * K + (s % K)
+    : full * M + c * tail + (s - full);
+}
+
+/**
  * Permute per-channel planar samples into the byte-stream layout used by the
  * audio mimetype (planar = channel 0 run then channel 1 run …).
  */
@@ -104,9 +125,10 @@ export function layoutChannels({ mixed, layout, blockSize }: LayoutParams): Floa
     return out;
   }
   const K = layout === "interleaved" ? 1 : blockSize || 1;
+  const full = Math.floor(N / K) * K, tail = N - full;
   for (let c = 0; c < M; c++)
     for (let s = 0; s < N; s++)
-      out[Math.floor(s / K) * K * M + c * K + (s % K)] = mixed[c][s];
+      out[blockPos(s, c, K, M, full, tail)] = mixed[c][s];
   return out;
 }
 
@@ -123,10 +145,11 @@ export function unlayoutChannels({
   const M = channels, N = (f32.length / M) | 0;
   if (M === 1 || !layout || layout === "planar") return f32;
   const K = layout === "interleaved" ? 1 : blockSize || 1;
+  const full = Math.floor(N / K) * K, tail = N - full;
   const out = new Float32Array(N * M);
   for (let c = 0; c < M; c++)
     for (let s = 0; s < N; s++)
-      out[c * N + s] = f32[Math.floor(s / K) * K * M + c * K + (s % K)];
+      out[c * N + s] = f32[blockPos(s, c, K, M, full, tail)];
   return out;
 }
 
@@ -181,10 +204,10 @@ export function computeRevealOrder({
       }
   } else {
     const K = layout === "interleaved" ? 1 : blockSize || 1;
+    const full = Math.floor(N / K) * K, tail = N - full;
     for (let i = 0; i < N; i++)
       for (let c = 0; c < M; c++) {
-        const streamPos = Math.floor(i / K) * K * M + c * K + (i % K);
-        const byteStart = streamPos * B;
+        const byteStart = blockPos(i, c, K, M, full, tail) * B;
         markRange(i, byteStart, byteStart + B - 1);
       }
   }

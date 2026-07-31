@@ -148,6 +148,13 @@ audio/L16; rate=44100; channels=2; layout=interleaved
 | `interleaved` | ch0, ch1, ch0, ch1, … (sample-by-sample)                      |
 | `block`       | interleaved in blocks of `blockSize` samples per channel      |
 
+Under `block`, the final block is short whenever the per-channel sample count
+is not a multiple of `blockSize`. It is strided by its own length — the
+remaining `N % blockSize` samples of channel 0, then those of channel 1, and so
+on — not by `blockSize`. Striding the tail by `blockSize` would run past the end
+of the stream, so a reader that does it recovers nothing for the final frames of
+every channel above 0.
+
 ## Payload integrity
 
 There is no checksum on individual entries or payloads. A single corrupted
