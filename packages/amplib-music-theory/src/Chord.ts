@@ -21,9 +21,14 @@ export class Chord {
   typeLabel: string;
   notation!: Notation;
   notes!: IntervalNote[];
-  type!: ChordType;
+  // Not one of the above: initializeFromNotes derives everything from the
+  // notes it is handed, and the notes do not carry the quality that produced
+  // them. Set here, from the argument, or it stays undefined — which the `!`
+  // above would not have caught.
+  type: ChordType;
 
   constructor(step: number, type: ChordType) {
+    this.type = type;
     this.typeLabel = Chord.labelFromType(type);
     if (type === "maj7") {
       const notes = Interval.notesFromIndexOctaveAndType(step, 0, "maj");
