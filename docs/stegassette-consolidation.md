@@ -59,8 +59,8 @@ packages/
 docs/                       ← amplib.app homepage + per-package docs
   src/steganography/        ← the codec's live demo (already exists)
 machines/
-  lexicon-standoff/  mindmeld/  modulo/  sonic-pixels/
-  avva/  forever-song/  omnichord/  unison/     (older forms)
+  lexicon-standoff/  mindmeld/
+  avva/  modulo/  forever-song/     (pointers and older forms)
 ```
 
 Sheds `machines/live` and `machines/geese-basement`. `machines/stega` gets retired (see Phase 2) — with `docs/src/steganography` as the codec's demo and stega.now as the real player, an unmaintained third encoder on the library site has no job. Its homepage entry repoints at stega.now.

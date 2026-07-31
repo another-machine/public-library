@@ -16,10 +16,12 @@ separately — text, audio, and arbitrary bytes are all just entries.
 | `Stegassette`  | Multi-payload STGC format: audio + arbitrary entries, self-describing alpha header, 11 combine ops, 9 traversals, 6 keymaps. See [Stegassette.md](./Stegassette.md) for format details. |
 | `StegaAnimator`| Animates an encoded image on a canvas                                                                                                                                                  |
 
-The pre-STGC modules below still ship, and still have consumers — `machines/sonic-pixels`
-uses `StegaCassette` + `StegaMetadata`, and the iOS `StegaKit` in `stega-player` is a
-Swift port of this API. They are no longer documented on the site, and new work should
-use `Stegassette`.
+The pre-STGC modules below still ship, but both consumers are gone —
+`machines/sonic-pixels` is retired, and the iOS `StegaKit` that ported this API to
+Swift is archived at `_archive/stega-player`. They stay for now because this is a
+published package and dropping them is a breaking change, not because anything here
+needs them. They are no longer documented on the site, and new work should use
+`Stegassette`.
 
 | Module          | Description                                        |
 | --------------- | -------------------------------------------------- |
