@@ -32,8 +32,16 @@ jobs:
         uses: actions/checkout@v3
 
       # compiling docs which is our homepage
+      #
+      # Packages with their own runtime dependencies need installing before the
+      # docs build, because docs imports package SOURCE rather than a built
+      # artifact — so Parcel resolves their imports from their own node_modules.
+      # A package that gains a dependency and is not listed here fails the
+      # deploy, not the local build, where node_modules is already populated.
       - run: npm i
         working-directory: packages/amplib-sound-transformation
+      - run: npm i
+        working-directory: packages/amplib-cosmos
       - run: npm i
       - run: npm i
         working-directory: docs
