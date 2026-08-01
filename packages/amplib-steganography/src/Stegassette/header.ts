@@ -24,7 +24,14 @@ const STGC_VERSION = 1;
 // roughly half the area, and no recoverable cover unless a partial channel plan
 // leaves channels out of the payload. STGC_VERSION is unchanged: every existing
 // image still decodes identically, and the descriptor stores keymaps by name.
-const CODEC_VERSION = "2026.07.31";
+//
+// 2026.08.01 — added the collection layer (many stegassettes that belong
+// together: possession-based crypto, stream splitting, and the
+// artwork-preserving encodeStegassette). Bundle-only: STGC_VERSION and every
+// encode path are untouched, so existing images decode identically. The bump
+// is here because the published bundle's bytes changed, and a version-stamped
+// copy at amplib.app/lib/ is a promise about bytes.
+const CODEC_VERSION = "2026.08.01";
 
 export { CODEC_VERSION, STGC_MAGIC, STGC_VERSION };
 

@@ -137,6 +137,23 @@ export type {
 // ---- cover reconstruction ------------------------------------
 export { reconstructCover, KEY_PRESERVING } from "./reconstruct";
 
+// ---- collections (many stegassettes that belong together) ------
+export {
+  COLLECTION_STEG,
+  decryptBytes,
+  encodeStegassette,
+  encryptBytes,
+  fromBase64,
+  hexId,
+  importKey,
+  joinParts,
+  newKey,
+  slug,
+  splitStream,
+  toBase64,
+} from "./collection";
+export type { CollectionSteg, EncryptedBytes } from "./collection";
+
 // ---- pure container (StegaImageData ↔ StegaImageData) --------
 import { Img } from "./Img";
 import { encodeContainer, decodeContainer } from "./container";
