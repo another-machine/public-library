@@ -1,6 +1,6 @@
 {
   "name": "@amplib/color",
-  "description": "Colour maths for evenly spaced hue. A measured bijection between display (HSV) hue and perceptual (oklch) hue.",
+  "description": "Color analysis utilities",
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
