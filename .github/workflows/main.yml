@@ -119,6 +119,18 @@ jobs:
           cp ./site/lib/stegassette-jobs.js "./site/lib/stegassette-jobs-$S.js"
           cp ./site/lib/stegassette-jobs.mjs "./site/lib/stegassette-jobs-$S.mjs"
 
+      # Superseded pins, carried forward. The stamping above only ever writes
+      # the CURRENT version, and a Pages deploy replaces the whole site — so
+      # the first bump of CODEC_VERSION silently 404'd the previous stamped
+      # files. That is the same broken promise as changing their bytes, just
+      # louder, and the check below could not see it because it only compares
+      # files this build produces.
+      #
+      # Same pattern as ./redirects: committed bytes, copied into the site.
+      # When a version is bumped, the outgoing build's stamped files belong
+      # here. Never delete or edit anything in this directory.
+      - run: cp -R ./lib-pins/. ./site/lib/
+
       # A pin is a promise: these bytes, forever. Republishing a stamped file
       # with different content breaks that quietly — nothing 404s, nothing
       # warns, the consumer just gets a different library than the one it
@@ -144,6 +156,26 @@ jobs:
               echo "new       $name"
             else
               echo "warn      $name — could not check (HTTP $code), not treating as a failure"
+            fi
+          done
+          exit $fail
+
+      # The other half of the same promise: a pin must not DISAPPEAR. The check
+      # above walks the files this build produces, so it is structurally blind
+      # to one going missing — which is exactly how bumping CODEC_VERSION
+      # dropped stegassette-2026.07.31.js on 2026-08-01. This walks the other
+      # direction: everything currently live must still be in the artifact.
+      # The fix when this fires is to copy the missing file into ./lib-pins,
+      # never to skip the check.
+      - name: A published pin must never disappear
+        run: |
+          fail=0
+          for name in $(ls ./lib-pins 2>/dev/null || true); do
+            if [ -f "./site/lib/$name" ]; then
+              echo "kept      $name"
+            else
+              echo "PIN LOST  $name is archived in ./lib-pins but missing from the build"
+              fail=1
             fi
           done
           exit $fail
