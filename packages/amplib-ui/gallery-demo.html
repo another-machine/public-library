@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>amplib-gallery — the exhibit</title>
+    <link rel="stylesheet" href="gallery.css" />
+    <style>
+      /* Demo chrome only — not part of the library. Every work below is a
+         canvas painted at load, so this page needs no assets and can be
+         opened straight off disk. */
+      .demo-bar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        z-index: 10;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        padding: 0.75rem 1rem;
+        font-size: 0.75rem;
+        font-style: italic;
+        letter-spacing: 0.035em;
+        color: var(--gal-ink);
+        mix-blend-mode: difference;
+      }
+      .demo-bar button {
+        appearance: none;
+        background: 0;
+        border: 0;
+        border-bottom: 1px solid currentColor;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        padding: 0;
+      }
+      .demo-note {
+        font-size: 0.7em;
+        font-style: italic;
+        opacity: 0.6;
+        max-width: min(90%, 700px);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="demo-bar">
+      <span>amplib·gallery</span>
+      <button type="button" id="axis">axis: y</button>
+    </div>
+
+    <main class="gallery" id="gallery">
+      <!-- the placard: an intro room, solid black, no veil -->
+      <section class="room placard">
+        <h1>amplib·gallery</h1>
+        <p>the exhibit language — the room a finished work hangs in.</p>
+        <p class="demo-note">
+          every image on this page is painted by the page itself, so nothing
+          loads from disk. select a work and it decodes, then comes to light.
+          scroll for the next room.
+        </p>
+      </section>
+
+      <!-- a room that hangs its own backdrop: the geese model -->
+      <section class="room" id="room-a">
+        <button class="work" aria-pressed="false">
+          <canvas width="1200" height="500" class="gal-glow"></canvas>
+        </button>
+        <p class="demo-note" style="position: absolute; bottom: 2rem">
+          this room sets <code>--gal-backdrop</code> to its own work, enlarged
+          and veiled behind it.
+        </p>
+      </section>
+
+      <!-- a room with no backdrop of its own: the live model, where the veil
+           sits over a background the page paints once for every room -->
+      <section class="room" id="room-b">
+        <button class="work" aria-pressed="false">
+          <canvas width="760" height="960" class="gal-glow"></canvas>
+        </button>
+        <p class="demo-note" style="position: absolute; bottom: 2rem">
+          no <code>--gal-backdrop</code> here — the veil sits over the page's
+          own background, so every room shares one wall.
+        </p>
+      </section>
+
+      <!-- a rail: many works on one wall, resting deeper so the lit one reads
+           as current -->
+      <section class="room" id="room-rail">
+        <div class="rail">
+          <button class="work" aria-pressed="false">
+            <canvas width="600" height="600"></canvas>
+          </button>
+          <button class="work" aria-pressed="false">
+            <canvas width="600" height="600"></canvas>
+          </button>
+          <button class="work" aria-pressed="false">
+            <canvas width="600" height="600"></canvas>
+          </button>
+          <button class="work" aria-pressed="false">
+            <canvas width="600" height="600"></canvas>
+          </button>
+          <button class="work" aria-pressed="false">
+            <canvas width="600" height="600"></canvas>
+          </button>
+          <button class="work" aria-pressed="false">
+            <canvas width="600" height="600"></canvas>
+          </button>
+        </div>
+        <p class="demo-note" style="position: absolute; bottom: 2rem">
+          a rail rests at <code>--gal-dim-deep</code>, so the work under
+          attention is the one that reads.
+        </p>
+      </section>
+
+      <!-- the colophon -->
+      <section class="room placard">
+        <h2>the vocabulary</h2>
+        <p class="demo-note">
+          <code>.gallery</code> a deck of rooms, snapped — vertical, or a
+          promenade with <code>data-axis="x"</code>.
+          <code>.room</code> one stop, its work centred.
+          <code>.placard</code> an intro or colophon.
+          <code>.work</code> the chromeless toggle a piece hangs in; state is
+          <code>aria-pressed</code>. <code>.rail</code> a strip of works
+          sharing one wall. <code>.gal-ghost</code> withdrawn but still holding
+          its place. <code>.gal-glow</code> the halo a work casts.
+          <code>data-loading</code> a room decoding — its stand-in breathes.
+        </p>
+        <p class="demo-note">
+          attention is brightness, never colour: a work rests dimmed and comes
+          to full light under hover or selection. the works themselves are in
+          colour — the rule is about the room, not the art.
+        </p>
+      </section>
+    </main>
+
+    <script>
+      // A seeded PRNG, so the exhibit is the same one on every load.
+      const rng = (seed) => {
+        let s = seed >>> 0;
+        return () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296;
+      };
+
+      // A stand-in for the real thing: a scene, with a rectangle of encoded
+      // noise across the middle of it — what a stegassette actually looks
+      // like before it is played back.
+      function paint(canvas, seed) {
+        const r = rng(seed);
+        const ctx = canvas.getContext("2d");
+        const W = canvas.width,
+          H = canvas.height;
+        const hue = r() * 360;
+
+        const bg = ctx.createLinearGradient(0, 0, W * 0.4, H);
+        bg.addColorStop(0, `hsl(${hue} 30% 12%)`);
+        bg.addColorStop(1, `hsl(${(hue + 40) % 360} 45% 30%)`);
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, W, H);
+
+        // figures: soft vertical masses, like bodies lit from one side
+        for (let i = 0; i < 5; i++) {
+          const x = r() * W,
+            w = (0.08 + r() * 0.2) * W;
+          const g = ctx.createLinearGradient(x, 0, x + w, 0);
+          const h2 = (hue + 20 + r() * 90) % 360;
+          g.addColorStop(0, `hsl(${h2} 40% ${8 + r() * 12}%)`);
+          g.addColorStop(0.5, `hsl(${h2} 50% ${35 + r() * 35}%)`);
+          g.addColorStop(1, `hsl(${h2} 40% ${8 + r() * 12}%)`);
+          ctx.fillStyle = g;
+          ctx.globalAlpha = 0.55 + r() * 0.4;
+          ctx.fillRect(x, H * (0.1 + r() * 0.3), w, H);
+        }
+        ctx.globalAlpha = 1;
+
+        // the payload: a band of RGB static, centred
+        const bw = W * 0.72,
+          bh = H * 0.5;
+        const bx = ((W - bw) / 2) | 0,
+          by = ((H - bh) / 2) | 0;
+        const img = ctx.getImageData(bx, by, bw | 0, bh | 0);
+        const px = img.data;
+        for (let i = 0; i < px.length; i += 4) {
+          px[i] = (px[i] + r() * 255) / 2;
+          px[i + 1] = (px[i + 1] + r() * 255) / 2;
+          px[i + 2] = (px[i + 2] + r() * 255) / 2;
+        }
+        ctx.putImageData(img, bx, by);
+        return canvas;
+      }
+
+      // Paint every work, and tell the room how big its piece is — the
+      // library sizes against --gal-work-w/-h.
+      document.querySelectorAll(".work canvas").forEach((c, i) => {
+        paint(c, 1009 + i * 7717);
+        c.style.setProperty("--gal-work-w", `${c.width}px`);
+        c.style.setProperty("--gal-work-h", `${c.height}px`);
+      });
+
+      // Room A hangs its own work behind itself, veiled. A data: URL, because
+      // a relative url() inside a custom property would resolve against the
+      // stylesheet rather than the page.
+      const roomA = document.getElementById("room-a");
+      roomA.style.setProperty(
+        "--gal-backdrop",
+        `url(${roomA.querySelector("canvas").toDataURL()})`,
+      );
+
+      // Room B has no backdrop of its own: the page paints one wall for every
+      // room that doesn't, exactly as stega.now/live does.
+      const wall = paint(
+        Object.assign(document.createElement("canvas"), {
+          width: 1200,
+          height: 800,
+        }),
+        4242,
+      );
+      document.body.style.backgroundImage = `url(${wall.toDataURL()})`;
+
+      // Selecting a work: the room decodes (its stand-in breathes), then the
+      // work comes to light. One at a time, and clicking the lit one puts it
+      // back down — the same shape both real galleries use.
+      let current = null;
+      const decoded = new WeakSet();
+      for (const work of document.querySelectorAll(".work")) {
+        work.addEventListener("click", () => {
+          if (work.hasAttribute("data-loading")) return;
+
+          if (current === work) {
+            work.setAttribute("aria-pressed", "false");
+            current = null;
+            return;
+          }
+          if (current) current.setAttribute("aria-pressed", "false");
+          current = work;
+
+          // Only the first selection decodes; after that the work is in hand
+          // and lights immediately, as it does in the real galleries.
+          if (decoded.has(work)) {
+            work.setAttribute("aria-pressed", "true");
+            return;
+          }
+          work.toggleAttribute("data-loading", true);
+          setTimeout(() => {
+            work.toggleAttribute("data-loading", false);
+            decoded.add(work);
+            if (current === work) work.setAttribute("aria-pressed", "true");
+          }, 1200);
+        });
+      }
+
+      const gallery = document.getElementById("gallery");
+      document.getElementById("axis").addEventListener("click", (e) => {
+        const x = gallery.dataset.axis === "x";
+        if (x) delete gallery.dataset.axis;
+        else gallery.dataset.axis = "x";
+        e.target.textContent = "axis: " + (x ? "y" : "x");
+      });
+    </script>
+  </body>
+</html>

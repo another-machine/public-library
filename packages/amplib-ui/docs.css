@@ -1,5 +1,5 @@
 /* ============================================================================
-   amplib-docs — the reference language. A sibling to amplib-ui.css.
+   amplib-docs — the reference language. A sibling to ui.css.
    Grown out of documenting the amplib packages; not bound to them.
 
    Where amplib-gallery is the opposite pole from the tool language, this one
@@ -31,12 +31,17 @@
      components   recipes that earn a name    (reusable interface concepts)
      utilities    single-purpose escapes
 
-   Usage:  <link rel="stylesheet" href="amplib-docs.css">
+   Usage:  npm i @amplib/ui
+           @import "@amplib/ui/docs.css";        (Vite, webpack)
+           @import "npm:@amplib/ui/docs.css";    (Parcel — it will not take a
+                                                  bare specifier in CSS)
+           <link rel="stylesheet" href="docs.css">  (no build step)
+
            <body>  → dark (paper #000 / ink #fff)
            <body data-theme="light">    → inverted globally
            <body data-theme="auto">     → follows the system preference
 
-   Do not load this alongside amplib-ui.css. They define the same names at
+   Do not load this alongside ui.css. They define the same names at
    different sizes; the page would get whichever loaded last.
    ========================================================================== */
 
@@ -107,6 +112,15 @@
     --ht-text-ui: 0.875rem; /* 14px */
     --ht-text-title: 1.25rem; /* 20px */
     --ht-text-display: 2rem; /* 32px */
+
+    /* A floor for text-entry controls, not a fifth size. iOS Safari zooms the
+       page whenever a field computing under 16px takes focus, and it does not
+       zoom back out — the viewport keys that used to decline that are ignored,
+       so clearing the threshold is the only way out. 14px body copy is under
+       it, so the demo forms on a reference page are caught by this too. Zero on
+       a precise pointer, where the behaviour does not exist. Kept identical to
+       ui.css: the two files are read side by side. */
+    --ht-text-control-floor: 0px;
 
     /* Code is the subject of a reference, not its chrome, so it gets a size of
        its own rather than borrowing the caption's. It sits at body size: both
@@ -243,6 +257,13 @@
      working surface where fitting more on it is a real want; a denser reference
      page is nobody's want, and a mode that exists only to be left alone is a
      decision surface with no decision behind it. Polarity is the only mode. */
+
+  /* Touch: raise the control floor. See --ht-text-control-floor. */
+  @media (pointer: coarse) {
+    :root {
+      --ht-text-control-floor: 1rem; /* 16px */
+    }
+  }
 
   @media (prefers-contrast: more) {
     :root,
@@ -905,9 +926,12 @@
     ),
   textarea,
   select {
-    /* = ht-type-ui + ht-shape-control + ht-participation-input + ht-time-ui */
+    /* = ht-type-ui + ht-shape-control + ht-participation-input + ht-time-ui,
+       with the control floor applied — see --ht-text-control-floor. This is the
+       whole set that iOS zooms for: buttons, checkboxes, radios, ranges and
+       colour swatches never take a text caret, so they keep the UI size. */
     font: inherit;
-    font-size: var(--ht-text-ui);
+    font-size: max(var(--ht-text-ui), var(--ht-text-control-floor));
     line-height: var(--ht-leading-ui);
     min-block-size: var(--ht-control-size);
     padding-block: var(--ht-pad-control-block);
@@ -953,7 +977,7 @@
     padding-inline-end: calc(var(--ht-pad-control-inline) + 0.75rem);
     background-image:
       linear-gradient(45deg, transparent 50%, var(--ht-ink-dim) 50%),
-      linear-gradient(-45deg, var(--ht-ink-dim) 50%, transparent 50%);
+      linear-gradient(135deg, var(--ht-ink-dim) 50%, transparent 50%);
     background-size:
       5px 5px,
       5px 5px;
@@ -1316,6 +1340,38 @@
     margin: 0;
     padding: 0;
     border: 0;
+  }
+
+  /* table-scroll: a spec-sheet table on a narrow screen ---------------------
+     A table of names against their meanings is the densest thing a reference
+     page holds, and the worst survivor of a narrow screen. Auto layout hands
+     the name column whatever the prose column does not want, and .ht-type-code
+     brings overflow-wrap: anywhere with it — so --ht-text-small becomes a
+     three-character vertical stack while the prose beside it sits comfortable.
+
+     So: names stay whole, and the table scrolls inside its own box rather than
+     shredding them or pushing the page sideways. Wrap any table whose first
+     column is an identifier. This has to live in components, not beside the
+     other table rules in base, because base loses to the hypertokens layer that
+     .ht-type-code is declared in. */
+  .table-scroll {
+    inline-size: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ht-line-strong) transparent;
+  }
+
+  /* Let the table exceed the wrapper — `inline-size: 100%` from base would cap
+     it at the viewport and re-introduce the squeeze the wrapper exists to end. */
+  .table-scroll > table {
+    inline-size: auto;
+    min-inline-size: 100%;
+  }
+
+  :where(td, th).ht-type-code {
+    white-space: nowrap;
+    overflow-wrap: normal;
   }
 
   /* Full ink, because .code sets the block to dim and a link is emphasis. The

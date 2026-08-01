@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>amplib-ui — kitchen sink</title>
+    <link rel="stylesheet" href="ui.css" />
+  </head>
+  <body data-density="compact" style="--ht-anchor-offset: 2.5rem">
+    <header class="masthead">
+      <h1 class="ht-type-display">amplib·ui</h1>
+      <a href="#docs">docs ↓</a>
+    </header>
+
+    <main class="app">
+      <header class="ht-arrange-split">
+        <span class="ht-type-eyebrow">kitchen sink</span>
+        <div class="ht-arrange-row">
+          <span class="badge" data-emphasis="quiet">v0.1</span>
+          <button type="button" id="theme">invert theme</button>
+          <button type="button" id="density">toggle density</button>
+        </div>
+      </header>
+
+      <p class="ht-type-prose">
+        Every control below is unstyled HTML plus, at most, one recipe class.
+        Emphasis expressed through polarity, hairline weight and
+        letter-spacing.
+      </p>
+
+      <nav class="tabs" role="tablist" aria-label="capture mode">
+        <button type="button" role="tab" aria-selected="true">data</button>
+        <button type="button" role="tab" aria-selected="false">clip</button>
+        <button type="button" role="tab" aria-selected="false">series</button>
+        <button type="button" role="tab" aria-selected="false">video</button>
+      </nav>
+
+      <div class="ht-arrange-sidebar">
+        <!-- main column -->
+        <div class="ht-arrange-stack">
+          <div class="ht-arrange-row">
+            <label class="drop" data-ready>
+              <span class="drop__label">cover.png</span>
+              <span class="drop__sub">1920 × 1080 · 4.2 MB</span>
+              <input type="file" class="u-sr-only" />
+            </label>
+            <label class="drop" data-state="empty">
+              <span class="drop__label">drop audio</span>
+              <span class="drop__sub">wav / mp3 / flac</span>
+              <input type="file" class="u-sr-only" />
+            </label>
+          </div>
+
+          <div class="frame">
+            <canvas width="960" height="120" id="wave"></canvas>
+            <input type="range" min="0" max="100" value="38" aria-label="trim" />
+            <div class="ht-arrange-split">
+              <span class="frame__caption">source window 00:00 – 03:12</span>
+              <span class="frame__caption">bytes 1 482 240 / 2 073 600</span>
+            </div>
+          </div>
+
+          <div class="ht-arrange-stack" style="--ht-flow: var(--ht-space-2)">
+            <span class="ht-type-small u-dim">payload fit</span>
+            <div class="meter" style="--ht-meter-value: 71%">
+              <span class="meter__fill"></span>
+            </div>
+          </div>
+
+          <section class="panel" data-flush>
+            <header class="panel__header">
+              <span>jobs</span>
+              <span class="ht-type-small">4 items</span>
+            </header>
+            <div class="panel__body">
+              <ul class="list" role="listbox" aria-label="jobs">
+                <li class="list__item" role="option" aria-selected="true">
+                  <span class="list__index">01</span>
+                  <span class="list__name">side-a/tape-01-intro.png</span>
+                  <span class="list__meta">clip</span>
+                </li>
+                <li class="list__item" role="option" aria-selected="false">
+                  <span class="list__index">02</span>
+                  <span class="list__name">side-a/tape-02-long-title-that-overflows-its-row.png</span>
+                  <span class="list__meta">series ×6</span>
+                </li>
+                <li class="list__item" role="option" aria-selected="false">
+                  <span class="list__index">03</span>
+                  <span class="list__name">side-b/liner-notes.png</span>
+                  <span class="list__meta">data</span>
+                </li>
+                <li class="list__item" role="option" aria-selected="false">
+                  <span class="list__index">04</span>
+                  <span class="list__name">side-b/reel.png</span>
+                  <span class="list__meta">video</span>
+                </li>
+              </ul>
+            </div>
+            <footer class="panel__footer">
+              <span>drop referenced files to auto-attach by name</span>
+              <span>2/4 ready</span>
+            </footer>
+          </section>
+
+          <div class="toolbar" data-flush>
+            <button type="button">▶ preview</button>
+            <button type="button">encode</button>
+            <button type="button">encode all ↓</button>
+            <button type="button" disabled>reconstruct</button>
+            <button type="button" class="u-end" aria-pressed="true">loop</button>
+          </div>
+
+          <p class="status" data-state="busy">
+            encoding chunk 3/6 — traversal serpentine, keymap mirror-x
+          </p>
+          <p class="status" data-state="error">
+            payload exceeds capacity by 84 213 bytes
+          </p>
+
+          <details>
+            <summary>header dump</summary>
+            <pre class="ht-type-code">
+STGC v2  entries=3  bpp=3  plan=packed(r,g,b)
+  0  audio/pcm      1 482 240 B
+  1  text/plain           412 B
+  2  image/png        118 004 B</pre
+            >
+          </details>
+
+          <table>
+            <caption>
+              channel plan
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">slot</th>
+                <th scope="col">channel</th>
+                <th scope="col">combine</th>
+                <th scope="col">bytes</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>0</td><td>r</td><td>additive</td><td>494 080</td></tr>
+              <tr><td>1</td><td>g</td><td>xor</td><td>494 080</td></tr>
+              <tr><td>2</td><td>b</td><td>midpoint</td><td>494 080</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- settings rail -->
+        <aside class="ht-arrange-stack">
+          <section class="panel">
+            <header class="panel__header"><span>steg</span></header>
+            <div class="panel__body">
+              <div class="field">
+                <label for="trav">traversal</label>
+                <select id="trav">
+                  <option>row-major</option>
+                  <option>serpentine</option>
+                  <option>hilbert</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="keymap">keymap</label>
+                <select id="keymap">
+                  <option>adjacent</option>
+                  <option>poles</option>
+                  <option>mirror-x</option>
+                  <option>mirror-y</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="bits">bit depth</label>
+                <input id="bits" type="number" value="16" min="8" max="24" />
+                <span class="field__hint">8 · 16 · 24 — 16 keeps chroma quiet</span>
+              </div>
+              <div class="field">
+                <label for="out">out</label>
+                <input id="out" type="text" value="side-a/tape-01.png" />
+              </div>
+              <div class="field">
+                <label for="ro">locked</label>
+                <input id="ro" type="text" value="STGC" readonly />
+              </div>
+            </div>
+          </section>
+
+          <fieldset class="fieldset-stack">
+            <legend>flags</legend>
+            <div class="field field--check">
+              <input type="checkbox" id="c1" checked />
+              <label for="c1">signed samples</label>
+            </div>
+            <div class="field field--check">
+              <input type="checkbox" id="c2" />
+              <label for="c2">pad to pixel boundary</label>
+            </div>
+            <div class="field field--check">
+              <input type="checkbox" id="c3" disabled />
+              <label for="c3">dither key pixels (video only)</label>
+            </div>
+            <div class="field field--check">
+              <input type="radio" name="pack" id="r1" checked />
+              <label for="r1">packed</label>
+            </div>
+            <div class="field field--check">
+              <input type="radio" name="pack" id="r2" />
+              <label for="r2">aligned</label>
+            </div>
+            <div class="field field--check">
+              <input type="radio" name="pack" id="r3" />
+              <label for="r3">mono</label>
+            </div>
+          </fieldset>
+
+          <section class="panel ht-surface-invert">
+            <header class="panel__header"><span>note</span></header>
+            <div class="panel__body">
+              <p class="ht-type-small">
+                An inverted region re-derives every value from the crossed pair,
+                so its <a href="#">links</a>, borders and
+                <button type="button">controls</button> stay in system.
+              </p>
+              <div class="field">
+                <label for="inv">label</label>
+                <input id="inv" type="text" value="inverted input" />
+              </div>
+            </div>
+          </section>
+
+          <div class="ht-arrange-stack" style="--ht-flow: var(--ht-space-2)">
+            <label class="ht-type-small u-dim" for="txt">shared text entry</label>
+            <textarea id="txt" rows="3">recorded 2026-04-11, cassette side A</textarea>
+            <div class="ht-arrange-row">
+              <span class="badge">text/plain</span>
+              <span class="badge" data-emphasis="strong">on every chunk</span>
+              <span class="badge" data-emphasis="quiet">412 B</span>
+            </div>
+          </div>
+
+          <progress value="0.71"></progress>
+
+          <!-- .u-inline: the escape from full-width, for a transport row -->
+          <div class="ht-arrange-row">
+            <button type="button">▶ play</button>
+            <progress class="u-inline" value="0.4"></progress>
+            <span class="ht-type-small u-nowrap">1:12 / 3:04</span>
+          </div>
+        </aside>
+      </div>
+    </main>
+
+    <!-- documentation page: prose, code with live values, figures, media -->
+    <div class="doc">
+      <section id="docs">
+        <h2>Encoding a cover</h2>
+        <p class="ht-type-prose">
+          <code>Stegassette.encode()</code> writes an entry table plus payload
+          bytes into the RGB channels of a checkerboard of data pixels. Inline
+          code keeps the size of its surrounding text and takes a hairline box
+          — in an all-monospaced system it has nothing else to distinguish it.
+        </p>
+
+        <pre class="code">
+const encoded = Stegassette.encode({
+  source,
+  entries: [audioEntry],
+  traversal: "<span data-value="traversal">serpentine</span>",
+  keymap: "<span data-value="keymap">mirror-x</span>",
+  border: <span data-value="border">2</span>,
+});
+<span data-output="decode">// entries: 3 · bytes 1 482 240 · header STGC v2</span>
+<a href="#docs">jump to this section ↑</a></pre
+        >
+
+        <h3>Reveal</h3>
+        <p class="ht-type-prose">
+          Two canvases in one cell: the reconstruction underneath, the encoded
+          overlay on top, fading as playback advances.
+        </p>
+
+        <figure>
+          <div class="ht-arrange-layer">
+            <canvas id="layerBase" width="480" height="180"></canvas>
+            <canvas
+              id="layerTop"
+              class="ht-media-flush"
+              width="480"
+              height="180"
+            ></canvas>
+          </div>
+          <figcaption>tap to play — encoded overlay develops</figcaption>
+        </figure>
+
+        <div class="ht-arrange-grid" style="--ht-grid-min: 9rem">
+          <figure>
+            <canvas class="ht-media-raw" id="rawA" width="24" height="24"></canvas>
+            <figcaption>data pixels, unsmoothed</figcaption>
+          </figure>
+          <figure>
+            <canvas class="ht-media-square" id="rawB" width="120" height="60"></canvas>
+            <figcaption>square crop</figcaption>
+          </figure>
+          <figure>
+            <audio controls></audio>
+            <figcaption>native controls, framed</figcaption>
+          </figure>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      const body = document.body;
+      // dark is the resting state; auto follows the system with no JS of
+      // its own — this button only cycles the attribute.
+      const themes = ["dark", "light", "auto"];
+      document.getElementById("theme").onclick = (e) => {
+        const next =
+          themes[(themes.indexOf(body.dataset.theme || "dark") + 1) % 3];
+        body.dataset.theme = next;
+        e.target.textContent = "theme: " + next;
+      };
+      document.getElementById("density").onclick = () => {
+        body.dataset.density =
+          body.dataset.density === "compact" ? "default" : "compact";
+      };
+      for (const tab of document.querySelectorAll('[role="tab"]')) {
+        tab.onclick = () => {
+          for (const t of document.querySelectorAll('[role="tab"]'))
+            t.setAttribute("aria-selected", String(t === tab));
+        };
+      }
+      for (const item of document.querySelectorAll(".list__item")) {
+        item.onclick = () => {
+          for (const i of document.querySelectorAll(".list__item"))
+            i.setAttribute("aria-selected", String(i === item));
+        };
+      }
+      // a fake waveform, drawn in the current ink
+      const cv = document.getElementById("wave");
+      const draw = () => {
+        const ctx = cv.getContext("2d");
+        const ink = getComputedStyle(cv).getPropertyValue("--ht-ink") || "#fff";
+        ctx.clearRect(0, 0, cv.width, cv.height);
+        ctx.fillStyle = ink.trim();
+        for (let x = 0; x < cv.width; x += 3) {
+          const h =
+            (Math.sin(x / 17) * 0.4 + Math.sin(x / 5) * 0.3 + Math.sin(x / 61) * 0.3) *
+            cv.height *
+            0.45;
+          ctx.fillRect(x, cv.height / 2 - Math.abs(h), 2, Math.abs(h) * 2);
+        }
+      };
+      draw();
+      new MutationObserver(draw).observe(body, { attributes: true });
+
+      // layered canvases + a deliberately tiny bitmap, to prove the scaling
+      const ink = () => getComputedStyle(body).getPropertyValue("--ht-ink").trim();
+      const paper = () =>
+        getComputedStyle(body).getPropertyValue("--ht-paper").trim();
+      const paintLayers = () => {
+        const b = document.getElementById("layerBase").getContext("2d");
+        b.fillStyle = paper();
+        b.fillRect(0, 0, 480, 180);
+        b.fillStyle = ink();
+        for (let i = 0; i < 480; i += 8) b.fillRect(i, 90 - i / 8, 4, i / 4 + 4);
+        const t = document.getElementById("layerTop").getContext("2d");
+        t.clearRect(0, 0, 480, 180);
+        t.fillStyle = ink();
+        t.globalAlpha = 0.55;
+        for (let x = 0; x < 480; x += 6)
+          for (let y = 0; y < 180; y += 6)
+            if ((x + y) % 12 === 0) t.fillRect(x, y, 3, 3);
+        const raw = document.getElementById("rawA").getContext("2d");
+        for (let x = 0; x < 24; x++)
+          for (let y = 0; y < 24; y++) {
+            raw.fillStyle = (x * y + x + y) % 3 ? paper() : ink();
+            raw.fillRect(x, y, 1, 1);
+          }
+        const sq = document.getElementById("rawB").getContext("2d");
+        sq.fillStyle = ink();
+        sq.fillRect(0, 0, 120, 60);
+        sq.fillStyle = paper();
+        for (let i = 0; i < 120; i += 10) sq.fillRect(i, 0, 5, 60);
+      };
+      paintLayers();
+      new MutationObserver(paintLayers).observe(body, { attributes: true });
+    </script>
+  </body>
+</html>

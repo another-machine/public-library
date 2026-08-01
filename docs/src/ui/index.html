@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ui | another machine</title>
+    <style>
+      @import "../../../packages/amplib-ui/docs.css";
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1><a href="/">@amplib</a>/<wbr />ui</h1>
+      <div class="ht-arrange-row">
+        <a href="https://www.npmjs.com/package/@amplib/ui">npm &#8599;</a>
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-ui"
+          >GitHub &#8599;</a
+        >
+      </div>
+    </header>
+
+    <main class="doc">
+      <section>
+        <p class="ht-type-prose u-dim">
+          Three stylesheets for dense tool interfaces. Stark black and white,
+          monospaced, zero radius. Emphasis expressed by polarity, hairline
+          weight and letter-spacing. No build step, no
+          dependencies, no JavaScript.
+        </p>
+        <p class="signature">npm i @amplib/ui</p>
+      </section>
+
+      <section>
+        <p class="ht-type-eyebrow">Stylesheets</p>
+        <p class="ht-type-prose u-dim">
+          Three languages, one page each — load exactly one. The tool file and
+          the reference file define the same class names at different scales, so
+          a page holding both gets whichever loaded last.
+        </p>
+
+        <div class="entry">
+          <h2>
+            <a
+              href="https://github.com/another-machine/public-library/blob/main/packages/amplib-ui/ui.css"
+              >ui.css</a
+            >
+          </h2>
+          <p class="ht-type-prose u-dim">
+            The tool language. 10/12/24px, compact density available. What a
+            working surface is built from — panels, fields, tabs, lists, meters.
+            <a
+              href="https://github.com/another-machine/public-library/blob/main/packages/amplib-ui/demo.html"
+              >demo.html</a
+            >
+            is its kitchen sink; it opens directly off disk, no server.
+          </p>
+        </div>
+
+        <div class="entry">
+          <h2>
+            <a
+              href="https://github.com/another-machine/public-library/blob/main/packages/amplib-ui/docs.css"
+              >docs.css</a
+            >
+          </h2>
+          <p class="ht-type-prose u-dim">
+            The reference language — the same system spoken at reading distance.
+            12/14/20/32px, a fourth rung for section heads, code at body size,
+            no compact mode. This page is set in it.
+          </p>
+        </div>
+
+        <div class="entry">
+          <h2>
+            <a
+              href="https://github.com/another-machine/public-library/blob/main/packages/amplib-ui/gallery.css"
+              >gallery.css</a
+            >
+          </h2>
+          <p class="ht-type-prose u-dim">
+            The exhibit language, and the opposite pole from the other two:
+            serif, letter-spaced, black. Works hang dimmed and brighten under
+            attention.
+            <a
+              href="https://github.com/another-machine/public-library/blob/main/packages/amplib-ui/gallery-demo.html"
+              >gallery-demo.html</a
+            >
+            shows it;
+            <a href="https://stega.now/live">stegassette: live</a> is it in use.
+          </p>
+        </div>
+      </section>
+
+      <section>
+        <p class="ht-type-eyebrow">Importing</p>
+        <p class="ht-type-prose u-dim">
+          The specifier depends on what is resolving it. Parcel reads a bare
+          specifier in CSS as a relative path and does not consult
+          <span class="ht-type-code">exports</span>, so it needs its own scheme
+          and the filename. TypeScript resolves a CSS import through the
+          bundler's ambient <span class="ht-type-code">*.css</span> declaration,
+          which only matches a specifier ending in
+          <span class="ht-type-code">.css</span>.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <caption>
+              by consumer
+            </caption>
+            <thead>
+              <tr>
+                <th>where</th>
+                <th>specifier</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>CSS, via Vite or webpack</td>
+                <td class="ht-type-code">@import "@amplib/ui";</td>
+              </tr>
+              <tr>
+                <td>CSS, via Parcel</td>
+                <td class="ht-type-code">@import "npm:@amplib/ui/ui.css";</td>
+              </tr>
+              <tr>
+                <td>TypeScript or JavaScript</td>
+                <td class="ht-type-code">import "@amplib/ui/ui.css";</td>
+              </tr>
+              <tr>
+                <td>no build step</td>
+                <td class="ht-type-code">
+                  cp node_modules/@amplib/ui/ui.css .
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <p class="ht-type-eyebrow">Modes</p>
+        <p class="ht-type-prose u-dim">
+          Two orthogonal modes, both plain attributes, both settable on
+          <span class="ht-type-code">&lt;html&gt;</span>,
+          <span class="ht-type-code">&lt;body&gt;</span> or any subtree.
+          <span class="ht-type-code">color-scheme</span> is set for you, so
+          native scrollbars, pickers and the caret follow along.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>attribute</th>
+                <th>effect</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="ht-type-code">&mdash;</td>
+                <td>dark: paper #000, ink #fff</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">data-theme="light"</td>
+                <td>light: paper #fff, ink #000</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">data-theme="auto"</td>
+                <td>follows the system preference, no JavaScript</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">data-density="compact"</td>
+                <td>11px tool density, tighter boxes (ui.css only)</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">.ht-surface-invert</td>
+                <td>crosses the ink/paper pair for a subtree</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <p class="ht-type-eyebrow">Tokens</p>
+        <p class="ht-type-prose u-dim">
+          Only two literals exist — <span class="ht-type-code">--ht-black</span>
+          and <span class="ht-type-code">--ht-white</span>. Everything else is a
+          <span class="ht-type-code">color-mix</span> of the current pair, which
+          is why flipping polarity recomputes the whole palette.
+        </p>
+
+        <div class="table-scroll">
+          <table>
+            <caption>
+              colour
+            </caption>
+            <tbody>
+              <tr>
+                <td class="ht-type-code">--ht-ink / --ht-paper</td>
+                <td>current polarity</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-ink-dim / -faint</td>
+                <td>secondary and tertiary text; both clear 5:1</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-ink-ghost</td>
+                <td>lines and texture only — never legible as type</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-line / -strong</td>
+                <td>hairline, and its hover weight</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-raised / --ht-sunken</td>
+                <td>button fill, input well</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <caption>
+              type
+            </caption>
+            <tbody>
+              <tr>
+                <td class="ht-type-code">--ht-text-small</td>
+                <td>secondary — 10px tool, 12px reference</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-text-ui</td>
+                <td>everything else — 12px tool (11 compact), 14px reference</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-text-title</td>
+                <td>section names — reference only, 20px</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-text-display</td>
+                <td>the one page title — 24px tool, 32px reference</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-text-control-floor</td>
+                <td>
+                  0, or 16px under
+                  <span class="ht-type-code">(pointer: coarse)</span> — the
+                  floor text-entry controls take, so iOS Safari does not zoom on
+                  focus
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-scroll">
+          <table>
+            <caption>
+              space and geometry
+            </caption>
+            <tbody>
+              <tr>
+                <td class="ht-type-code">--ht-space-1 … -9</td>
+                <td>2 · 4 · 6 · 8 · 12 · 16 · 24 · 32 · 48px</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-gap / --ht-flow</td>
+                <td>
+                  inline and block rhythm — layout hypertokens read these, so one
+                  declaration retunes a region
+                </td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-hairline</td>
+                <td>1px, the only border width</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-radius</td>
+                <td>0, the only radius — do not raise it</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">--ht-control-size</td>
+                <td>28px, or 22px compact</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
+        <p class="ht-type-eyebrow">Layers</p>
+        <p class="ht-type-prose u-dim">
+          A later layer wins outright, whatever the specificity — which is why
+          <span class="ht-type-code">base</span> sits before
+          <span class="ht-type-code">hypertokens</span>. Anything you write
+          outside a layer beats all of it, so app CSS never needs
+          <span class="ht-type-code">!important</span>. To override inside the
+          system's order, declare your own layer after them.
+        </p>
+        <pre class="code">@layer amplib.reset, amplib.tokens, amplib.base, amplib.hypertokens,
+  amplib.components, amplib.utilities;</pre>
+
+        <div class="table-scroll">
+          <table>
+            <caption>
+              what each layer holds
+            </caption>
+            <tbody>
+              <tr>
+                <td class="ht-type-code">tokens</td>
+                <td>values and modes</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">base</td>
+                <td>native element defaults — plain HTML already looks right</td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">hypertokens</td>
+                <td>
+                  coordinated <span class="ht-type-code">.ht-*</span> fragments —
+                  type, arrangement, shape, surface, media, participation, time
+                </td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">components</td>
+                <td>
+                  recipes that earn a name — panel, field, toolbar, tabs, list,
+                  badge, status, meter, figure
+                </td>
+              </tr>
+              <tr>
+                <td class="ht-type-code">utilities</td>
+                <td>single-purpose escapes</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

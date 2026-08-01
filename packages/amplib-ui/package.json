@@ -1,0 +1,39 @@
+{
+  "name": "@amplib/ui",
+  "description": "A hypertoken theme for dense tool interfaces. Stark black and white, monospaced, zero radius — emphasis by polarity rather than hue.",
+  "version": "0.1.0",
+  "style": "ui.css",
+  "exports": {
+    ".": "./ui.css",
+    "./ui.css": "./ui.css",
+    "./docs.css": "./docs.css",
+    "./gallery.css": "./gallery.css",
+    "./package.json": "./package.json"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
+  "files": [
+    "*.css",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://amplib.app/ui",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/another-machine/public-library.git",
+    "directory": "packages/amplib-ui"
+  },
+  "keywords": [
+    "css",
+    "design-system",
+    "monospace",
+    "design-tokens",
+    "dark-theme"
+  ],
+  "author": "Another Machine",
+  "license": "Apache-2.0",
+  "type": "module"
+}
