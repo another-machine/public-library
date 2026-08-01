@@ -15,6 +15,7 @@ docs.css     the reference language — see "The reference" below
 demo.html           kitchen sink; open it directly, no server needed
 gallery-demo.html   the same, for the gallery; also needs no server
 HYPERTOKENS.md      the portable guidance this system was built from
+VOICE.md            the same, for the words on the page
 README.md           this file
 ```
 
