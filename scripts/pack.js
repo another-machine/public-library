@@ -2,10 +2,9 @@ import { execSync } from "child_process";
 import { readFileSync } from "fs";
 
 // Packages to build and pack tarballs for. Not the same as the published set —
-// some of these have never been published. `amplib-color` is deliberately
-// absent: it is built and tested, but held back until its shape is settled.
-// Add it here when it publishes.
+// some of these have never been published.
 const directories = [
+  "amplib-color",
   "amplib-devices",
   "amplib-lexicon",
   "amplib-music-detection",
