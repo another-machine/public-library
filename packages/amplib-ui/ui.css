@@ -1,0 +1,1779 @@
+/* ============================================================================
+   amplib-ui — a hypertoken theme for dense tool interfaces.
+   Grown out of the stegassette encoder; not bound to it.
+
+   Stark black and white. Monospaced. Zero radius. No shadows, no color.
+   Emphasis is made with polarity (ink on paper / paper on ink), weight of
+   line, and letter-spacing — never with hue.
+
+   One file, five conceptual layers, in cascade order:
+
+     tokens       values and modes            (what value is used)
+     base         native element defaults     (plain HTML already looks right)
+     hypertokens  coordinated .ht-* fragments (what decision is applied)
+     components   recipes that earn a name    (reusable interface concepts)
+     utilities    single-purpose escapes
+
+   Usage:  npm i @amplib/ui
+           @import "@amplib/ui";               (Vite, webpack)
+           @import "npm:@amplib/ui/ui.css";    (Parcel — it will not take a
+                                                bare specifier in CSS)
+           <link rel="stylesheet" href="ui.css">  (no build step)
+
+           <body>  → dark (paper #000 / ink #fff)
+           <body data-theme="light">    → inverted globally
+           <body data-theme="auto">     → follows the system preference
+           <body data-density="compact"> → 11px tool density
+   ========================================================================== */
+
+/* Order matters more than specificity here: a later layer wins outright. base
+   sits BEFORE hypertokens so that putting .ht-type-display on an <h1>, or
+   .ht-shape-control on a <button>, actually overrides the element default. */
+@layer amplib.reset, amplib.tokens, amplib.base, amplib.hypertokens,
+  amplib.components, amplib.utilities;
+
+/* ── reset ───────────────────────────────────────────────────────────────── */
+
+@layer amplib.reset {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  :where(body, h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd, pre) {
+    margin: 0;
+  }
+
+  :where(ul, ol) {
+    margin: 0;
+    padding: 0;
+  }
+
+  :where(img, canvas, svg, video) {
+    display: block;
+    max-inline-size: 100%;
+  }
+
+  :where(button, input, select, textarea) {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+/* ── tokens ──────────────────────────────────────────────────────────────── */
+
+@layer amplib.tokens {
+  :root {
+    /* The only two literals in the system. Everything else is a mix of them,
+       so a polarity flip recomputes the whole palette. */
+    --ht-black: #000;
+    --ht-white: #fff;
+
+    /* Theme pair. `-base` values are never swapped; polarity reads from them,
+       which is what lets .ht-surface-invert cross the two. */
+    --ht-fg-base: var(--ht-white);
+    --ht-bg-base: var(--ht-black);
+
+    color-scheme: dark;
+
+    /* type */
+    --ht-font-mono: ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas,
+      "Liberation Mono", monospace;
+
+    /* Three sizes, no ramp. Everything is --ht-text-ui unless it is secondary
+       (--ht-text-small) or the one title on the page (--ht-text-display).
+       Hierarchy below that is carried by ink weight, tracking and case — a
+       monospaced two-value system reads worse, not better, when you split the
+       difference between 11px and 12px.
+
+       Reference documentation needs a fourth rung and a bigger scale all
+       round; that is docs.css, a sibling file, and deliberately not a
+       mode of this one. A tool screen is a banner and then flat rows, and a
+       heading size living in this scale is a heading size that ends up on a
+       settings rail. */
+    --ht-text-small: 0.625rem; /* 10px */
+    --ht-text-ui: 0.75rem; /* 12px */
+    --ht-text-display: 1.5rem; /* 24px */
+
+    /* A floor for text-entry controls, not a fourth size. iOS Safari zooms the
+       page whenever a field computing under 16px takes focus, and it does not
+       zoom back out — the viewport keys that used to decline that are ignored,
+       so clearing the threshold is the only way out. Zero on a precise pointer,
+       where the behaviour does not exist and 16px controls would cost density
+       for nothing. Read as a max() at the control rather than as a size, so it
+       composes with whatever --ht-text-ui the density mode in scope has set. */
+    --ht-text-control-floor: 0px;
+
+    --ht-leading-flat: 1;
+    --ht-leading-ui: 1.5;
+    --ht-leading-prose: 1.7;
+
+    /* Two: flush, and opened up for section headers. */
+    --ht-track-none: 0;
+    --ht-track-wide: 0.14em;
+
+    /* space */
+    --ht-space-1: 0.125rem; /* 2 */
+    --ht-space-2: 0.25rem; /* 4 */
+    --ht-space-3: 0.375rem; /* 6 */
+    --ht-space-4: 0.5rem; /* 8 */
+    --ht-space-5: 0.75rem; /* 12 */
+    --ht-space-6: 1rem; /* 16 */
+    --ht-space-7: 1.5rem; /* 24 */
+    --ht-space-8: 2rem; /* 32 */
+    --ht-space-9: 3rem; /* 48 */
+
+    /* Semantic spacing. Layout hypertokens read --ht-gap and --ht-flow, so a
+       single override on an ancestor retunes a whole region. */
+    --ht-gap: var(--ht-space-4);
+    --ht-flow: var(--ht-space-5);
+    --ht-flow-section: var(--ht-space-9); /* between document sections */
+    --ht-pad-panel: var(--ht-space-4);
+    --ht-pad-control-inline: var(--ht-space-3);
+    --ht-pad-control-block: var(--ht-space-1);
+
+    /* geometry — a single hairline, and a hard zero radius everywhere */
+    --ht-hairline: 1px;
+    --ht-radius: 0;
+    --ht-control-size: 1.75rem; /* 28px */
+    --ht-control-size-sm: 1.375rem; /* 22px */
+    --ht-tap-size: 1.75rem;
+
+    /* layout */
+    --ht-page-max: 65rem;
+    --ht-measure: 40rem;
+    --ht-sidebar: 20rem;
+    --ht-grid-min: 12rem;
+    --ht-code-max: 80svh;
+    /* Raise this to the masthead's height wherever one is sticky, or in-page
+       anchors land underneath it. */
+    --ht-anchor-offset: var(--ht-space-7);
+
+    /* time */
+    --ht-duration: 90ms;
+    --ht-ease: linear;
+  }
+
+  [data-theme="light"] {
+    --ht-fg-base: var(--ht-black);
+    --ht-bg-base: var(--ht-white);
+    color-scheme: light;
+  }
+
+  [data-theme="dark"] {
+    --ht-fg-base: var(--ht-white);
+    --ht-bg-base: var(--ht-black);
+    color-scheme: dark;
+  }
+
+  /* The page canvas paints from <html>, so a theme set on <body> — the common
+     case, since that is the element an app scripts — has to be mirrored up or
+     the overscroll area keeps the old polarity. */
+  html:has(> body[data-theme="light"]) {
+    --ht-fg-base: var(--ht-black);
+    --ht-bg-base: var(--ht-white);
+    color-scheme: light;
+  }
+
+  html:has(> body[data-theme="dark"]) {
+    --ht-fg-base: var(--ht-white);
+    --ht-bg-base: var(--ht-black);
+    color-scheme: dark;
+  }
+
+  /* auto: follow the system preference, no JavaScript. Dark is the resting
+     state of this theme, so only the light half needs declaring. */
+  @media (prefers-color-scheme: light) {
+    [data-theme="auto"],
+    html:has(> body[data-theme="auto"]) {
+      --ht-fg-base: var(--ht-black);
+      --ht-bg-base: var(--ht-white);
+      color-scheme: light;
+    }
+  }
+
+  /* Polarity scopes. Each scope sets --ht-ink / --ht-paper, and every derived
+     value is declared for the same scopes so it resolves against the LOCAL
+     pair rather than inheriting an already-resolved colour from :root. */
+  :root,
+  [data-theme],
+  .ht-surface-invert {
+    /* Two text weights and one decorative weight. Both text weights clear 5:1
+       against paper in either polarity — the mix runs toward paper, so the
+       same percentage lands on different greys light vs dark. --ht-ink-ghost
+       is for lines and texture ONLY; it is never legible as type. */
+    --ht-ink-dim: color-mix(in srgb, var(--ht-ink) 82%, var(--ht-paper));
+    --ht-ink-faint: color-mix(in srgb, var(--ht-ink) 58%, var(--ht-paper));
+    --ht-ink-ghost: color-mix(in srgb, var(--ht-ink) 25%, var(--ht-paper));
+    --ht-line: color-mix(in srgb, var(--ht-ink) 26%, var(--ht-paper));
+    --ht-line-strong: color-mix(in srgb, var(--ht-ink) 55%, var(--ht-paper));
+    --ht-raised: color-mix(in srgb, var(--ht-ink) 7%, var(--ht-paper));
+    --ht-sunken: color-mix(in srgb, var(--ht-ink) 12%, var(--ht-paper));
+  }
+
+  :root,
+  [data-theme] {
+    --ht-ink: var(--ht-fg-base);
+    --ht-paper: var(--ht-bg-base);
+  }
+
+  /* Cross the pair. Declared last so it wins on an element that carries both
+     data-theme and the invert class. Nesting an invert inside an invert does
+     not re-flip — it resolves to the same polarity as its parent. That is
+     deliberate: two levels of inversion in a two-value system is a smell. */
+  .ht-surface-invert {
+    --ht-ink: var(--ht-bg-base);
+    --ht-paper: var(--ht-fg-base);
+  }
+
+  /* Density is a mode, not a variant: it retunes shared values only. */
+  [data-density="compact"] {
+    /* --ht-text-small stays at 10px: it is already the floor. */
+    --ht-text-ui: 0.6875rem; /* 11px */
+    --ht-text-display: 1.125rem; /* 18px */
+    --ht-gap: var(--ht-space-3);
+    --ht-flow: var(--ht-space-4);
+    --ht-flow-section: var(--ht-space-8);
+    --ht-pad-panel: var(--ht-space-3);
+    --ht-pad-control-inline: var(--ht-space-2);
+    --ht-pad-control-block: 0;
+    --ht-control-size: var(--ht-control-size-sm);
+  }
+
+  /* Touch: raise the control floor. Compact density does not lower it again —
+     11px is a density choice, and the zoom is not negotiable. */
+  @media (pointer: coarse) {
+    :root {
+      --ht-text-control-floor: 1rem; /* 16px */
+    }
+  }
+
+  @media (prefers-contrast: more) {
+    :root,
+    [data-theme],
+    .ht-surface-invert {
+      --ht-ink-dim: var(--ht-ink);
+      --ht-ink-faint: color-mix(in srgb, var(--ht-ink) 80%, var(--ht-paper));
+      --ht-ink-ghost: color-mix(in srgb, var(--ht-ink) 55%, var(--ht-paper));
+      --ht-line: color-mix(in srgb, var(--ht-ink) 65%, var(--ht-paper));
+      --ht-line-strong: var(--ht-ink);
+    }
+  }
+}
+
+/* ── hypertokens ─────────────────────────────────────────────────────────── */
+
+@layer amplib.hypertokens {
+  /* typography ------------------------------------------------------------ */
+
+  /* Each typography hypertoken declares the whole group it owns — case and
+     tracking included — so composing one onto any element lands the same way.
+     Without that, .ht-type-prose on an <h2> keeps the heading's uppercase, and
+     the class silently means something different depending on what it is on. */
+  .ht-type-ui {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-ui);
+    font-weight: 400;
+    line-height: var(--ht-leading-ui);
+    letter-spacing: var(--ht-track-none);
+    text-transform: none;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Secondary text of every kind — field labels, captions, byte counts, hints.
+     What used to be separate label and meta styles differed only in ink, which
+     .u-dim / .u-faint already say. */
+  .ht-type-small {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-small);
+    font-weight: 400;
+    line-height: var(--ht-leading-ui);
+    letter-spacing: var(--ht-track-none);
+    text-transform: none;
+    color: var(--ht-ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Section headers. Same size as small — the difference is case and tracking,
+     which is what keeps a mono UI from looking like four competing sizes. */
+  .ht-type-eyebrow {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-small);
+    font-weight: 400;
+    line-height: var(--ht-leading-ui);
+    letter-spacing: var(--ht-track-wide);
+    text-transform: uppercase;
+    color: var(--ht-ink-faint);
+  }
+
+  .ht-type-display {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-display);
+    font-weight: 400;
+    line-height: var(--ht-leading-flat);
+    letter-spacing: var(--ht-track-wide);
+    text-transform: uppercase;
+  }
+
+  .ht-type-prose {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-ui);
+    font-weight: 400;
+    line-height: var(--ht-leading-prose);
+    letter-spacing: var(--ht-track-none);
+    text-transform: none;
+    max-inline-size: var(--ht-measure);
+    text-wrap: pretty;
+  }
+
+  .ht-type-code {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-small);
+    font-weight: 400;
+    line-height: var(--ht-leading-ui);
+    letter-spacing: var(--ht-track-none);
+    text-transform: none;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    tab-size: 2;
+  }
+
+  /* arrangement ----------------------------------------------------------- */
+
+  .ht-arrange-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--ht-flow);
+    min-inline-size: 0;
+  }
+
+  .ht-arrange-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--ht-gap);
+    min-inline-size: 0;
+  }
+
+  .ht-arrange-split {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ht-gap);
+    inline-size: 100%;
+    min-inline-size: 0;
+  }
+
+  .ht-arrange-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ht-space-2);
+    inline-size: fit-content;
+    white-space: nowrap;
+  }
+
+  .ht-arrange-grid {
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(var(--ht-grid-min), 100%), 1fr)
+    );
+    gap: var(--ht-gap);
+    min-inline-size: 0;
+  }
+
+  /* Main column plus a fixed side rail that collapses under it when the
+     container gets narrow — the encoder shell. */
+  .ht-arrange-sidebar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--ht-space-6);
+  }
+
+  .ht-arrange-sidebar > :first-child {
+    flex: 1 1 26rem;
+    min-inline-size: 0;
+  }
+
+  .ht-arrange-sidebar > :last-child {
+    flex: 0 1 var(--ht-sidebar);
+    min-inline-size: 0;
+  }
+
+  /* Stack children in one cell so they overlay exactly: a reconstruction under
+     an encoded overlay, a waveform under a playhead. Grid rather than absolute
+     positioning, so the tallest child still sizes the box. */
+  .ht-arrange-layer {
+    display: grid;
+    isolation: isolate;
+    min-inline-size: 0;
+  }
+
+  .ht-arrange-layer > * {
+    grid-area: 1 / 1;
+    inline-size: 100%;
+    block-size: auto;
+  }
+
+  .ht-arrange-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ht-flow);
+    inline-size: 100%;
+    max-inline-size: var(--ht-page-max);
+    margin-inline: auto;
+    padding: var(--ht-space-6);
+  }
+
+  /* shape ----------------------------------------------------------------- */
+
+  .ht-shape-control {
+    min-block-size: var(--ht-control-size);
+    padding-block: var(--ht-pad-control-block);
+    padding-inline: var(--ht-pad-control-inline);
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+  }
+
+  .ht-shape-control-square {
+    inline-size: var(--ht-control-size);
+    block-size: var(--ht-control-size);
+    padding: 0;
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+  }
+
+  .ht-shape-panel {
+    padding: var(--ht-pad-panel);
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+  }
+
+  .ht-shape-flush {
+    padding: 0;
+    border: 0;
+    border-radius: var(--ht-radius);
+  }
+
+  .ht-shape-divide {
+    border: 0;
+    border-block-start: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+  }
+
+  /* media ------------------------------------------------------------------
+     A project-specific category, because pixels are the subject matter here:
+     an encoded cover, a spectrogram, a key-pixel diagram. How imagery is
+     scaled is a design decision in this system, not an implementation detail. */
+
+  /* Encoded imagery must never be smoothed — an interpolated pixel is a lie
+     about the payload. Use this on any canvas or image showing real data. */
+  .ht-media-raw {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+    image-rendering: pixelated;
+    background-color: var(--ht-sunken);
+  }
+
+  .ht-media-square {
+    display: block;
+    inline-size: 100%;
+    block-size: auto;
+    aspect-ratio: 1;
+    object-fit: cover;
+  }
+
+  /* Imagery that is pure subject matter — an overlay canvas, a reveal, a
+     layered frame. Opts out of the base canvas/img framing: no border, no
+     surface behind it. */
+  .ht-media-flush {
+    border: 0;
+    padding: 0;
+    background: none;
+  }
+
+  /* surface --------------------------------------------------------------- */
+
+  .ht-surface-paper {
+    color: var(--ht-ink);
+    background-color: var(--ht-paper);
+  }
+
+  .ht-surface-raised {
+    color: var(--ht-ink);
+    background-color: var(--ht-raised);
+  }
+
+  .ht-surface-sunken {
+    color: var(--ht-ink-dim);
+    background-color: var(--ht-sunken);
+  }
+
+  .ht-surface-invert {
+    color: var(--ht-ink);
+    background-color: var(--ht-paper);
+  }
+
+  .ht-surface-outline {
+    color: var(--ht-ink-dim);
+    background-color: transparent;
+    box-shadow: inset 0 0 0 var(--ht-hairline) var(--ht-line);
+  }
+
+  .ht-surface-dashed {
+    color: var(--ht-ink-faint);
+    background-color: transparent;
+    border: var(--ht-hairline) dashed var(--ht-line);
+  }
+
+  /* Diagonal hatch — the system's only texture. Marks inert or unavailable
+     regions without introducing a third value. */
+  .ht-surface-hatch {
+    color: var(--ht-ink-faint);
+    background-color: var(--ht-paper);
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--ht-ink-ghost) 0 1px,
+      transparent 1px 6px
+    );
+  }
+
+  /* participation --------------------------------------------------------- */
+
+  .ht-participation-action {
+    appearance: none;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+    text-align: center;
+    text-decoration: none;
+    color: var(--ht-ink-dim);
+    background-color: var(--ht-raised);
+  }
+
+  .ht-participation-action:hover:not(:disabled, [aria-disabled="true"]) {
+    color: var(--ht-ink);
+    border-color: var(--ht-line-strong);
+  }
+
+  .ht-participation-action:active:not(:disabled, [aria-disabled="true"]) {
+    color: var(--ht-paper);
+    background-color: var(--ht-ink);
+    border-color: var(--ht-ink);
+  }
+
+  .ht-participation-action:disabled,
+  .ht-participation-action[aria-disabled="true"] {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  .ht-participation-input {
+    appearance: none;
+    color: var(--ht-ink);
+    background-color: var(--ht-sunken);
+    caret-color: var(--ht-ink);
+    cursor: text;
+  }
+
+  .ht-participation-input:hover:not(:disabled, :read-only) {
+    border-color: var(--ht-line-strong);
+  }
+
+  .ht-participation-input:disabled,
+  .ht-participation-input:read-only {
+    color: var(--ht-ink-faint);
+    cursor: default;
+  }
+
+  /* One focus treatment for the whole system. Offset by a hairline so it
+     never merges with the control's own border. */
+  .ht-participation-action:focus-visible,
+  .ht-participation-input:focus-visible,
+  :where(.ht-participation-focus):focus-visible {
+    outline: 2px solid var(--ht-ink);
+    outline-offset: var(--ht-hairline);
+  }
+
+  .ht-participation-scroll {
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ht-line-strong) transparent;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+  }
+
+  /* time ------------------------------------------------------------------ */
+
+  .ht-time-ui {
+    transition:
+      color var(--ht-duration) var(--ht-ease),
+      background-color var(--ht-duration) var(--ht-ease),
+      border-color var(--ht-duration) var(--ht-ease),
+      opacity var(--ht-duration) var(--ht-ease);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ht-time-ui {
+      transition: none;
+    }
+  }
+}
+
+/* ── base ────────────────────────────────────────────────────────────────── */
+
+@layer amplib.base {
+  /* Plain HTML must already look like the system. Every rule here composes
+     the same decisions the hypertokens name — no new ones. */
+
+  html {
+    background-color: var(--ht-paper);
+  }
+
+  body {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-ui);
+    line-height: var(--ht-leading-ui);
+    font-variant-numeric: tabular-nums;
+    color: var(--ht-ink);
+    background-color: var(--ht-paper);
+    min-block-size: 100dvh;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ht-line-strong) transparent;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    color: var(--ht-paper);
+    background-color: var(--ht-ink);
+  }
+
+  ::placeholder {
+    color: var(--ht-ink-faint);
+    opacity: 1;
+  }
+
+  /* Two heading levels, drawn from the three sizes that already exist: a title
+     or section head at display size, everything below it at eyebrow. A
+     document needs a step above UI text; it does not need six of them. */
+  :where(h1, h2, h3, h4, h5, h6) {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-small);
+    font-weight: 400;
+    line-height: var(--ht-leading-ui);
+    letter-spacing: var(--ht-track-wide);
+    text-transform: uppercase;
+    color: var(--ht-ink-faint);
+  }
+
+  :where(h1, h2) {
+    font-size: var(--ht-text-display);
+    line-height: var(--ht-leading-flat);
+    color: var(--ht-ink-dim);
+  }
+
+  /* In-page links land under a sticky masthead without this. */
+  :where([id]) {
+    scroll-margin-block-start: var(--ht-anchor-offset);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    :where(html:focus-within) {
+      scroll-behavior: smooth;
+    }
+  }
+
+  :where(p) {
+    max-inline-size: var(--ht-measure);
+  }
+
+  :where(small) {
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+  }
+
+  :where(strong, b) {
+    font-weight: 700;
+    color: var(--ht-ink);
+  }
+
+  :where(a) {
+    color: var(--ht-ink);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: var(--ht-hairline);
+  }
+
+  :where(a):hover {
+    color: var(--ht-paper);
+    background-color: var(--ht-ink);
+    text-decoration: none;
+  }
+
+  :where(a):focus-visible,
+  :where(summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--ht-ink);
+    outline-offset: var(--ht-hairline);
+  }
+
+  :where(hr) {
+    block-size: 0;
+    border: 0;
+    border-block-start: var(--ht-hairline) solid var(--ht-line);
+    margin-block: var(--ht-space-4);
+  }
+
+  :where(ul, ol) {
+    padding-inline-start: var(--ht-space-6);
+  }
+
+  :where(ul[role="list"], ol[role="list"]) {
+    list-style: none;
+    padding-inline-start: 0;
+  }
+
+  :where(code, kbd, samp, pre) {
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-small);
+  }
+
+  :where(kbd) {
+    padding-inline: var(--ht-space-1);
+    border: var(--ht-hairline) solid var(--ht-line);
+  }
+
+  /* Everything on the page is already monospaced, so inline code has nothing
+     to distinguish it by family. It gets a hairline box and full ink instead,
+     and keeps its surrounding size — shrinking it inside prose reads as an
+     accident. Code inside <pre> is excluded: the block already frames it. */
+  :where(:not(pre) > code) {
+    padding-inline: var(--ht-space-1);
+    border: var(--ht-hairline) solid var(--ht-line);
+    font-size: inherit;
+    color: var(--ht-ink);
+    overflow-wrap: anywhere;
+  }
+
+  :where(pre) {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    tab-size: 2;
+  }
+
+  /* media ------------------------------------------------------------------ */
+
+  :where(figure) {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ht-space-2);
+    min-inline-size: 0;
+  }
+
+  :where(figcaption) {
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+  }
+
+  /* Native media controls are shadow DOM: their radius and chrome cannot be
+     restyled, only their box and colour scheme. Giving them full width and a
+     hairline frame is what keeps them from reading as foreign objects. */
+  :where(audio) {
+    display: block;
+    inline-size: 100%;
+    padding: var(--ht-space-2);
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+    background-color: var(--ht-sunken);
+  }
+
+  :where(video) {
+    inline-size: 100%;
+    max-block-size: 60svh;
+    block-size: auto;
+    border: var(--ht-hairline) solid var(--ht-line);
+    background-color: var(--ht-sunken);
+  }
+
+  /* form controls ---------------------------------------------------------- */
+
+  :where(label) {
+    color: var(--ht-ink-dim);
+  }
+
+  :where(fieldset) {
+    padding: var(--ht-pad-panel);
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+    min-inline-size: 0;
+  }
+
+  :where(legend) {
+    padding-inline: var(--ht-space-2);
+    font-size: var(--ht-text-small);
+    letter-spacing: var(--ht-track-wide);
+    text-transform: uppercase;
+    color: var(--ht-ink-faint);
+  }
+
+  button,
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  ::file-selector-button {
+    /* = ht-arrange-inline + ht-type-ui + ht-shape-control
+         + ht-participation-action + ht-time-ui */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ht-space-2);
+    inline-size: fit-content;
+    white-space: nowrap;
+    font: inherit;
+    font-size: var(--ht-text-ui);
+    min-block-size: var(--ht-control-size);
+    padding-block: var(--ht-pad-control-block);
+    padding-inline: var(--ht-pad-control-inline);
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+    appearance: none;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+    text-decoration: none;
+    color: var(--ht-ink-dim);
+    background-color: var(--ht-raised);
+    transition:
+      color var(--ht-duration) var(--ht-ease),
+      background-color var(--ht-duration) var(--ht-ease),
+      border-color var(--ht-duration) var(--ht-ease),
+      opacity var(--ht-duration) var(--ht-ease);
+  }
+
+  :is(button, [type="button"], [type="submit"], [type="reset"]):hover:not(
+      :disabled
+    ) {
+    color: var(--ht-ink);
+    border-color: var(--ht-line-strong);
+  }
+
+  :is(button, [type="button"], [type="submit"], [type="reset"]):active:not(
+      :disabled
+    ),
+  :is(button, [role="tab"])[aria-pressed="true"],
+  :is(button, [role="tab"])[aria-selected="true"] {
+    color: var(--ht-paper);
+    background-color: var(--ht-ink);
+    border-color: var(--ht-ink);
+  }
+
+  :is(button, [type="button"], [type="submit"], [type="reset"]):disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
+  :is(button, input, select, textarea):focus-visible {
+    outline: 2px solid var(--ht-ink);
+    outline-offset: var(--ht-hairline);
+  }
+
+  input:where(
+      :not([type]),
+      [type="text"],
+      [type="search"],
+      [type="url"],
+      [type="email"],
+      [type="tel"],
+      [type="password"],
+      [type="number"],
+      [type="date"],
+      [type="time"],
+      [type="datetime-local"]
+    ),
+  textarea,
+  select {
+    /* = ht-type-ui + ht-shape-control + ht-participation-input + ht-time-ui,
+       with the control floor applied — see --ht-text-control-floor. This is the
+       whole set that iOS zooms for: buttons, checkboxes, radios, ranges and
+       colour swatches never take a text caret, so they keep the UI size. */
+    font: inherit;
+    font-size: max(var(--ht-text-ui), var(--ht-text-control-floor));
+    line-height: var(--ht-leading-ui);
+    min-block-size: var(--ht-control-size);
+    padding-block: var(--ht-pad-control-block);
+    padding-inline: var(--ht-pad-control-inline);
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+    appearance: none;
+    color: var(--ht-ink);
+    background-color: var(--ht-sunken);
+    caret-color: var(--ht-ink);
+    min-inline-size: 0;
+    transition:
+      color var(--ht-duration) var(--ht-ease),
+      border-color var(--ht-duration) var(--ht-ease);
+  }
+
+  :is(input, textarea, select):hover:not(:disabled, :read-only) {
+    border-color: var(--ht-line-strong);
+  }
+
+  :is(input, textarea, select):disabled {
+    color: var(--ht-ink-faint);
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  input:where([type="number"]) {
+    font-variant-numeric: tabular-nums;
+  }
+
+  textarea {
+    resize: vertical;
+    min-block-size: calc(var(--ht-control-size) * 2);
+    inline-size: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ht-line-strong) transparent;
+  }
+
+  /* `appearance: none` removes the native caret; two gradients redraw it as a
+     square chevron that follows the current polarity. */
+  select {
+    cursor: pointer;
+    padding-inline-end: calc(var(--ht-pad-control-inline) + 0.75rem);
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--ht-ink-dim) 50%),
+      linear-gradient(135deg, var(--ht-ink-dim) 50%, transparent 50%);
+    background-size:
+      5px 5px,
+      5px 5px;
+    background-position:
+      right calc(var(--ht-pad-control-inline) + 4px) center,
+      right var(--ht-pad-control-inline) center;
+    background-repeat: no-repeat;
+  }
+
+  select[multiple],
+  select[size]:not([size="1"]) {
+    background-image: none;
+    padding-inline-end: var(--ht-pad-control-inline);
+  }
+
+  /* Square by mandate — no radius anywhere, including the check and the dot. */
+  input:where([type="checkbox"], [type="radio"]) {
+    appearance: none;
+    inline-size: 0.875rem;
+    block-size: 0.875rem;
+    flex: none;
+    margin: 0;
+    border: var(--ht-hairline) solid var(--ht-line-strong);
+    border-radius: var(--ht-radius);
+    background-color: var(--ht-sunken);
+    cursor: pointer;
+    transition: background-color var(--ht-duration) var(--ht-ease);
+  }
+
+  /* No glyphs — a checked box is a solid block, a checked radio is a block
+     inside a ring. Two marks that stay distinguishable at 14px in either
+     polarity, with nothing to load and nothing to recolour. */
+  input:where([type="checkbox"]):checked {
+    background-color: var(--ht-ink);
+    border-color: var(--ht-ink);
+  }
+
+  input:where([type="radio"]):checked {
+    background-color: var(--ht-ink);
+    border-color: var(--ht-ink);
+    box-shadow: inset 0 0 0 3px var(--ht-paper);
+  }
+
+  input:where([type="checkbox"]):indeterminate {
+    background-color: var(--ht-ink);
+    border-color: var(--ht-ink);
+    box-shadow:
+      inset 0 4px 0 var(--ht-paper),
+      inset 0 -4px 0 var(--ht-paper);
+  }
+
+  input:where([type="range"]) {
+    appearance: none;
+    inline-size: 100%;
+    block-size: var(--ht-control-size-sm);
+    padding: 0;
+    margin: 0;
+    background: transparent;
+    cursor: col-resize;
+  }
+
+  input:where([type="range"])::-webkit-slider-runnable-track {
+    block-size: var(--ht-hairline);
+    background-color: var(--ht-line-strong);
+  }
+
+  input:where([type="range"])::-moz-range-track {
+    block-size: var(--ht-hairline);
+    background-color: var(--ht-line-strong);
+  }
+
+  input:where([type="range"])::-webkit-slider-thumb {
+    appearance: none;
+    inline-size: 0.5rem;
+    block-size: 0.875rem;
+    margin-block-start: -0.4375rem;
+    border: 0;
+    border-radius: var(--ht-radius);
+    background-color: var(--ht-ink);
+  }
+
+  input:where([type="range"])::-moz-range-thumb {
+    inline-size: 0.5rem;
+    block-size: 0.875rem;
+    border: 0;
+    border-radius: var(--ht-radius);
+    background-color: var(--ht-ink);
+  }
+
+  input:where([type="color"]) {
+    inline-size: var(--ht-control-size);
+    block-size: var(--ht-control-size);
+    padding: 2px;
+    border: var(--ht-hairline) solid var(--ht-line);
+    background-color: var(--ht-sunken);
+    cursor: pointer;
+  }
+
+  input:where([type="file"]) {
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+  }
+
+  ::file-selector-button {
+    margin-inline-end: var(--ht-space-3);
+  }
+
+  progress {
+    appearance: none;
+    inline-size: 100%;
+    block-size: var(--ht-space-3);
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+    background-color: transparent;
+  }
+
+  progress::-webkit-progress-bar {
+    background-color: transparent;
+  }
+
+  progress::-webkit-progress-value {
+    background-color: var(--ht-ink);
+  }
+
+  progress::-moz-progress-bar {
+    background-color: var(--ht-ink);
+  }
+
+  /* structural elements ---------------------------------------------------- */
+
+  table {
+    inline-size: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :where(th, td) {
+    padding: var(--ht-space-2) var(--ht-space-3);
+    border-block-end: var(--ht-hairline) solid var(--ht-line);
+    text-align: start;
+    vertical-align: top;
+  }
+
+  :where(th) {
+    font-weight: 400;
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+  }
+
+  :where(caption) {
+    padding-block-end: var(--ht-space-2);
+    font-size: var(--ht-text-small);
+    letter-spacing: var(--ht-track-wide);
+    text-transform: uppercase;
+    color: var(--ht-ink-faint);
+    text-align: start;
+  }
+
+  :where(details) {
+    border: var(--ht-hairline) solid var(--ht-line);
+  }
+
+  :where(summary) {
+    padding: var(--ht-space-2) var(--ht-space-3);
+    color: var(--ht-ink-dim);
+    cursor: pointer;
+    user-select: none;
+    list-style-position: inside;
+  }
+
+  :where(details[open] > summary) {
+    border-block-end: var(--ht-hairline) solid var(--ht-line);
+    color: var(--ht-ink);
+  }
+
+  :where(details > :not(summary)) {
+    padding: var(--ht-space-3);
+  }
+
+  :where(dialog) {
+    border: var(--ht-hairline) solid var(--ht-line-strong);
+    border-radius: var(--ht-radius);
+    padding: var(--ht-space-6);
+    color: var(--ht-ink);
+    background-color: var(--ht-paper);
+    max-inline-size: min(90vw, var(--ht-measure));
+  }
+
+  :where(dialog)::backdrop {
+    background-color: color-mix(in srgb, var(--ht-bg-base) 80%, transparent);
+  }
+
+  :where(canvas) {
+    border: var(--ht-hairline) solid var(--ht-line);
+    background-color: var(--ht-sunken);
+    inline-size: 100%;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+/* ── components ──────────────────────────────────────────────────────────── */
+
+@layer amplib.components {
+  /* Recipes that repeat across the tools this system serves. Plain CSS cannot
+     make a class inherit other classes, so each recipe restates declarations of
+     the hypertokens named in its comment. Change a hypertoken, change its
+     recipes — that pairing is the maintenance cost of having no build step. */
+
+  /* app shell: centred column, one rhythm ---------------------------------- */
+  .app {
+    /* = ht-arrange-page */
+    display: flex;
+    flex-direction: column;
+    gap: var(--ht-flow);
+    inline-size: 100%;
+    max-inline-size: var(--ht-page-max);
+    margin-inline: auto;
+    padding: var(--ht-space-6);
+  }
+
+  /* masthead: the sticky page banner ---------------------------------------- */
+  .masthead {
+    /* = ht-arrange-split + ht-surface-paper */
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 10;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--ht-gap);
+    inline-size: 100%;
+    padding: var(--ht-space-3) var(--ht-space-6);
+    border-block-end: var(--ht-hairline) solid var(--ht-line);
+    color: var(--ht-ink);
+    background-color: var(--ht-paper);
+  }
+
+  /* doc: prose page rhythm — sections apart, content within ------------------
+     A tool's own prose: a readme screen, an about panel, release notes. Full
+     reference documentation is a different job with a different scale, and it
+     has its own stylesheet — docs.css. */
+  .doc {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ht-flow-section);
+    inline-size: 100%;
+    max-inline-size: var(--ht-page-max);
+    margin-inline: auto;
+    padding: var(--ht-space-7) var(--ht-space-6);
+  }
+
+  /* Stretch, not flex-start: a figure grid or code block inside a section has
+     to be able to fill the column. Prose is held to a measure by its own rule. */
+  .doc > section {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--ht-flow);
+    min-inline-size: 0;
+  }
+
+  /* code: a scrollable block, and the system's answer to highlighting without
+     colour — bound values are underlined, output is set off by a gutter rule.
+     Body text sits at dim so both marks read as full ink against it. */
+  .code {
+    /* = ht-type-code + ht-shape-panel + ht-participation-scroll */
+    display: block;
+    font-family: var(--ht-font-mono);
+    font-size: var(--ht-text-small);
+    line-height: var(--ht-leading-ui);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    tab-size: 2;
+    padding: var(--ht-pad-panel);
+    border: var(--ht-hairline) solid var(--ht-line);
+    border-radius: var(--ht-radius);
+    color: var(--ht-ink-dim);
+    background-color: var(--ht-paper);
+    max-block-size: var(--ht-code-max);
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ht-line-strong) transparent;
+    scrollbar-gutter: stable;
+  }
+
+  /* A value bound to a live control. */
+  .code [data-value] {
+    color: var(--ht-ink);
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: var(--ht-hairline);
+  }
+
+  /* A region written by the example at runtime. */
+  .code [data-output] {
+    display: block;
+    margin-block-start: var(--ht-space-2);
+    padding-inline-start: var(--ht-space-3);
+    border-inline-start: var(--ht-hairline) solid var(--ht-line-strong);
+    color: var(--ht-ink);
+  }
+
+  /* Before the example runs, an output slot is an empty box. Hide it. */
+  .code [data-output]:empty {
+    display: none;
+  }
+
+  /* Full ink, because .code sets the block to dim and a link is emphasis. The
+     hover has to be restated with it: this rule lives in a later layer than the
+     base link styles, so without it the inversion keeps its ink background and
+     loses its paper text — an invisible link. */
+  .code a {
+    color: var(--ht-ink);
+  }
+
+  .code a:hover {
+    color: var(--ht-paper);
+  }
+
+  /* panel: bordered region with an optional header bar --------------------- */
+  .panel {
+    /* = ht-surface-paper + hairline box */
+    border: var(--ht-hairline) solid var(--ht-line);
+    background-color: var(--ht-paper);
+    min-inline-size: 0;
+  }
+
+  .panel__header {
+    /* = ht-arrange-split + ht-type-eyebrow */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ht-gap);
+    padding: var(--ht-space-2) var(--ht-space-3);
+    border-block-end: var(--ht-hairline) solid var(--ht-line);
+    font-size: var(--ht-text-small);
+    letter-spacing: var(--ht-track-wide);
+    text-transform: uppercase;
+    color: var(--ht-ink-faint);
+  }
+
+  .panel__body {
+    /* = ht-arrange-stack, padded */
+    display: flex;
+    flex-direction: column;
+    gap: var(--ht-gap);
+    padding: var(--ht-pad-panel);
+    min-inline-size: 0;
+  }
+
+  .panel[data-flush] > .panel__body {
+    padding: 0;
+  }
+
+  .panel__footer {
+    /* = ht-arrange-split + ht-type-small */
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--ht-gap);
+    padding: var(--ht-space-2) var(--ht-space-3);
+    border-block-start: var(--ht-hairline) solid var(--ht-line);
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+  }
+
+  /* field: label + control, the settings-sidebar row ----------------------- */
+  .field {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--ht-space-3);
+    min-inline-size: 0;
+  }
+
+  .field > :where(label):first-child {
+    flex: 0 0 var(--ht-field-label, 6rem);
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-dim);
+  }
+
+  .field
+    > :where(
+      input:not([type="checkbox"], [type="radio"], [type="color"]),
+      select,
+      textarea
+    ) {
+    flex: 1 1 6rem;
+    min-inline-size: 0;
+  }
+
+  .field > :where(input[type="checkbox"], input[type="radio"]) {
+    flex: none;
+  }
+
+  .field__hint {
+    flex-basis: 100%;
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+  }
+
+  /* Checkbox/radio rows read the other way round: control, then label. */
+  .field--check {
+    flex-wrap: nowrap;
+  }
+
+  .field--check > :where(label) {
+    flex: 1 1 auto;
+    font-size: var(--ht-text-ui);
+  }
+
+  .fieldset-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ht-space-2);
+    min-inline-size: 0;
+  }
+
+  /* toolbar: a row of actions with a hairline under it --------------------- */
+  .toolbar {
+    /* = ht-arrange-row */
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--ht-gap);
+    padding-block-end: var(--ht-space-3);
+    border-block-end: var(--ht-hairline) solid var(--ht-line);
+  }
+
+  .toolbar[data-flush] {
+    padding-block-end: 0;
+    border-block-end: 0;
+  }
+
+  /* tabs: the capture-mode bar. Selection is polarity, not colour. --------- */
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    border: var(--ht-hairline) solid var(--ht-line);
+    inline-size: fit-content;
+    max-inline-size: 100%;
+  }
+
+  .tabs > :where(button, [role="tab"], a) {
+    border: 0;
+    border-inline-end: var(--ht-hairline) solid var(--ht-line);
+    background-color: transparent;
+    color: var(--ht-ink-faint);
+  }
+
+  .tabs > :where(button, [role="tab"], a):last-child {
+    border-inline-end: 0;
+  }
+
+  .tabs > :where(button, [role="tab"], a):hover {
+    color: var(--ht-ink);
+    background-color: var(--ht-raised);
+  }
+
+  .tabs > :where([aria-selected="true"], [aria-current]) {
+    color: var(--ht-paper);
+    background-color: var(--ht-ink);
+  }
+
+  /* list: selectable rows — jobs queue, chunk list, entries ---------------- */
+  .list {
+    /* = ht-participation-scroll */
+    display: flex;
+    flex-direction: column;
+    max-block-size: var(--ht-list-max, 16rem);
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--ht-line-strong) transparent;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .list__item {
+    display: flex;
+    align-items: center;
+    gap: var(--ht-space-4);
+    padding: var(--ht-space-2) var(--ht-space-3);
+    border-block-end: var(--ht-hairline) solid var(--ht-line);
+    color: var(--ht-ink-dim);
+    cursor: pointer;
+    user-select: none;
+    transition:
+      color var(--ht-duration) var(--ht-ease),
+      background-color var(--ht-duration) var(--ht-ease);
+  }
+
+  .list__item:last-child {
+    border-block-end: 0;
+  }
+
+  .list__item:hover {
+    color: var(--ht-ink);
+    background-color: var(--ht-raised);
+  }
+
+  .list__item:where([aria-selected="true"], [data-selected]) {
+    color: var(--ht-paper);
+    background-color: var(--ht-ink);
+  }
+
+  .list__item:focus-visible {
+    outline: 2px solid var(--ht-ink);
+    outline-offset: calc(var(--ht-hairline) * -2);
+  }
+
+  .list__index {
+    flex: none;
+    min-inline-size: 1.5rem;
+    text-align: end;
+    font-size: var(--ht-text-small);
+    opacity: 0.7;
+  }
+
+  .list__name {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .list__meta {
+    flex: none;
+    font-size: var(--ht-text-small);
+    opacity: 0.7;
+  }
+
+  /* drop: a file target. States are data attributes, not classes: transient
+     `data-state` (empty | over) plus a persistent boolean `data-ready`, which
+     may hold while a drag passes over — two attributes because the states
+     genuinely coexist. Spans its container by default; in a row (see the rule
+     after it) drops share the line equally instead. ----------------------- */
+  .drop {
+    /* = ht-arrange-inline + ht-surface-dashed + ht-participation-action */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ht-space-1);
+    inline-size: 100%;
+    padding: var(--ht-space-6) var(--ht-space-5);
+    border: var(--ht-hairline) dashed var(--ht-line);
+    border-radius: var(--ht-radius);
+    color: var(--ht-ink-faint);
+    background-color: transparent;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+    transition:
+      color var(--ht-duration) var(--ht-ease),
+      border-color var(--ht-duration) var(--ht-ease),
+      background-color var(--ht-duration) var(--ht-ease);
+  }
+
+  /* A flex-basis would become a height in a column parent, so the equal-share
+     flex lives on the row contexts that want it, not on .drop itself. */
+  :where(.ht-arrange-row, .toolbar) > .drop {
+    inline-size: auto;
+    flex: 1 1 12rem;
+  }
+
+  .drop:hover,
+  .drop[data-state="over"] {
+    color: var(--ht-ink);
+    border-color: var(--ht-line-strong);
+    background-color: var(--ht-raised);
+  }
+
+  .drop[data-state="over"] {
+    border-style: solid;
+  }
+
+  .drop[data-state="ready"],
+  .drop[data-ready] {
+    color: var(--ht-ink);
+    border-color: var(--ht-ink);
+    border-style: solid;
+  }
+
+  .drop:is([data-state="ready"], [data-ready]) .drop__sub {
+    color: var(--ht-ink-dim);
+  }
+
+  /* Sparser than .ht-surface-hatch — this texture sits behind its own label,
+     so the lines have to stay out of the type's way. */
+  .drop[data-state="empty"] {
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--ht-ink-ghost) 0 1px,
+      transparent 1px 11px
+    );
+  }
+
+  .drop__label {
+    font-size: var(--ht-text-ui);
+  }
+
+  .drop__sub {
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+  }
+
+  .drop:focus-visible {
+    outline: 2px solid var(--ht-ink);
+    outline-offset: var(--ht-hairline);
+  }
+
+  /* badge: a boxed token of metadata --------------------------------------- */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--ht-space-1);
+    padding-inline: var(--ht-space-2);
+    border: var(--ht-hairline) solid var(--ht-line);
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-dim);
+    white-space: nowrap;
+  }
+
+  .badge[data-emphasis="strong"] {
+    color: var(--ht-paper);
+    background-color: var(--ht-ink);
+    border-color: var(--ht-ink);
+  }
+
+  .badge[data-emphasis="quiet"] {
+    color: var(--ht-ink-faint);
+    border-color: var(--ht-ink-ghost);
+  }
+
+  /* status: one persistent line of machine output ------------------------- */
+  .status {
+    min-block-size: var(--ht-control-size-sm);
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+    inline-size: 100%;
+    overflow-wrap: anywhere;
+  }
+
+  .status[data-state="busy"] {
+    color: var(--ht-ink-dim);
+  }
+
+  .status[data-state="done"] {
+    color: var(--ht-ink);
+  }
+
+  /* Failure gets the only non-colour emphasis in the system: a leading mark
+     plus full contrast, so it survives greyscale, forced colours and print. */
+  .status[data-state="error"] {
+    color: var(--ht-ink);
+    font-weight: 700;
+  }
+
+  .status[data-state="error"]::before {
+    content: "!! ";
+  }
+
+  /* meter: a labelled hairline bar (capacity, payload fit) ----------------- */
+  .meter {
+    display: block;
+    inline-size: 100%;
+    block-size: var(--ht-space-3);
+    border: var(--ht-hairline) solid var(--ht-line);
+    background-image: repeating-linear-gradient(
+      -45deg,
+      var(--ht-ink-ghost) 0 1px,
+      transparent 1px 6px
+    );
+  }
+
+  .meter__fill {
+    display: block;
+    block-size: 100%;
+    inline-size: var(--ht-meter-value, 0%);
+    background-color: var(--ht-ink);
+  }
+
+  /* figure: canvas/preview with a caption under it ------------------------- */
+  .frame {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ht-space-2);
+    min-inline-size: 0;
+  }
+
+  .frame__caption {
+    font-size: var(--ht-text-small);
+    color: var(--ht-ink-faint);
+  }
+}
+
+/* ── utilities ───────────────────────────────────────────────────────────── */
+
+@layer amplib.utilities {
+  .u-grow {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+  }
+
+  .u-fixed {
+    flex: none;
+  }
+
+  .u-full {
+    inline-size: 100%;
+  }
+
+  /* The escape from full-width defaults: lets progress, range or .status sit
+     inline in a row at its natural size. */
+  .u-inline {
+    inline-size: auto;
+    flex: 0 1 auto;
+  }
+
+  /* Bars have no intrinsic content, so "natural size" would collapse to
+     nothing in a flex row — give them a workable inline length instead. */
+  :where(progress, meter, input[type="range"]).u-inline {
+    inline-size: 10rem;
+  }
+
+  .u-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-inline-size: 0;
+  }
+
+  .u-nowrap {
+    white-space: nowrap;
+  }
+
+  /* Never smooth this image. Separate from .ht-media-raw, which pixelates as
+     part of a whole framing decision — sometimes the only thing you mean is
+     that the pixels are the payload, and an interpolated one misreports it. */
+  .u-pixelated {
+    image-rendering: pixelated;
+  }
+
+  .u-dim {
+    color: var(--ht-ink-dim);
+  }
+
+  .u-faint {
+    color: var(--ht-ink-faint);
+  }
+
+  .u-end {
+    margin-inline-start: auto;
+  }
+
+  .u-sr-only {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* ── environment guards ──────────────────────────────────────────────────── */
+
+@layer amplib.base {
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Windows high contrast: hand every surface back to the system palette and
+     keep the hairlines, which are the whole structure of this theme. */
+  @media (forced-colors: active) {
+    * {
+      border-color: currentColor;
+    }
+
+    :is(button, [role="tab"])[aria-selected="true"],
+    :is(button, [role="tab"])[aria-pressed="true"],
+    .list__item[aria-selected="true"],
+    .tabs > [aria-selected="true"],
+    .badge[data-emphasis="strong"] {
+      forced-color-adjust: none;
+      color: HighlightText;
+      background-color: Highlight;
+    }
+
+    .meter__fill,
+    .drop[data-state="ready"] {
+      forced-color-adjust: none;
+      background-color: Highlight;
+    }
+  }
+
+  @media print {
+    :root {
+      --ht-fg-base: #000;
+      --ht-bg-base: #fff;
+      color-scheme: light;
+    }
+
+    .list {
+      max-block-size: none;
+      overflow: visible;
+    }
+  }
+}

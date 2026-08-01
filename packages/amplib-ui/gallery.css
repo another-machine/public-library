@@ -1,0 +1,343 @@
+/* ============================================================================
+   amplib-gallery — the exhibit language. A sibling to ui.css.
+
+   Where amplib-ui is the tool language (monospaced, paper/ink, hairlines),
+   this is the room the finished work hangs in: serif, letter-spaced, black.
+   Works hang dimmed and brighten under attention; behind them, a veiled
+   enlargement of the work itself. Grown out of stega.now/live and
+   stega.now/geese; carries nothing specific to them.
+
+   One file, three conceptual layers, in cascade order:
+
+     tokens       values                       (what value is used)
+     base         the dark serif page
+     components   gallery · room · placard · work · rail
+
+   Usage:  npm i @amplib/ui
+           @import "@amplib/ui/gallery.css";        (Vite, webpack)
+           @import "npm:@amplib/ui/gallery.css";    (Parcel — it will not take
+                                                     a bare specifier in CSS)
+           <link rel="stylesheet" href="gallery.css">  (no build step)
+
+     <main class="gallery">                     vertical deck of rooms
+     <main class="gallery" data-axis="x">       horizontal promenade
+       <section class="room placard">…</section>       an intro / colophon
+       <section class="room" style="--gal-backdrop: url(…)">
+         <button class="work" aria-pressed="false">
+           <img … />
+         </button>
+       </section>
+     </main>
+
+   State lives in ARIA and data attributes, as in amplib-ui: the work is a
+   toggle (`aria-pressed`), a work or room that is decoding is `data-loading`,
+   and an element kept for layout but withdrawn from view is `.gal-ghost`.
+   ========================================================================== */
+
+@layer gallery.tokens, gallery.base, gallery.components;
+
+/* ── tokens ──────────────────────────────────────────────────────────────── */
+
+@layer gallery.tokens {
+  :root {
+    /* The gallery does not flip: rooms are dark. The pair exists so a page
+       could invert deliberately, but no mode is provided for it. */
+    --gal-ink: #fff;
+    --gal-paper: #000;
+
+    --gal-font: "Times New Roman", Times, serif;
+    --gal-track: 0.07em;
+
+    /* One body size and its wide-viewport step — the exhibit reads at arm's
+       length, not at tool density. */
+    --gal-text: 1rem;
+    --gal-text-wide: 1.8rem;
+
+    /* Attention is brightness. A work rests dimmed and comes to full light
+       under hover or selection; deep is for a rail whose current work is lit
+       against the rest. */
+    --gal-dim: brightness(70%);
+    --gal-dim-deep: brightness(30%);
+
+    /* The veil: the work itself, enlarged to fill the room and pushed back
+       behind glass. */
+    --gal-veil: blur(1rem) brightness(40%);
+
+    /* the halo a work casts on the room */
+    --gal-glow: 0 0 120px var(--gal-paper);
+
+    --gal-pad: max(1vh, 1vw);
+    --gal-thumb: 150px;
+
+    --gal-duration: 250ms;
+    --gal-ease: ease-in-out;
+  }
+}
+
+/* ── base ────────────────────────────────────────────────────────────────── */
+
+@layer gallery.base {
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+  }
+
+  html {
+    background-color: var(--gal-paper);
+    color-scheme: dark;
+  }
+
+  body {
+    background-position: center;
+    background-size: cover;
+    color: var(--gal-ink);
+    font-family: var(--gal-font);
+    font-size: var(--gal-text);
+    letter-spacing: var(--gal-track);
+  }
+
+  @media (min-width: 900px) {
+    body {
+      font-size: var(--gal-text-wide);
+    }
+  }
+
+  ::selection {
+    color: var(--gal-paper);
+    background-color: var(--gal-ink);
+  }
+
+  :where(a) {
+    color: var(--gal-ink);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition-duration: 1ms !important;
+      animation-duration: 1ms !important;
+    }
+  }
+}
+
+/* ── components ──────────────────────────────────────────────────────────── */
+
+@layer gallery.components {
+  /* gallery: a deck of rooms, one per viewport, snapping. Vertical unless
+     data-axis="x" makes it a promenade. Scrollbars would be gallery
+     furniture; there is none. */
+  .gallery {
+    height: 100%;
+    overflow-y: auto;
+    scroll-snap-type: y mandatory;
+    scrollbar-width: none;
+  }
+
+  .gallery::-webkit-scrollbar {
+    display: none;
+  }
+
+  .gallery[data-axis="x"] {
+    display: flex;
+    overflow-y: hidden;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    width: 100%;
+  }
+
+  .gallery[data-axis="x"] > .room {
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  /* room: one full-viewport snap stop, its work centred. Set --gal-backdrop
+     to hang a veiled enlargement behind the work; without it the veil sits
+     over whatever the page painted (stega.now/live sets the body background
+     and lets every room share it). Give it an ABSOLUTE url (img.src, not the
+     src attribute): a relative url() inside a custom property resolves
+     against the stylesheet that uses it, not the page. */
+  .room {
+    align-items: center;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: center;
+    position: relative;
+    scroll-snap-align: start;
+  }
+
+  .room::before,
+  .room::after {
+    content: "";
+    inset: 0;
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  .room::before {
+    background: var(--gal-backdrop, none);
+    background-position: center;
+    background-size: cover;
+  }
+
+  .room::after {
+    backdrop-filter: var(--gal-veil);
+    -webkit-backdrop-filter: var(--gal-veil);
+  }
+
+  .room > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  /* placard: the intro or colophon — a room of serif text on solid black,
+     no veil showing through. */
+  .placard {
+    background: var(--gal-paper);
+    color: var(--gal-ink);
+    gap: 0.9em;
+    padding: 4rem 2rem;
+    text-align: left;
+  }
+
+  .placard::before,
+  .placard::after {
+    content: none;
+  }
+
+  .placard :where(h1, h2) {
+    font-size: 2.4em;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  .placard :where(p) {
+    font-size: 1em;
+    font-weight: 400;
+    line-height: 1.2;
+    text-wrap: balance;
+  }
+
+  .placard :where(h1, h2, p) {
+    margin: 0;
+    max-width: min(90%, 900px);
+    width: 100%;
+  }
+
+  .placard :where(a) {
+    color: var(--gal-ink);
+    font-style: italic;
+  }
+
+  /* work: the chromeless button a piece hangs in. It is a toggle — playing
+     or not — so its state is aria-pressed, and everything inside follows. */
+  .work {
+    appearance: none;
+    align-items: center;
+    background: 0;
+    border: 0;
+    cursor: crosshair;
+    display: flex;
+    padding: 0;
+    position: relative;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+  }
+
+  /* Imagery hangs dimmed and comes to light under attention. Encoded pixels
+     are the subject, so nothing is ever smoothed. --gal-work-w/-h bound a
+     piece to its native size inside the room. */
+  .work :where(img, canvas, .gal-media) {
+    display: block;
+    filter: var(--gal-dim);
+    height: auto;
+    image-rendering: pixelated;
+    max-height: min(90svh, var(--gal-work-h, 90svh));
+    max-width: min(90svw, var(--gal-work-w, 90svw));
+    transition: filter var(--gal-duration) var(--gal-ease);
+    width: auto;
+  }
+
+  .work:hover :where(img, canvas, .gal-media),
+  .work[aria-pressed="true"] :where(img, canvas, .gal-media) {
+    filter: none;
+  }
+
+  .work:focus-visible {
+    outline: 1px solid var(--gal-ink);
+    outline-offset: 4px;
+  }
+
+  /* rail: a strip of works sharing one wall — snap-scrolling, unscrollbarred.
+     Rest state is deep dim, so the lit work reads as the current one. */
+  .rail {
+    align-items: center;
+    box-sizing: border-box;
+    display: flex;
+    gap: var(--gal-pad);
+    max-width: 100%;
+    overflow-x: auto;
+    padding: var(--gal-pad);
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+
+  .rail::-webkit-scrollbar {
+    display: none;
+  }
+
+  .rail > .work {
+    scroll-snap-align: start;
+  }
+
+  .rail .work :where(img, canvas, .gal-media) {
+    filter: var(--gal-dim-deep);
+    width: var(--gal-thumb);
+    max-width: none;
+    max-height: none;
+  }
+
+  .rail .work:hover :where(img, canvas, .gal-media),
+  .rail .work[aria-pressed="true"] :where(img, canvas, .gal-media) {
+    filter: none;
+  }
+
+  /* the halo a work casts on the room behind it */
+  .gal-glow {
+    box-shadow: var(--gal-glow);
+  }
+
+  /* withdrawn from view but still holding its place — a thumbnail whose
+     player has replaced it, still sizing the frame */
+  .gal-ghost {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* Decoding: the stand-in breathes until the real thing is ready. Mark
+     either the work itself — the precise case, and the only one that reads
+     correctly for a single work inside a rail — or the room, when the room
+     holds one stand-in of its own. A rail of other works never joins in, so
+     the reach stops at a direct-child work. */
+  @keyframes gal-pulse {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0.3;
+    }
+  }
+
+  .work[data-loading] :where(img, canvas, .gal-media),
+  [data-loading] > :where(img, canvas, .gal-media),
+  [data-loading] > .work :where(img, canvas, .gal-media),
+  .gal-pulse {
+    animation: gal-pulse 1.4s var(--gal-ease) alternate infinite;
+  }
+}

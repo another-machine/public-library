@@ -1,7 +1,7 @@
 /**
  * A bijective mapping between display hue and perceptual hue.
  *
- * HSV hue is what a camera reports and what people use to name a colour on a
+ * HSV hue is what a camera reports and what people use to name a color on a
  * screen. Oklch hue — atan2(b, a) of oklab — is the angle human vision reads
  * as evenly spaced. Both run 0–360°, but the mapping between them is severely
  * non-linear, and not in the direction most descriptions of it suggest.
@@ -11,7 +11,7 @@
  *   cyan 2.23×  blue 0.14×     deep blue 0.01×  magenta 0.94×
  *
  * Green and deep blue barely move at all — a wide sweep of display hue is
- * almost one perceptual colour — while cyan and orange stretch. The spread
+ * almost one perceptual color — while cyan and orange stretch. The spread
  * between the extremes is over two hundredfold.
  *
  * That is the whole reason this file exists. Divide a hue wheel into equal

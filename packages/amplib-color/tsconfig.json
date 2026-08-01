@@ -5,9 +5,10 @@
   //
   // moduleResolution: "bundler" — matches the sibling packages, and matches how
   // this one is consumed (Parcel for docs/* and machines/*, tsup for the
-  // bundle). This package has no dependencies of its own, runtime or sibling —
-  // the `parseChord` pairing in the README is an example of what a caller can
-  // put in a slot, not something resolved here.
+  // bundle). This package has no dependencies of its own, runtime or sibling,
+  // and should keep it that way: it is pure maths over numbers, so anything it
+  // needed to import would be a sign that something belongs on the caller's
+  // side of the line instead.
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",

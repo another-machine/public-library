@@ -1,6 +1,6 @@
 {
-  "name": "@amplib/hue-wheel",
-  "description": "A hue wheel divided into equal sectors, mapping hue to slots and back, in display and perceptual space.",
+  "name": "@amplib/color",
+  "description": "Color analysis utilities",
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -10,11 +10,11 @@
   "publishConfig": {
     "access": "public"
   },
-  "homepage": "https://amplib.app/hue-wheel",
+  "homepage": "https://amplib.app/color",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/another-machine/public-library.git",
-    "directory": "packages/amplib-hue-wheel"
+    "directory": "packages/amplib-color"
   },
   "tsup": {
     "entry": [

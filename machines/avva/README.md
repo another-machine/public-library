@@ -22,7 +22,7 @@ Parts of it were harvested into packages first, and those are still here:
 | Package                                              | What came from AVVA                                          |
 | ---------------------------------------------------- | ------------------------------------------------------------ |
 | [`@amplib/sound-synthesis`](../../packages/amplib-sound-synthesis) | FM voice, tier backends, drums, layers, worklets, audio graph |
-| [`@amplib/hue-wheel`](../../packages/amplib-hue-wheel)             | Perceptual hue mapping and the slot wheel                     |
+| [`@amplib/color`](../../packages/amplib-color)                     | Perceptual hue mapping. The slot wheel built on it went back to AVVA |
 | [`@amplib/music-theory`](../../packages/amplib-music-theory)       | `parseChord`, the letter-notation chord parser                |
 
 Older versions, from before either of those, are at

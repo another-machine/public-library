@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>color | another machine</title>
+    <style>
+      @import "../../../packages/amplib-ui/docs.css";
+
+      .swatch-row {
+        display: flex;
+        width: 100%;
+      }
+      .swatch-row .swatch {
+        flex: 1;
+        padding: 0.75rem 0;
+        text-align: center;
+        font: 600 11px ui-monospace, monospace;
+        color: rgba(0, 0, 0, 0.7);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1><a href="/">@amplib</a>/<wbr />color</h1>
+      <div class="ht-arrange-row">
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-color"
+          >GitHub &#8599;</a
+        >
+      </div>
+    </header>
+
+    <main class="doc">
+      <section>
+        <h2>Perceptual hue</h2>
+        <p class="ht-type-prose u-dim">
+          HSV hue is what a camera reports and what people use to name a colour
+          on a screen. Oklch hue is the angle human vision reads as evenly
+          spaced. Both run 0&ndash;360&deg;, and the mapping between them is
+          severely non-linear &mdash; over two hundredfold between the extremes.
+          This package is the bijection between the two, and nothing else.
+        </p>
+        <p class="signature">
+          toPerceptual(hue: number) &rarr; number<br />
+          fromPerceptual(hue: number) &rarr; number
+        </p>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <h3>Evenly spaced, both ways</h3>
+            <p class="ht-type-prose u-dim">
+              The same request &mdash; give me N evenly spaced hues &mdash;
+              answered twice. The top row divides 360 by N, and its greens run
+              together while its blues barely separate. The bottom row asks for
+              the same division in perceptual space. Neither row is more correct
+              in the arithmetic; only one of them looks like what was asked for.
+            </p>
+            <p class="ht-type-eyebrow">360 / N</p>
+            <div class="swatch-row" data-swatches="naive"></div>
+            <p class="ht-type-eyebrow">fromPerceptual(i &times; 360 / N)</p>
+            <div class="swatch-row" data-swatches="even"></div>
+            <pre class="code"><span data-output="spaced"></span></pre>
+
+            <h3>The same division, drawn twice</h3>
+            <div class="ht-arrange-grid">
+              <div class="ht-arrange-stack">
+                <p class="ht-type-eyebrow">Display hue</p>
+                <canvas data-canvas="display" class="ht-media-square"></canvas>
+                <p class="ht-type-small u-faint">
+                  Angle is HSV hue. Equal sectors, unequal arcs.
+                </p>
+              </div>
+              <div class="ht-arrange-stack">
+                <p class="ht-type-eyebrow">Perceptual hue</p>
+                <canvas
+                  data-canvas="perceptual"
+                  class="ht-media-square"
+                ></canvas>
+                <p class="ht-type-small u-faint">
+                  Angle is oklch hue. The same sectors, evenly spaced.
+                </p>
+              </div>
+            </div>
+
+            <h3>Round trip</h3>
+            <p class="ht-type-prose u-dim">
+              The forward table samples oklch once per display degree; the
+              inverse searches it backwards at twenty times that resolution,
+              because the deep-blue zone squeezes roughly 16 display degrees
+              into half a perceptual degree. They are built by different methods
+              and only approximately invert each other, so the disagreement is
+              measured rather than assumed &mdash;
+              <code>worstRoundTripError()</code> reports the worst case, and
+              <code>npm test</code> fails above 1.5&deg;. Drag through the deep
+              blues around 230&deg; to find the widest gaps.
+            </p>
+            <pre class="code"><span data-output="round-trip"></span></pre>
+          </div>
+
+          <form class="fieldset-stack"></form>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { example } from "./app.ts";
+      example();
+    </script>
+  </body>
+</html>
