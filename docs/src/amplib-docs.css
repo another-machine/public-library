@@ -1201,6 +1201,12 @@
     font-size: var(--ht-text-title);
   }
 
+  /* The scope in the title links back to the index. The hover polarity is the
+     affordance; a rule under one word of a heading reads as an artifact. */
+  .masthead h1 a {
+    text-decoration: none;
+  }
+
   /* doc: the reference page — a run of entries, one per thing documented ----- */
   .doc {
     display: flex;
