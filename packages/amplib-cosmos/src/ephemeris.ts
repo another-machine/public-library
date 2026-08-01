@@ -20,8 +20,30 @@
  *     propagates as `null` rather than being swallowed.
  */
 
-import * as Astronomy from "astronomy-engine";
+import * as AstronomyModule from "astronomy-engine";
 import { getUTCDayStart } from "./time";
+
+/**
+ * `astronomy-engine` ships real ESM at `esm/astronomy.js`, but its package.json
+ * declares no `"type": "module"` and there is no `esm/package.json`, so Node
+ * reads that file as CJS. Node therefore resolves the package through its CJS
+ * entry, and a namespace import arrives as a single `default` binding wrapping
+ * the actual exports. Bundlers follow the `exports` map's `import` condition
+ * and get the bindings directly.
+ *
+ * Both shapes reach this file — bundlers for docs/* and machines/*, plain Node
+ * for the tests and for anyone consuming the published package outside a
+ * bundler. `astronomy-engine` stays external in `dist`, so that second case is
+ * a real consumer path, not just a test detail. Unwrap once, here, so nothing
+ * below has to care.
+ *
+ * `AstronomyModule` remains the source for *type* positions below: `Body` and
+ * `Observer` are types as well as values, and types are erased before any of
+ * this runs.
+ */
+const Astronomy = (AstronomyModule as unknown as {
+  default?: typeof AstronomyModule;
+}).default ?? AstronomyModule;
 
 export type BodyName =
   | "sun"
@@ -46,7 +68,7 @@ export const PLANET_NAMES = [
 
 export type PlanetName = (typeof PLANET_NAMES)[number];
 
-const BODIES: Record<BodyName, Astronomy.Body> = {
+const BODIES: Record<BodyName, AstronomyModule.Body> = {
   sun: Astronomy.Body.Sun,
   moon: Astronomy.Body.Moon,
   mercury: Astronomy.Body.Mercury,
@@ -90,7 +112,7 @@ export function makeObserver(
   latitude: number,
   longitude: number,
   elevation = 0
-): Astronomy.Observer {
+): AstronomyModule.Observer {
   return new Astronomy.Observer(latitude, longitude, elevation);
 }
 
@@ -101,7 +123,7 @@ export function makeObserver(
 export function getSkyPosition(
   body: BodyName,
   timestamp: number,
-  observer: Astronomy.Observer
+  observer: AstronomyModule.Observer
 ): SkyPosition {
   const date = new Date(timestamp);
   const equatorial = Astronomy.Equator(BODIES[body], date, observer, true, true);
@@ -239,7 +261,7 @@ function getLocalSolarDayStart(timestamp: number, longitude: number): number {
 function computeRiseSet(
   body: BodyName,
   timestamp: number,
-  observer: Astronomy.Observer
+  observer: AstronomyModule.Observer
 ): RiseSet {
   const dayStart = new Date(
     getLocalSolarDayStart(timestamp, observer.longitude)
@@ -339,7 +361,7 @@ const seasonCache = new Map<string, Seasons>();
 export function getRiseSet(
   body: BodyName,
   timestamp: number,
-  observer: Astronomy.Observer
+  observer: AstronomyModule.Observer
 ): RiseSet {
   const day = getLocalSolarDayStart(timestamp, observer.longitude);
   const key = `${body}|${day}|${observer.latitude.toFixed(2)}|${observer.longitude.toFixed(2)}`;

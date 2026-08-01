@@ -5,8 +5,11 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
-RUNNER="node_modules/.bin/tsx"
 SCRIPT="packages/amplib-cosmos/test/determinism.ts"
+# tsx is a devDependency of amplib-cosmos, not of the repo root, so prefer a
+# root install if one exists and fall back to the package's own.
+RUNNER="node_modules/.bin/tsx"
+[ -x "$RUNNER" ] || RUNNER="packages/amplib-cosmos/node_modules/.bin/tsx"
 
 ZONES=(
   UTC
