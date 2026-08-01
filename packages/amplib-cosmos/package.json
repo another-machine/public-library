@@ -1,20 +1,12 @@
 {
   "name": "@amplib/cosmos",
   "description": "Calculations about the relationship between the earth, moon, sun, planets, and more.",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "homepage": "https://amplib.app/cosmos",
+  "private": "false",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/another-machine/public-library.git",
-    "directory": "packages/amplib-cosmos"
+    "url": "git+https://github.com/another-machine/public-library.git"
   },
   "tsup": {
     "entry": [
@@ -32,8 +24,7 @@
     "watch": "tsup --watch",
     "test": "tsx test/run.ts && ../../scripts/tz-determinism.sh",
     "test:accuracy": "tsx test/run.ts",
-    "test:determinism": "../../scripts/tz-determinism.sh",
-    "prepack": "npm run build"
+    "test:determinism": "../../scripts/tz-determinism.sh"
   },
   "author": "Another Machine",
   "license": "Apache-2.0",
