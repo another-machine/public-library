@@ -1,26 +1,25 @@
 /**
- * PROTOTYPE — three passes that between them exercise every part of the
- * interface in chain.ts.
+ * PROTOTYPE — three passes, covering every part of the interface in chain.ts
+ * between them.
  *
- *   field   generator, feedback, compile-time defines   (AVVA's shape)
+ *   field   generator, feedback, compile-time defines           (AVVA's shape)
  *   bloom   filter, private ping-pong buffer, multi-step draw  (chladni's shape)
- *   crt     filter, single draw                          (the NTSC demo's shape)
+ *   crt     filter, single draw                                    (a CRT look)
  *
- * The point of the set is that `field` and `crt` are the same kind of object.
- * In the NTSC demo the CRT shader was the whole program; here it is one entry
- * in an array, and it does not care whether the image reaching it came from a
- * generator, a video element, or another filter.
+ * `field` and `crt` are the same kind of object. `crt` takes whatever image the
+ * chain hands it and does not know whether a generator, a video element or
+ * another filter produced it.
  */
 
 import type { PassDef } from "./chain";
 
 /**
- * Neutral params. Deliberately says nothing about audio: AVVA would adapt an
- * AudioFrame into this at its call site, and the NTSC demo would fill only the
- * crt.* half. Names are the ones the shaders actually want, which is the fix for
- * AVVA's `#define uScale uBlobSize` alias block — that block exists only because
- * the store keys and the shader vocabulary disagree, and nothing here inherits
- * that disagreement.
+ * Params, saying nothing about audio. AVVA would adapt an AudioFrame into this
+ * at its call site; a video tool would fill only the crt.* half.
+ *
+ * The names are the ones the shaders want. AVVA needs a `#define uScale
+ * uBlobSize` alias block because its store keys and its shader vocabulary
+ * disagree; starting from the shader names avoids inheriting that.
  */
 export interface Params {
   /** Slot count. Drives N_HUES, so changing it recompiles. */
@@ -43,6 +42,7 @@ export interface Params {
   bloom: number;
   bloomThreshold: number;
 
+  /** −1 pincushion, 0 flat, 1 barrel. Clamped to that range in the shader. */
   curvature: number;
   scanLines: number;
   chromatic: number;
@@ -121,9 +121,8 @@ void main() {
   float bgDist  = dot(uvA - glowCtr, uvA - glowCtr);
   color += chordAvg * exp(-bgDist * 2.5) * uEnergy * 0.35;
 
-  // Real feedback: uPrev is this pass's own last OUTPUT, from a ping-pong pair.
-  // The NTSC demo's ghosting sampled the previous INPUT via a 2D-canvas
-  // round-trip, which is why its trails could never accumulate.
+  // uPrev is this pass's own last output, from a ping-pong pair. Sampling the
+  // previous input instead gives a one-frame echo that cannot accumulate.
   vec2 flowScroll = vec2(0.14 * sin(t * 0.40), 0.14 * cos(t * 0.35));
   vec2 drift = vec2(snoise(uvA * 4.0 + flowScroll),
                     snoise(uvA * 4.0 + flowScroll + 100.0)) * (0.0015 + uMotion * 0.005);
@@ -157,12 +156,11 @@ void main() {
 // ── bloom ────────────────────────────────────────────────────────────────────
 
 /**
- * A filter with private state and four draws. This is the small stand-in for
- * chladni: it proves `buffers` + `draw` + a ping-pong that swaps *within* a
- * single pass, without porting a 262k-particle simulation to find out whether
- * the shape works.
+ * A filter with private state and four draws: `buffers`, `draw`, and a
+ * ping-pong that swaps within a single pass. It stands in for chladni, which
+ * needs the same three things and a 262k-particle simulation besides.
  *
- * Bright-pass and blur run at quarter resolution — the reason `uRes` is
+ * Bright-pass and blur run at quarter resolution, so `uRes` has to be
  * per-target rather than per-chain.
  */
 export const bloom: PassDef<Params> = {
@@ -227,17 +225,14 @@ void main() {
 // ── crt ──────────────────────────────────────────────────────────────────────
 
 /**
- * The NTSC demo's fragment shader, ported to GLSL ES 3.00 and to this interface.
- * The shader body is essentially unchanged — that was always the good part. What
- * changed is around it:
+ * A CRT look: barrel or pincushion distortion, chromatic fringing at the edges,
+ * a soft blur, phosphor trails, scanlines, grain, and a luma/chroma degrade.
  *
- *   - scanline density comes from uScanLines (a line count) instead of
- *     uResolution.y, so it no longer tracks display DPI or window size;
- *   - ghosting reads uPrev, this pass's own previous OUTPUT, so trails
- *     accumulate — the original's 2D-canvas copy of the previous INPUT is gone,
- *     and with it a per-frame CPU readback at source resolution;
- *   - the source is whatever the chain hands it. A video element, the field
- *     generator above, or the bloom pass's output all arrive the same way.
+ * uScanLines is a line count rather than a multiple of the resolution, so the
+ * stripe frequency holds still across displays and window sizes. Ghosting reads
+ * uPrev, which the chain supplies as this pass's own previous output. The
+ * source is whatever the chain hands over: a video element, the field generator
+ * above, and the bloom pass's output all arrive the same way.
  */
 export const crt: PassDef<Params> = {
   name: "crt",
@@ -254,12 +249,23 @@ uniform float uCurvature;
 
 void main() {
   vec2  centered = vUV - 0.5;
-  float curve    = max(0.0, uCurvature);
-  float fillZoom = 1.0 + curve * 0.95;
+  float curve    = clamp(uCurvature, -1.0, 1.0);
   float r2       = dot(centered, centered);
   float bend     = 1.0 - (r2 * r2) * (1.8 * curve);
-  vec2  uv       = centered / (fillZoom * bend) + 0.5;
-  vec2  uvSafe   = clamp(uv, vec2(0.001), vec2(0.999));
+
+  // Normalising by the bend AT THE CORNER pins the corners to the frame, so the
+  // image fills it at any curvature and the sign is free to go either way:
+  // positive bulges the middle out (barrel), negative pulls it in (pincushion).
+  // r2 peaks at 0.5 in the corner, so (r2 * r2) peaks at 0.25. Both bend and
+  // cornerBend stay in [0.55, 1.45], so neither can divide by zero.
+  float cornerBend = 1.0 - 0.25 * (1.8 * curve);
+
+  vec2  uv     = centered / (bend / cornerBend) + 0.5;
+  vec2  uvSafe = clamp(uv, vec2(0.001), vec2(0.999));
+
+  // Blur and ghosting scale with how much distortion there is, not which way it
+  // goes, so both read the magnitude.
+  float curveAmt = abs(curve);
 
   float edgeFade = 1.0 - smoothstep(0.35, 0.75, length(centered));
   vec2  offset   = vec2(uChromatic, -uChromatic * 0.6) * edgeFade;
@@ -269,7 +275,7 @@ void main() {
   vec3  color = vec3(r.r, g.g, b.b);
 
   vec2 blurOffset = vec2(1.0 / uRes.x, 1.0 / uRes.y)
-                  * (0.0007 + 0.0045 * uBlur) * (1.0 + curve * 0.5);
+                  * (0.0007 + 0.0045 * uBlur) * (1.0 + curveAmt * 0.5);
   vec3 blurred = (
     texture(uSrc, clamp(uvSafe + vec2(-blurOffset.x, 0.0), vec2(0.001), vec2(0.999))).rgb +
     texture(uSrc, clamp(uvSafe + vec2( blurOffset.x, 0.0), vec2(0.001), vec2(0.999))).rgb +
@@ -278,7 +284,7 @@ void main() {
   ) * 0.25;
   color = mix(color, blurred, 0.08 + uBlur * 0.5);
 
-  vec2 ghostOffset = vec2(0.0016 * curve, -0.0008 * curve);
+  vec2 ghostOffset = vec2(0.0016 * curveAmt, -0.0008 * curveAmt);
   vec3 prevColor = texture(uPrev, clamp(uvSafe + ghostOffset, vec2(0.001), vec2(0.999))).rgb;
   color = mix(color, prevColor, uGhosting * 0.55);
 

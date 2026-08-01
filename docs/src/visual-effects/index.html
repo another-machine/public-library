@@ -25,11 +25,10 @@
         <h2>One interface for generators and filters</h2>
         <p class="ht-type-prose u-dim">
           AVVA's renderer synthesises images from uniforms. A CRT filter
-          transforms an image it is given. They look like different kinds of
-          thing, and that is why the shader work in each has stayed stuck to the
-          app it was written for. The only structural difference between them is
-          whether a pass samples an incoming image &mdash; so that is the one
-          flag this design turns on.
+          transforms an image it is given. Treated as different kinds of thing,
+          the shader work in each stays stuck to the app it was written for. They
+          differ in whether a pass samples an incoming image, and in nothing
+          else.
         </p>
         <p class="signature">
           inputs: &#123; source?: boolean; feedback?: boolean &#125;
@@ -61,53 +60,49 @@
 
             <h3>The three passes</h3>
             <p class="ht-type-prose u-dim">
-              Between them they exercise every part of the interface, which is
-              the whole reason there are three.
+              Three, because between them they cover every part of the interface.
             </p>
-            <pre class="code">field   generator + feedback + compile-time defines
+            <pre class="code">field   generator + feedback + compile-time defines.
         N_HUES is a #define, so moving the hues slider
         recompiles rather than branching per fragment.
-        This is AVVA's shape.
+        AVVA's shape.
 
 bloom   filter + a private quarter-res ping-pong buffer
-        + a four-step draw hook. The small stand-in for
-        chladni: proves buffers/draw/mid-pass swapping
-        without porting 262k particles to find out.
+        + a four-step draw hook. Stands in for chladni,
+        which needs the same three things and a
+        262k-particle simulation besides.
 
-crt     filter, single draw. The NTSC demo's fragment
-        shader, essentially unchanged.</pre>
+crt     filter, single draw.</pre>
 
-            <h3>What changed around the CRT shader</h3>
+            <h3>Two decisions in the CRT pass</h3>
             <p class="ht-type-prose u-dim">
-              The shader body was always the good part of that demo. What it was
-              wrapped in was not.
+              Scanline density is a line count rather than a multiple of the
+              resolution. Keyed to device pixels it would shift on a retina
+              display and again on every resize, which is a strange property for
+              a fixed number of scanlines to have.
             </p>
-            <pre class="code">ghosting    was: a 2D-canvas copy of the previous INPUT,
-            re-uploaded every frame — so trails could
-            never accumulate, and every frame paid a CPU
-            readback at source resolution.
-            now: uPrev, a ping-pong of this pass's own
-            previous OUTPUT.
-
-scanlines   was: sin(vUV.y * uResolution.y), so stripe
-            frequency tracked device pixels — it changed
-            on a retina display and again on resize.
-            now: a line count.
-
-lifecycle   was: rAF started in the constructor, no stop,
-            no dispose, no context-loss handling.
-            now: dispose(), and a contextLost flag.</pre>
+            <p class="ht-type-prose u-dim">
+              Ghosting samples <code>uPrev</code>, which the chain supplies as
+              this pass's own previous <em>output</em>. Sampling the previous
+              <em>input</em> instead gives a one-frame echo: it looks similar for
+              a frame or two and then stops, because nothing accumulates.
+            </p>
+            <p class="ht-type-prose u-dim">
+              Curvature runs &minus;1 to 1. The distortion is normalised by how
+              far the corner moved, so the corners stay pinned to the frame and
+              the sign is free to go either way &mdash; positive bulges the
+              middle out, negative pulls it in.
+            </p>
 
             <h3>Resolution</h3>
             <p class="ht-type-prose u-dim">
-              The open question from the design sketch, resolved here rather than
-              left for later. Every pass gets two: <code>uRes</code> is the
-              buffer <em>this</em> pass renders into, <code>uOutRes</code> is the
+              Every pass gets two. <code>uRes</code> is the buffer
+              <em>this</em> pass renders into; <code>uOutRes</code> is the
               chain's final output. Anything keyed to signal resolution &mdash;
-              grain, blur taps, bloom &mdash; must use the former, or a pass at
-              <code>scale: 0.5</code> silently changes its own look. The bloom
-              pass runs its bright-pass and blur at quarter res and is the case
-              that proves it.
+              grain, blur taps, bloom &mdash; wants the former, or a pass at
+              <code>scale: 0.5</code> quietly changes its own look. The bloom
+              pass runs its bright-pass and blur at quarter res, which is where
+              the distinction first bites.
             </p>
 
             <h3>Uniforms are typed by the program, not the caller</h3>
@@ -115,9 +110,9 @@ lifecycle   was: rAF started in the constructor, no stop,
               <code>uniforms()</code> returns a plain bag of names to values. A
               <code>Float32Array</code> is a <code>float[]</code> or a
               <code>vec3[]</code> depending on what the shader declared, and only
-              the shader knows &mdash; so the chain reads the types back off the
-              linked program. A pass may hand over more than a given step uses;
-              names the compiler dropped are ignored.
+              the shader knows, so the chain reads the types back off the linked
+              program. A pass may hand over more than a given step uses; names
+              the compiler dropped are ignored.
             </p>
 
             <h3>No domain data anywhere</h3>
@@ -126,8 +121,7 @@ lifecycle   was: rAF started in the constructor, no stop,
               they come from a few LFOs. In AVVA they would come from an
               <code>AudioFrame</code> through a small adapter at the call site,
               and in a video tool most of them would sit at rest. The chain
-              cannot tell the difference, which is the property that makes it
-              extractable at all.
+              cannot tell which.
             </p>
             <p class="ht-type-prose u-dim">
               Slot colours divide the wheel into equal sectors of

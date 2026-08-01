@@ -1,18 +1,16 @@
 /**
  * PROTOTYPE — a pass-chain runtime for GPU visual effects.
  *
- * This is the substrate underneath two things that look unrelated but aren't:
- * AVVA's audio-reactive field renderer (generators — synthesise from uniforms)
- * and a CRT/NTSC video filter (filters — transform an incoming frame). The only
- * structural difference between them is whether a pass samples an input image,
- * so that is the one flag this design turns on: `inputs.source`.
+ * A generator synthesises an image from uniforms. A filter transforms an image
+ * it is handed. They differ in whether they sample an input, and in nothing
+ * else, so a pass says which it is by setting `inputs.source` or leaving it
+ * off. The chain feeds each pass's output to the next either way.
  *
- * Nothing here knows about audio, video, or colour theory. A pass declares what
- * it reads, what it compiles to, and how to turn neutral params into uniforms.
- * The domain adapter lives at the call site.
+ * Nothing here knows about audio, video, or colour. A pass declares what it
+ * reads, what it compiles to, and how to turn params into uniforms. Domain data
+ * is adapted at the call site.
  *
- * Not a package yet. Lives in docs/ so it can be exercised before it earns a
- * name in packages/.
+ * Lives in docs/ rather than packages/ until it earns a name.
  */
 
 // ── Public types ─────────────────────────────────────────────────────────────
@@ -85,14 +83,14 @@ export interface PassDef<P> {
   name: string;
   /**
    * Output size relative to the canvas. Default 1. A CRT chain wants its signal
-   * passes low (0.5) and its screen pass at 1 — which is exactly why `uRes` and
+   * passes low (0.5) and its screen pass at 1, which is why `uRes` and
    * `uOutRes` are separate uniforms.
    */
   scale?: number;
   /**
    * Compile-time specialisation. The program cache is keyed by name + these, so
-   * changing one recompiles rather than rebranching in the shader. This is what
-   * AVVA's N_HUES does.
+   * changing one recompiles rather than rebranching in the shader. AVVA's
+   * N_HUES is this.
    */
   defines?: (params: P) => Defines;
   inputs?: {
@@ -190,8 +188,7 @@ out vec4 outColor;
 ${defLines}
 
 // Size of the buffer THIS pass renders into, in device px. A pass at scale 0.5
-// sees half of uOutRes here — which is what any effect keyed to signal
-// resolution (grain, scanlines, taps) must use.
+// sees half of uOutRes here. Grain, scanlines and blur taps want this one.
 uniform vec2  uRes;
 // Size of the chain's final output, regardless of this pass's scale.
 uniform vec2  uOutRes;
@@ -259,6 +256,8 @@ export class EffectChain<P> {
   private _frame = 0;
   private _lost = false;
   private _disposed = false;
+  private _msaa = false;
+  private _copy: CompiledStep | null = null;
 
   /** Passes skipped by their `supported` gate, with the reason. Read after render. */
   readonly skipped: { name: string; reason: string }[] = [];
@@ -277,6 +276,14 @@ export class EffectChain<P> {
     // probe in _makePingPongProbed would reject rgba32f/rgba16f on hardware that
     // in fact supports them.
     gl.getExtension("EXT_color_buffer_float");
+
+    // We ask for antialias:false, but the first getContext on a canvas wins —
+    // if anything called getContext("webgl2") before us with the defaults, the
+    // drawing buffer is multisampled and we cannot blit a single-sample FBO
+    // into it. Every frame would fail with INVALID_OPERATION and the canvas
+    // would stay black, silently. Check rather than assume, and copy with a
+    // draw when we have to.
+    this._msaa = ((gl.getParameter(gl.SAMPLES) as number) | 0) > 0;
 
     // main.js had no equivalent of this, so a lost context meant a silently dead
     // canvas that kept burning a rAF forever.
@@ -380,14 +387,45 @@ export class EffectChain<P> {
     }
 
     if (!last) return;
+    this._present(last);
+  }
 
-    // Blit rather than a fullscreen copy pass — no extra program, no extra
-    // sampling, and the driver can fast-path it.
-    gl.bindFramebuffer(gl.READ_FRAMEBUFFER, last.fb);
-    gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
-    gl.blitFramebuffer(0, 0, last.w, last.h, 0, 0, this._w, this._h,
-      gl.COLOR_BUFFER_BIT, last.w === this._w ? gl.NEAREST : gl.LINEAR);
+  /**
+   * Last pass to the screen. Blit is the cheap path — no extra program, no
+   * extra sampling, and the driver can fast-path it — but it is illegal into a
+   * multisampled drawing buffer, so a canvas whose context was created by
+   * someone else with the default antialias:true needs a copy draw instead.
+   */
+  private _present(last: RenderTarget): void {
+    const gl = this._gl;
+
+    if (!this._msaa) {
+      gl.bindFramebuffer(gl.READ_FRAMEBUFFER, last.fb);
+      gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
+      gl.blitFramebuffer(0, 0, last.w, last.h, 0, 0, this._w, this._h,
+        gl.COLOR_BUFFER_BIT, last.w === this._w ? gl.NEAREST : gl.LINEAR);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      return;
+    }
+
+    if (!this._copy) {
+      this._copy = this._compile(
+        VERT_FULLSCREEN,
+        `#version 300 es
+precision highp float;
+in  vec2 vUV;
+out vec4 outColor;
+uniform sampler2D uSrc;
+void main() { outColor = vec4(texture(uSrc, vUV).rgb, 1.0); }`,
+        "present",
+      );
+    }
+    gl.useProgram(this._copy.prog);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, this._w, this._h);
+    gl.disable(gl.BLEND);
+    this._bindTextures(this._copy, { uSrc: last.tex });
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
   dispose(): void {
@@ -398,6 +436,10 @@ export class EffectChain<P> {
     this._passes = [];
     for (const [, step] of this._progCache) gl.deleteProgram(step.prog);
     this._progCache.clear();
+    if (this._copy) {
+      gl.deleteProgram(this._copy.prog);
+      this._copy = null;
+    }
     gl.deleteTexture(this._sourceTex);
     gl.deleteTexture(this._blackTex);
     gl.deleteVertexArray(this._vao);
@@ -475,11 +517,11 @@ export class EffectChain<P> {
   // ── Uniforms by introspection ──────────────────────────────────────────────
 
   /**
-   * Types come from the linked program, not from the caller. That is what lets
-   * `uniforms()` return a plain bag of names→values: a Float32Array is a float[]
-   * or a vec3[] depending on what the shader declared, and only the shader
-   * knows. Names the program dropped are silently ignored, so a pass can hand
-   * over more than a given step uses.
+   * Types come from the linked program, not from the caller, so `uniforms()`
+   * can return a plain bag of names→values. A Float32Array is a float[] or a
+   * vec3[] depending on what the shader declared, and only the shader knows.
+   * Names the program dropped are ignored, so a pass can hand over more than a
+   * given step uses.
    */
   private _setUniforms(step: CompiledStep, values: Record<string, UniformValue>): void {
     const gl = this._gl;
