@@ -42,7 +42,7 @@ suggest.** Measured as perceptual degrees per display degree:
 | 0.21× | 1.76×  | 1.29×  | 0.05× | 2.23× | 0.14× | 0.01×     | 0.94×   |
 
 Green and deep blue barely move — a wide sweep of display hue is almost one
-perceptual colour — while cyan and orange stretch. Over two hundredfold between
+perceptual color — while cyan and orange stretch. Over two hundredfold between
 the extremes.
 
 **The round-trip is measured, not assumed.** The forward table samples oklch
@@ -64,6 +64,6 @@ still cannot fail a build when it matters.
 **Hue only, saturation and lightness untouched.** Full-saturation, full-value
 HSV is the sampling line, so this answers "which angle" and says nothing about
 how light or vivid the result is. Anything needing the other two axes wants a
-full colour-space conversion, not this.
+full color-space conversion, not this.
 
 Matrix constants from Björn Ottosson's oklab reference implementation (2020).
