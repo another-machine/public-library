@@ -1,5 +1,6 @@
 .DS_Store
 .parcel-cache
+.tmp
 dist
 node_modules
 .claude
