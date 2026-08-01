@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>visual-effects (prototype) | another machine</title>
     <style>
-      @import "../amplib-docs.css";
+      @import "../../../packages/amplib-ui/docs.css";
     </style>
   </head>
   <body>
@@ -130,8 +130,11 @@ lifecycle   was: rAF started in the constructor, no stop,
               extractable at all.
             </p>
             <p class="ht-type-prose u-dim">
-              Slot colours come from <code>@amplib/hue-wheel</code> &mdash; equal
-              sectors in perceptual hue, converted to linear RGB.
+              Slot colours divide the wheel into equal sectors of
+              <em>perceptual</em> hue rather than display hue &mdash; the
+              property <code>@amplib/color</code> exists to provide. Equal steps
+              of HSV hue do not look equal, and a palette spaced that way comes
+              out visibly lopsided.
             </p>
           </div>
 

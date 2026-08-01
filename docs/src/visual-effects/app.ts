@@ -1,4 +1,3 @@
-import { Palette, toPerceptual } from "../../../packages/amplib-hue-wheel/src";
 import { createForm } from "../createForm";
 import { EffectChain } from "./chain";
 import { bloom, crt, field, type Params } from "./passes";
@@ -24,12 +23,10 @@ type FormData = {
 /**
  * oklch → linear sRGB.
  *
- * This lives here rather than in @amplib/hue-wheel because hue-wheel does not
- * export it: its own colour maths (hsvToLinearRgb, linearRgbToOklchHue) is
- * private and goes RGB → hue-angle only, with no notion of L or C. AVVA carries
- * an identical copy in src/render/audio-renderer-gl.ts. Two consumers is the
- * argument for moving it into hue-wheel — but that is a separate change from
- * this one, and nothing here is blocked on it.
+ * This lives here rather than in @amplib/color because that package does not
+ * export it: its colour maths is private and goes RGB → hue-angle only, with no
+ * notion of L or C. It is the obvious home if a second consumer ever wants the
+ * same function — but that is a separate change, and nothing here waits on it.
  */
 function oklchToLinearRGB(L: number, C: number, H: number): [number, number, number] {
   const hRad = (H * Math.PI) / 180;
@@ -109,27 +106,28 @@ export function example(): void {
     },
   });
 
-  // Built on the first rebuildPalette — a Palette needs at least one slot, so
-  // there is no empty value to start it at.
-  let palette: Palette<string> | null = null;
   let slotRGB = new Float32Array(0);
   let slotW = new Float32Array(0);
   let paletteN = -1;
 
   /**
-   * Per-slot colour from hue-wheel: equal sectors in perceptual hue, each
-   * converted to linear RGB for the shader. Rebuilt only when the slot count
-   * changes — which is also when `field` recompiles for its new N_HUES.
+   * Per-slot colour: the wheel divided into equal sectors, each sector's centre
+   * hue taken straight to linear RGB for the shader. Rebuilt only when the slot
+   * count changes — which is also when `field` recompiles for its new N_HUES.
+   *
+   * The sectors are spaced in PERCEPTUAL hue, which is the whole point of
+   * @amplib/color: equal steps of display (HSV) hue do not look equal, so a
+   * palette divided that way comes out visibly lopsided. Because oklch takes a
+   * perceptual angle directly, nothing needs converting here — spacing evenly
+   * in the space the colour is specified in is already the right answer.
    */
   function rebuildPalette(n: number): void {
     if (n === paletteN) return;
     paletteN = n;
-    palette = new Palette({ slots: Array.from({ length: n }, (_, i) => `s${i}`) });
     slotRGB = new Float32Array(n * 3);
     slotW = new Float32Array(n);
-    const hues = palette.slotHues;
     for (let i = 0; i < n; i++) {
-      const [r, g, b] = oklchToLinearRGB(0.68, 0.3, toPerceptual(hues[i]));
+      const [r, g, b] = oklchToLinearRGB(0.68, 0.3, ((i + 0.5) * 360) / n);
       slotRGB[i * 3] = r;
       slotRGB[i * 3 + 1] = g;
       slotRGB[i * 3 + 2] = b;
