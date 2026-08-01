@@ -29,11 +29,11 @@ export interface CosmosOptions {
   latitude?: number;
   /** Degrees east, [-180, 180]. Default 0. */
   longitude?: number;
-  /** Height above sea level in kilometres. Default 0. */
+  /** Height above sea level in kilometers. Default 0. */
   elevation?: number;
   /** UTC instant, as a Date or millisecond timestamp. Default `Date.now()`. */
   timestamp?: DateInput;
-  /** Quantisation used when deriving `seed`. See `seed.ts` for why it exists. */
+  /** Quantization used when deriving `seed`. See `seed.ts` for why it exists. */
   seedResolution?: SeedResolution;
   /**
    * Skip the planets. They are the expensive part — seven bodies, each with a
@@ -44,7 +44,7 @@ export interface CosmosOptions {
 }
 
 export interface CosmosResult {
-  /** The inputs, echoed back after defaulting and normalisation. */
+  /** The inputs, echoed back after defaulting and normalization. */
   input: {
     latitude: number;
     longitude: number;
@@ -64,7 +64,7 @@ export interface CosmosResult {
 }
 
 /** Fold latitude and longitude into their valid domains. */
-function normaliseCoordinates(latitude: number, longitude: number) {
+function normalizeCoordinates(latitude: number, longitude: number) {
   // Latitude clamps. There is no wrapping past a pole that makes sense without
   // also flipping longitude, and a caller passing 95° has a bug worth keeping
   // visible rather than silently reinterpreting.
@@ -81,7 +81,7 @@ export function generate(options: CosmosOptions = {}): CosmosResult {
     skipPlanets = false,
   } = options;
 
-  const { latitude, longitude } = normaliseCoordinates(
+  const { latitude, longitude } = normalizeCoordinates(
     options.latitude ?? 0,
     options.longitude ?? 0
   );

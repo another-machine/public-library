@@ -1,6 +1,6 @@
 # @amplib/cosmos
 
-The state of the sky for a given time and place, normalised for driving sound.
+The state of the sky for a given time and place, normalized for driving sound.
 
 ```ts
 import { generate } from "@amplib/cosmos";
@@ -36,20 +36,20 @@ planets over 1700–2200. It is reached through exactly one file,
 touching anything else.
 
 **Interpretation is ours.** The sidereal-time and rotation-angle derivations,
-the tidal model, the normalisation contract, the timescale grouping, and the
+the tidal model, the normalization contract, the timescale grouping, and the
 seed derivation all live in this package. That is where the value is — an
 ephemeris says where Jupiter is, but nothing about how a number should behave
 when it feeds an oscillator.
 
 ## The value contract
 
-Every numeric leaf carries its real-world value alongside pre-normalised forms:
+Every numeric leaf carries its real-world value alongside pre-normalized forms:
 
 ```ts
 {
   value: 0.5077,      // real value, never clamped
   unit: "degrees",
-  min: 0.4885,        // the domain used to normalise
+  min: 0.4885,        // the domain used to normalize
   max: 0.5683,
   unitRange: 0.24,    // always in [0, 1]
   bipolarRange: -0.52 // always in [-1, 1], always 2 * unitRange - 1
@@ -65,9 +65,9 @@ across six years asserting them:
 
 There is a fourth property the tests check that is a design goal rather than a
 hard guarantee: **no value is pinned to a sliver of its range.** A field
-normalised against the wrong domain is technically in contract and useless in
+normalized against the wrong domain is technically in contract and useless in
 practice. Each planet's distance, brightness, and apparent size are therefore
-normalised against that planet's own extremes rather than a solar-system-wide
+normalized against that planet's own extremes rather than a solar-system-wide
 scale — otherwise Venus's near-circular orbit would occupy 0.03% of the range
 and read as a constant.
 
@@ -101,7 +101,7 @@ reports 24 or 0 in those cases so you always have a usable number.
 
 ## Timescales
 
-The result tree is organised by body, but the useful question when mapping the
+The result tree is organized by body, but the useful question when mapping the
 sky onto music is how fast something moves. `cosmos.timescales` regroups the
 same value objects — by reference, nothing is copied — into four bands:
 
@@ -109,7 +109,7 @@ same value objects — by reference, nothing is copied — into four bands:
 | ------------ | ------------- | -------------------------------------- |
 | `rotational` | hours         | rhythm, filter sweeps, stereo movement |
 | `lunar`      | days to weeks | phrase length, register, density       |
-| `annual`     | months        | key centre, mode, timbre               |
+| `annual`     | months        | key center, mode, timbre               |
 | `epochal`    | years         | long-form structure, tuning drift      |
 
 ```ts
@@ -140,7 +140,7 @@ an honest astronomical driving force, not a tide table.
 
 ## Seeds
 
-`cosmos.seed` is derived from **quantised inputs**, not from the computed sky:
+`cosmos.seed` is derived from **quantized inputs**, not from the computed sky:
 
 ```ts
 generate({
@@ -152,13 +152,13 @@ generate({
 ```
 
 Two devices in the same position cell and time bucket agree with no
-coordination. The quantisation absorbs GPS jitter and clock drift.
+coordination. The quantization absorbs GPS jitter and clock drift.
 
 Deriving the seed from the cosmic state instead is tempting and wrong.
 ECMAScript specifies `Math.sin`, `Math.cos`, and `Math.pow` as
 implementation-approximated — V8, JavaScriptCore, and SpiderMonkey each return
 results differing in the last bits. Every value here passes through dozens of
-those calls. Two engines would usually land in the same quantised bucket and
+those calls. Two engines would usually land in the same quantized bucket and
 agree, but near a boundary they would not, and the failure would be rare,
 silent, and unreproducible. Latitude, longitude, and a timestamp are exact
 doubles, and the hash is FNV-1a over `Math.imul`, which is exact everywhere.

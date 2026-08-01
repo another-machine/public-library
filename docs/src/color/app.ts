@@ -116,7 +116,7 @@ export function example() {
 /**
  * Draw N equal perceptual sectors as a ring.
  *
- * In "display" mode the angle is display hue, which is how a camera or a colour
+ * In "display" mode the angle is display hue, which is how a camera or a color
  * picker measures it — the sectors come out visibly lopsided even though they
  * are all the same width. In "perceptual" mode the angle is oklch hue and they
  * look even. Two views of one division; the difference between them is the
@@ -138,8 +138,8 @@ function drawWheel(
   context.setTransform(ratio, 0, 0, ratio, 0, 0);
   context.clearRect(0, 0, size, size);
 
-  const centre = size / 2;
-  const outer = centre - 4;
+  const center = size / 2;
+  const outer = center - 4;
   const inner = outer * 0.58;
   const step = 360 / WHEEL_STEPS;
 
@@ -160,8 +160,8 @@ function drawWheel(
     const { start, sweep } = sweepAt(hue);
     if (sweep <= 0) continue;
     context.beginPath();
-    context.arc(centre, centre, outer, start, start + sweep);
-    context.arc(centre, centre, inner, start + sweep, start, true);
+    context.arc(center, center, outer, start, start + sweep);
+    context.arc(center, center, inner, start + sweep, start, true);
     context.closePath();
     context.fillStyle = `hsl(${hue} 85% 55%)`;
     context.fill();
@@ -176,12 +176,12 @@ function drawWheel(
     const angle = angleFor(fromPerceptual((i * 360) / sectors));
     context.beginPath();
     context.moveTo(
-      centre + Math.cos(angle) * inner,
-      centre + Math.sin(angle) * inner
+      center + Math.cos(angle) * inner,
+      center + Math.sin(angle) * inner
     );
     context.lineTo(
-      centre + Math.cos(angle) * outer,
-      centre + Math.sin(angle) * outer
+      center + Math.cos(angle) * outer,
+      center + Math.sin(angle) * outer
     );
     context.stroke();
   }
@@ -191,12 +191,12 @@ function drawWheel(
   context.lineWidth = 3;
   context.beginPath();
   context.moveTo(
-    centre + Math.cos(markerAngle) * (inner - 8),
-    centre + Math.sin(markerAngle) * (inner - 8)
+    center + Math.cos(markerAngle) * (inner - 8),
+    center + Math.sin(markerAngle) * (inner - 8)
   );
   context.lineTo(
-    centre + Math.cos(markerAngle) * (outer + 2),
-    centre + Math.sin(markerAngle) * (outer + 2)
+    center + Math.cos(markerAngle) * (outer + 2),
+    center + Math.sin(markerAngle) * (outer + 2)
   );
   context.stroke();
 }

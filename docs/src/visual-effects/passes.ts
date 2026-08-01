@@ -98,7 +98,7 @@ void main() {
   vec3  color    = totalW > 0.001 ? total / totalW : chordAvg;
   // Gaps floor to a dim tint so the chord still reads there.
   color = mix(chordAvg * 0.12, color, coverage);
-  // The weave normalises by total weight, so it needs a gain term to not clip.
+  // The weave normalizes by total weight, so it needs a gain term to not clip.
   color *= 0.3 + uEnergy * 0.7;
 
   vec2  glowCtr = vec2(0.5 * aspect + (uX - 0.5) * 0.75 * aspect, 1.0 - uY);

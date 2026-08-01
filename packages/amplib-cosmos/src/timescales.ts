@@ -2,7 +2,7 @@
  * Signals grouped by how fast they move.
  *
  * A composer mapping the sky onto music has a practical problem: the result
- * tree is organised by body, but the useful question is "what moves at the
+ * tree is organized by body, but the useful question is "what moves at the
  * speed of a bar, and what moves at the speed of a movement?" A signal with a
  * 25-hour period and one with a 165-year period both arrive as numbers in
  * [0, 1], and nothing in their shape says which is which.
@@ -12,7 +12,7 @@
  *
  *   rotational  hours          rhythm, filter sweeps, stereo movement
  *   lunar       days to weeks  phrase length, register, density
- *   annual      months         key centre, mode, timbre
+ *   annual      months         key center, mode, timbre
  *   epochal     years+         long-form structure, tuning drift
  */
 

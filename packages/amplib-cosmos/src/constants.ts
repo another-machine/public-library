@@ -17,7 +17,7 @@ export const EARTH_EQUATORIAL_RADIUS_KM = 6378.137; // km
 export const EARTH_ROTATION_PERIOD = 23.9344695944; // hours (sidereal day)
 export const EARTH_SUN_MEAN_DISTANCE_KM = 149597870.7; // km (1 AU)
 
-/** Earth–Sun distance extremes, used to normalise `earth.distanceFromSun`. */
+/** Earth–Sun distance extremes, used to normalize `earth.distanceFromSun`. */
 export const EARTH_PERIHELION_KM = 147098074; // km
 export const EARTH_APHELION_KM = 152097701; // km
 
@@ -27,7 +27,7 @@ export const MOON_SIDEREAL_PERIOD = 27.321661; // days
 export const MOON_ANOMALISTIC_PERIOD = 27.554549; // days (perigee to perigee)
 export const MOON_DRACONIC_PERIOD = 27.212221; // days (node to node)
 
-/** Lunar distance extremes, used to normalise `moon.distance`. */
+/** Lunar distance extremes, used to normalize `moon.distance`. */
 export const MOON_PERIGEE_KM = 356500; // km
 export const MOON_APOGEE_KM = 406700; // km
 
@@ -81,9 +81,9 @@ export const PLANET_ORBITAL_PERIOD_DAYS: Record<string, number> = {
 };
 
 /**
- * Per-planet normalisation domains.
+ * Per-planet normalization domains.
  *
- * Normalising every planet against a single solar-system-wide range is
+ * Normalizing every planet against a single solar-system-wide range is
  * technically in-contract but useless in practice: Venus's orbit is so nearly
  * circular that its heliocentric distance would occupy 0.03% of a 0–31 AU
  * scale and read as a constant. Each planet gets its own domain instead, so
@@ -177,13 +177,13 @@ export const PLANET_DOMAINS: Record<string, PlanetDomain> = {
 /**
  * Declination bound for the planets. They stay near the ecliptic, so ±23.44°
  * of obliquity plus the largest orbital inclination (Mercury's 7°) covers
- * every case with room to spare. Normalising over ±90° like a star would
+ * every case with room to spare. Normalizing over ±90° like a star would
  * waste two-thirds of the range.
  */
 export const PLANET_DECLINATION_LIMIT = 32;
 
 /**
- * Apparent-magnitude extremes, used to normalise brightness onto a common
+ * Apparent-magnitude extremes, used to normalize brightness onto a common
  * scale so planets stay comparable to one another.
  */
 export const MAGNITUDE_BRIGHTEST = -4.92; // Venus at greatest brilliancy

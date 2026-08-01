@@ -152,7 +152,7 @@
     width: 100%;
   }
 
-  /* room: one full-viewport snap stop, its work centred. Set --gal-backdrop
+  /* room: one full-viewport snap stop, its work centered. Set --gal-backdrop
      to hang a veiled enlargement behind the work; without it the veil sits
      over whatever the page painted (stega.now/live sets the body background
      and lets every room share it). Give it an ABSOLUTE url (img.src, not the

@@ -24,7 +24,7 @@ export interface FMVoicePluckParams {
    * Pass this to place a note on the audio clock instead of the wall clock.
    * Any lookahead scheduler — DrumMachine's, or your own — decides *ahead of
    * time* that a note belongs at a particular instant, and a voice that can
-   * only ever start "now" cannot honour that. Driving one from setTimeout
+   * only ever start "now" cannot honor that. Driving one from setTimeout
    * instead puts the note wherever the timer happened to fire, which is how
    * a melody ends up drifting against a beat that is scheduled properly.
    */

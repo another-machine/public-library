@@ -10,7 +10,7 @@
  * diagonal key pixels in each 2×2 block.
  *
  * For non-key-preserving ops (difference, noise, echo) data pixels are
- * approximated by 4-neighbour interpolation, key-pixel symmetry is restored
+ * approximated by 4-neighbor interpolation, key-pixel symmetry is restored
  * per channel, and mixed plans are decimated to half-res at the end.
  */
 
@@ -142,7 +142,7 @@ export function reconstructCover(
   const reconData = new Uint8ClampedArray(px.length);
   reconData.set(px);
 
-  // Pass 1 — interpolate each data pixel from its 4 encoded neighbours.
+  // Pass 1 — interpolate each data pixel from its 4 encoded neighbors.
   for (let pi = 0; pi < nEnc; pi++) {
     const [dx, dy] = dataXY(pi);
     const eo = (dy * W + dx) * 4;

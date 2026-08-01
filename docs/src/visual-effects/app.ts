@@ -20,7 +20,7 @@ type FormData = {
   brightness: number;
 };
 
-/** oklch → linear sRGB. @amplib/color keeps its own colour maths private. */
+/** oklch → linear sRGB. @amplib/color keeps its own color maths private. */
 function oklchToLinearRGB(L: number, C: number, H: number): [number, number, number] {
   const hRad = (H * Math.PI) / 180;
   const a = C * Math.cos(hRad);

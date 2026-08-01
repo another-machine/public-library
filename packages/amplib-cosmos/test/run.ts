@@ -448,7 +448,7 @@ section("Value contract — unitRange and bipolarRange bounds");
     `${violations.length} violations: ${[...new Set(violations.map((v) => v.split(" ")[0]))].slice(0, 8).join(", ")}`
   );
 
-  // A field whose unitRange never leaves a narrow band is normalised against
+  // A field whose unitRange never leaves a narrow band is normalized against
   // the wrong domain — in contract, but useless as a control signal, which is
   // what `moon.angularDiameter` and the planet distances used to be.
   //
@@ -487,7 +487,7 @@ section("Value contract — unitRange and bipolarRange bounds");
   }
 
   // Fields that are genuinely constant or genuinely near-constant, and are
-  // documented as such rather than being normalisation mistakes.
+  // documented as such rather than being normalization mistakes.
   const EXEMPT = [
     "observer.elevation", // constant unless the caller passes one
     "observer.latitude", // fixed for a given call site, by definition
@@ -498,7 +498,7 @@ section("Value contract — unitRange and bipolarRange bounds");
     "planets.neptune.phase",
     // `magnitude` is deliberately on one scale spanning every planet so the
     // bodies stay comparable, which means the faint outer ones occupy a sliver
-    // of it. `brightness` is the per-planet normalisation, and it is not
+    // of it. `brightness` is the per-planet normalization, and it is not
     // exempt — it has to span the range for both of these.
     "planets.uranus.magnitude",
     "planets.neptune.magnitude",

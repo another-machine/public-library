@@ -100,7 +100,7 @@
        page whenever a field computing under 16px takes focus, and it does not
        zoom back out — the viewport keys that used to decline that are ignored,
        so clearing the threshold is the only way out. Zero on a precise pointer,
-       where the behaviour does not exist and 16px controls would cost density
+       where the behavior does not exist and 16px controls would cost density
        for nothing. Read as a max() at the control rather than as a size, so it
        composes with whatever --ht-text-ui the density mode in scope has set. */
     --ht-text-control-floor: 0px;
@@ -195,13 +195,13 @@
 
   /* Polarity scopes. Each scope sets --ht-ink / --ht-paper, and every derived
      value is declared for the same scopes so it resolves against the LOCAL
-     pair rather than inheriting an already-resolved colour from :root. */
+     pair rather than inheriting an already-resolved color from :root. */
   :root,
   [data-theme],
   .ht-surface-invert {
     /* Two text weights and one decorative weight. Both text weights clear 5:1
        against paper in either polarity — the mix runs toward paper, so the
-       same percentage lands on different greys light vs dark. --ht-ink-ghost
+       same percentage lands on different grays light vs dark. --ht-ink-ghost
        is for lines and texture ONLY; it is never legible as type. */
     --ht-ink-dim: color-mix(in srgb, var(--ht-ink) 82%, var(--ht-paper));
     --ht-ink-faint: color-mix(in srgb, var(--ht-ink) 58%, var(--ht-paper));
@@ -782,7 +782,7 @@
   }
 
   /* Native media controls are shadow DOM: their radius and chrome cannot be
-     restyled, only their box and colour scheme. Giving them full width and a
+     restyled, only their box and color scheme. Giving them full width and a
      hairline frame is what keeps them from reading as foreign objects. */
   :where(audio) {
     display: block;
@@ -901,7 +901,7 @@
     /* = ht-type-ui + ht-shape-control + ht-participation-input + ht-time-ui,
        with the control floor applied — see --ht-text-control-floor. This is the
        whole set that iOS zooms for: buttons, checkboxes, radios, ranges and
-       colour swatches never take a text caret, so they keep the UI size. */
+       color swatches never take a text caret, so they keep the UI size. */
     font: inherit;
     font-size: max(var(--ht-text-ui), var(--ht-text-control-floor));
     line-height: var(--ht-leading-ui);
@@ -981,7 +981,7 @@
 
   /* No glyphs — a checked box is a solid block, a checked radio is a block
      inside a ring. Two marks that stay distinguishable at 14px in either
-     polarity, with nothing to load and nothing to recolour. */
+     polarity, with nothing to load and nothing to recolor. */
   input:where([type="checkbox"]):checked {
     background-color: var(--ht-ink);
     border-color: var(--ht-ink);
@@ -1161,7 +1161,7 @@
      the hypertokens named in its comment. Change a hypertoken, change its
      recipes — that pairing is the maintenance cost of having no build step. */
 
-  /* app shell: centred column, one rhythm ---------------------------------- */
+  /* app shell: centered column, one rhythm ---------------------------------- */
   .app {
     /* = ht-arrange-page */
     display: flex;
@@ -1215,7 +1215,7 @@
   }
 
   /* code: a scrollable block, and the system's answer to highlighting without
-     colour — bound values are underlined, output is set off by a gutter rule.
+     color — bound values are underlined, output is set off by a gutter rule.
      Body text sits at dim so both marks read as full ink against it. */
   .code {
     /* = ht-type-code + ht-shape-panel + ht-participation-scroll */
@@ -1387,7 +1387,7 @@
     border-block-end: 0;
   }
 
-  /* tabs: the capture-mode bar. Selection is polarity, not colour. --------- */
+  /* tabs: the capture-mode bar. Selection is polarity, not color. --------- */
   .tabs {
     display: flex;
     flex-wrap: wrap;
@@ -1609,8 +1609,8 @@
     color: var(--ht-ink);
   }
 
-  /* Failure gets the only non-colour emphasis in the system: a leading mark
-     plus full contrast, so it survives greyscale, forced colours and print. */
+  /* Failure gets the only non-color emphasis in the system: a leading mark
+     plus full contrast, so it survives grayscale, forced colors and print. */
   .status[data-state="error"] {
     color: var(--ht-ink);
     font-weight: 700;
@@ -1620,7 +1620,7 @@
     content: "!! ";
   }
 
-  /* meter: a labelled hairline bar (capacity, payload fit) ----------------- */
+  /* meter: a labeled hairline bar (capacity, payload fit) ----------------- */
   .meter {
     display: block;
     inline-size: 100%;

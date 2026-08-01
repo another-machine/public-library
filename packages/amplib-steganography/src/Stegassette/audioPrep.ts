@@ -104,7 +104,7 @@ export interface ResolvedAudioRates {
  *
  * The mimeSampleRate is always the target, and that is the whole reason this
  * is a named function rather than two inline ternaries: writing the source
- * rate into a relabelled entry's mimetype was a real bug once, and it is
+ * rate into a relabeled entry's mimetype was a real bug once, and it is
  * invisible until you hear the playback.
  */
 export function resolveAudioRates({
@@ -143,7 +143,7 @@ export interface PrepareAudioEntryParams {
  * a ready STGC audio entry.
  *
  * Mutates the channel arrays it is given (reverse and normalize are in-place,
- * matching the lab's behaviour on freshly-decoded buffers). Pass copies if the
+ * matching the lab's behavior on freshly-decoded buffers). Pass copies if the
  * caller still needs the originals.
  */
 export function prepareAudioEntry({

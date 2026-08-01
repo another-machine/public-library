@@ -264,7 +264,7 @@ b.additive+r.xor                  (blue first, then red; green untouched)
 channel assignment is identical for every pixel. Pad byte count is stored in
 the descriptor `pad` key.
 
-`mono` does not emit a `ch` descriptor key. The decoder recognises `pack=mono`
+`mono` does not emit a `ch` descriptor key. The decoder recognizes `pack=mono`
 and rebuilds the three-slot plan automatically.
 
 ## Reference decoder

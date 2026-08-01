@@ -135,7 +135,7 @@ export function getSkyPosition(
     "normal"
   );
   // An empty refraction option is astronomy-engine's "no correction" mode;
-  // "none" is not a value it recognises and throws.
+  // "none" is not a value it recognizes and throws.
   const geometric = Astronomy.Horizon(
     date,
     observer,
@@ -336,8 +336,8 @@ function computeSeasons(year: number): Seasons {
 
 /**
  * A bounded memo. Iterative searches cost roughly a millisecond each, which is
- * fine once and ruinous sixty times a second. Keys quantise the observer to
- * 0.01° (about a kilometre — far finer than rise/set times can distinguish)
+ * fine once and ruinous sixty times a second. Keys quantize the observer to
+ * 0.01° (about a kilometer — far finer than rise/set times can distinguish)
  * and the time to a UTC day, so a running clock hits the same entry all day.
  */
 const CACHE_LIMIT = 256;

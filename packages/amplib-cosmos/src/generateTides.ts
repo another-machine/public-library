@@ -2,7 +2,7 @@
  * Tide-generating forces.
  *
  * The previous `moon.tidalForce` was `((altitude + 90) / 180) * fudge`, which
- * is a relabelled moon altitude: one peak per day, minimum when the Moon is
+ * is a relabeled moon altitude: one peak per day, minimum when the Moon is
  * underfoot. Real tides do not work that way. The tide-raising potential is
  * the second-degree term
  *
@@ -37,7 +37,7 @@ import {
 
 /**
  * Gravitational parameters (GM) in km³/s². Ratios are what matter here; the
- * absolute scale cancels out in the normalisation below.
+ * absolute scale cancels out in the normalization below.
  */
 const GM_MOON = 4902.8;
 const GM_SUN = 132712440018;

@@ -3,7 +3,7 @@
  *
  * A pass that samples an input image sets `inputs.source` and is a filter; one
  * that does not is a generator. The chain feeds each pass's output to the next
- * either way, and knows nothing about audio, video, or colour.
+ * either way, and knows nothing about audio, video, or color.
  *
  * Lives in docs/ rather than packages/ until it earns a name.
  */
@@ -79,7 +79,7 @@ export interface PassDef<P> {
   /** Output size relative to the canvas. Default 1. See `uRes` / `uOutRes`. */
   scale?: number;
   /**
-   * Compile-time specialisation. The program cache is keyed by name + these.
+   * Compile-time specialization. The program cache is keyed by name + these.
    */
   defines?: (params: P) => Defines;
   inputs?: {

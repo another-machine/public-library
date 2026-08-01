@@ -137,7 +137,7 @@ export function autoScaleImg(
   if (aspectOverride == null && newW === img.width && newH === img.height)
     return img;
 
-  // cover-crop source to target aspect (centred)
+  // cover-crop source to target aspect (centered)
   let src: Img = img;
   const srcAspect = img.width / img.height;
   if (Math.abs(srcAspect - aspect) > 0.0005) {

@@ -4,7 +4,7 @@ A hypertoken theme for dense tool interfaces. It grew out of the stegassette
 encoder, player and jobs queue, and carries nothing specific to them — any
 tool that wants the same language can use it.
 
-Stark black and white. Monospaced. Zero radius. No colour, no shadows, no
+Stark black and white. Monospaced. Zero radius. No color, no shadows, no
 gradients except one hatch texture. Emphasis is made with **polarity** (ink on
 paper / paper on ink), the weight of a hairline, and letter-spacing.
 
@@ -152,7 +152,7 @@ The one exception is not a fourth size but a floor: `<input>`, `<textarea>` and
 floor becomes 16px under `(pointer: coarse)`. iOS Safari zooms the page when a
 field computing under 16px takes focus and never zooms back out, and no viewport
 key declines it. Controls that never take a caret — buttons, checkboxes, radios,
-ranges, colour swatches — stay at the UI size on every pointer.
+ranges, color swatches — stay at the UI size on every pointer.
 
 ```css
 --ht-font-mono                the only family
@@ -197,7 +197,7 @@ component required.
 
 `.ht-type-small` covers every kind of secondary text — labels, captions, byte
 counts, hints. Pair it with `.u-dim` or `.u-faint` when a line needs to sit
-above or below its neighbours; that's the whole hierarchy mechanism.
+above or below its neighbors; that's the whole hierarchy mechanism.
 `.ht-type-eyebrow` is the same size, differing only in case and tracking. That
 uppercase is why an eyebrow cannot label a region with an identifier —
 `loadImageFromImageUrl` becomes `LOADIMAGEFROMIMAGEURL`, and camel case is the
@@ -220,7 +220,7 @@ keeps their case; the eyebrow is for words.
 **Participation** — `.ht-participation-action` `.ht-participation-input`
 `.ht-participation-focus` `.ht-participation-scroll`
 
-**Time** — `.ht-time-ui` (colour/border only, 90ms, off under reduced motion)
+**Time** — `.ht-time-ui` (color/border only, 90ms, off under reduced motion)
 
 `.ht-media-raw` is not decorative: it sets `image-rendering: pixelated`, and
 encoded imagery must never be smoothed — an interpolated pixel misreports the
@@ -274,7 +274,7 @@ with no `type` counts as one), `select` (with a redrawn square caret),
 `textarea`, `range`, `color`, `file`, and square `checkbox`/`radio`.
 
 A checked checkbox is a solid block; a checked radio is a block inside a ring.
-No glyphs, no icon font, nothing to recolour.
+No glyphs, no icon font, nothing to recolor.
 
 Headings come in two levels, not six: `h1`/`h2` at display size, `h3`–`h6` at
 eyebrow. Inline `code` (outside `<pre>`) gets a hairline box and keeps its
@@ -296,7 +296,7 @@ ARIA, not in a class, so the styling and the accessibility tree cannot drift.
 
 | recipe                                                    | for                                            |
 | --------------------------------------------------------- | ---------------------------------------------- |
-| `.app`                                                     | centred page column                            |
+| `.app`                                                     | centered page column                            |
 | `.panel` `.panel__header/__body/__footer`                  | bordered region with header and footer bars     |
 | `.field` `.field--check` `.field__hint` `.fieldset-stack`  | label + control rows (the settings rail)        |
 | `.toolbar`                                                 | action row with a rule under it                 |
@@ -309,7 +309,7 @@ ARIA, not in a class, so the styling and the accessibility tree cannot drift.
 | `.frame` `.frame__caption`                                 | canvas or preview with a caption                |
 | `.masthead`                                                | sticky page banner with a hairline under it     |
 | `.doc`                                                     | prose page: section rhythm + measure            |
-| `.code`                                                    | scrollable code block with colourless emphasis  |
+| `.code`                                                    | scrollable code block with colorless emphasis  |
 
 States are data attributes and ARIA, never extra classes:
 
@@ -330,7 +330,7 @@ States are data attributes and ARIA, never extra classes:
 A `.drop` spans its container; put drops in a `.ht-arrange-row` and they share
 the line equally instead.
 
-Inside `.code`, emphasis is made without colour: body text sits at
+Inside `.code`, emphasis is made without color: body text sits at
 `--ht-ink-dim`, a value bound to a live control is full ink and underlined, and
 a region written at runtime is set off by a gutter rule. An empty output slot
 hides itself until the example fills it.
@@ -374,8 +374,8 @@ the answer is a hypertoken or a recipe, not more utilities.
 
 ## Rules of the system
 
-1. **No colour.** Not for success, not for failure. Failure is full-contrast
-   type with a `!!` prefix, so it survives greyscale, forced colours and print.
+1. **No color.** Not for success, not for failure. Failure is full-contrast
+   type with a `!!` prefix, so it survives grayscale, forced colors and print.
 2. **No radius.** `--ht-radius` is `0` and every control — including range
    thumbs, checkboxes and radios — respects it.
 3. **One family, one border width.** `--ht-font-mono`, `--ht-hairline`.
@@ -388,7 +388,7 @@ the answer is a hypertoken or a recipe, not more utilities.
 
 - One focus treatment system-wide: `2px solid var(--ht-ink)` at a hairline
   offset, applied on `:focus-visible` only.
-- `prefers-contrast: more` collapses the grey ramp toward full ink.
+- `prefers-contrast: more` collapses the gray ramp toward full ink.
 - `prefers-reduced-motion: reduce` disables transitions globally.
 - `forced-colors: active` hands surfaces to the system palette and keeps the
   hairlines, which are the entire structure of this theme.
@@ -405,7 +405,7 @@ the answer is a hypertoken or a recipe, not more utilities.
   that pairing ever gets expensive, that is the signal to add a compiler — not
   before.
 - **`color-mix()` is required.** Baseline in Chrome/Edge 111+, Safari 16.2+,
-  Firefox 113+. Without it the derived greys fall back to nothing and the
+  Firefox 113+. Without it the derived grays fall back to nothing and the
   theme loses its ramp; there is no polyfill and none is planned. `:has()`
   (same era) is used once, to mirror a theme set on `<body>` up to the page
   canvas — without it only the overscroll area is wrong.
@@ -439,7 +439,7 @@ Its vocabulary is the exhibit:
 Attention is brightness: a work rests at `--gal-dim` and comes to full light
 under hover or `aria-pressed="true"`; a rail rests deeper so the lit work
 reads as current. Encoded pixels are the subject, so imagery is never
-smoothed. The works themselves are in colour — the no-colour rule is about
+smoothed. The works themselves are in color — the no-color rule is about
 the room, not the art.
 
 While a piece is decoding, mark `data-loading` and its stand-in breathes. Put

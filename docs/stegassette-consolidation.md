@@ -48,7 +48,7 @@ What moves into public-library is the **library**, not the apps.
 
 Revised 2026-07-30 after two decisions: **`geese-basement` and `live` move off amplib.app onto stega.now**, and **`stegassette.jake.fun` is out of scope** — a frozen one-off for another purpose, kept on current code (done in Phase 0) but not consolidated.
 
-The organising idea that falls out of this: **amplib.app is the library, stega.now is the work made with it.** Every stegassette *surface* lives on stega.now; amplib.app keeps only the packages, their docs, and the machines that are genuinely library demos. That is a cleaner line than the old split, where stegassette content was scattered across both.
+The organizing idea that falls out of this: **amplib.app is the library, stega.now is the work made with it.** Every stegassette *surface* lives on stega.now; amplib.app keeps only the packages, their docs, and the machines that are genuinely library demos. That is a cleaner line than the old split, where stegassette content was scattered across both.
 
 ### `another-machine/public-library` → `amplib.app` — the library
 
@@ -167,7 +167,7 @@ Two findings logged, neither caused by this work:
    **Two API divergences it caught**, neither a format difference, both able to break a migration silently:
 
    - **`encodeContainer` argument order differs.** Lab: `(entries, srcImg, keyImg, opts)`. Package: `(entries, srcImg, opts, keyImg)`. Every Phase 2 call site must be re-read, not just re-imported.
-   - **The keymap option is spelled differently** — lab `keyMap`, package `keymap`. This is the *only* naming divergence in the entire option surface (`borderWidth`, `bytesPerSample`, `channels`, `combine`, `pack`, `params`, `plan`, `traversal` all match), and it was silently degrading: the package read `opts.keymap`, found nothing, defaulted to `"adjacent"`, and encoded 38 configurations with the wrong keymap while labelling them correctly in the header. Self-consistent, round-trippable, quietly not what was asked for.
+   - **The keymap option is spelled differently** — lab `keyMap`, package `keymap`. This is the *only* naming divergence in the entire option surface (`borderWidth`, `bytesPerSample`, `channels`, `combine`, `pack`, `params`, `plan`, `traversal` all match), and it was silently degrading: the package read `opts.keymap`, found nothing, defaulted to `"adjacent"`, and encoded 38 configurations with the wrong keymap while labeling them correctly in the header. Self-consistent, round-trippable, quietly not what was asked for.
 
      Fixed by `resolveKeymapName()` in `keymap.ts`, which throws when `keyMap` is passed without `keymap`. It has to sit at the **public boundary** (`encodeContainer`, `encodeImageData`, `browser.encode`) — options are normalized before `writeInterior` runs, so a guard placed deeper never sees the misspelling. The harness asserts the guard fires, so it cannot rot.
 
@@ -178,7 +178,7 @@ Two findings logged, neither caused by this work:
 
    `Stegassette/audioPrep.ts` owns the environment-agnostic tail of the encode pipeline. The full pipeline is `decode → deinterleave → reverse? → normalize? → layout → PCM → entry`, and only the first step is environment-specific (ffmpeg in Node, `decodeAudioData`/`OfflineAudioContext` in the browser). Everything after it was duplicated between `encode-batch.js` and `index.html`; the package now owns it as `prepareAudioEntry`, alongside `deinterleave`, `resolveNormalize`, and `resolveAudioRates`.
 
-   `resolveAudioRates` is a named function rather than two inline ternaries on purpose: it encodes the relabel/resample contract, where the mimetype rate is **always** the target. Writing the source rate into a relabelled entry was a real bug once, and it is silent until you hear the playback.
+   `resolveAudioRates` is a named function rather than two inline ternaries on purpose: it encodes the relabel/resample contract, where the mimetype rate is **always** the target. Writing the source rate into a relabeled entry was a real bug once, and it is silent until you hear the playback.
 
    `src/wav.ts` ports `lib/wav.js` to the `./node` entry (`decodeWav`/`encodeWav` on bytes, `readWav`/`writeWav` on paths). It also clamps the data chunk to what is actually present, since trusting a truncated file's header length causes confusing overruns.
 
@@ -209,7 +209,7 @@ Two findings logged, neither caused by this work:
    - **`RevealPlayer`** is rebuilt on `RevealSurface` and is now the multi-track audio-driven level only. Its public API is unchanged.
    - **`createSeekableReveal({source, entry})`** is the new decode-and-build convenience, mirroring `createRevealPlayer`.
 
-   Two behaviours deliberately carried over from `reveal.js` rather than from `player.ts`:
+   Two behaviors deliberately carried over from `reveal.js` rather than from `player.ts`:
 
    - **Batched uploads.** Erasing writes alpha 0 into a held `ImageData` and uploads only the touched bounding box per flush. `player.ts` used a `clearRect` per pixel, which made a deep seek cost hundreds of milliseconds because the work scales with how much of the image the jump reveals.
    - **`animateReveal` uses `setInterval`, not `requestAnimationFrame`.** A backgrounded tab stops serving frames, which would leave the image half-developed, whereas clock-measured progress still finishes. (`RevealPlayer` keeps rAF, which is correct there — it is synced to the audio clock, so a backgrounded tab simply catches up on return because `fillIdx` is derived from the clock rather than incremented per frame.)

@@ -9,7 +9,7 @@ export interface ParsedChord {
   /** The input, trimmed. */
   label: string;
   /**
-   * The matching `Chord` when the notes form a recognised quality, otherwise
+   * The matching `Chord` when the notes form a recognized quality, otherwise
    * undefined. Most inputs are not: a `Chord` is always a triad or a seventh,
    * whereas this parser accepts any set of notes, including one or two.
    */
@@ -76,7 +76,7 @@ export function chordFromPitchClasses(
 /**
  * Parse concatenated note letters into pitch classes.
  *
- *   parseChord("CEG")  // [0, 4, 7], recognised as C major
+ *   parseChord("CEG")  // [0, 4, 7], recognized as C major
  *   parseChord("ACBb") // [9, 0, 10], no chord
  *   parseChord("CG")   // [0, 7], no chord
  *

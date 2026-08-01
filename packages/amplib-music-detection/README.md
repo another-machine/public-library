@@ -45,8 +45,8 @@ If you reconfigure the analyser, change `fftSize` first and rebuild
 bin, and the bottom octave needs it: C2 and C#2 are under 4Hz apart, so at the
 default 2048 they share a bin.
 
-**A band is ignored when a neighbour is louder.** A note's bin counts only if
-it beats its semitone and octave neighbours, which is what keeps a harmonic
+**A band is ignored when a neighbor is louder.** A note's bin counts only if
+it beats its semitone and octave neighbors, which is what keeps a harmonic
 from being reported as a note in its own right.
 
 **Presence is sharpened, then eased asymmetrically.** Raw bin magnitude is

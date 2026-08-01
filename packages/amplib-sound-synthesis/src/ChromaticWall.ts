@@ -189,7 +189,7 @@ export class ChromaticWall {
 
     if (Math.random() > this.mainChance) {
       // Weighted low: the wall should sit mostly in the middle of its range,
-      // with the higher offsets as occasional colour rather than an even spread.
+      // with the higher offsets as occasional color rather than an even spread.
       const octaveOffset =
         selectRandom([0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 5]) + 1;
       this.triggerNote({

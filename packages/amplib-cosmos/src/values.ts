@@ -2,14 +2,14 @@
  * The value contract.
  *
  * Every numeric leaf in a cosmos result carries its real-world value *and*
- * pre-normalised forms, because the consumer is usually a synthesiser that
- * wants a 0–1 or -1–1 control signal rather than degrees or kilometres.
+ * pre-normalized forms, because the consumer is usually a synthesiser that
+ * wants a 0–1 or -1–1 control signal rather than degrees or kilometers.
  *
  * Three guarantees hold for every `NumberValue` this module produces:
  *
  *   1. `unitRange` is always in [0, 1].
  *   2. `bipolarRange` is always in [-1, 1], and always equals `2 * unitRange - 1`.
- *   3. `min` and `max` state the domain the normalisation used, so a consumer
+ *   3. `min` and `max` state the domain the normalization used, so a consumer
  *      can re-derive or re-scale it instead of trusting a magic number.
  *
  * Nothing here allocates a string. Human-readable text is opt-in and lives in
@@ -37,7 +37,7 @@ export interface NumberValue {
   /** The value in its real unit. Never clamped. */
   value: number;
   unit: Unit;
-  /** Domain used for normalisation. */
+  /** Domain used for normalization. */
   min: number;
   max: number;
   /** `value` mapped onto [0, 1] and clamped. */
@@ -211,7 +211,7 @@ export function createVectorValue(
 /**
  * Altitude above the horizon, in degrees.
  *
- * Normalised over [-90, 90] rather than clamped at the horizon, so a body
+ * Normalized over [-90, 90] rather than clamped at the horizon, so a body
  * below the horizon still reports a meaningful position. The old
  * implementation clamped the lower half to zero, which threw away half the
  * signal and made "just set" indistinguishable from "at the nadir".

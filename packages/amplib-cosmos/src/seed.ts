@@ -6,12 +6,12 @@
  * agree on the seed without talking to each other, which means the derivation
  * has to be stable across three kinds of drift:
  *
- *   - Clock drift. Two phones are never on the same millisecond. Quantising
+ *   - Clock drift. Two phones are never on the same millisecond. Quantizing
  *     time to a grid means both land in the same bucket for the whole
  *     interval, and they only disagree in the instant either side of a
  *     boundary.
- *   - Position drift. GPS jitters by tens of metres, so raw coordinates would
- *     reseed constantly. Quantising to a degree grid fixes a listener to a
+ *   - Position drift. GPS jitters by tens of meters, so raw coordinates would
+ *     reseed constantly. Quantizing to a degree grid fixes a listener to a
  *     cell that they have to genuinely walk out of before the music changes.
  *   - Engine drift. This is the subtle one, and it decides the whole design:
  *     the seed is derived from the *inputs*, not from the computed cosmic
@@ -22,7 +22,7 @@
  * `Math.cos`, and `Math.pow` as implementation-approximated: V8,
  * JavaScriptCore, and SpiderMonkey are each free to return results differing
  * in the last bits, and they do. Every value in a cosmos result passes through
- * dozens of those calls. Almost always two engines land in the same quantised
+ * dozens of those calls. Almost always two engines land in the same quantized
  * bucket and agree — but near a bucket boundary they won't, and the failure is
  * rare, silent, and impossible to reproduce. Latitude, longitude and a
  * timestamp are exact IEEE-754 doubles, and the arithmetic below is limited to
@@ -40,7 +40,7 @@ export interface SeedResolution {
   seconds: number;
   /**
    * Size of one position cell, in degrees. Default 0.25, roughly 28 km of
-   * latitude — a neighbourhood, not a street corner.
+   * latitude — a neighborhood, not a street corner.
    */
   degrees: number;
 }
@@ -61,8 +61,8 @@ export interface SeedResult {
   expiresAt: number;
   /** Milliseconds until the seed changes. */
   millisecondsRemaining: number;
-  /** The quantised inputs the seed was derived from, for debugging. */
-  quantised: { latitude: number; longitude: number; timestamp: number };
+  /** The quantized inputs the seed was derived from, for debugging. */
+  quantized: { latitude: number; longitude: number; timestamp: number };
 }
 
 // https://www.crockford.com/base32.html — same alphabet as Timecode, so codes
@@ -98,7 +98,7 @@ function encodeBase32(value: number, length: number): string {
  * Snap to a grid. `Math.round` on a quotient of exact doubles is itself exact,
  * so every engine produces the same integer.
  */
-function quantise(value: number, step: number): number {
+function quantize(value: number, step: number): number {
   return Math.round(value / step) * step;
 }
 
@@ -127,20 +127,20 @@ export function generateSeed({
   const bucketMs = resolution.seconds * 1000;
   const bucketStart = Math.floor(timestamp / bucketMs) * bucketMs;
 
-  const quantisedLatitude = quantise(latitude, resolution.degrees);
-  // Longitude wraps, so ±180 must land in the same cell. Normalise into
+  const quantizedLatitude = quantize(latitude, resolution.degrees);
+  // Longitude wraps, so ±180 must land in the same cell. Normalize into
   // [0, 360) before snapping, or a listener standing on the antimeridian gets
   // two different seeds depending on which side of it their GPS rounds to.
-  const normalisedLongitude = ((longitude % 360) + 360) % 360;
-  const quantisedLongitude = quantise(normalisedLongitude, resolution.degrees);
+  const normalizedLongitude = ((longitude % 360) + 360) % 360;
+  const quantizedLongitude = quantize(normalizedLongitude, resolution.degrees);
 
   // Fixed-point strings, so the hash input never depends on how an engine
   // chooses to print a float.
   const key = [
     namespace,
     bucketStart.toString(36),
-    quantisedLatitude.toFixed(6),
-    quantisedLongitude.toFixed(6),
+    quantizedLatitude.toFixed(6),
+    quantizedLongitude.toFixed(6),
   ].join("|");
 
   const integer = fnv1a(key);
@@ -151,9 +151,9 @@ export function generateSeed({
     bucketStart,
     expiresAt: bucketStart + bucketMs,
     millisecondsRemaining: bucketStart + bucketMs - timestamp,
-    quantised: {
-      latitude: quantisedLatitude,
-      longitude: quantisedLongitude,
+    quantized: {
+      latitude: quantizedLatitude,
+      longitude: quantizedLongitude,
       timestamp: bucketStart,
     },
   };

@@ -92,7 +92,7 @@ function snapToKey(px: number, py: number, IW: number, IH: number): [number, num
   // Orphan: this column has no in-row partner — the last column of every odd
   // row on an odd-width interior, or a 1-wide interior. Step a row: the
   // checkerboard parity flips, so the same column is a key pixel there, and it
-  // is one no other data pixel claims (on the neighbouring row the keys run
+  // is one no other data pixel claims (on the neighboring row the keys run
   // 0, 2, … IW-3). Reflecting back in-row instead handed two data pixels the
   // same key, which a key-modifying combine cannot survive — the second write
   // destroys the bits the first stashed, so that byte is unrecoverable.
@@ -106,7 +106,7 @@ function snapToKey(px: number, py: number, IW: number, IH: number): [number, num
  * option `keyMap`, this package names it `keymap`. That is the only naming
  * divergence in the whole option surface, so a call site ported from the lab
  * that keeps `keyMap` falls through to the `"adjacent"` default and silently
- * encodes with the wrong keymap — self-consistent output, correctly labelled
+ * encodes with the wrong keymap — self-consistent output, correctly labeled
  * in the header, and quietly not what was asked for. Fail loudly instead.
  *
  * Must be called where caller-supplied options first arrive (encodeContainer,

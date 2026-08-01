@@ -26,7 +26,7 @@ type FormData = {
   combine: string;
   keymap: string;
   traversal: string;
-  /** Which colour channels carry payload — the rest keep the cover. */
+  /** Which color channels carry payload — the rest keep the cover. */
   channelPlan: "rgb" | "rg" | "r";
   bitsPerSample: "8" | "16" | "24";
   channels: "1" | "2";
@@ -306,12 +306,12 @@ export default async function example() {
         value: "xor",
         name: "combine",
       },
-      // Which colour channels carry payload. Channels left out of the plan are
+      // Which color channels carry payload. Channels left out of the plan are
       // never written, so they keep the cover at full resolution — the one way
       // a keyless encode gets a real picture back.
       // Any subset of r/g/b in any order. The subset decides how many bytes a
       // pixel holds and which channels keep the cover; the order decides which
-      // payload byte lands in which channel, which is what sets the colour cast.
+      // payload byte lands in which channel, which is what sets the color cast.
       channelPlan: {
         type: "select",
         options: ["rgb", "bgr", "grb", "rg", "gb", "br", "r", "g", "b"],

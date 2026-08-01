@@ -49,7 +49,7 @@ function buildSine() {
   return t;
 }
 
-/** Build wavetable from Fourier coefficients. Normalises to peak = 1.0. */
+/** Build wavetable from Fourier coefficients. Normalizes to peak = 1.0. */
 function buildFromHarmonics(real, imag) {
   const r  = real || new Float64Array(WAVE_N);
   const im = imag || new Float64Array(WAVE_N);
@@ -210,7 +210,7 @@ class FMTierProcessor extends AudioWorkletProcessor {
     this._gainTgt  = new Float64Array(VOICES);
     this._panTgt   = new Float64Array(VOICES);
 
-    // Phase accumulators (0..1 normalised)
+    // Phase accumulators (0..1 normalized)
     this._carrPh = new Float64Array(VOICES);
     this._modPh  = new Float64Array(VOICES);
 

@@ -296,7 +296,7 @@ function parseRingBytes(alphas: Uint8Array, B: number): ParsedHeader {
  * @param outImg  The image to modify in place.
  * @param B       Border width in pixels.
  * @param hdrBytes  Packed header from packStgcHeader.
- * @param offset  Optional explicit start position in the bpx array (default: centred in bottom row).
+ * @param offset  Optional explicit start position in the bpx array (default: centered in bottom row).
  */
 export function applyAlphaHeader(
   outImg: Img,
@@ -331,14 +331,14 @@ export function applyAlphaHeader(
     throw new Error("STGC header does not fit the border ring");
 
   if (offset == null) {
-    // centre in bottom row: find first bottom-row pixel in border sequence
+    // center in bottom row: find first bottom-row pixel in border sequence
     const H = outImg.height;
     const bottomStart = bpx.findIndex(([, py]) => py === H - 1);
     const bottomLen = outImg.width;
     offset = bottomStart + ((bottomLen - headerPx) >> 1);
   }
   // The ring is contiguous in index space and decode scans all of it, so a
-  // header that cannot centre in the bottom row simply starts earlier and
+  // header that cannot center in the bottom row simply starts earlier and
   // flows across the other border pixels.
   offset = Math.min(offset, bpx.length - headerPx);
   // even ring index, so decode can pair pixels deterministically from 0

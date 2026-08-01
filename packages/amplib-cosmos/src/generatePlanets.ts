@@ -130,11 +130,11 @@ function generatePlanet(
     illumination.magnitude < MAGNITUDE_NAKED_EYE_LIMIT &&
     sunAltitude < CIVIL_TWILIGHT_ALTITUDE;
 
-  // Two normalisations of the same number, for two different jobs.
+  // Two normalizations of the same number, for two different jobs.
   //
   // `magnitude` uses one scale spanning every planet, so its `unitRange` is
   // comparable across bodies — Venus really is brighter than Neptune, and the
-  // numbers say so. `brightness` normalises each planet against its own
+  // numbers say so. `brightness` normalizes each planet against its own
   // observed range, so every planet's variation fills [0, 1] and is usable as
   // a control signal. On the shared scale Uranus only ever moves through 5% of
   // the range, which is true but useless to patch into a gain.

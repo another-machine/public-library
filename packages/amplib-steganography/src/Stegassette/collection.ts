@@ -214,7 +214,7 @@ export function encodeStegassette(
     ) * 3;
 
   // An odd width orphans the last data pixel of every odd row — its key
-  // reflects back in-row and collides with its neighbour's — so keeping the
+  // reflects back in-row and collides with its neighbor's — so keeping the
   // artwork at native size is only safe on an even width. Crop a single column
   // rather than rescaling the whole picture.
   const src = new Img(srcImg.width, srcImg.height, srcImg.data);

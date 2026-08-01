@@ -15,7 +15,7 @@ Mode.types; // ionian … locrian, plus melodic, harmonic, major, minor
 Note.notationsUnique; // the 12 sharps and the 5 flats that alias them
 ```
 
-`parseChord` goes the other way, from written notes to a recognised quality:
+`parseChord` goes the other way, from written notes to a recognized quality:
 
 ```ts
 const parsed = parseChord("CEG");
@@ -46,7 +46,7 @@ and `"minor"` alongside the seven mode names, and resolves them — asking for
 the word people actually say without the library carrying two parallel notions
 of what a mode is.
 
-**Chords are recognised, not assumed.** `parseChord` accepts any set of notes,
+**Chords are recognized, not assumed.** `parseChord` accepts any set of notes,
 including one or two, and only sets `chord` when they form a triad or a seventh.
 Most inputs do not, so `parsed.chord` is optional by design rather than as a
 failure case. Duplicates collapse to their first occurrence, which makes order

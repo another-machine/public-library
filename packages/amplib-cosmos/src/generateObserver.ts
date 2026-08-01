@@ -42,7 +42,7 @@ export interface ObserverResult {
   rotationalVelocity: NumberValue;
 }
 
-/** Equatorial rotation speed, km/h. Used as the normalisation ceiling. */
+/** Equatorial rotation speed, km/h. Used as the normalization ceiling. */
 const EQUATORIAL_VELOCITY =
   (2 * Math.PI * EARTH_RADIUS_KM) / EARTH_ROTATION_PERIOD;
 

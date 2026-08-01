@@ -33,7 +33,7 @@ function throws(name: string, fn: () => unknown) {
   }
 }
 
-// ── Recognised chords ────────────────────────────────────────────────────────
+// ── Recognized chords ────────────────────────────────────────────────────────
 
 check("CEG is C major", parseChord("CEG").chord?.label === "C");
 check("ACE is A minor", parseChord("ACE").chord?.label === "Am");
@@ -57,7 +57,7 @@ check(
 );
 check("duplicates collapse", parseChord("CEGC").pitchClasses.join() === "0,4,7");
 check(
-  "notations come back normalised to sharps",
+  "notations come back normalized to sharps",
   parseChord("DbEb").notations.join() === "C#,D#"
 );
 check("label is the trimmed input", parseChord("  CEG  ").label === "CEG");

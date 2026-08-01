@@ -87,7 +87,7 @@ export interface MoonResult {
   distance: NumberValue;
   /**
    * Apparent angular diameter in degrees, roughly 0.49–0.57. The old
-   * normalisation compared a value in degrees against bounds in arcminutes,
+   * normalization compared a value in degrees against bounds in arcminutes,
    * so `unitRange` came out between 4.0 and 5.2.
    */
   angularDiameter: NumberValue;
