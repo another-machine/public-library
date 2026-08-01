@@ -88,10 +88,13 @@ crt     filter, single draw.</pre>
               a frame or two and then stops, because nothing accumulates.
             </p>
             <p class="ht-type-prose u-dim">
-              Curvature runs &minus;1 to 1. The distortion is normalised by how
-              far the corner moved, so the corners stay pinned to the frame and
-              the sign is free to go either way &mdash; positive bulges the
-              middle out, negative pulls it in.
+              Curvature runs &minus;1 to 1: positive bulges the middle out,
+              negative pulls it in. Either way the image is zoomed to fill the
+              frame without reaching past the edge of the source. Which point
+              decides that zoom changes with the sign &mdash; the corner going
+              one way, the middle of each side going the other &mdash; and
+              pinning the corner alone leaves pincushion sampling 30% too far
+              at &minus;1, which clamps into a smear down each side.
             </p>
 
             <h3>Resolution</h3>

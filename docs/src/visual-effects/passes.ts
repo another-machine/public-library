@@ -253,14 +253,20 @@ void main() {
   float r2       = dot(centered, centered);
   float bend     = 1.0 - (r2 * r2) * (1.8 * curve);
 
-  // Normalising by the bend AT THE CORNER pins the corners to the frame, so the
-  // image fills it at any curvature and the sign is free to go either way:
-  // positive bulges the middle out (barrel), negative pulls it in (pincushion).
-  // r2 peaks at 0.5 in the corner, so (r2 * r2) peaks at 0.25. Both bend and
-  // cornerBend stay in [0.55, 1.45], so neither can divide by zero.
-  float cornerBend = 1.0 - 0.25 * (1.8 * curve);
+  // Zoom so the image fills the frame without ever reaching past the edge of
+  // the source. bend runs monotonically in r2 for a given sign, so the tightest
+  // point on the frame boundary is the corner when curvature is positive and an
+  // edge midpoint when it is negative; the smaller of the two covers both signs
+  // without a branch. r2 is 0.5 at the corner and 0.25 at an edge midpoint, so
+  // r2 * r2 is 0.25 and 0.0625.
+  //
+  // Pinning the corner alone — the obvious thing — leaves pincushion sampling
+  // 30% past the edge at -1, which clamps into a smear along the middle of each
+  // side. fill stays in [0.55, 1.45] either way, so it cannot divide by zero.
+  float fill = min(1.0 - 0.25   * (1.8 * curve),
+                   1.0 - 0.0625 * (1.8 * curve));
 
-  vec2  uv     = centered / (bend / cornerBend) + 0.5;
+  vec2  uv     = centered / (bend / fill) + 0.5;
   vec2  uvSafe = clamp(uv, vec2(0.001), vec2(0.999));
 
   // Blur and ghosting scale with how much distortion there is, not which way it

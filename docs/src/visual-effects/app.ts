@@ -91,7 +91,7 @@ export function example(): void {
       trail: { name: "trail", type: "range", value: 0.9, min: 0, max: 0.99, step: 0.01 },
       bloom: { name: "bloom", type: "range", value: 0.6, min: 0, max: 2, step: 0.01 },
       bloomThreshold: { name: "bloom threshold", type: "range", value: 0.55, min: 0, max: 1, step: 0.01 },
-      curvature: { name: "curvature (−1 pincushion … 1 barrel)", type: "range", value: 0.45, min: -1, max: 1, step: 0.01 },
+      curvature: { name: "curvature", type: "range", value: 0.45, min: -1, max: 1, step: 0.01 },
       scanLines: { name: "scan lines", type: "range", value: 240, min: 0, max: 900, step: 1 },
       chromatic: { name: "chromatic", type: "range", value: 0.0025, min: 0, max: 0.01, step: 0.0001 },
       grain: { name: "grain", type: "range", value: 0.025, min: 0, max: 0.08, step: 0.001 },
