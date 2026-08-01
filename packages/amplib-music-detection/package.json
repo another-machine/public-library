@@ -1,12 +1,20 @@
 {
   "name": "@amplib/music-detection",
   "description": "Real time detection of chromatic notes and combinations of notes from a device microphone.",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "main": "dist/index.js",
-  "private": "false",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://amplib.app/music-detection",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/another-machine/public-library.git"
+    "url": "git+https://github.com/another-machine/public-library.git",
+    "directory": "packages/amplib-music-detection"
   },
   "tsup": {
     "entry": [
@@ -17,13 +25,20 @@
     "format": "esm",
     "minify": false,
     "sourcemap": true,
-    "splitting": false
+    "splitting": false,
+    "external": [
+      "@amplib/music-theory"
+    ]
   },
   "scripts": {
     "build": "tsup",
-    "watch": "tsup --watch"
+    "watch": "tsup --watch",
+    "prepack": "npm run build"
   },
   "author": "Another Machine",
   "license": "Apache-2.0",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@amplib/music-theory": "^0.1.0"
+  }
 }

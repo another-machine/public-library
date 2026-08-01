@@ -3,7 +3,7 @@ import {
   Scale,
   Note,
   type Notation,
-} from "../../amplib-music-theory/src/index";
+} from "@amplib/music-theory";
 
 interface DetectToneChordTracking {
   value: number;
@@ -15,6 +15,14 @@ interface DetectToneChordTracking {
 }
 
 export class DetectTone {
+  /**
+   * 32768 is the maximum an AnalyserNode allows: at a 44.1kHz rate that is
+   * 1.35Hz per bin, which is what it takes to separate the semitones in the
+   * bottom octave — C2 and C#2 are under 4Hz apart.
+   */
+  static FFT_SIZE = 32768;
+  static SMOOTHING = 0.95;
+
   audioContext: AudioContext;
   analyser: AnalyserNode;
   frequencyData: Uint8Array;
@@ -29,6 +37,13 @@ export class DetectTone {
   constructor({ audioContext }: { audioContext: AudioContext }) {
     this.audioContext = audioContext;
     this.analyser = this.audioContext.createAnalyser();
+    // The analyser is configured BEFORE anything is derived from it. Both the
+    // buffer length and the note-to-bin mapping are functions of fftSize, so
+    // setting it afterwards — as this did until 2026-08-01 — silently made
+    // every index wrong by the ratio of the two sizes, and left a buffer that
+    // only covered the bottom sixteenth of the spectrum. A 440Hz tone read 0.
+    this.analyser.fftSize = DetectTone.FFT_SIZE;
+    this.analyser.smoothingTimeConstant = DetectTone.SMOOTHING;
     const bufferLengthFreq = this.analyser.frequencyBinCount;
     this.frequencyData = new Uint8Array(bufferLengthFreq);
     const bandHz =
@@ -54,8 +69,6 @@ export class DetectTone {
   ) {
     try {
       source.connect(this.analyser);
-      this.analyser.fftSize = 32768;
-      this.analyser.smoothingTimeConstant = 0.95;
       this.analyser.getByteFrequencyData(this.frequencyData);
     } catch (e) {
       throw e;
@@ -64,10 +77,7 @@ export class DetectTone {
 
   tick() {
     this.analyser.getByteFrequencyData(this.frequencyData);
-    const tracking: {
-      [notation in Notation]?: Partial<DetectToneChordTracking>;
-    } = {};
-    this.notes.forEach(({ notation }, i) => {
+    this.notes.forEach((_, i) => {
       // const items = [1, 2, 13, 14, 25, 26, -1, -2, -13, -14, -25, -26];
       const items = [1, 2, 13, 14, -1, -2, -13, -14];
       const neighbors = items.map((item) => item + i);
@@ -89,36 +99,11 @@ export class DetectTone {
       const valueNew = Math.pow(Math.min(1, freq / 128), 50);
       const factor = valueNew < valuePrev ? 0.0625 : 0.015625;
       const valueEased = valuePrev + (valueNew - valuePrev) * factor;
-      tracking[notation] = tracking[notation] || {
-        value: 0,
-        octaves: 0,
-        prominence: 0,
-      };
-      tracking[notation].octaves = (tracking[notation].octaves || 0) + 1;
-      tracking[notation].value = (tracking[notation].value || 0) + valueEased;
 
       this.frequencyValues[i] = valueEased;
     });
 
-    const entries = Object.entries(tracking) as [
-      Notation,
-      DetectToneChordTracking
-    ][];
-    const total = entries.reduce((a, b) => a + b[1].value, 0);
-    const noteData = entries.map(([notation, { octaves, value }]) => {
-      const prominence = value ? value / total : 0;
-      const index = Note.notations.indexOf(notation);
-      const ratio = value / octaves;
-      const result: DetectToneChordTracking = {
-        octaves,
-        value,
-        notation,
-        index,
-        prominence,
-        ratio,
-      };
-      return result;
-    });
+    const noteData = this.trackingFor(this.frequencyValues);
 
     // array of notes sorted by prominence
     const sorted = Array.from(noteData).sort(
@@ -134,16 +119,7 @@ export class DetectTone {
       [sorted[1], sorted[0], sorted[3]],
     ];
     // chord combinations sorted by avg prominence to determine which is most likely
-    const chordOptions = combos
-      .map((combo) => {
-        const key = Chord.keyFromNotations(combo.map((a) => a.notation));
-        // presence is the avg value of potential chord notes
-        const presence =
-          combo.reduce((a, { prominence }) => prominence + a, 0) / combo.length;
-        const chord = this.chords[key];
-        return { chord, key, presence };
-      })
-      .sort((a, b) => b.presence - a.presence);
+    const chordOptions = this.chordOptionsFor(combos);
     // the first _chord_ in the array (most prominent might not be chord!)
     const firstChord = chordOptions.find(({ chord }) => Boolean(chord));
     // finding the previous chord in the array
@@ -175,17 +151,75 @@ export class DetectTone {
   }
 
   /**
-   * Analyze an audio buffer to estimate the Key/Chord
+   * Chord candidates for a set of combinations, most present first.
+   *
+   * Both the live tick and the offline analysis go through this. They had
+   * their own copies of it once and the copies disagreed — the offline one
+   * built its combinations out of the loudest *notes* rather than the loudest
+   * pitch classes, so its top four were usually four octaves of the same note
+   * and it could never name a triad.
+   */
+  private chordOptionsFor(combos: DetectToneChordTracking[][]) {
+    return combos
+      .map((combo) => {
+        const key = Chord.keyFromNotations(combo.map((a) => a.notation));
+        // presence is the avg value of potential chord notes
+        const presence =
+          combo.reduce((a, { prominence }) => prominence + a, 0) / combo.length;
+        const chord = this.chords[key];
+        return { chord, key, presence };
+      })
+      .sort((a, b) => b.presence - a.presence);
+  }
+
+  /**
+   * Fold per-note values into one track per pitch class, the way `tick` does.
+   */
+  private trackingFor(values: ArrayLike<number>): DetectToneChordTracking[] {
+    const tracking: {
+      [notation in Notation]?: { value: number; octaves: number };
+    } = {};
+    this.notes.forEach(({ notation }, i) => {
+      const track = (tracking[notation] = tracking[notation] || {
+        value: 0,
+        octaves: 0,
+      });
+      track.value += values[i] || 0;
+      track.octaves += 1;
+    });
+
+    const entries = Object.entries(tracking) as [
+      Notation,
+      { value: number; octaves: number }
+    ][];
+    const total = entries.reduce((a, b) => a + b[1].value, 0);
+    return entries.map(([notation, { value, octaves }]) => ({
+      value,
+      octaves,
+      notation,
+      index: Note.notations.indexOf(notation),
+      prominence: total ? value / total : 0,
+      ratio: value / octaves,
+    }));
+  }
+
+  /**
+   * Analyze an audio buffer to estimate the Key/Chord.
+   *
+   * Offline, so it reads the whole buffer rather than a moving window, and
+   * none of it touches the instance state a concurrent `tick` is smoothing —
+   * this used to assign its averages straight onto `frequencyValues`.
+   *
    * @param buffer AudioBuffer to analyze
    * @returns Promise resolving to the estimated Key/Chord label
    */
   async analyzeKey(buffer: AudioBuffer): Promise<string> {
     try {
-      // Create an offline audio context
-      // We don't need to render the whole file at high sample rate if we just want key
-      // But let's stick to the buffer's rate for simplicity
+      // Mono is enough for a key, but the rate has to stay the buffer's own:
+      // `frequencyIndices` are bins of THIS context's Nyquist, and resampling
+      // would move every note's bin without moving the index that reads it.
       const offlineCtx = new OfflineAudioContext(
-        1, // Mono is enough for key detection usually
+        1,
         buffer.length,
         buffer.sampleRate
       );
@@ -193,16 +227,16 @@ export class DetectTone {
       const source = offlineCtx.createBufferSource();
       source.buffer = buffer;
 
+      // Same FFT size as the live analyser, so the shared `frequencyIndices`
+      // mean the same thing here. A smaller one silently reads the wrong bins
+      // — and past the end of a shorter array, which accumulates undefined.
       const analyser = offlineCtx.createAnalyser();
-      analyser.fftSize = 2048;
+      analyser.fftSize = DetectTone.FFT_SIZE;
+      analyser.smoothingTimeConstant = DetectTone.SMOOTHING;
 
-      // We need to capture frequency data.
-      // Since we can't easily get data out of OfflineContext during render without ScriptProcessor
-      // And ScriptProcessor is deprecated but works...
-      // Alternatively, we can just pick a few chunks of the buffer, create a real AudioContext (suspended),
-      // decode them, and analyze them? No, that's slow.
-
-      // Let's use the ScriptProcessor approach for now as it's the most standard way to get data from OfflineCtx
+      // ScriptProcessor is deprecated, and is still the only way to sample an
+      // analyser as an offline context renders: AudioWorklet cannot see one,
+      // and rendering to a buffer first would mean bringing our own FFT.
       const scriptNode = offlineCtx.createScriptProcessor(2048, 1, 1);
 
       source.connect(analyser);
@@ -210,80 +244,40 @@ export class DetectTone {
       scriptNode.connect(offlineCtx.destination);
 
       const frequencyData = new Uint8Array(analyser.frequencyBinCount);
-      const accumulatedTones = new Float32Array(this.notes.length);
-      let samplesTaken = 0;
+      const accumulated = new Float32Array(this.notes.length);
+      let framesTaken = 0;
 
       scriptNode.onaudioprocess = () => {
         analyser.getByteFrequencyData(frequencyData);
-
-        // Accumulate energy for each note bin
-        this.frequencyIndices.forEach((freqIndex, i) => {
-          // Simple accumulation
-          accumulatedTones[i] += frequencyData[freqIndex];
+        this.frequencyIndices.forEach((bin, i) => {
+          accumulated[i] += frequencyData[bin];
         });
-        samplesTaken++;
+        framesTaken++;
       };
 
       source.start(0);
       await offlineCtx.startRendering();
 
-      if (samplesTaken === 0) return "";
+      if (!framesTaken) return "";
 
-      // Average the accumulated tones
-      const averagedTones = accumulatedTones.map((val) => val / samplesTaken);
+      const averaged = accumulated.map((value) => value / framesTaken);
+      const noteData = this.trackingFor(averaged);
+      if (!noteData.some(({ value }) => value > 0)) return "";
 
-      // Now use the existing logic to find the chord/key
-      // We need to mock the internal state that detect() uses
-      this.frequencyValues = Array.from(averagedTones); // Update internal state for reuse of logic?
-      // Actually, detect() uses this.frequencyValues.
-      // But detect() also does smoothing. Here we have the average over the whole song.
-
-      // Let's adapt the logic from detect() but using our averaged values
-      const total = averagedTones.reduce((a, b) => a + b, 0);
-      if (total === 0) return "";
-
-      const noteData = this.notes.map((note, i) => {
-        const value = averagedTones[i];
-        const notation = note.notation;
-        const octaves = 1; // Simplified
-        const prominence = value / total;
-        return {
-          value,
-          octaves,
-          prominence,
-          notation,
-          index: i,
-          ratio: value,
-        } as DetectToneChordTracking;
-      });
-
-      // Sort by prominence
-      const sorted = noteData.sort((a, b) => b.prominence - a.prominence);
-
-      // Check combos (same as detect)
-      const combos: DetectToneChordTracking[][] = [
+      const sorted = Array.from(noteData).sort(
+        (a, b) => b.prominence - a.prominence
+      );
+      const chordOptions = this.chordOptionsFor([
         [sorted[0], sorted[1], sorted[2], sorted[3]],
         [sorted[1], sorted[0], sorted[2], sorted[3]],
         [sorted[0], sorted[1], sorted[2]],
         [sorted[1], sorted[0], sorted[2]],
         [sorted[0], sorted[1], sorted[3]],
         [sorted[1], sorted[0], sorted[3]],
-      ];
+      ]);
 
-      const chordOptions = combos
-        .map((combo) => {
-          const key = Chord.keyFromNotations(combo.map((a) => a.notation));
-          const presence =
-            combo.reduce((a, { prominence }) => prominence + a, 0) /
-            combo.length;
-          const chord = this.chords[key];
-          return { chord, key, presence };
-        })
-        .sort((a, b) => b.presence - a.presence);
-
-      const firstChord = chordOptions.find(({ chord }) => Boolean(chord));
-      const option = firstChord || chordOptions[0];
-
+      const option =
+        chordOptions.find(({ chord }) => Boolean(chord)) || chordOptions[0];
       return option.chord ? option.chord.label : option.key;
     } catch (e) {
       console.error("Error analyzing Key:", e);
