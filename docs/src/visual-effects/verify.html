@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>verify</title>
+  </head>
+  <body>
+    <canvas id="c" style="width: 640px; height: 360px"></canvas>
+    <pre id="out">running…</pre>
+    <script type="module">
+      import { EffectChain } from "./chain";
+      import { field, bloom, crt } from "./passes";
+
+      const results = [];
+      const log = (k, v) => results.push([k, v]);
+
+      function baseParams(n) {
+        const slotRGB = new Float32Array(n * 3);
+        const slotW = new Float32Array(n);
+        for (let i = 0; i < n; i++) {
+          slotRGB[i * 3] = 0.2 + (i / n) * 0.8;
+          slotRGB[i * 3 + 1] = 0.9 - (i / n) * 0.5;
+          slotRGB[i * 3 + 2] = 0.4 + ((i * 3) % n) / n;
+          slotW[i] = 0.3 + 0.7 * ((i % 3) / 2);
+        }
+        return {
+          hues: n, slotRGB, slotW,
+          energy: 0.6, motion: 0.4, x: 0.5, y: 0.5, impulse: 0.2,
+          warp: 0.25, softness: 0.18, trail: 0.9,
+          bloom: 0.8, bloomThreshold: 0.4,
+          curvature: 0.45, scanLines: 240, chromatic: 0.0025, grain: 0.025,
+          blur: 0.35, degrade: 0.3, ghosting: 0.25, brightness: 1.05,
+        };
+      }
+
+      const canvas = document.getElementById("c");
+      log("canvas.clientWidth", canvas.clientWidth);
+
+      function stats(gl, w, h) {
+        const px = new Uint8Array(w * h * 4);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, px);
+        let sum = 0, max = 0, nonBlack = 0;
+        for (let i = 0; i < px.length; i += 4) {
+          const v = (px[i] + px[i + 1] + px[i + 2]) / 3;
+          sum += v;
+          if (v > max) max = v;
+          if (v > 4) nonBlack++;
+        }
+        return {
+          mean: +(sum / (px.length / 4)).toFixed(2),
+          max,
+          nonBlackPct: +((nonBlack / (px.length / 4)) * 100).toFixed(1),
+        };
+      }
+
+      try {
+        // ── 1. generator chain ────────────────────────────────────────────
+        const chain = new EffectChain(canvas, [field, bloom, crt]);
+        const gl = canvas.getContext("webgl2");
+        let p = baseParams(5);
+        for (let i = 0; i < 8; i++) chain.render(null, p);
+        log("drawingBuffer", `${canvas.width}x${canvas.height}`);
+        log("skipped", JSON.stringify(chain.skipped));
+        log("generator [field,bloom,crt]", JSON.stringify(stats(gl, canvas.width, canvas.height)));
+
+        // ── 2. feedback is a real ping-pong, not a one-frame echo ─────────
+        // A counter pass: each frame writes its own previous output plus 1/255.
+        // After N frames the value must be exactly N. This is the property the
+        // NTSC demo did NOT have — its uPrev was the previous INPUT, so this
+        // pass would have sat at 1 forever.
+        const counter = {
+          name: "counter",
+          inputs: { feedback: true },
+          frag: () => `void main() {
+            outColor = vec4(texture(uPrev, vUV).rgb + vec3(1.0 / 255.0), 1.0);
+          }`,
+        };
+        const cc = new EffectChain(canvas, [counter]);
+        const N = 17;
+        for (let i = 0; i < N; i++) cc.render(null, p);
+        const cs = stats(gl, canvas.width, canvas.height);
+        log(`counter after ${N} frames`, `max=${cs.max} expected=${N} → ${cs.max === N ? "PASS" : "FAIL"}`);
+        cc.dispose();
+
+        // Trail off vs on through the real field pass, same frame count.
+        const cold = new EffectChain(canvas, [field]);
+        const q = baseParams(5);
+        q.trail = 0;
+        for (let i = 0; i < 30; i++) cold.render(null, q);
+        const noTrail = stats(gl, canvas.width, canvas.height);
+        q.trail = 0.95;
+        for (let i = 0; i < 30; i++) cold.render(null, q);
+        const withTrail = stats(gl, canvas.width, canvas.height);
+        log("field trail=0", JSON.stringify(noTrail));
+        log("field trail=0.95", JSON.stringify(withTrail));
+        cold.dispose();
+
+        // ── 3. filter chain over an external source ───────────────────────
+        const bars = document.createElement("canvas");
+        bars.width = 320; bars.height = 180;
+        const bx = bars.getContext("2d");
+        const cols = ["#c0c0c0","#c0c000","#00c0c0","#00c000","#c000c0","#c00000","#0000c0"];
+        cols.forEach((c, i) => { bx.fillStyle = c; bx.fillRect(i * 46, 0, 47, 180); });
+
+        const filterChain = new EffectChain(canvas, [bloom, crt]);
+        for (let i = 0; i < 4; i++) filterChain.render(bars, p);
+        log("filter [bloom,crt] on canvas src", JSON.stringify(stats(gl, canvas.width, canvas.height)));
+        log("filter skipped", JSON.stringify(filterChain.skipped));
+
+        // ── 4. defines change recompiles, does not throw ──────────────────
+        for (const n of [1, 7, 12, 5, 7]) {
+          const np = baseParams(n);
+          chain.render(null, np);
+        }
+        log("defines 1/7/12/5/7", JSON.stringify(stats(gl, canvas.width, canvas.height)));
+
+        // ── 5. dispose ────────────────────────────────────────────────────
+        filterChain.dispose();
+        chain.dispose();
+        chain.render(null, p); // must be a safe no-op
+        log("dispose then render", "no throw");
+        log("gl error after all", gl.getError());
+
+        // ── 6. small captures, so the result can actually be looked at ────
+        const shot = document.createElement("canvas");
+        shot.style.width = "320px";
+        shot.style.height = "180px";
+        document.body.appendChild(shot);
+
+        const genChain = new EffectChain(shot, [field, bloom, crt]);
+        const gp = baseParams(5);
+        // Realistic presences: a moving subset, the way AVVA's top-2 rule
+        // produces them — not every slot lit at once.
+        for (let i = 0; i < 5; i++) gp.slotW[i] = Math.max(0, Math.sin(1.4 + (i / 5) * 6.283)) ** 2;
+        for (let i = 0; i < 45; i++) genChain.render(null, gp);
+        window.__shotGenerator = shot.toDataURL("image/jpeg", 0.72);
+
+        const filtChain = new EffectChain(shot, [bloom, crt]);
+        for (let i = 0; i < 6; i++) filtChain.render(bars, gp);
+        window.__shotFilter = shot.toDataURL("image/jpeg", 0.72);
+
+        // Same chain, curvature and scanlines off — isolates that the CRT knobs
+        // are actually doing something rather than the look coming from bloom.
+        const flat = { ...gp, curvature: 0, scanLines: 0, degrade: 0, chromatic: 0, blur: 0 };
+        for (let i = 0; i < 6; i++) filtChain.render(bars, flat);
+        window.__shotFlat = shot.toDataURL("image/jpeg", 0.72);
+
+        log("captures", "generator / filter / filter-flat ready");
+      } catch (e) {
+        log("THREW", e && e.message ? e.message : String(e));
+      }
+
+      document.getElementById("out").textContent = results
+        .map(([k, v]) => `${k.padEnd(32)} ${v}`)
+        .join("\n");
+      window.__verify = results;
+    </script>
+  </body>
+</html>

@@ -47,11 +47,19 @@ export function createForm<T extends Record<string, string | number>>({
   inputs,
   onInput,
   actions = [],
+  debounce = 500,
 }: {
   form: HTMLFormElement;
   inputs: FormInputMap<T>;
   onInput: (values: T, changed: (keyof T)[]) => void;
   actions?: { name: string; action: (element: HTMLButtonElement) => void }[];
+  /**
+   * Milliseconds to wait after the last keystroke or drag before committing a
+   * value. The default suits a form whose handler is expensive. Set it to 0 for
+   * a control driving something already running every frame — a slider that
+   * only lands half a second after you let go reads as broken there.
+   */
+  debounce?: number;
 }): { values: T; setValue: (k: keyof T, value: string | number) => void } {
   form.addEventListener("submit", (e) => e.preventDefault());
   const values = Object.fromEntries(
@@ -63,9 +71,15 @@ export function createForm<T extends Record<string, string | number>>({
   function createDebouncedHandler<K extends keyof T>(
     inputKey: K,
     getValue: () => T[K],
-    milliseconds = 500
+    milliseconds = debounce
   ) {
     return () => {
+      if (milliseconds <= 0) {
+        values[inputKey] = getValue();
+        updateDataAttributes(String(inputKey), values[inputKey]);
+        onInput(values, [inputKey]);
+        return;
+      }
       const existingTimeout = timeouts.get(inputKey);
       if (existingTimeout) {
         clearTimeout(existingTimeout);
