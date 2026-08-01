@@ -10,7 +10,7 @@
   </head>
   <body>
     <header class="masthead">
-      <h1><a href="/">@amplib</a>/<wbr />visual-effects</h1>
+      <h1><a href="/">@amplib</a>/: visual-effects</h1>
       <div class="ht-arrange-row">
         <a
           href="https://github.com/another-machine/public-library/tree/visual-effects-prototype/docs/src/visual-effects"
@@ -21,7 +21,6 @@
 
     <main class="doc">
       <section>
-        <p class="ht-type-eyebrow">Prototype &mdash; not a package</p>
         <h2>One interface for generators and filters</h2>
         <p class="ht-type-prose u-dim">
           AVVA's renderer synthesises images from uniforms. A CRT filter
@@ -33,13 +32,17 @@
         </p>
         <p class="ht-type-prose u-dim">
           A pass that sets <code>source</code> is a filter and receives
-          <code>uSrc</code>. A pass that does not is a generator. The chain feeds
-          each pass's output to the next either way.
+          <code>uSrc</code>. A pass that does not is a generator. The chain
+          feeds each pass's output to the next either way.
         </p>
 
         <div class="ht-arrange-sidebar">
           <div class="ht-arrange-stack">
-            <canvas data-canvas class="ht-media-flush" style="aspect-ratio: 16 / 9; width: 100%"></canvas>
+            <canvas
+              data-canvas
+              class="ht-media-flush"
+              style="aspect-ratio: 16 / 9; width: 100%"
+            ></canvas>
 
             <p class="ht-type-eyebrow">Active chain</p>
             <pre class="code"><span data-output="chain"></span></pre>
@@ -53,13 +56,15 @@
             <p><input data-file type="file" accept="video/*" /></p>
 
             <h3>The three passes</h3>
-            <pre class="code">field   generator + feedback + compile-time defines.
+            <pre class="code">
+field   generator + feedback + compile-time defines.
         N_HUES is a #define, so the hues slider recompiles.
 
 bloom   filter + a private quarter-res ping-pong buffer
         + a four-step draw hook.
 
-crt     filter, single draw.</pre>
+crt     filter, single draw.</pre
+            >
 
             <h3>Three decisions in the CRT pass</h3>
             <p class="ht-type-prose u-dim">
@@ -99,7 +104,8 @@ crt     filter, single draw.</pre>
             <h3>No domain data anywhere</h3>
             <p class="ht-type-prose u-dim">
               The params below are neutral: energy, motion, x, y, impulse. Here
-              they come from a few LFOs; in AVVA, from an <code>AudioFrame</code>
+              they come from a few LFOs; in AVVA, from an
+              <code>AudioFrame</code>
               through an adapter at the call site. The chain cannot tell which.
             </p>
             <p class="ht-type-prose u-dim">
