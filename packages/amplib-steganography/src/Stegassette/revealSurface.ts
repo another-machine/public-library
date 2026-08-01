@@ -3,7 +3,7 @@
  *
  * Encoding hid a payload in a cover's pixels, so reading it back develops the
  * cover again: a base canvas holds the reconstruction, an overlay canvas holds
- * the encoded image, and pixels are erased from the overlay in the cartridge's
+ * the encoded image, and pixels are erased from the overlay in the stegassette's
  * own traversal order as they are read.
  *
  * This module owns only that mechanism. Two things are built on top of it, and
@@ -12,7 +12,7 @@
  *
  *   SeekableReveal  — you drive it, by fraction. `stega.now` drives it from its
  *                     own audio playhead; `animateReveal` drives it off a clock
- *                     for cartridges with no audio.
+ *                     for stegassettes with no audio.
  *   RevealPlayer    — drives itself, owning the AudioBuffer and playhead for
  *                     one or more audio tracks (see ./player).
  *
@@ -240,8 +240,8 @@ export interface RevealSpan {
 /**
  * Compute the reveal span for a decoded entry.
  *
- * Pass `null` to sweep the whole interior — that is what a cartridge with no
- * timed payload (a data-only cartridge) reveals.
+ * Pass `null` to sweep the whole interior — that is what a stegassette with no
+ * timed payload (a data-only stegassette) reveals.
  */
 export function revealSpanForEntry(
   entry: DecodedEntry | null,
@@ -328,7 +328,7 @@ export class SeekableReveal {
 }
 
 /**
- * Run a reveal off the clock rather than a playhead, for cartridges with no
+ * Run a reveal off the clock rather than a playhead, for stegassettes with no
  * audio to sync to. Returns a cancel function.
  *
  * Uses setInterval rather than requestAnimationFrame deliberately: a

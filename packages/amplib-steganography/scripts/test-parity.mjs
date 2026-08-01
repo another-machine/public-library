@@ -63,9 +63,9 @@ check("TRAVERSAL_NAMES order unchanged", sameList(S.TRAVERSAL_NAMES, [
 ]), S.TRAVERSAL_NAMES.join(","));
 
 // "none" is an APPENDED keyless keymap — no key pixel at all. The lab's
-// steg-core.js does not have it, so a keyless cartridge will not decode there
+// steg-core.js does not have it, so a keyless stegassette will not decode there
 // until it is ported; every pre-existing name is untouched, so every existing
-// cartridge still decodes on both sides.
+// stegassette still decodes on both sides.
 check("KEYMAP_NAMES order unchanged", sameList(S.KEYMAP_NAMES, [
   "adjacent", "poles", "mirror-x", "mirror-y", "offset", "rotate",
   "none",
@@ -252,7 +252,7 @@ check("CODEC_VERSION is set and dated", /^\d{4}\.\d{2}\.\d{2}$/.test(S.CODEC_VER
       mixed[0] === chans[0][0] && mixed[1] === chans[1][0] && mixed[M] === chans[0][1]);
   }
 
-  // And end-to-end, because the tail NaNs reached real cartridges: encode
+  // And end-to-end, because the tail NaNs reached real stegassettes: encode
   // stereo block-layout audio into an image and read it back. Compared against
   // the SAME audio through `planar` rather than against the input floats, so
   // the assertion is exact at every bit depth instead of quantization-tolerant

@@ -68,7 +68,7 @@ Sheds `machines/live` and `machines/geese-basement`. `machines/stega` gets retir
 ### `ja-k-e/stega-now` → `stega.now` — the stegassette family
 
 ```
-index.html              /                player + cartridge library
+index.html              /                player + stegassette library
 make/                   /make            the editor (from labs)
 live/                   /live            the 16 performances
 geese/                  /geese           geese basement
@@ -77,7 +77,7 @@ audio-console/          /audio-console   existing
 lib/
   steg-core.js                           one vendored codec
   reveal.js                              one reveal player
-media/live/, media/geese/                the cartridge PNGs
+media/live/, media/geese/                the stegassette PNGs
 ```
 
 One public repo, one Netlify site, **no build step** — everything stays drop-a-file-and-serve.
@@ -214,7 +214,7 @@ Two findings logged, neither caused by this work:
    - **Batched uploads.** Erasing writes alpha 0 into a held `ImageData` and uploads only the touched bounding box per flush. `player.ts` used a `clearRect` per pixel, which made a deep seek cost hundreds of milliseconds because the work scales with how much of the image the jump reveals.
    - **`animateReveal` uses `setInterval`, not `requestAnimationFrame`.** A backgrounded tab stops serving frames, which would leave the image half-developed, whereas clock-measured progress still finishes. (`RevealPlayer` keeps rAF, which is correct there — it is synced to the audio clock, so a backgrounded tab simply catches up on return because `fillIdx` is derived from the clock rather than incremented per frame.)
 
-   Verified in-browser against a real 787² cartridge: `SeekableReveal` reveals monotonically (44.9% → 72.5% → 100% cleared), reaches full coverage at `seek(1)`, treats a backwards seek as a no-op (erasure is one-way), and `reset()` restores. `animateReveal(600ms)` completed in 630 ms at 100%. `RevealPlayer`'s track span matches `revealSpanForEntry` exactly (46 → 170570, permuted), and driving its per-frame path gives 44.9% → 58.7 → 72.5 → 86.2 → 100%. Its full public API is intact, and `geese-basement`, `live`, `modulo`, and `docs` all still build.
+   Verified in-browser against a real 787² stegassette: `SeekableReveal` reveals monotonically (44.9% → 72.5% → 100% cleared), reaches full coverage at `seek(1)`, treats a backwards seek as a no-op (erasure is one-way), and `reset()` restores. `animateReveal(600ms)` completed in 630 ms at 100%. `RevealPlayer`'s track span matches `revealSpanForEntry` exactly (46 → 170570, permuted), and driving its per-frame path gives 44.9% → 58.7 → 72.5 → 86.2 → 100%. Its full public API is intact, and `geese-basement`, `live`, `modulo`, and `docs` all still build.
 
 5. ✅ **The IIFE bundle exists and is published.**
 
@@ -224,7 +224,7 @@ Two findings logged, neither caused by this work:
 
    The Pages workflow now builds the package and emits `amplib.app/lib/stegassette.js` plus a version-stamped `stegassette-<CODEC_VERSION>.js`, so a consumer can pin one build while the unversioned name tracks latest.
 
-   Verified in a browser via plain `<script src>` against a real cartridge: 68 exports present, correct `CODEC_VERSION`, container round-trip byte-exact under `difference`/`hilbert`/`poles`, the `keyMap` guard still fires after bundling, a real 787² cartridge decodes to 4 entries with 511,572 audio samples at 11.6 kHz, `reconstructCover` completes in 318 ms, and `createRevealPlayer` builds a working player element in 161 ms.
+   Verified in a browser via plain `<script src>` against a real stegassette: 68 exports present, correct `CODEC_VERSION`, container round-trip byte-exact under `difference`/`hilbert`/`poles`, the `keyMap` guard still fires after bundling, a real 787² stegassette decodes to 4 entries with 511,572 audio samples at 11.6 kHz, `reconstructCover` completes in 318 ms, and `createRevealPlayer` builds a working player element in 161 ms.
 
    > ~~Note: `tsup`'s `dts` step is now set to `false`.~~ **Resolved 2026-07-30 — `dts` is back to `true` and the package ships declarations.** Three independent causes, none of them `StegaCassette` being obsolete:
    >
@@ -246,7 +246,7 @@ Two findings logged, neither caused by this work:
 
 ### Phase 2 — flip consumers, easiest first
 
-7. **`stega-now`** — decode and playback only, smallest surface. Verify against a cartridge from each job set.
+7. **`stega-now`** — decode and playback only, smallest surface. Verify against a stegassette from each job set.
 8. **`stegassette-website`** — optional now that it is frozen and out of scope. If touched at all, replace the hand-rolled `public/scripts/steg-reconstruction.js` with `reconstructCover` and verify against its 16 PNGs (Phase 0 established they all decode). Otherwise leave it.
 9. **`labs/index.html` + batch runners** — the hard one: encode path, the inline-Blob worker's `importScripts`, `OffscreenCanvas`, and Node CJS `require`. The IIFE global build exists specifically so `<script src>` and `importScripts` keep working unchanged. Verify: re-run `jobs:rhir:png` and diff output PNGs byte-for-byte.
 10. **`machines/stega`** — retire the machine, but **keep `StegaCassette.ts` in the package**: the untracked iOS app in `~/projects/another-machine/stega-player` is a Swift port of that format and would be stranded (see §1). Repoint the `docs/src/index.html` entry at `stega.now`. ~~and fix the `.d.ts` build in place rather than by deletion~~ — ✅ **the `.d.ts` build was fixed in place 2026-07-30**, so retiring the machine is now purely a web-surface change with nothing type-related riding on it. `StegaCassette` stays, and is now *typed* for the first time.
@@ -261,7 +261,7 @@ Cheaper than it looks. Both `index.ts` files use exactly **one** package API —
 12. Move the media: `live/src/media` (89 MB) and `geese-basement/src/media` (48 MB) → `stega-now/media/`. Both sets are currently **byte-identical to `labs/jobs/`**, so this is a move, not a reconciliation. Keep `generate-thumbs.js` with the jobs pipeline, which is where thumbnails belong.
 13. Delete both machines from `public-library`, remove their two build-and-move blocks from `.github/workflows/main.yml`, and drop the `Live` entry from `docs/src/index.html`. (`geese-basement` was never listed there — it was an unlisted deploy.)
 
-**Gate:** each gallery plays and reveals every cartridge in its set, verified in-browser, before the old deploy is removed.
+**Gate:** each gallery plays and reveals every stegassette in its set, verified in-browser, before the old deploy is removed.
 
 ### Phase 4 — split the repos
 
@@ -271,7 +271,7 @@ Cheaper than it looks. Both `index.ts` files use exactly **one** package API —
 
 ### Phase 5 — domains
 
-17. `stega.now` → player at `/`, plus `/make`, `/live`, `/geese`, `/me`, `/audio-console`. One Netlify site. Keep `/` exactly as it is — it is what `?src=` links and encoded cartridges point at.
+17. `stega.now` → player at `/`, plus `/make`, `/live`, `/geese`, `/me`, `/audio-console`. One Netlify site. Keep `/` exactly as it is — it is what `?src=` links and encoded stegassettes point at.
 18. `make.stega.now` → keep as an alias redirecting to `stega.now/make`, so existing links survive.
 19. **Leave forwarding stubs at `amplib.app/live` and `amplib.app/geese-basement`.** Note GitHub Pages has no `_redirects` equivalent, so these must be small `index.html` pages with a `<meta http-equiv="refresh">` and a `<link rel="canonical">`, emitted into the Pages output by the workflow. Do not just delete the paths — `amplib.app/live` is linked from anothermachine.info and has been shared.
 20. `amplib.app` becomes the library's own site: packages, docs, non-stegassette machines, and `/lib/stegassette.js`.
@@ -309,7 +309,7 @@ Also in that repo: `amplib.app.live.png` (664 KB) and `amplib.app.geese-basement
 
 `/live` and `/geese` remain hand-built pages, not collections folded into the player.
 
-The reason is a boundary worth writing down: **the player's library is local storage, not a publishing surface.** It is the viewer's own shelf — cartridges they added, held in their browser's IndexedDB. Curated public sets are a different thing and belong in their own pages. Keeping them separate also preserves each gallery's bespoke design, and drops Parcel from both.
+The reason is a boundary worth writing down: **the player's library is local storage, not a publishing surface.** It is the viewer's own shelf — stegassettes they added, held in their browser's IndexedDB. Curated public sets are a different thing and belong in their own pages. Keeping them separate also preserves each gallery's bespoke design, and drops Parcel from both.
 
 So `stega.now` has two distinct modes, and they should not be conflated:
 
