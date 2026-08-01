@@ -1194,6 +1194,13 @@
     background-color: var(--ht-paper);
   }
 
+  /* The masthead names the site, it is not the page's headline — at display
+     size it outweighed the entries it sits above. Title size keeps it on the
+     scale, and the rule under the bar is what marks it as a header. */
+  .masthead h1 {
+    font-size: var(--ht-text-title);
+  }
+
   /* doc: the reference page — a run of entries, one per thing documented ----- */
   .doc {
     display: flex;
