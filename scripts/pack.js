@@ -1,8 +1,11 @@
 import { execSync } from "child_process";
 
+// Packages to build and pack tarballs for. Not the same as the published set —
+// some of these have never been published. `amplib-color` is deliberately
+// absent: it is built and tested, but held back until its shape is settled.
+// Add it here when it publishes.
 const directories = [
   "amplib-devices",
-  "amplib-hue-wheel",
   "amplib-lexicon",
   "amplib-music-detection",
   "amplib-music-theory",
