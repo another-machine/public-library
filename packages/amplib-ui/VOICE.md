@@ -4,7 +4,7 @@ Portable guidance for an agent writing the words in one of these interfaces:
 catalog entries, reference pages, README prose, code comments, empty states,
 error text.
 
-The stylesheets already refuse decoration — no colour, no shadow, no radius.
+The stylesheets already refuse decoration — no color, no shadow, no radius.
 The writing refuses it the same way. A system that says everything with
 polarity and a hairline cannot be narrated in a voice that oversells.
 
@@ -58,7 +58,7 @@ rich, comprehensive, cutting-edge, simply, just, of course, obviously.
 under 9. A long one is fine when the thought is long. Follow it with a short
 one.
 
-**Second person for instructions, third for behaviour.** "Choose a folder in
+**Second person for instructions, third for behavior.** "Choose a folder in
 the controller." / "The wheel never inspects them."
 
 ## Catalog entries
@@ -96,7 +96,7 @@ Or a short sentence-case phrase naming the idea:
 > The value contract · Tradeoffs, stated plainly
 
 Never a question, never a gerund label ("Getting started", "Understanding
-colour"), never a number ("3 ways to…").
+color"), never a number ("3 ways to…").
 
 ## README shape
 
@@ -118,12 +118,12 @@ at is believed about what it is good at.
 A comment earns its place by holding what the code cannot:
 
 - a constraint from outside the file (an API that fails a certain way, a
-  browser behaviour, a hardware limit)
+  browser behavior, a hardware limit)
 - a measured number and where it came from
 - a unit, a range, or a coordinate convention
 - why an obvious-looking line is load-bearing
 
-Not: a restatement of the next line, a defence of the approach, or history the
+Not: a restatement of the next line, a defense of the approach, or history the
 reader cannot see. Density lands near one comment word per line of code across
 these packages, and the dense files earn it with measurements.
 
@@ -131,9 +131,19 @@ Never write "note that", "actually", "simply", or "of course".
 
 ## Spelling and typography
 
-**Prose leans British, identifiers stay American.** `colour`, `normalised`,
-`behaviour` in sentences; `color`, `normalize` in code, filenames and package
-names. Inside `@amplib/color`, prose follows the package.
+**American English everywhere.** `color`, `normalize`, `behavior`, `center`,
+`recognize`, `catalog`, `analyze`. In prose, in identifiers, in filenames, in
+commit messages.
+
+There is British spelling scattered through this repo. It is not a convention
+and it is not house voice — it is drift from AI-assisted writing, and every
+term traces back to a commit with a `Co-Authored-By: Claude` trailer. Do not
+learn the rule from the surrounding text; the surrounding text is wrong. It is
+being cleaned up.
+
+The exception is a name the platform owns. Web Audio spells it `AnalyserNode`
+and `createAnalyser()`, so code that touches those keeps the platform's
+spelling. Prose about it says "analyzer".
 
 **Straight quotes. Spaced en dash or em dash, used sparingly** — one per
 paragraph is plenty, and a colon is usually the better tool.
@@ -159,7 +169,7 @@ performing rather than describing:
 | "not X, but Y" where nobody proposed X | state Y |
 | "the whole point of", "the whole reason" | usually deletable entire |
 | "rather than", "instead of" three times on a page | keep the one that is a real gotcha |
-| a was/now table comparing to an earlier version | describe the current behaviour |
+| a was/now table comparing to an earlier version | describe the current behavior |
 | the premise restated in the second, third and fourth file | keep the first |
 | "at all", "genuinely", "essentially", "deliberately" | delete the word |
 | every paragraph the same length | vary, or cut |
