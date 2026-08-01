@@ -20,14 +20,7 @@ type FormData = {
   brightness: number;
 };
 
-/**
- * oklch → linear sRGB.
- *
- * This lives here rather than in @amplib/color because that package does not
- * export it: its colour maths is private and goes RGB → hue-angle only, with no
- * notion of L or C. It is the obvious home if a second consumer ever wants the
- * same function — but that is a separate change, and nothing here waits on it.
- */
+/** oklch → linear sRGB. @amplib/color keeps its own colour maths private. */
 function oklchToLinearRGB(L: number, C: number, H: number): [number, number, number] {
   const hRad = (H * Math.PI) / 180;
   const a = C * Math.cos(hRad);
@@ -54,8 +47,7 @@ export function example(): void {
   const fileInput = section.querySelector<HTMLInputElement>("[data-file]")!;
   form.innerHTML = "";
 
-  // External TexImageSource for the filter-only chains: a test pattern, so the
-  // `inputs.source` path is exercised without asking for a camera or a file.
+  // External TexImageSource for the filter-only chains.
   const bars = document.createElement("canvas");
   bars.width = 640;
   bars.height = 360;
@@ -111,15 +103,8 @@ export function example(): void {
   let paletteN = -1;
 
   /**
-   * Per-slot colour: the wheel divided into equal sectors, each sector's centre
-   * hue taken straight to linear RGB for the shader. Rebuilt only when the slot
-   * count changes — which is also when `field` recompiles for its new N_HUES.
-   *
-   * The sectors are spaced in PERCEPTUAL hue, which is the whole point of
-   * @amplib/color: equal steps of display (HSV) hue do not look equal, so a
-   * palette divided that way comes out visibly lopsided. Because oklch takes a
-   * perceptual angle directly, nothing needs converting here — spacing evenly
-   * in the space the colour is specified in is already the right answer.
+   * Equal sectors of perceptual hue, straight to linear RGB. Rebuilt when the
+   * slot count changes, which is also when `field` recompiles for its N_HUES.
    */
   function rebuildPalette(n: number): void {
     if (n === paletteN) return;
@@ -136,11 +121,7 @@ export function example(): void {
 
   const chain = new EffectChain<Params>(canvas, []);
 
-  /**
-   * The same CRT pass ends a generator chain and a video chain alike. Only the
-   * front of the array changes: `field` is dropped rather than reconfigured
-   * when an external image supplies the signal.
-   */
+  /** Only the front of the array changes; `field` is dropped, not reconfigured. */
   function applyChain(source: string): void {
     chain.setPasses(source === "field" ? [field, bloom, crt] : [bloom, crt]);
     chainOut.textContent =
@@ -179,8 +160,7 @@ export function example(): void {
     const n = Math.round(values.hues);
     rebuildPalette(n);
 
-    // Stand-in for a domain signal. AVVA fills these from an AudioFrame; a
-    // video tool would leave them at rest and use only the crt.* half.
+    // Stand-in for a domain signal.
     const beat = Math.floor(t * 0.5);
     if (beat !== lastBeat) {
       lastBeat = beat;

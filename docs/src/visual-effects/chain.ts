@@ -1,14 +1,9 @@
 /**
  * PROTOTYPE — a pass-chain runtime for GPU visual effects.
  *
- * A generator synthesises an image from uniforms. A filter transforms an image
- * it is handed. They differ in whether they sample an input, and in nothing
- * else, so a pass says which it is by setting `inputs.source` or leaving it
- * off. The chain feeds each pass's output to the next either way.
- *
- * Nothing here knows about audio, video, or colour. A pass declares what it
- * reads, what it compiles to, and how to turn params into uniforms. Domain data
- * is adapted at the call site.
+ * A pass that samples an input image sets `inputs.source` and is a filter; one
+ * that does not is a generator. The chain feeds each pass's output to the next
+ * either way, and knows nothing about audio, video, or colour.
  *
  * Lives in docs/ rather than packages/ until it earns a name.
  */
@@ -81,22 +76,16 @@ export interface PassRuntime {
 
 export interface PassDef<P> {
   name: string;
-  /**
-   * Output size relative to the canvas. Default 1. A CRT chain wants its signal
-   * passes low (0.5) and its screen pass at 1, which is why `uRes` and
-   * `uOutRes` are separate uniforms.
-   */
+  /** Output size relative to the canvas. Default 1. See `uRes` / `uOutRes`. */
   scale?: number;
   /**
-   * Compile-time specialisation. The program cache is keyed by name + these, so
-   * changing one recompiles rather than rebranching in the shader. AVVA's
-   * N_HUES is this.
+   * Compile-time specialisation. The program cache is keyed by name + these.
    */
   defines?: (params: P) => Defines;
   inputs?: {
-    /** Sample the previous pass's output (or the chain's source) as `uSrc`. */
+    /** Previous pass's output, or the chain's source, as `uSrc`. */
     source?: boolean;
-    /** Sample this pass's own previous-frame output as `uPrev`. */
+    /** This pass's own previous-frame output, as `uPrev`. */
     feedback?: boolean;
   };
   /**
@@ -107,7 +96,7 @@ export interface PassDef<P> {
   frag: (defines: Defines) => string | Record<string, string>;
   /** Optional per-step vertex overrides, keyed the same way as `frag`. */
   vert?: (defines: Defines) => Record<string, string>;
-  /** Neutral params + context → uniform values. The only door domain data enters by. */
+  /** Params + context → uniform values. */
   uniforms?: (params: P, ctx: FrameContext) => Record<string, UniformValue>;
   buffers?: BufferDef[];
   /** Replaces the default single draw into `output`. */
@@ -142,10 +131,7 @@ void main() {
   gl_Position = vec4(p, 0.0, 1.0);
 }`;
 
-/**
- * Value noise + fbm, lifted from AVVA's GLSL_NOISE so field styles port over
- * unchanged. Every pass gets it; unused functions cost nothing after compile.
- */
+/** Value noise + fbm. Every pass gets it; unused functions cost nothing. */
 const GLSL_NOISE = `vec2 _h2(vec2 p) {
   p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
   return fract(sin(p) * 43758.5453123) * 2.0 - 1.0;
@@ -175,9 +161,7 @@ function preamble(
   const defLines = Object.entries(defines)
     .map(([k, v]) => `#define ${k} ${v}`)
     .join("\n");
-  // Declared here rather than in each step's body: a pass's buffers are visible
-  // to every one of its steps, and making each step redeclare them would mean a
-  // step that only writes a buffer still has to name it.
+  // A pass's buffers are visible to every one of its steps.
   const bufLines = bufferNames.map((n) => `uniform sampler2D ${n};`).join("\n");
   return `#version 300 es
 precision highp float;
@@ -187,10 +171,9 @@ out vec4 outColor;
 
 ${defLines}
 
-// Size of the buffer THIS pass renders into, in device px. A pass at scale 0.5
-// sees half of uOutRes here. Grain, scanlines and blur taps want this one.
+// The buffer THIS pass renders into, device px — what grain, scanlines and
+// blur taps want. uOutRes is the chain's final output whatever this pass's scale.
 uniform vec2  uRes;
-// Size of the chain's final output, regardless of this pass's scale.
 uniform vec2  uOutRes;
 uniform float uTime;
 uniform float uDt;
@@ -272,21 +255,15 @@ export class EffectChain<P> {
     if (!gl) throw new Error("EffectChain: WebGL2 is not available.");
     this._gl = gl;
 
-    // Without this, a float render target is never framebuffer-complete and the
-    // probe in _makePingPongProbed would reject rgba32f/rgba16f on hardware that
-    // in fact supports them.
+    // Float render targets are not framebuffer-complete without it.
     gl.getExtension("EXT_color_buffer_float");
 
-    // We ask for antialias:false, but the first getContext on a canvas wins —
-    // if anything called getContext("webgl2") before us with the defaults, the
-    // drawing buffer is multisampled and we cannot blit a single-sample FBO
-    // into it. Every frame would fail with INVALID_OPERATION and the canvas
-    // would stay black, silently. Check rather than assume, and copy with a
-    // draw when we have to.
+    // The first getContext on a canvas wins, so ours may be ignored: if anyone
+    // asked before us with the defaults, the drawing buffer is multisampled and
+    // blitting a single-sample FBO into it fails with INVALID_OPERATION on
+    // every frame, silently.
     this._msaa = ((gl.getParameter(gl.SAMPLES) as number) | 0) > 0;
 
-    // main.js had no equivalent of this, so a lost context meant a silently dead
-    // canvas that kept burning a rAF forever.
     canvas.addEventListener("webglcontextlost", (e) => {
       e.preventDefault();
       this._lost = true;
@@ -299,9 +276,8 @@ export class EffectChain<P> {
     gl.bindTexture(gl.TEXTURE_2D, this._blackTex);
     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE,
       new Uint8Array([0, 0, 0, 255]));
-    // Mutable storage, unlike every other texture here: an incoming frame
-    // changes size whenever the source does, and texImage2D is an
-    // INVALID_OPERATION against a texStorage2D-allocated texture.
+    // Mutable, unlike every other texture here: the source changes size, and
+    // texImage2D is INVALID_OPERATION against texStorage2D storage.
     this._sourceTex = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, this._sourceTex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -367,8 +343,7 @@ export class EffectChain<P> {
     for (const pass of this._passes) {
       if (pass.skipped) continue;
 
-      // A `defines` change recompiles here rather than at a separate call site,
-      // so there is never a frame where the program and the params disagree.
+      // Recompiles here, so the program and the params never disagree.
       this._ensureSteps(pass, params);
 
       const passUniforms = pass.def.uniforms?.(params, ctx) ?? {};
@@ -390,12 +365,7 @@ export class EffectChain<P> {
     this._present(last);
   }
 
-  /**
-   * Last pass to the screen. Blit is the cheap path — no extra program, no
-   * extra sampling, and the driver can fast-path it — but it is illegal into a
-   * multisampled drawing buffer, so a canvas whose context was created by
-   * someone else with the default antialias:true needs a copy draw instead.
-   */
+  /** Last pass to the screen. Blit where legal, copy draw where not. */
   private _present(last: RenderTarget): void {
     const gl = this._gl;
 
@@ -482,9 +452,7 @@ void main() { outColor = vec4(texture(uSrc, vUV).rgb, 1.0); }`,
           ...passUniforms,
           ...(opts.uniforms ?? {}),
         });
-        // Buffer textures resolve at draw time, not once per frame: a step that
-        // swaps a ping-pong buffer mid-pass must have the next step see the
-        // result, which a snapshot taken before draw() cannot do.
+        // Resolved at draw time so a mid-pass swap is visible to the next step.
         const bufferTextures: Record<string, WebGLTexture> = {};
         for (const [name, pp] of pass.buffers) bufferTextures[name] = pp.front.tex;
 
@@ -517,11 +485,9 @@ void main() { outColor = vec4(texture(uSrc, vUV).rgb, 1.0); }`,
   // ── Uniforms by introspection ──────────────────────────────────────────────
 
   /**
-   * Types come from the linked program, not from the caller, so `uniforms()`
-   * can return a plain bag of names→values. A Float32Array is a float[] or a
-   * vec3[] depending on what the shader declared, and only the shader knows.
-   * Names the program dropped are ignored, so a pass can hand over more than a
-   * given step uses.
+   * Types come from the linked program: a Float32Array is a float[] or a vec3[]
+   * depending on what the shader declared. Names the program dropped are
+   * ignored, so a pass may hand over more than a step uses.
    */
   private _setUniforms(step: CompiledStep, values: Record<string, UniformValue>): void {
     const gl = this._gl;
@@ -654,11 +620,8 @@ void main() { outColor = vec4(texture(uSrc, vUV).rgb, 1.0); }`,
   }
 
   /**
-   * Compile (or fetch from cache) the steps matching this frame's defines.
-   * Cheap on the steady path: one function call, one JSON.stringify, one string
-   * compare. Recompiles only when a define actually changed, and even then the
-   * program cache usually already holds it — flipping N_HUES back and forth
-   * costs nothing after the first time each value is seen.
+   * Compile (or fetch from cache) the steps matching this frame's defines. One
+   * stringify and one compare on the steady path.
    */
   private _ensureSteps(pass: PassState<P>, params: P): void {
     const defines = pass.def.defines?.(params) ?? {};
@@ -729,8 +692,7 @@ void main() { outColor = vec4(texture(uSrc, vUV).rgb, 1.0); }`,
       base.buffers.set(bd.name, pp);
     }
 
-    // Steps are built lazily on the first render, once params exist to derive
-    // `defines` from. Nothing is compiled against a placeholder.
+    // Steps build lazily on the first render, once params exist.
     return base;
   }
 
@@ -740,8 +702,7 @@ void main() { outColor = vec4(texture(uSrc, vUV).rgb, 1.0); }`,
     gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    // Float targets are not filterable without EXT_float_blend/linear support;
-    // NEAREST is the safe choice for state buffers and is what they want anyway.
+    // Float targets are not filterable without the linear extension.
     const filter = format === "rgba8" ? gl.LINEAR : gl.NEAREST;
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, filter);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, filter);
@@ -783,8 +744,7 @@ void main() { outColor = vec4(texture(uSrc, vUV).rgb, 1.0); }`,
         this.back = t;
       },
     };
-    // A single-target pass writes and is then read from the same texture, so
-    // front must be what the next pass samples.
+    // Single-target: front is what the next pass samples.
     if (!dual) pp.swap = () => {};
     return pp;
   }

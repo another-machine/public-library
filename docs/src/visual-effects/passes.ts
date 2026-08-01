@@ -1,26 +1,14 @@
 /**
- * PROTOTYPE — three passes, covering every part of the interface in chain.ts
- * between them.
+ * PROTOTYPE — three passes, covering the interface in chain.ts between them.
  *
- *   field   generator, feedback, compile-time defines           (AVVA's shape)
- *   bloom   filter, private ping-pong buffer, multi-step draw  (chladni's shape)
- *   crt     filter, single draw                                    (a CRT look)
- *
- * `field` and `crt` are the same kind of object. `crt` takes whatever image the
- * chain hands it and does not know whether a generator, a video element or
- * another filter produced it.
+ *   field   generator, feedback, compile-time defines
+ *   bloom   filter, private ping-pong buffer, multi-step draw
+ *   crt     filter, single draw
  */
 
 import type { PassDef } from "./chain";
 
-/**
- * Params, saying nothing about audio. AVVA would adapt an AudioFrame into this
- * at its call site; a video tool would fill only the crt.* half.
- *
- * The names are the ones the shaders want. AVVA needs a `#define uScale
- * uBlobSize` alias block because its store keys and its shader vocabulary
- * disagree; starting from the shader names avoids inheriting that.
- */
+/** Params, in the vocabulary of the shaders. Domain data is adapted into them. */
 export interface Params {
   /** Slot count. Drives N_HUES, so changing it recompiles. */
   hues: number;
@@ -56,13 +44,11 @@ export interface Params {
 // ── field ────────────────────────────────────────────────────────────────────
 
 /**
- * A generator: no `inputs.source`, so nothing upstream reaches it. This is a
- * condensed version of AVVA's shared field scaffold — palette weave over fbm,
- * background glow at (x, y), previous frame advected along a slow turning flow.
+ * A generator: palette weave over fbm, background glow at (x, y), previous
+ * frame advected along a slow turning flow.
  *
- * N_HUES is a define rather than a uniform for the same reason it is in AVVA:
- * the weave loop bound has to be a compile-time constant, and specialising the
- * program per slot count is cheaper than branching every fragment.
+ * N_HUES is a define because the weave loop bound must be a compile-time
+ * constant.
  */
 export const field: PassDef<Params> = {
   name: "field",
@@ -86,8 +72,7 @@ void main() {
   vec2  uvA    = vec2(uv.x * aspect, uv.y);
   float t      = uTime;
 
-  // Bounded, incommensurate warp — the two frequencies never line up, so the
-  // field wanders without drifting anywhere.
+  // Incommensurate frequencies: wanders without net drift.
   float warpAmp = 0.5 + uWarp * 4.0;
   vec2  flow = vec2(cos(t * 0.10) + 0.5 * sin(t * 0.043),
                     sin(t * 0.08) + 0.5 * cos(t * 0.037)) * warpAmp;
@@ -111,29 +96,26 @@ void main() {
   vec3  chordAvg = ambW > 0.001 ? amb / ambW : vec3(0.0);
   float coverage = clamp(totalW, 0.0, 1.0);
   vec3  color    = totalW > 0.001 ? total / totalW : chordAvg;
-  // Gaps floor to a dim tint rather than black, so the chord still reads there.
+  // Gaps floor to a dim tint so the chord still reads there.
   color = mix(chordAvg * 0.12, color, coverage);
-  // The weave normalises by total weight, so without a gain term the field sits
-  // at full slot brightness everywhere and clips as soon as anything is added.
+  // The weave normalises by total weight, so it needs a gain term to not clip.
   color *= 0.3 + uEnergy * 0.7;
 
   vec2  glowCtr = vec2(0.5 * aspect + (uX - 0.5) * 0.75 * aspect, 1.0 - uY);
   float bgDist  = dot(uvA - glowCtr, uvA - glowCtr);
   color += chordAvg * exp(-bgDist * 2.5) * uEnergy * 0.35;
 
-  // uPrev is this pass's own last output, from a ping-pong pair. Sampling the
-  // previous input instead gives a one-frame echo that cannot accumulate.
+  // uPrev is this pass's own last output, from a ping-pong pair.
   vec2 flowScroll = vec2(0.14 * sin(t * 0.40), 0.14 * cos(t * 0.35));
   vec2 drift = vec2(snoise(uvA * 4.0 + flowScroll),
                     snoise(uvA * 4.0 + flowScroll + 100.0)) * (0.0015 + uMotion * 0.005);
   vec3 prev = texture(uPrev, clamp(uv + vec2(drift.x / aspect, drift.y), 0.0, 1.0)).rgb;
-  // A leaky integrator, not max(): max() only ever increases a channel, so a
-  // long trail saturates the whole frame to white within a second or two.
+  // Leaky integrator. max() only ever increases a channel, and saturates the
+  // frame to white in a second or two.
   color = mix(color, prev, clamp(uTrail, 0.0, 0.98) * 0.8);
 
   color += vec3(uImpulse * 0.25);
-  // Grain keys off uRes — this pass's own buffer — not the canvas, so running
-  // the field at scale 0.5 keeps the grain the same size relative to the signal.
+  // uRes, not uOutRes: grain stays the same size relative to the signal.
   color += vec3(snoise(uv * uRes / 2.5 + vec2(t * 8.0))) * (0.02 + uMotion * 0.04);
 
   outColor = vec4(clamp(color, 0.0, 1.0), 1.0);
@@ -156,12 +138,8 @@ void main() {
 // ── bloom ────────────────────────────────────────────────────────────────────
 
 /**
- * A filter with private state and four draws: `buffers`, `draw`, and a
- * ping-pong that swaps within a single pass. It stands in for chladni, which
- * needs the same three things and a 262k-particle simulation besides.
- *
- * Bright-pass and blur run at quarter resolution, so `uRes` has to be
- * per-target rather than per-chain.
+ * A filter with private state and four draws. Bright-pass and blur run at
+ * quarter resolution.
  */
 export const bloom: PassDef<Params> = {
   name: "bloom",
@@ -171,9 +149,7 @@ export const bloom: PassDef<Params> = {
       name: "uBloom",
       scale: 0.25,
       format: "rgba16f",
-      // Half-float is not universal; rgba8 clips the highlights but still looks
-      // like bloom, which beats dropping the pass.
-      fallback: ["rgba8"],
+      fallback: ["rgba8"], // clips highlights, still reads as bloom
       pingPong: true,
     },
   ],
@@ -210,8 +186,8 @@ void main() {
   }),
   draw: (rt) => {
     const buf = rt.buffer("uBloom");
-    // Each step writes to `back` and swaps, so the next step's `uBloom` binding
-    // — resolved at run() time — sees what the previous one produced.
+    // Write to `back`, swap: the next step's uBloom binding resolves at run()
+    // time and sees it.
     rt.run("bright", { target: buf.back });
     buf.swap();
     rt.run("blur", { target: buf.back, uniforms: { uDir: [1, 0] } });
@@ -225,14 +201,11 @@ void main() {
 // ── crt ──────────────────────────────────────────────────────────────────────
 
 /**
- * A CRT look: barrel or pincushion distortion, chromatic fringing at the edges,
- * a soft blur, phosphor trails, scanlines, grain, and a luma/chroma degrade.
+ * A CRT look: barrel or pincushion distortion, chromatic fringing, a soft blur,
+ * phosphor trails, scanlines, grain, and a luma/chroma degrade.
  *
- * uScanLines is a line count rather than a multiple of the resolution, so the
- * stripe frequency holds still across displays and window sizes. Ghosting reads
- * uPrev, which the chain supplies as this pass's own previous output. The
- * source is whatever the chain hands over: a video element, the field generator
- * above, and the bloom pass's output all arrive the same way.
+ * uScanLines is a line count, so the stripe frequency holds still across
+ * displays and window sizes.
  */
 export const crt: PassDef<Params> = {
   name: "crt",
@@ -253,25 +226,17 @@ void main() {
   float r2       = dot(centered, centered);
   float bend     = 1.0 - (r2 * r2) * (1.8 * curve);
 
-  // Zoom so the image fills the frame without ever reaching past the edge of
-  // the source. bend runs monotonically in r2 for a given sign, so the tightest
-  // point on the frame boundary is the corner when curvature is positive and an
-  // edge midpoint when it is negative; the smaller of the two covers both signs
-  // without a branch. r2 is 0.5 at the corner and 0.25 at an edge midpoint, so
-  // r2 * r2 is 0.25 and 0.0625.
-  //
-  // Pinning the corner alone — the obvious thing — leaves pincushion sampling
-  // 30% past the edge at -1, which clamps into a smear along the middle of each
-  // side. fill stays in [0.55, 1.45] either way, so it cannot divide by zero.
+  // Zoom to fill without sampling past the source edge. bend is monotonic in
+  // r2, so the tightest boundary point is the corner (r2*r2 = 0.25) for
+  // positive curve and an edge midpoint (0.0625) for negative; pinning the
+  // corner alone overshoots 30% at -1 and smears down each side.
   float fill = min(1.0 - 0.25   * (1.8 * curve),
                    1.0 - 0.0625 * (1.8 * curve));
 
   vec2  uv     = centered / (bend / fill) + 0.5;
   vec2  uvSafe = clamp(uv, vec2(0.001), vec2(0.999));
 
-  // Blur and ghosting scale with how much distortion there is, not which way it
-  // goes, so both read the magnitude.
-  float curveAmt = abs(curve);
+  float curveAmt = abs(curve); // blur and ghosting scale with amount, not sign
 
   float edgeFade = 1.0 - smoothstep(0.35, 0.75, length(centered));
   vec2  offset   = vec2(uChromatic, -uChromatic * 0.6) * edgeFade;
@@ -298,9 +263,8 @@ void main() {
   float vignette = smoothstep(1.25, 0.25, length(screenUv));
   color *= mix(0.65, 1.0, vignette);
 
-  // uScanLines is a line COUNT. The original multiplied vUV.y by uResolution.y,
-  // which made the stripe frequency a function of device pixels — so the effect
-  // changed on a retina display and again on every window resize.
+  // A line count, not a multiple of uRes: keyed to device pixels the stripes
+  // would shift on a retina display and on every resize.
   float scan = sin(vUV.y * uScanLines * 3.14159265) * 0.5 + 0.5;
   color *= mix(0.92, 1.02, scan);
 

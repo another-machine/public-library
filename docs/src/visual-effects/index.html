@@ -25,10 +25,8 @@
         <h2>One interface for generators and filters</h2>
         <p class="ht-type-prose u-dim">
           AVVA's renderer synthesises images from uniforms. A CRT filter
-          transforms an image it is given. Treated as different kinds of thing,
-          the shader work in each stays stuck to the app it was written for. They
-          differ in whether a pass samples an incoming image, and in nothing
-          else.
+          transforms an image it is given. They differ in whether a pass samples
+          an incoming image, and in nothing else.
         </p>
         <p class="signature">
           inputs: &#123; source?: boolean; feedback?: boolean &#125;
@@ -36,9 +34,7 @@
         <p class="ht-type-prose u-dim">
           A pass that sets <code>source</code> is a filter and receives
           <code>uSrc</code>. A pass that does not is a generator. The chain feeds
-          each pass's output to the next either way, so the CRT pass below is the
-          same object whether it is finishing a generated field or a video file
-          you drop in.
+          each pass's output to the next either way.
         </p>
 
         <div class="ht-arrange-sidebar">
@@ -52,86 +48,64 @@
             <h3>Source</h3>
             <p class="ht-type-prose u-dim">
               <em>field</em> runs the generator and passes nothing in.
-              <em>bars</em> feeds a test-pattern canvas. Or choose a video file
-              &mdash; the original NTSC use case, reaching the identical CRT
-              pass.
+              <em>bars</em> feeds a test-pattern canvas. Or drop in a video.
             </p>
             <p><input data-file type="file" accept="video/*" /></p>
 
             <h3>The three passes</h3>
-            <p class="ht-type-prose u-dim">
-              Three, because between them they cover every part of the interface.
-            </p>
             <pre class="code">field   generator + feedback + compile-time defines.
-        N_HUES is a #define, so moving the hues slider
-        recompiles rather than branching per fragment.
-        AVVA's shape.
+        N_HUES is a #define, so the hues slider recompiles.
 
 bloom   filter + a private quarter-res ping-pong buffer
-        + a four-step draw hook. Stands in for chladni,
-        which needs the same three things and a
-        262k-particle simulation besides.
+        + a four-step draw hook.
 
 crt     filter, single draw.</pre>
 
-            <h3>Two decisions in the CRT pass</h3>
+            <h3>Three decisions in the CRT pass</h3>
             <p class="ht-type-prose u-dim">
-              Scanline density is a line count rather than a multiple of the
-              resolution. Keyed to device pixels it would shift on a retina
-              display and again on every resize, which is a strange property for
-              a fixed number of scanlines to have.
+              Scanline density is a line count. Keyed to device pixels it shifts
+              on a retina display and on every resize.
             </p>
             <p class="ht-type-prose u-dim">
-              Ghosting samples <code>uPrev</code>, which the chain supplies as
-              this pass's own previous <em>output</em>. Sampling the previous
-              <em>input</em> instead gives a one-frame echo: it looks similar for
-              a frame or two and then stops, because nothing accumulates.
+              Ghosting samples <code>uPrev</code>, this pass's own previous
+              <em>output</em>. The previous <em>input</em> gives a one-frame
+              echo that never accumulates.
             </p>
             <p class="ht-type-prose u-dim">
-              Curvature runs &minus;1 to 1: positive bulges the middle out,
-              negative pulls it in. Either way the image is zoomed to fill the
-              frame without reaching past the edge of the source. Which point
-              decides that zoom changes with the sign &mdash; the corner going
-              one way, the middle of each side going the other &mdash; and
-              pinning the corner alone leaves pincushion sampling 30% too far
-              at &minus;1, which clamps into a smear down each side.
+              Curvature runs &minus;1 to 1, zoomed either way to fill the frame
+              without reaching past the source edge. Which point sets that zoom
+              changes with the sign: the corner one way, the middle of each side
+              the other. Pin the corner alone and pincushion oversamples 30% at
+              &minus;1, smearing down each side.
             </p>
 
             <h3>Resolution</h3>
             <p class="ht-type-prose u-dim">
-              Every pass gets two. <code>uRes</code> is the buffer
-              <em>this</em> pass renders into; <code>uOutRes</code> is the
-              chain's final output. Anything keyed to signal resolution &mdash;
-              grain, blur taps, bloom &mdash; wants the former, or a pass at
-              <code>scale: 0.5</code> quietly changes its own look. The bloom
-              pass runs its bright-pass and blur at quarter res, which is where
-              the distinction first bites.
+              <code>uRes</code> is the buffer <em>this</em> pass renders into;
+              <code>uOutRes</code> is the chain's final output. Grain, blur taps
+              and bloom want the former, or a pass at <code>scale: 0.5</code>
+              quietly changes its own look.
             </p>
 
             <h3>Uniforms are typed by the program, not the caller</h3>
             <p class="ht-type-prose u-dim">
               <code>uniforms()</code> returns a plain bag of names to values. A
               <code>Float32Array</code> is a <code>float[]</code> or a
-              <code>vec3[]</code> depending on what the shader declared, and only
-              the shader knows, so the chain reads the types back off the linked
-              program. A pass may hand over more than a given step uses; names
-              the compiler dropped are ignored.
+              <code>vec3[]</code> depending on what the shader declared, so the
+              chain reads the types back off the linked program. Names the
+              compiler dropped are ignored.
             </p>
 
             <h3>No domain data anywhere</h3>
             <p class="ht-type-prose u-dim">
               The params below are neutral: energy, motion, x, y, impulse. Here
-              they come from a few LFOs. In AVVA they would come from an
-              <code>AudioFrame</code> through a small adapter at the call site,
-              and in a video tool most of them would sit at rest. The chain
-              cannot tell which.
+              they come from a few LFOs; in AVVA, from an <code>AudioFrame</code>
+              through an adapter at the call site. The chain cannot tell which.
             </p>
             <p class="ht-type-prose u-dim">
               Slot colours divide the wheel into equal sectors of
-              <em>perceptual</em> hue rather than display hue &mdash; the
-              property <code>@amplib/color</code> exists to provide. Equal steps
-              of HSV hue do not look equal, and a palette spaced that way comes
-              out visibly lopsided.
+              <em>perceptual</em> hue &mdash; what <code>@amplib/color</code> is
+              for. Equal steps of HSV hue do not look equal.
             </p>
           </div>
 
