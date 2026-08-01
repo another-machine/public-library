@@ -47,6 +47,10 @@ jobs:
       # a consumer holding both must hold the same one.
       - run: npm i
         working-directory: packages/amplib-sound-synthesis
+      # music-detection does the same, for the same reason: DetectTone hands
+      # back music-theory's `Note` and `Chord` instances.
+      - run: npm i
+        working-directory: packages/amplib-music-detection
       - run: npm i
       - run: npm i
         working-directory: docs
@@ -97,88 +101,24 @@ jobs:
       # The job schema ships separately: the editor and batch runner need it,
       # the player and galleries do not, so it stays out of the codec bundle.
       - run: cp ./packages/amplib-steganography/dist/jobSchema.global.js ./site/lib/stegassette-jobs.js
-      # The Node build, for consumers that run outside a browser (the jobs
-      # pipeline). ESM, with fs/pngjs left external — vendored the same way the
-      # browser bundles are, rather than pulled from a registry at runtime.
+      # The Node build, for consumers that run outside a browser. ESM, with
+      # fs/pngjs left external. The jobs pipeline used to vendor this; it takes
+      # @amplib/steganography/node from npm now, so nothing here is known to
+      # consume it — it ships for symmetry with the browser bundles.
       - run: cp ./packages/amplib-steganography/dist/node.js ./site/lib/stegassette-node.js
       - run: cp ./packages/amplib-steganography/dist/jobSchema.js ./site/lib/stegassette-jobs.mjs
-      # A version-stamped copy alongside it, so a consumer can pin one build
-      # while `stegassette.js` keeps tracking the latest.
+      # No version-stamped copies. There were, for a while: a
+      # stegassette-<CODEC_VERSION>.js alongside the unversioned name so a
+      # consumer could pin one build. Nothing ever pinned one. The stamping
+      # only wrote the current version and a Pages deploy replaces the whole
+      # site, so every bump silently 404'd the previous stamps — 2026.07.29
+      # went that way and no one noticed. npm is the pin now: versions there
+      # are immutable and unpkg serves any of them forever, which is a
+      # stronger promise than this was keeping.
       #
-      # The codec and the job schema carry SEPARATE versions because they
-      # change for separate reasons. Stamping the schema with CODEC_VERSION
-      # meant a schema-only change rewrote an already-published pin — see
-      # SCHEMA_VERSION in src/jobSchema.js.
-      - name: Publish version-stamped copies
-        run: |
-          V=$(node --input-type=module -e "import('./packages/amplib-steganography/dist/node.js').then(m => process.stdout.write(m.Stegassette.CODEC_VERSION))")
-          S=$(node --input-type=module -e "import('./packages/amplib-steganography/dist/jobSchema.js').then(m => process.stdout.write(m.SCHEMA_VERSION))")
-          echo "codec version: $V    schema version: $S"
-          cp ./site/lib/stegassette.js "./site/lib/stegassette-$V.js"
-          cp ./site/lib/stegassette-node.js "./site/lib/stegassette-node-$V.js"
-          cp ./site/lib/stegassette-jobs.js "./site/lib/stegassette-jobs-$S.js"
-          cp ./site/lib/stegassette-jobs.mjs "./site/lib/stegassette-jobs-$S.mjs"
-
-      # Superseded pins, carried forward. The stamping above only ever writes
-      # the CURRENT version, and a Pages deploy replaces the whole site — so
-      # the first bump of CODEC_VERSION silently 404'd the previous stamped
-      # files. That is the same broken promise as changing their bytes, just
-      # louder, and the check below could not see it because it only compares
-      # files this build produces.
-      #
-      # Same pattern as ./redirects: committed bytes, copied into the site.
-      # When a version is bumped, the outgoing build's stamped files belong
-      # here. Never delete or edit anything in this directory.
-      - run: cp -R ./lib-pins/. ./site/lib/
-
-      # A pin is a promise: these bytes, forever. Republishing a stamped file
-      # with different content breaks that quietly — nothing 404s, nothing
-      # warns, the consumer just gets a different library than the one it
-      # verified. So compare every stamped file against what is already live
-      # and fail the deploy rather than overwrite. The fix when this fires is
-      # always to bump the version, never to delete the check.
-      - name: A published pin must never change meaning
-        run: |
-          fail=0
-          shopt -s nullglob
-          for f in ./site/lib/*-[0-9][0-9][0-9][0-9].[0-9][0-9].[0-9][0-9].*; do
-            name=$(basename "$f")
-            live=$(mktemp)
-            code=$(curl -sS -o "$live" -w '%{http_code}' "https://amplib.app/lib/$name" || echo 000)
-            if [ "$code" = "200" ]; then
-              if cmp -s "$f" "$live"; then
-                echo "ok        $name (unchanged)"
-              else
-                echo "PIN MOVED $name is already published with different bytes — bump the version"
-                fail=1
-              fi
-            elif [ "$code" = "404" ]; then
-              echo "new       $name"
-            else
-              echo "warn      $name — could not check (HTTP $code), not treating as a failure"
-            fi
-          done
-          exit $fail
-
-      # The other half of the same promise: a pin must not DISAPPEAR. The check
-      # above walks the files this build produces, so it is structurally blind
-      # to one going missing — which is exactly how bumping CODEC_VERSION
-      # dropped stegassette-2026.07.31.js on 2026-08-01. This walks the other
-      # direction: everything currently live must still be in the artifact.
-      # The fix when this fires is to copy the missing file into ./lib-pins,
-      # never to skip the check.
-      - name: A published pin must never disappear
-        run: |
-          fail=0
-          for name in $(ls ./lib-pins 2>/dev/null || true); do
-            if [ -f "./site/lib/$name" ]; then
-              echo "kept      $name"
-            else
-              echo "PIN LOST  $name is archived in ./lib-pins but missing from the build"
-              fail=1
-            fi
-          done
-          exit $fail
+      # stega.now, the last consumer of this directory, vendors from npm as of
+      # 2026-08-01. The unversioned bundles above stay because the library
+      # publishing itself over HTTP is cheap and occasionally handy.
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
