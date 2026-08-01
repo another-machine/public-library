@@ -87,38 +87,20 @@ jobs:
       - run: cp -R ./redirects/modulo ./site/modulo
       - run: cp -R ./redirects/sonic-pixels ./site/sonic-pixels
 
-      # Publishing the codec bundle at amplib.app/lib/stegassette.js.
-      # This is how the library distributes itself to the static sites that
-      # cannot consume an ESM package: stega.now, its galleries, and the lab's
-      # editor all load the codec with a plain <script src>. Consumers vendor a
-      # copy and verify it against this URL — see docs/stegassette-consolidation.md.
-      - run: npm i
-        working-directory: packages/amplib-steganography
-      - run: npm run build
-        working-directory: packages/amplib-steganography
-      - run: mkdir -p ./site/lib
-      - run: cp ./packages/amplib-steganography/dist/stegassette.global.js ./site/lib/stegassette.js
-      # The job schema ships separately: the editor and batch runner need it,
-      # the player and galleries do not, so it stays out of the codec bundle.
-      - run: cp ./packages/amplib-steganography/dist/jobSchema.global.js ./site/lib/stegassette-jobs.js
-      # The Node build, for consumers that run outside a browser. ESM, with
-      # fs/pngjs left external. The jobs pipeline used to vendor this; it takes
-      # @amplib/steganography/node from npm now, so nothing here is known to
-      # consume it — it ships for symmetry with the browser bundles.
-      - run: cp ./packages/amplib-steganography/dist/node.js ./site/lib/stegassette-node.js
-      - run: cp ./packages/amplib-steganography/dist/jobSchema.js ./site/lib/stegassette-jobs.mjs
-      # No version-stamped copies. There were, for a while: a
-      # stegassette-<CODEC_VERSION>.js alongside the unversioned name so a
-      # consumer could pin one build. Nothing ever pinned one. The stamping
-      # only wrote the current version and a Pages deploy replaces the whole
-      # site, so every bump silently 404'd the previous stamps — 2026.07.29
-      # went that way and no one noticed. npm is the pin now: versions there
-      # are immutable and unpkg serves any of them forever, which is a
-      # stronger promise than this was keeping.
+      # No codec bundles are published here any more. amplib.app/lib/ served
+      # stegassette.js and friends so no-build pages could load the codec with
+      # a plain <script src>, and every consumer has since moved to npm:
+      # stega.now vendors from node_modules, stegassette-jobs imports the
+      # package, omnichord pins unpkg URLs in an importmap. No page on
+      # amplib.app ever loaded them. Removed 2026-08-01 along with the
+      # version-stamped pins.
       #
-      # stega.now, the last consumer of this directory, vendors from npm as of
-      # 2026-08-01. The unversioned bundles above stay because the library
-      # publishing itself over HTTP is cheap and occasionally handy.
+      # For a no-build page that wants the browser global, the URL is
+      # https://unpkg.com/@amplib/steganography@<version>/dist/stegassette.global.js
+      # — immutable, which the old unversioned URL never was.
+      #
+      # This also dropped the package's npm i + build from this workflow: docs
+      # imports package *source*, so nothing here needs dist.
 
       - name: Setup Pages
         uses: actions/configure-pages@v3
