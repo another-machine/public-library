@@ -16,20 +16,15 @@ separately — text, audio, and arbitrary bytes are all just entries.
 | `Stegassette`  | Multi-payload STGC format: audio + arbitrary entries, self-describing alpha header, 11 combine ops, 9 traversals, 6 keymaps. See [Stegassette.md](./Stegassette.md) for format details. |
 | `StegaAnimator`| Animates an encoded image on a canvas                                                                                                                                                  |
 
-The pre-STGC modules below still ship, but both consumers are gone —
-`machines/sonic-pixels` is retired, and the iOS `StegaKit` that ported this API to
-Swift is archived at `_archive/stega-player`. They stay for now because this is a
-published package and dropping them is a breaking change, not because anything here
-needs them. They are no longer documented on the site, and new work should use
-`Stegassette`.
+The pre-STGC modules — `Stega64`, `StegaCassette`, `StegaBinary`, `StegaKey`,
+and `StegaMetadata` — were removed in 1.0. Their consumers were already gone:
+`machines/sonic-pixels` is retired, and the iOS `StegaKit` that ported the API
+to Swift is archived at `_archive/stega-player`. They were kept only because
+dropping them was a breaking change. `Stegassette` supersedes all of them.
 
-| Module          | Description                                        |
-| --------------- | -------------------------------------------------- |
-| `Stega64`       | Text messages encoded in image pixels              |
-| `StegaCassette` | Audio encoded in image pixels                      |
-| `StegaBinary`   | Arbitrary binary data encoded in image pixels      |
-| `StegaKey`      | Key image creation for keyed encoding              |
-| `StegaMetadata` | Metadata sidecar encoded in image border pixels    |
+To keep using them, pin `@amplib/steganography@^0.1.0`; that line is not
+maintained. The 1.0 surface is `Stegassette`, `StegaAnimator`, and the file and
+audio helpers.
 
 ## Usage
 
@@ -83,23 +78,3 @@ await writePng("output.png", out);
 const { entries } = Stegassette.decodeImageData({ source: out });
 ```
 
-### StegaCassette (pre-STGC)
-
-```typescript
-import { StegaCassette } from "@amplib/steganography";
-
-const canvas = StegaCassette.encode({
-  source: image, // HTMLImageElement | HTMLCanvasElement
-  audioBuffers: [leftChannel, rightChannel], // Float32Array[]
-  sampleRate: 44100,
-  bitDepth: 16,
-  encoding: "additive",
-});
-
-const audioBuffers = StegaCassette.decode({
-  source: image,
-  bitDepth: 16,
-  channels: 2,
-  encoding: "additive",
-});
-```

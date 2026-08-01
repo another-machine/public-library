@@ -2,8 +2,7 @@
  * Browser adapter for Stegassette.
  *
  * Adds `encode` and `decode` overloads that accept HTMLImageElement /
- * HTMLCanvasElement and return HTMLCanvasElement, matching the ergonomics of
- * the other modules in this package (Stega64, StegaCassette, etc.).
+ * HTMLCanvasElement and return HTMLCanvasElement.
  *
  * All pure-core exports are re-exported here so the browser namespace is
  * the single import point: `import { Stegassette } from "@amplib/steganography"`.

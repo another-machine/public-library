@@ -1,4 +1,9 @@
-import { StegaCassetteChannels } from "./StegaCassette";
+/**
+ * Mono or stereo. This lived in `StegaCassette` until that module was removed
+ * in 1.0; it describes the audio helpers here, which have no other connection
+ * to the cassette format.
+ */
+export type AudioChannels = 1 | 2;
 
 export function getContext(canvas: HTMLCanvasElement) {
   return canvas.getContext("2d", {
@@ -559,7 +564,7 @@ export async function loadAudioBuffersFromAudioUrl({
   sampleRate = audioContext.sampleRate,
 }: {
   url: string;
-  channels: StegaCassetteChannels;
+  channels: AudioChannels;
   audioContext: AudioContext;
   sampleRate?: number;
 }) {
@@ -695,7 +700,7 @@ export async function playDecodedAudioBuffers({
 async function resampleAudioBuffer(
   audioBuffer: AudioBuffer,
   sampleRate: number,
-  channels: StegaCassetteChannels
+  channels: AudioChannels
 ) {
   const offlineCtx = new OfflineAudioContext(
     channels,
