@@ -37,28 +37,6 @@ import {
   normalizeChannelPlan,
 } from "./Stegassette/index";
 
-// The schema versions INDEPENDENTLY of the codec, and must: the two change
-// for different reasons. CODEC_VERSION pins the STGC wire format — bump it
-// and every image ever encoded is implicated. This pins the job-file shape,
-// which images know nothing about.
-//
-// They were once the same number, because the published copies of this file
-// were stamped `stegassette-jobs-$CODEC_VERSION.js`. A schema change with no
-// codec change then republished an EXISTING pinned filename with different
-// bytes — a pin that silently changes meaning is worse than no pin, since
-// the whole point is that a consumer can hold one and stop thinking about it.
-//
-// Format matches CODEC_VERSION (YYYY.MM.DD). Bump on any change to the job
-// file shape or to how a field resolves.
-//
-// 2026.07.31 — the keymap enum gained "none" (keyless). ENUMS.keymap is
-// KEYMAP_NAMES, imported from the codec, so a codec keymap is a schema change:
-// this file's published bytes move with it, and a pin that did not move would
-// mean two different validation surfaces under one filename. That it shares a
-// date with CODEC_VERSION here is coincidence — both changed today — not the
-// old coupling where this number WAS the codec's.
-const SCHEMA_VERSION = "2026.07.31";
-
 // Canonical field defaults (omitted fields fall back to these).
 const DEFAULTS = {
   // file refs — batch-only; the editor ignores these on import (it uses
@@ -650,7 +628,6 @@ function expandJobs(jobs, ctxFor) {
 }
 
 export {
-  SCHEMA_VERSION,
   DEFAULTS,
   ENUMS,
   NORMALIZE_DEFAULT_DB,

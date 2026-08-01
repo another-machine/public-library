@@ -71,7 +71,6 @@ export {
 
 // ---- header --------------------------------------------------
 export {
-  CODEC_VERSION,
   STGC_MAGIC,
   STGC_VERSION,
   applyAlphaHeader,

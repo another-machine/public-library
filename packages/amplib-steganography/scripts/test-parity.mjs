@@ -126,7 +126,6 @@ check("keyless keymaps are exactly none",
 
 check("STGC_VERSION is still 1", S.STGC_VERSION === 1, String(S.STGC_VERSION));
 check('STGC_MAGIC is still "STGC"', sameList([...S.STGC_MAGIC], [0x53, 0x54, 0x47, 0x43]));
-check("CODEC_VERSION is set and dated", /^\d{4}\.\d{2}\.\d{2}$/.test(S.CODEC_VERSION || ""), S.CODEC_VERSION);
 
 // ── the keymap guard ───────────────────────────────────────────────────────
 //
@@ -313,8 +312,6 @@ check("CODEC_VERSION is set and dated", /^\d{4}\.\d{2}\.\d{2}$/.test(S.CODEC_VER
 
   // The schema's version is what its published pins are named after, so it
   // has to exist and be dated.
-  check("SCHEMA_VERSION is set and dated",
-    /^\d{4}\.\d{2}\.\d{2}$/.test(J.SCHEMA_VERSION || ""), J.SCHEMA_VERSION);
 
   // The hazard is COUPLING — this number being the codec's, which is what let a
   // schema change republish an existing pinned filename with different bytes.
@@ -327,10 +324,6 @@ check("CODEC_VERSION is set and dated", /^\d{4}\.\d{2}\.\d{2}$/.test(S.CODEC_VER
   // change meaning" step, which diffs each pin against what is already live.
   const schemaSrc = await readFile(
     new URL("../src/jobSchema.js", import.meta.url), "utf8");
-  check("SCHEMA_VERSION is declared independently of the codec's",
-    /SCHEMA_VERSION\s*=\s*"\d{4}\.\d{2}\.\d{2}"/.test(schemaSrc) &&
-      !/SCHEMA_VERSION\s*=\s*[^"]*CODEC_VERSION/.test(schemaSrc),
-    "jobSchema must not derive SCHEMA_VERSION from CODEC_VERSION");
 
   const arr = [{ out: "a" }, { out: "b" }];
   check("an array passes through", sameList(J.resolveJobs(arr).map((j) => j.out), ["a", "b"]));

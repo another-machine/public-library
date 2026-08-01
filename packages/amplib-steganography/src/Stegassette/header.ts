@@ -11,29 +11,7 @@ import type { ChannelPlan, CombineName, KeymapName, StgcOpts, TraversalName, Tra
 const STGC_MAGIC = [0x53, 0x54, 0x47, 0x43] as const; // "STGC"
 const STGC_VERSION = 1;
 
-// CODEC_VERSION identifies this *implementation*, not the on-disk format (that's
-// STGC_VERSION). It is what consumers vendoring dist/stegassette.global.js check
-// their copy against, so it has to move whenever the surface they depend on
-// does — otherwise a stale bundle reports itself as current.
-//
-// (It used to be kept in lockstep with the lab's lib/steg-core.js, a second
-// implementation of the same format. That file is gone and the lab consumes
-// this package, so there is nothing left to keep in step with.)
-//
-// 2026.07.31 — added the "none" keymap: a keyless encode with no key pixel,
-// roughly half the area, and no recoverable cover unless a partial channel plan
-// leaves channels out of the payload. STGC_VERSION is unchanged: every existing
-// image still decodes identically, and the descriptor stores keymaps by name.
-//
-// 2026.08.01 — added the collection layer (many stegassettes that belong
-// together: possession-based crypto, stream splitting, and the
-// artwork-preserving encodeStegassette). Bundle-only: STGC_VERSION and every
-// encode path are untouched, so existing images decode identically. The bump
-// is here because the published bundle's bytes changed, and a version-stamped
-// copy at amplib.app/lib/ is a promise about bytes.
-const CODEC_VERSION = "2026.08.01";
-
-export { CODEC_VERSION, STGC_MAGIC, STGC_VERSION };
+export { STGC_MAGIC, STGC_VERSION };
 
 interface DescriptorOpts {
   combine: CombineName;
