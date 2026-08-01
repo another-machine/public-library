@@ -1,6 +1,6 @@
 # @amplib/color
 
-Colour maths for evenly spaced hue.
+Color analysis utilities.
 
 ```ts
 import { toPerceptual, fromPerceptual } from "@amplib/color";
