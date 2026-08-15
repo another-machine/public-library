@@ -66,8 +66,9 @@ Traversals determine the order data pixels are written/read. All return a `Uint3
 |------|---------|--------|
 | `raster` | Left-to-right, top-to-bottom | — |
 | `boustrophedon` | Snake (alternates direction each row) | — |
-| `spiral` | Outside-in clockwise spiral | — |
-| `center-out` | Expanding squares from center | — |
+| `spiral` | Outside-in spiral | `rotation`: `cw` (default) or `ccw`; only `ccw` is stored |
+| `radial` | Expanding ellipse from center, normalized to the canvas | `direction`: `out` (default) or `in` — which end of the ellipse the payload starts from, not which pixels it covers; always stored |
+| `center-out` | Expanding circle from center, in pixels | — |
 | `polar` | Angular sweep from center | — |
 | `bayer` | Bayer matrix order (dispersed) | — |
 | `hilbert` | Hilbert space-filling curve | — |
@@ -75,6 +76,37 @@ Traversals determine the order data pixels are written/read. All return a `Uint3
 | `fisher-yates` | Pseudorandom permutation | `seed` (32-bit uint, stored in header) |
 
 `fisher-yates` with a random seed is the closest Stegassette has to encryption — payloads look random without the seed. The seed is stored in the header, so an attacker who can read the header can still recover the ordering.
+
+`radial` and `center-out` are the same idea measured two ways. `center-out` uses pixel distance, so its expanding front is a circle whatever the canvas shape — on a 16:9 image it reaches the top and bottom edges while the sides are still untouched. `radial` measures in half-widths and half-heights, so its front is the ellipse inscribed in the canvas and every edge arrives together. `center-out` is kept as it is forever: images encoded with it decode by reproducing that exact order.
+
+---
+
+## Canvas sizing (`fit`)
+
+`fit` is an encode-time option and is deliberately absent from the header — the decoder reads the dimensions off the image, so how they were chosen never has to travel with it.
+
+| Mode | Canvas |
+|------|--------|
+| `compact` (default) | The smallest canvas that holds the payload. The payload fills the interior to the corners. |
+| `circle` | Enlarged so the payload occupies the inscribed circle/ellipse instead — about 4/π the area. |
+
+`circle` keeps the requested aspect ratio, so it only draws a literal circle on a 1:1 canvas; landscape gets a horizontal ellipse, portrait a vertical one. It is meant to be paired with `radial`:
+
+```typescript
+Stegassette.encode({
+  source: image,
+  entries,
+  traversal: "radial",
+  params: { direction: "out" },
+  fit: "circle",
+});
+```
+
+Other traversals are not prohibited from using it; they simply receive a larger canvas and will not produce an elliptical footprint.
+
+`direction` does not change that footprint. Under `fit: "circle"` both directions fill the same oval — `out` writes it center-first, `in` writes it boundary-first — so the two differ only in the order the payload is laid down and read back, which is what a reveal animation follows. Reversing the whole path instead would start the payload in the corners and leave an elliptical hole, which is the opposite of what the canvas was sized for. The pixels outside the ellipse are the corners, and they come last in both directions.
+
+The canvas is also shrunk back to the tightest ellipse that still holds the payload. Spare capacity is invisible under a compact fit, but under a circle fit it is the gap between the payload and the ellipse it was sized for: an unwritten ring at the rim going outward, a hole at the center coming inward. The floor is a whole row or column of the grid, so on very small canvases a little spare remains.
 
 ---
 

@@ -17,6 +17,7 @@ export type {
   DecodedEntry,
   EncodeOptions,
   Entry,
+  FitMode,
   KeymapName,
   PackMode,
   StegaImageData,
@@ -30,6 +31,8 @@ export {
   Img,
   borderPixelCount,
   dataPixelCount,
+  ellipseDataPixelCount,
+  ellipseRadius2,
   getBorderPixels,
   isBorderPixel,
   isDataPixel,
@@ -250,6 +253,7 @@ export function encodeImageData({
   entries,
   border = 0,
   aspectRatio,
+  fit = "compact",
   ...opts
 }: EncodeImageDataOptions): StegaImageData {
   const src = new Img(source.width, source.height, source.data);
@@ -270,7 +274,7 @@ export function encodeImageData({
   const aspect = aspectRatio ?? src.width / src.height;
   const totalBytes = containerInteriorBytes(entries) + plan.pad;
   const dataPx = Math.ceil(totalBytes / plan.bytesPerPixel);
-  let B = resolveBorderWidth(border, dataPx, aspect, keyless);
+  let B = resolveBorderWidth(border, dataPx, aspect, keyless, fit);
 
   // Merge traversal/keymap params for header-length estimation
   const params: TraversalParams = {
@@ -285,11 +289,11 @@ export function encodeImageData({
 
   // The canvas is sized by the payload alone; when the border ring cannot
   // hold the header, thicken the border instead of growing the image.
-  let scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless);
+  let scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless, fit);
   while (ringPixelCount(scaled.width, scaled.height, B) < headerPx) {
     if (B > 255) throw new Error("STGC header does not fit any border");
     B += 1;
-    scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless);
+    scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless, fit);
   }
 
   return encodeContainer(entries, scaled, { ...opts, borderWidth: B, plan }, scaled);

@@ -110,3 +110,69 @@ export function dataPixelCount(W: number, H: number): number {
 export function borderPixelCount(W: number, H: number, B: number): number {
   return W * H - (W - 2 * B) * (H - 2 * B);
 }
+
+/**
+ * Squared distance from the center of a W×H grid, normalized so that the
+ * largest ellipse inscribed in the grid is exactly r² = 1.
+ *
+ * Normalizing by half-width and half-height rather than by pixels is what makes
+ * the "radial" traversal follow the canvas: on a square grid the level sets are
+ * circles, on a landscape grid horizontal ellipses, on a portrait grid vertical
+ * ones. `center-out` uses plain pixel distance and so is always circular.
+ *
+ * This is the single definition of that distance. Both the radial comparator
+ * and the ellipse capacity count call it, so their notions of "inside" cannot
+ * drift apart by a rounding step.
+ */
+export function ellipseRadius2(
+  x: number,
+  y: number,
+  W: number,
+  H: number
+): number {
+  const nx = (x - (W - 1) / 2) / (W / 2);
+  const ny = (y - (H - 1) / 2) / (H / 2);
+  return nx * nx + ny * ny;
+}
+
+/**
+ * Number of pixels inside the inscribed ellipse of a W×H grid — data pixels
+ * only unless `keyless`, matching `dataPixelCount`.
+ *
+ * O(H): each row's inside-set is a contiguous x interval because the ellipse is
+ * convex, so the interval is found analytically and then nudged to agree
+ * exactly with `ellipseRadius2 <= 1` at the boundary. Analytic bounds alone
+ * would disagree with the per-pixel test by a rounding step, and one pixel is
+ * enough to push the tail of a payload outside the circle it was sized for.
+ */
+export function ellipseDataPixelCount(
+  W: number,
+  H: number,
+  keyless = false
+): number {
+  const inside = (x: number, y: number) => ellipseRadius2(x, y, W, H) <= 1;
+  const cx = (W - 1) / 2, cy = (H - 1) / 2;
+  let n = 0;
+  for (let y = 0; y < H; y++) {
+    const ny = (y - cy) / (H / 2);
+    const s2 = 1 - ny * ny;
+    if (s2 < 0) continue;
+    const span = (W / 2) * Math.sqrt(s2);
+    let lo = Math.max(0, Math.ceil(cx - span));
+    let hi = Math.min(W - 1, Math.floor(cx + span));
+    while (lo > 0 && inside(lo - 1, y)) lo--;
+    while (lo <= hi && !inside(lo, y)) lo++;
+    while (hi < W - 1 && inside(hi + 1, y)) hi++;
+    while (hi >= lo && !inside(hi, y)) hi--;
+    if (hi < lo) continue;
+    if (keyless) {
+      n += hi - lo + 1;
+      continue;
+    }
+    // isDataPixel: x is odd on even rows, even on odd rows
+    const parity = y % 2 === 0 ? 1 : 0;
+    const first = lo + (((parity - lo) % 2) + 2) % 2;
+    if (first <= hi) n += ((hi - first) >> 1) + 1;
+  }
+  return n;
+}

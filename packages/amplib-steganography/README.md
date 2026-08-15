@@ -13,7 +13,7 @@ separately — text, audio, and arbitrary bytes are all just entries.
 
 | Module         | Description                                                                                                                                                                            |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Stegassette`  | Multi-payload STGC format: audio + arbitrary entries, self-describing alpha header, 11 combine ops, 9 traversals, 6 keymaps. See [Stegassette.md](./Stegassette.md) for format details. |
+| `Stegassette`  | Multi-payload STGC format: audio + arbitrary entries, self-describing alpha header, 11 combine ops, 10 traversals, 6 keymaps. See [Stegassette.md](./Stegassette.md) for format details. |
 | `StegaAnimator`| Animates an encoded image on a canvas                                                                                                                                                  |
 
 The pre-STGC modules — `Stega64`, `StegaCassette`, `StegaBinary`, `StegaKey`,
@@ -45,7 +45,7 @@ const canvas = Stegassette.encode({
   source: image, // HTMLImageElement | HTMLCanvasElement
   entries: [audioEntry],
   combine: "xor", // 11 combine ops available
-  traversal: "raster", // 9 traversal patterns
+  traversal: "raster", // 10 traversal patterns
   keymap: "adjacent", // 6 keymaps
 });
 

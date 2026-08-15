@@ -57,9 +57,12 @@ check("COMBINE_NAMES order unchanged", sameList(S.COMBINE_NAMES, [
   "noise", "echo", "signed", "veil", "whisper",
 ]), S.COMBINE_NAMES.join(","));
 
+// "radial" is APPENDED: the aspect-normalized radial traversal. "center-out"
+// stays exactly where and what it was — it is the pixel-distance version, and
+// every image encoded with it decodes by reproducing that order.
 check("TRAVERSAL_NAMES order unchanged", sameList(S.TRAVERSAL_NAMES, [
   "raster", "boustrophedon", "spiral", "angle", "fisher-yates", "center-out",
-  "hilbert", "polar", "bayer",
+  "hilbert", "polar", "bayer", "radial",
 ]), S.TRAVERSAL_NAMES.join(","));
 
 // "none" is an APPENDED keyless keymap — no key pixel at all. The lab's

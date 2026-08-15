@@ -46,10 +46,23 @@
         </p>
         <p class="ht-type-small u-dim">
           <strong>Combine</strong> is the reversible operation that pairs a payload
-          byte with a key pixel. Some ops trade reversible fidelity for visual results. 
-          <strong>Keymap</strong> locates a key pixel for each data pixel. 
+          byte with a key pixel. Some ops trade reversible fidelity for visual results.
+          <strong>Keymap</strong> locates a key pixel for each data pixel.
           <strong>Traversal</strong> is the order
           data pixels are visited.
+          <strong>Fit</strong> is the one option that changes nothing about the
+          encoding, only the size of the canvas it lands on.
+        </p>
+        <p class="ht-type-small u-dim">
+          The canvas is sized by the payload, so a traversal decides what shape
+          the payload makes as it fills. <code>radial</code> measures distance in
+          half-widths and half-heights, so its front is the ellipse inscribed in
+          the image rather than a circle drawn on it — pair it with
+          <code>fit: "circle"</code>, which enlarges the canvas by 4/π so the
+          payload ends at that ellipse instead of reaching the corners.
+          <code>fit</code> is not written to the border: the decoder reads the
+          dimensions off the image, so it never needs to know how they were
+          chosen.
         </p>
       </section>
 
@@ -61,8 +74,8 @@
         <p class="signature">
           Stegassette.encode({ source: HTMLImageElement | HTMLCanvasElement;
           entries: Entry[]; combine?: CombineName; keymap?: KeymapName;
-          traversal?: TraversalName; border?: number; aspectRatio?: number; }):
-          HTMLCanvasElement
+          traversal?: TraversalName; params?: TraversalParams; fit?: FitMode;
+          border?: number; aspectRatio?: number; }): HTMLCanvasElement
         </p>
 
         <div class="ht-arrange-sidebar">
@@ -80,7 +93,9 @@ const encoded = Stegassette.encode({
   combine: "<span data-value="combine"></span>",
   keymap: "<span data-value="keymap"></span>",
   traversal: "<span data-value="traversal"></span>",
-  border: <span data-value="border"></span>,
+<span data-only="direction" hidden>  params: { direction: "<span data-value="direction"></span>" },
+</span><span data-only="fit" hidden>  fit: "<span data-value="fit"></span>",
+</span>  border: <span data-value="border"></span>,
   aspectRatio: <span data-value="aspectRatio"></span>,
 });</pre>
 
@@ -122,6 +137,19 @@ const message = new TextDecoder().decode(entries[0].data);
           The mimetype carries sample rate, bit depth and channel layout, so a
           decoded image can rebuild the buffer on its own.
         </p>
+        <p class="ht-type-small u-dim">
+          <strong>Layout</strong> is how two channels share one stream, and it
+          decides which pixels carry which channel — so it shapes what the
+          reveal develops as much as the traversal does.
+          <code>planar</code> writes all of the left channel and then all of the
+          right, so the first half of the path is one ear.
+          <code>interleaved</code> alternates sample by sample, so both ears
+          develop together. <code>block</code> alternates in runs of
+          <code>blockSize</code> samples per channel, between the two. Mono has
+          no order to choose and ignores it. The reveal reads the layout back
+          out of the mimetype rather than being told, which is why the overlay
+          stays in sync with playback whichever one is picked.
+        </p>
         <p class="signature">
           Stegassette.buildAudioEntry({ channels: Float32Array[]; sampleRate:
           number; bitsPerSample?: 8 | 16 | 24; layout?: "planar" | "interleaved"
@@ -140,14 +168,18 @@ const audioEntry = Stegassette.buildAudioEntry({
   channels: audioBuffers,
   sampleRate: <span data-value="sampleRate"></span>,
   bitsPerSample: <span data-value="bitsPerSample"></span>,
-});
+<span data-only="layout">  layout: "<span data-value="layout"></span>",
+</span><span data-only="blockSize" hidden>  blockSize: <span data-value="blockSize"></span>,
+</span>});
 const encoded = Stegassette.encode({
   source,
   entries: [audioEntry],
   combine: "<span data-value="combine"></span>",
   keymap: "<span data-value="keymap"></span>",
   traversal: "<span data-value="traversal"></span>",
-  channels: "<span data-value="channelPlan"></span>",
+<span data-only="direction" hidden>  params: { direction: "<span data-value="direction"></span>" },
+</span><span data-only="fit" hidden>  fit: "<span data-value="fit"></span>",
+</span>  channels: "<span data-value="channelPlan"></span>",
   border: <span data-value="border"></span>,
   aspectRatio: <span data-value="aspectRatio"></span>,
 });

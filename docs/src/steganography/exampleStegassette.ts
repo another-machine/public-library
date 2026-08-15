@@ -26,10 +26,18 @@ type FormData = {
   combine: string;
   keymap: string;
   traversal: string;
+  /** radial only — which end of the path the audio starts from. */
+  direction: "out" | "in";
+  /** Canvas sizing. "circle" pairs with radial: the payload ends at an ellipse. */
+  fit: "compact" | "circle";
   /** Which color channels carry payload — the rest keep the cover. */
   channelPlan: "rgb" | "rg" | "r";
   bitsPerSample: "8" | "16" | "24";
   channels: "1" | "2";
+  /** Multi-channel stream order. Mono short-circuits to planar. */
+  layout: "planar" | "interleaved" | "block";
+  /** Samples per channel per block — "block" layout only. */
+  blockSize: number;
   sampleRate: number;
   border: number;
   aspectRatio: AspectOption;
@@ -285,7 +293,7 @@ export default async function example() {
   }
 
   // ── Form ────────────────────────────────────────────────────────────────
-  const { values } = createForm<FormData>({
+  const { values, setFieldHidden } = createForm<FormData>({
     form,
     inputs: {
       combine: {
@@ -334,6 +342,7 @@ export default async function example() {
           "raster",
           "boustrophedon",
           "spiral",
+          "radial",
           "center-out",
           "polar",
           "bayer",
@@ -343,6 +352,28 @@ export default async function example() {
         ],
         value: "raster",
         name: "traversal",
+      },
+      // Radial reads this; the rest ignore it. With "circle" below, "out" plays
+      // the audio outward from the center and "in" collapses inward.
+      direction: {
+        type: "select",
+        options: ["out", "in"],
+        value: "out",
+        name: "direction",
+        // run() shows these when the traversal is radial. Hidden at creation so
+        // the first paint matches instead of flashing a control on its way out.
+        hidden: true,
+      },
+      // A sizing option, not an encoding one — it never reaches the header.
+      // "circle" buys the corners back: the canvas grows by 4/π so the payload
+      // ends at the ellipse inscribed in it, which is exactly the shape a
+      // radial traversal fills.
+      fit: {
+        type: "select",
+        options: ["compact", "circle"],
+        value: "compact",
+        name: "fit",
+        hidden: true,
       },
       bitsPerSample: {
         type: "select",
@@ -355,6 +386,25 @@ export default async function example() {
         options: ["1", "2"],
         value: "2",
         name: "channels",
+      },
+      // How two channels share the stream. It decides which pixels carry which
+      // channel, so it changes what the reveal develops as much as the
+      // traversal does: planar writes all of the left channel and then all of
+      // the right, interleaved alternates sample by sample, block alternates in
+      // runs. The mimetype carries it, so decode rebuilds the buffer without
+      // being told. Mono ignores it — one channel has no order to choose.
+      layout: {
+        type: "select",
+        options: ["planar", "interleaved", "block"],
+        value: "planar",
+        name: "layout",
+      },
+      blockSize: {
+        type: "number",
+        value: 64,
+        min: 1,
+        name: "blockSize",
+        hidden: true,
       },
       sampleRate: {
         type: "range",
@@ -421,6 +471,19 @@ export default async function example() {
     stopPlayback();
     revealState = null;
 
+    // Hide the controls that would be inert, and drop them from the encode with
+    // the same condition so the code block keeps matching the call. `direction`
+    // and `fit` are the radial traversal's — any other traversal fills its
+    // canvas corner to corner, however large it is made. `layout` orders two
+    // channels against each other, so mono has nothing for it to order, and
+    // `blockSize` is only read by the block layout.
+    const radial = data.traversal === "radial";
+    const stereo = data.channels === "2";
+    setFieldHidden("direction", !radial);
+    setFieldHidden("fit", !radial);
+    setFieldHidden("layout", !stereo);
+    setFieldHidden("blockSize", !stereo || data.layout !== "block");
+
     // The resolved combine, not the raw selection — the code block has to show
     // what actually ran, or it reads as a lie whenever the fallback fires.
     section
@@ -454,7 +517,9 @@ export default async function example() {
               : String(parseAspect(data.aspectRatio)?.toFixed(4))),
       );
 
-    const encodeKey = `${data.combine}|${data.keymap}|${data.traversal}|${data.channelPlan}|${data.bitsPerSample}|${data.channels}|${data.sampleRate}|${data.border}|${data.aspectRatio}`;
+    // Every option that reaches the encode belongs here — a missing one shows a
+    // stale canvas after a change rather than failing.
+    const encodeKey = `${data.combine}|${data.keymap}|${data.traversal}|${data.direction}|${data.fit}|${data.channelPlan}|${data.bitsPerSample}|${data.channels}|${data.layout}|${data.blockSize}|${data.sampleRate}|${data.border}|${data.aspectRatio}`;
     if (encodeKey === cachedEncodeKey && encodedCanvas) {
       displayEncoded();
       return;
@@ -483,12 +548,16 @@ export default async function example() {
             channels: cachedAudioBuffers,
             sampleRate,
             bitsPerSample,
+            layout: stereo ? data.layout : "planar",
+            blockSize: data.blockSize,
             name: "example.pcm",
           }),
         ],
         combine: resolveCombine(data),
         keymap: data.keymap as Stegassette.KeymapName,
         traversal: data.traversal as Stegassette.TraversalName,
+        params: radial ? { direction: data.direction } : undefined,
+        fit: radial ? data.fit : "compact",
         channels: data.channelPlan,
         border: data.border,
         aspectRatio: parseAspect(data.aspectRatio) ?? undefined,

@@ -35,6 +35,13 @@ export function buildDescriptor(opts: DescriptorOpts): Uint8Array {
     s += `seed=${(params.seed ?? 0) >>> 0}\x01`;
   if (traversal === "angle")
     s += `a=${params.a ?? 1}\x01b=${params.b ?? 1}\x01`;
+  if (traversal === "radial")
+    s += `direction=${params.direction === "in" ? "in" : "out"}\x01`;
+  // Only the non-default winding is written. A plain spiral encode has to stay
+  // byte-identical to what the encoder produced before rotation existed, or
+  // re-running an old job stops reproducing its file.
+  if (traversal === "spiral" && params.rotation === "ccw")
+    s += `rotation=ccw\x01`;
   if (keymap === "offset")
     s += `kx=${(params.kx ?? 0) | 0}\x01ky=${(params.ky ?? 0) | 0}\x01`;
   if (ch) s += `ch=${ch}\x01`;
@@ -81,6 +88,12 @@ interface PackHeaderOpts extends DescriptorOpts {
  */
 export function packStgcHeader(opts: PackHeaderOpts): Uint8Array {
   const desc = buildDescriptor(opts);
+  // descLen is one byte (b[10]). Over 255 it wraps, and the decoder then reads
+  // a header that ends in the middle of the descriptor — fail here instead.
+  if (desc.length > 255)
+    throw new Error(
+      `STGC descriptor too large: ${desc.length} bytes (max 255)`
+    );
   const b = new Uint8Array(12 + desc.length + 1); // +1 for XOR checksum
   STGC_MAGIC.forEach((c, i) => (b[i] = c));
   b[4] = STGC_VERSION;
@@ -271,6 +284,10 @@ function parseRingBytes(alphas: Uint8Array, B: number): ParsedHeader {
     b: d.b as number | undefined,
     kx: d.kx as number | undefined,
     ky: d.ky as number | undefined,
+    // Unrecognized values fall back to the default rather than through to the
+    // traversal, which would read them as the default anyway.
+    direction: d.direction === "in" ? "in" : d.direction === "out" ? "out" : undefined,
+    rotation: d.rotation === "ccw" ? "ccw" : d.rotation === "cw" ? "cw" : undefined,
   };
 
   return {

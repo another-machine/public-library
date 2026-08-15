@@ -1,4 +1,4 @@
-import { dataPixelCount, isDataPixel } from "./Img";
+import { dataPixelCount, ellipseRadius2, isDataPixel } from "./Img";
 import type { TraversalName, TraversalParams } from "./types";
 
 type FilterFn = (x: number, y: number) => boolean;
@@ -41,16 +41,26 @@ function boustrophedonPath(
   return out;
 }
 
+/**
+ * Inward spiral from the top-left corner.
+ *
+ * "cw" is the original spiral and the default — right along the top row, then
+ * down, left, up. "ccw" mirrors the step order, so it walks down the left
+ * column first. Only the non-default lands in the descriptor, which keeps a
+ * plain spiral encode byte-identical to everything encoded before rotation
+ * existed.
+ */
 function spiralPath(
   W: number,
   H: number,
-  filter: FilterFn = isDataPixel
+  filter: FilterFn = isDataPixel,
+  rotation: "cw" | "ccw" = "cw"
 ): Uint32Array {
   const seen = new Uint8Array(W * H);
   const out = new Uint32Array(countFiltered(W, H, filter));
   let n = 0;
-  const ddx = [1, 0, -1, 0];
-  const ddy = [0, 1, 0, -1];
+  const ddx = rotation === "ccw" ? [0, 1, 0, -1] : [1, 0, -1, 0];
+  const ddy = rotation === "ccw" ? [1, 0, -1, 0] : [0, 1, 0, -1];
   let x = 0, y = 0, dir = 0;
   for (let i = 0; i < W * H; i++) {
     if (filter(x, y)) out[n++] = y * W + x;
@@ -124,6 +134,49 @@ function centerOutPath(
       a - b
     );
   });
+  return Uint32Array.from(arr);
+}
+
+/**
+ * Aspect-normalized radial traversal.
+ *
+ * Sorted by `ellipseRadius2`, so distance is measured in half-widths and
+ * half-heights rather than pixels: every prefix of the path is the ellipse
+ * inscribed in the canvas at that radius — a circle when the canvas is square,
+ * an oval when it is not. That is the whole difference from `center-out`, whose
+ * pixel distance draws a circle on a rectangle and so reaches the short edges
+ * long before the long ones.
+ *
+ * `direction: "in"` reverses **only the pixels inside the inscribed ellipse**,
+ * and leaves the corners where they were, at the tail. Reversing the whole path
+ * instead would start the payload in the corners, and a `fit: "circle"` canvas
+ * — sized so the payload is exactly that ellipse — would come out as a frame
+ * with an elliptical hole rather than the oval it was sized for. The footprint
+ * is the direction's to keep; only the order through it is the direction's to
+ * choose. Because the sort is by radius, the ellipse is a prefix of the sorted
+ * array, so this is one reverse of a slice.
+ */
+function radialPath(
+  W: number,
+  H: number,
+  filter: FilterFn = isDataPixel,
+  direction: "out" | "in" = "out"
+): Uint32Array {
+  const arr = Array.from(rasterPath(W, H, filter));
+  const r2 = (v: number) => ellipseRadius2(v % W, (v / W) | 0, W, H);
+  arr.sort((p, q) => {
+    const dp = r2(p), dq = r2(q);
+    return dp < dq ? -1 : dp > dq ? 1 : p - q;
+  });
+  if (direction === "in") {
+    let k = 0;
+    while (k < arr.length && r2(arr[k]) <= 1) k++;
+    for (let i = 0, j = k - 1; i < j; i++, j--) {
+      const t = arr[i];
+      arr[i] = arr[j];
+      arr[j] = t;
+    }
+  }
   return Uint32Array.from(arr);
 }
 
@@ -214,6 +267,10 @@ export const TRAVERSAL_NAMES: readonly TraversalName[] = [
   "hilbert",
   "polar",
   "bayer",
+  // Appended, never inserted: the descriptor stores the name, so order is
+  // cosmetic on disk — but test-parity pins this exact order, and anything
+  // that ever stores an index into this list depends on it holding.
+  "radial",
 ];
 
 /**
@@ -240,13 +297,15 @@ export function getPathIndices(
     case "boustrophedon":
       return boustrophedonPath(W, H, f);
     case "spiral":
-      return spiralPath(W, H, f);
+      return spiralPath(W, H, f, params.rotation === "ccw" ? "ccw" : "cw");
     case "angle":
       return anglePath(W, H, f, params.a ?? 1, params.b ?? 1);
     case "fisher-yates":
       return fisherYatesPath(W, H, f, params.seed);
     case "center-out":
       return centerOutPath(W, H, f);
+    case "radial":
+      return radialPath(W, H, f, params.direction === "in" ? "in" : "out");
     case "hilbert":
       return hilbertPath(W, H, f);
     case "polar":

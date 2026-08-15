@@ -51,6 +51,7 @@
     "build:global": "tsup src/stegassette.ts --format iife --global-name Stegassette --out-dir dist --sourcemap --no-dts --clean false && tsup src/jobSchema.js --format iife --global-name StegassetteJobs --out-dir dist --sourcemap --no-dts --clean false",
     "watch": "tsup --watch",
     "test:parity": "npm run build && node scripts/test-parity.mjs",
+    "test:radial": "esbuild scripts/test-radial.ts --bundle --platform=node --format=esm --outfile=.tmp/radial.mjs --log-level=warning && node .tmp/radial.mjs",
     "build:types": "tsup --dts-only",
     "prepack": "npm run build"
   },

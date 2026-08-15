@@ -110,6 +110,7 @@ export function encode({
   entries,
   border = 0,
   aspectRatio,
+  fit = "compact",
   ...opts
 }: BrowserEncodeOptions): HTMLCanvasElement {
   const src =
@@ -135,7 +136,7 @@ export function encode({
   const aspect = aspectRatio ?? src.width / src.height;
   const totalBytes = containerInteriorBytes(entries) + plan.pad;
   const dataPx = Math.ceil(totalBytes / plan.bytesPerPixel);
-  let B = resolveBorderWidth(border, dataPx, aspect, keyless);
+  let B = resolveBorderWidth(border, dataPx, aspect, keyless, fit);
 
   const params: TraversalParams = {
     ...(opts.params || {}),
@@ -156,7 +157,8 @@ export function encode({
     aspectRatio ?? null,
     plan.bytesPerPixel,
     1,
-    keyless
+    keyless,
+    fit
   );
   while (ringPixelCount(scaled.width, scaled.height, B) < headerPx) {
     if (B > 255) throw new Error("STGC header does not fit any border");
@@ -168,7 +170,8 @@ export function encode({
       aspectRatio ?? null,
       plan.bytesPerPixel,
       1,
-      keyless
+      keyless,
+      fit
     );
   }
 

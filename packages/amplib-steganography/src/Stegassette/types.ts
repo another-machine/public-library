@@ -34,7 +34,15 @@ export type KeymapName =
   | "rotate"
   | "none";
 
-/** Order in which data pixels are visited during encode / decode. */
+/**
+ * Order in which data pixels are visited during encode / decode.
+ *
+ * `center-out` is the legacy radial traversal: plain pixel distance, so its
+ * prefixes are circles no matter the canvas shape. Prefer `radial`, which
+ * normalizes by half-width and half-height and so follows the aspect ratio.
+ * `center-out` keeps its original algorithm forever — every image already
+ * encoded with it decodes by reproducing that exact order.
+ */
 export type TraversalName =
   | "raster"
   | "boustrophedon"
@@ -44,7 +52,15 @@ export type TraversalName =
   | "center-out"
   | "hilbert"
   | "polar"
-  | "bayer";
+  | "bayer"
+  | "radial";
+
+/**
+ * Canvas sizing strategy — an encode-time option only, never stored in the
+ * header. The decoder reads the dimensions off the image itself, so it has no
+ * reason to know which strategy produced them.
+ */
+export type FitMode = "compact" | "circle";
 
 /** Packing mode for the channel plan. */
 export type PackMode = "packed" | "aligned" | "mono";
@@ -120,6 +136,16 @@ export interface TraversalParams {
   kx?: number;
   /** offset keymap: y offset (signed, torus-wrapped). */
   ky?: number;
+  /**
+   * radial traversal: "out" runs center → ellipse boundary, "in" runs boundary
+   * → center. Both cover the same pixels in the same footprint — only the order
+   * differs — so a payload sized to the ellipse fills the same oval either way.
+   * Pixels outside the inscribed ellipse (the corners) come last in both.
+   * Default "out".
+   */
+  direction?: "out" | "in";
+  /** spiral traversal: winding direction. Default "cw", the original spiral. */
+  rotation?: "cw" | "ccw";
 }
 
 /** Full options recovered from a decoded STGC header. */
@@ -159,6 +185,19 @@ export interface EncodeOptions {
   border?: number;
   /** Target aspect ratio for auto-sizing. Defaults to source image aspect. */
   aspectRatio?: number;
+  /**
+   * Canvas sizing strategy (default "compact").
+   *
+   *   "compact" — the smallest canvas that holds the payload.
+   *   "circle"  — enlarge the canvas so the payload occupies the inscribed
+   *               circle/ellipse instead of reaching the corners.
+   *
+   * "circle" keeps the requested aspect ratio, so it only produces a literal
+   * circle on a 1:1 canvas; a 16:9 canvas gets a horizontal ellipse. It is
+   * meant for `traversal: "radial"` with `direction: "out"`, whose prefixes are
+   * exactly that ellipse — any other traversal simply receives a larger canvas.
+   */
+  fit?: FitMode;
   /**
    * Bytes per audio sample (e.g. 1/2/3 for 8/16/24-bit PCM).
    * Only needed for aligned channel plans.

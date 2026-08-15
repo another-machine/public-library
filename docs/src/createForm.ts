@@ -60,7 +60,11 @@ export function createForm<T extends Record<string, string | number>>({
    * only lands half a second after you let go reads as broken there.
    */
   debounce?: number;
-}): { values: T; setValue: (k: keyof T, value: string | number) => void } {
+}): {
+  values: T;
+  setValue: (k: keyof T, value: string | number) => void;
+  setFieldHidden: (k: keyof T, hidden: boolean) => void;
+} {
   form.addEventListener("submit", (e) => e.preventDefault());
   const values = Object.fromEntries(
     Object.entries(inputs).map(([key, input]) => [key, input.value])
@@ -201,7 +205,23 @@ export function createForm<T extends Record<string, string | number>>({
     form.appendChild(element);
   });
 
-  return { values, setValue };
+  return { values, setValue, setFieldHidden };
+
+  /**
+   * Show or hide a whole field row after setup, for a control that only applies
+   * to some other setting — a knob that is visible but inert reads as broken.
+   * `hidden` in the input map is the same idea fixed at creation.
+   *
+   * Any element in the example carrying `data-only="<key>"` is hidden with it,
+   * which is how a code sample drops the line for an option that is not in play.
+   */
+  function setFieldHidden(key: keyof T, hidden: boolean) {
+    const control = form.querySelector<HTMLElement>(`[name="${String(key)}"]`);
+    control?.closest<HTMLElement>(".field")?.toggleAttribute("hidden", hidden);
+    form.parentElement
+      ?.querySelectorAll<HTMLElement>(`[data-only="${String(key)}"]`)
+      .forEach((el) => el.toggleAttribute("hidden", hidden));
+  }
 
   function setValue(key: keyof T, value: string | number) {
     // @ts-ignore

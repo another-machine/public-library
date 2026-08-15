@@ -74,6 +74,8 @@ Total header size = 12 + descLen + 1 bytes.
 | `seed`     | if `fisher-yates` | uint32 seed                                         |
 | `a`        | if `angle` | integer a parameter                                           |
 | `b`        | if `angle` | integer b parameter                                           |
+| `direction`| if `radial` | `out` (center → perimeter) or `in` (reversed)                |
+| `rotation` | if `spiral` **and** `ccw` | `ccw`; a clockwise spiral omits the key    |
 | `kx`       | if `offset` keymap | signed integer x offset (torus-wrapped)            |
 | `ky`       | if `offset` keymap | signed integer y offset (torus-wrapped)            |
 | `ch`       | non-default channel plan | slot token e.g. `r.additive+g.xor`        |
@@ -82,7 +84,16 @@ Total header size = 12 + descLen + 1 bytes.
 
 The default channel plan (packed, r→g→b, one shared combine op) omits `ch`,
 `pad`, and `pack`, keeping the header compact and byte-identical to
-pre-channel-plan output.
+pre-channel-plan output. `rotation` is omitted for the same reason: `cw` is
+what every spiral image already in the wild means by saying nothing.
+
+`descLen` is a single byte, so a descriptor of more than 255 bytes is not
+representable; an encoder must fail rather than let the length wrap.
+
+Canvas sizing is **not** in the descriptor. An encoder may enlarge the canvas so
+a radial payload ends at an inscribed ellipse rather than at the corners (the
+`fit` option), but the decoder reads the dimensions off the image, so nothing
+about how they were chosen has to travel with it.
 
 ## Interior byte stream
 
@@ -226,10 +237,11 @@ byte stream. Stored as a `Uint32Array` of interior-local linear indices
 | --------------- | ------------------------------------------------------------------ |
 | `raster`        | left-to-right, top-to-bottom                                       |
 | `boustrophedon` | alternating left→right / right→left rows                           |
-| `spiral`        | clockwise from top-left                                            |
+| `spiral`        | inward from top-left; clockwise unless `rotation=ccw`              |
 | `angle`         | sorted by `a·x + b·y`; params `a` and `b` in descriptor           |
 | `fisher-yates`  | seeded LCG shuffle of raster order; seed in descriptor             |
 | `center-out`    | sorted by Euclidean distance from image center                     |
+| `radial`        | sorted by distance from center in half-widths and half-heights, `((x−(IW−1)/2)/(IW/2))² + ((y−(IH−1)/2)/(IH/2))²`; every prefix is an ellipse inscribed in the interior. `direction=in` reverses the pixels at `r² ≤ 1` and leaves the rest — the corners — in place at the tail, so both directions cover the same pixels in the same order of regions and differ only in which end of the ellipse the payload starts from |
 | `hilbert`       | Hilbert curve order                                                |
 | `polar`         | clockwise angular sweep from 12 o'clock; radius ascending within a ray; integer-only comparator (no trig) |
 | `bayer`         | ordered-dither (Bayer matrix) order; every prefix of the path is a uniform sample of the plane |
