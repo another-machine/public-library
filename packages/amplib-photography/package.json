@@ -16,17 +16,6 @@
     "url": "git+https://github.com/another-machine/public-library.git",
     "directory": "packages/amplib-photography"
   },
-  "tsup": {
-    "entry": [
-      "src/index.ts"
-    ],
-    "clean": true,
-    "dts": true,
-    "format": "esm",
-    "minify": false,
-    "sourcemap": true,
-    "splitting": false
-  },
   "scripts": {
     "build": "tsup",
     "watch": "tsup --watch",
