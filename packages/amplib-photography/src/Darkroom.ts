@@ -6,11 +6,17 @@ import {
   FRAG_RESOLVE,
   VERT,
 } from "./shaders";
-import type { DevelopParams, ExposureParams } from "./schema";
+import type { DevelopParams, ExposureParams, StackMode } from "./schema";
 
 export interface ExposeOptions extends ExposureParams {
   /** Flip horizontally, for a front-facing camera the user sees mirrored. */
   mirror?: boolean;
+  /**
+   * Keep the burst on the GPU — the negative — so `restack` can change
+   * `frames` and `stack` after the fact. Costs 4 bytes per pixel per frame
+   * (a 720p 32-frame burst is ~118 MB), freed by the next expose.
+   */
+  keepNegative?: boolean;
   /** Called after each frame lands. */
   onProgress?: (stacked: number, total: number) => void;
   signal?: AbortSignal;
@@ -31,6 +37,18 @@ interface Target {
   h: number;
 }
 
+/**
+ * The accumulator: two moment textures behind one MRT framebuffer — s0 the
+ * weighted sum of frames, s1 the same sum weighted by burst position.
+ */
+interface Accum {
+  fb: WebGLFramebuffer;
+  s0: WebGLTexture;
+  s1: WebGLTexture;
+  w: number;
+  h: number;
+}
+
 function abortError(message: string): Error {
   const e = new Error(message);
   e.name = "AbortError";
@@ -45,8 +63,9 @@ function abortError(message: string): Error {
  *
  * ```ts
  * const darkroom = new Darkroom();
- * await darkroom.expose(video, { frames: 8, trail: 0.55, stack: "mean" });
- * darkroom.develop(params);
+ * await darkroom.expose(video, { frames: 8, stack: "mean", keepNegative: true });
+ * darkroom.develop(params); // params include trail — develop-time, not capture
+ * darkroom.restack({ frames: 4 }); // shorter shutter from the kept negative
  * const blob = await darkroom.toBlob();
  * ```
  */
@@ -63,6 +82,12 @@ export class Darkroom {
   private targets = new Map<string, Target>();
   private internalFormat: number;
   private texType: number;
+
+  /** What lets `trail` resolve at develop time — see Accum. */
+  private accum: Accum | null = null;
+  /** The kept burst, oldest first, when the last expose asked for it. */
+  private negative: WebGLTexture[] = [];
+  private negativeMirror = false;
 
   /** Exposure resolution — the accumulator's size. */
   private w = 0;
@@ -137,9 +162,10 @@ export class Darkroom {
     if (!video.videoWidth) throw new Error("Darkroom: the video has no frames yet.");
 
     this.busy = true;
+    const kept: WebGLTexture[] = [];
     try {
       const total = Math.max(1, Math.round(options.frames));
-      const weights = this.weightsFor(total, options);
+      this.freeNegative();
       this.beginAccumulation(video.videoWidth, video.videoHeight, options);
 
       const track = (video.srcObject as MediaStream | null)?.getVideoTracks?.()[0];
@@ -155,11 +181,15 @@ export class Darkroom {
         if (track && track.readyState !== "live") {
           throw abortError("The camera stream ended mid-exposure.");
         }
-        this.stackFrame(video, weights[i], options);
+        this.stackFrame(video, i, total, options, kept);
         options.onProgress?.(i + 1, total);
       }
 
-      return this.endAccumulation(total, options);
+      this.seed = Math.random() * 1000;
+      return this.endAccumulation(total, options, kept);
+    } catch (error) {
+      for (const tex of kept) this.gl.deleteTexture(tex);
+      throw error;
     } finally {
       this.endBlend();
       this.busy = false;
@@ -174,47 +204,71 @@ export class Darkroom {
   exposeFrames(frames: TexImageSource[], options: ExposeOptions): Exposure {
     if (!frames.length) throw new Error("Darkroom: no frames to stack.");
     const size = this.sizeOf(frames[0]);
-    const weights = this.weightsFor(frames.length, options);
+    const kept: WebGLTexture[] = [];
+    this.freeNegative();
     this.beginAccumulation(size.width, size.height, options);
     try {
       frames.forEach((frame, i) => {
-        this.stackFrame(frame, weights[i], options);
+        this.stackFrame(frame, i, frames.length, options, kept);
         options.onProgress?.(i + 1, frames.length);
       });
-      return this.endAccumulation(frames.length, options);
+      this.seed = Math.random() * 1000;
+      return this.endAccumulation(frames.length, options, kept);
+    } catch (error) {
+      for (const tex of kept) this.gl.deleteTexture(tex);
+      throw error;
     } finally {
       this.endBlend();
     }
   }
 
+  /** Frames of the kept negative, or 0 when the last expose did not keep one. */
+  get negativeFrames(): number {
+    return this.negative.length;
+  }
+
   /**
-   * Later frames weighted more heavily, so a moving subject leaves a trail that
-   * reads as direction rather than a symmetric smear. Under `max` every frame
-   * carries full weight — the brightest value wins, and a weight would have
-   * nothing to bias.
+   * Re-stack the held negative with a different frame count or stack mode —
+   * the capture-time half of the exposure, revisited without recapturing.
+   * Uses the first `frames` of the burst (the shutter closing earlier),
+   * clamped to what was kept. The grain seed is kept, so only what was asked
+   * to change changes. Requires an expose with `keepNegative: true`.
    */
-  private weightsFor(count: number, options: ExposureParams): number[] {
-    if (options.stack === "max") return new Array(count).fill(1);
-    const raw = Array.from({ length: count }, (_, i) =>
-      1 + options.trail * 6 * (count > 1 ? i / (count - 1) : 1),
+  restack({ frames, stack }: { frames?: number; stack?: StackMode } = {}): Exposure {
+    if (this.disposed) throw new Error("Darkroom: disposed.");
+    if (this.busy) throw new Error("Darkroom: an exposure is already running.");
+    if (!this.negative.length) {
+      throw new Error("Darkroom: no negative held — expose with keepNegative: true.");
+    }
+    const mode = stack ?? this.current?.stack ?? "mean";
+    const total = Math.min(
+      this.negative.length,
+      Math.max(1, Math.round(frames ?? this.negative.length)),
     );
-    const total = raw.reduce((a, b) => a + b, 0);
-    return raw.map((w) => w / total);
+    const options: ExposeOptions = { frames: total, stack: mode, mirror: this.negativeMirror };
+    this.beginAccumulation(this.w, this.h, options);
+    try {
+      for (let i = 0; i < total; i++) {
+        this.drawAccumulate(this.negative[i], i, total, mode, this.negativeMirror);
+      }
+    } finally {
+      this.endBlend();
+    }
+    return this.endAccumulation(total, options);
   }
 
   private beginAccumulation(width: number, height: number, options: ExposeOptions): void {
     const gl = this.gl;
-    if (width !== this.w || height !== this.h) {
+    if (!this.accum || width !== this.w || height !== this.h) {
       this.w = width;
       this.h = height;
-      this.free("accum");
-      this.targets.set("accum", this.makeTarget("accum", width, height));
+      this.freeAccum();
+      this.accum = this.makeAccum(width, height);
       // Develop targets were sized against the old exposure.
       this.rw = this.rh = 0;
     }
 
-    const accum = this.targets.get("accum")!;
-    gl.bindFramebuffer(gl.FRAMEBUFFER, accum.fb);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.accum.fb);
     gl.viewport(0, 0, this.w, this.h);
     gl.clearColor(0, 0, 0, 0);
     gl.clear(gl.COLOR_BUFFER_BIT);
@@ -227,20 +281,61 @@ export class Darkroom {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
   }
 
-  private stackFrame(frame: TexImageSource, weight: number, options: ExposeOptions): void {
+  /** Upload a frame — into the kept negative when asked — and accumulate it. */
+  private stackFrame(
+    frame: TexImageSource,
+    index: number,
+    total: number,
+    options: ExposeOptions,
+    kept: WebGLTexture[],
+  ): void {
     const gl = this.gl;
-    const prog = this.programs.accumulate;
-    gl.bindTexture(gl.TEXTURE_2D, this.frameTex);
+    let tex = this.frameTex;
+    if (options.keepNegative) {
+      tex = this.newTexture();
+      kept.push(tex);
+    }
+    gl.bindTexture(gl.TEXTURE_2D, tex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frame);
-    gl.useProgram(prog);
-    this.bindTexture(prog, "uFrame", this.frameTex, 0);
-    gl.uniform1f(this.loc(prog, "uWeight"), weight);
-    gl.uniform1f(this.loc(prog, "uMirror"), options.mirror ? 1 : 0);
-    this.draw(prog, this.targets.get("accum")!);
+    this.drawAccumulate(tex, index, total, options.stack, options.mirror ?? false);
   }
 
-  private endAccumulation(frames: number, options: ExposeOptions): Exposure {
-    this.seed = Math.random() * 1000;
+  /** One already-uploaded frame into the two moments. */
+  private drawAccumulate(
+    tex: WebGLTexture,
+    index: number,
+    total: number,
+    stack: StackMode,
+    mirror: boolean,
+  ): void {
+    const gl = this.gl;
+    const prog = this.programs.accumulate;
+    const mean = stack !== "max";
+    // Weights pre-scaled by 1/n so an 8-bit fallback accumulator stays in
+    // range; the scale cancels at resolve, which divides by the summed weight.
+    // Under max every frame carries full weight and the ramp moment is unused.
+    const w = mean ? 1 / total : 1;
+    const rampW = mean ? (total > 1 ? index / (total - 1) : 1) / total : 0;
+    gl.useProgram(prog);
+    this.bindTexture(prog, "uFrame", tex, 0);
+    gl.uniform1f(this.loc(prog, "uW"), w);
+    gl.uniform1f(this.loc(prog, "uRampW"), rampW);
+    gl.uniform1f(this.loc(prog, "uMirror"), mirror ? 1 : 0);
+    gl.bindVertexArray(this.vao);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.accum!.fb);
+    gl.viewport(0, 0, this.accum!.w, this.accum!.h);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  private endAccumulation(
+    frames: number,
+    options: ExposeOptions,
+    kept?: WebGLTexture[],
+  ): Exposure {
+    if (kept && options.keepNegative) {
+      this.negative = kept;
+      this.negativeMirror = options.mirror ?? false;
+    }
     this.current = {
       width: this.w,
       height: this.h,
@@ -311,10 +406,19 @@ export class Darkroom {
     const bloomA = this.targets.get("bloomA")!;
     const bloomB = this.targets.get("bloomB")!;
 
-    // normalise the weighted sum, and downsample if this is a preview
+    // Normalise the two accumulated moments into the linear image, and
+    // downsample if this is a preview. The per-frame trail weight is linear
+    // in burst position — A + B·ramp — so any trail value resolves as a mix
+    // of the sum and the position-weighted sum: develop-time by construction.
+    // Negative trail mirrors the ramp, so trails lead instead of follow.
+    // Under max there are no weights; the moment mix is forced to identity.
+    const t = this.current.stack === "mean" ? params.trail : 0;
     const resolve = this.programs.resolve;
     gl.useProgram(resolve);
-    this.bindTexture(resolve, "uSrc", this.targets.get("accum")!.tex, 0);
+    this.bindTexture(resolve, "uS0", this.accum!.s0, 0);
+    this.bindTexture(resolve, "uS1", this.accum!.s1, 1);
+    gl.uniform1f(this.loc(resolve, "uA"), t >= 0 ? 1 : 1 - 6 * t);
+    gl.uniform1f(this.loc(resolve, "uB"), 6 * t);
     this.draw(resolve, lin);
 
     // softness: separable, radius as a fraction of the image
@@ -415,15 +519,28 @@ export class Darkroom {
     }
   }
 
-  private makeTarget(name: string, w: number, h: number): Target {
+  /** A LINEAR/CLAMP texture with no storage yet. */
+  private newTexture(): WebGLTexture {
     const gl = this.gl;
     const tex = gl.createTexture()!;
     gl.bindTexture(gl.TEXTURE_2D, tex);
-    gl.texImage2D(gl.TEXTURE_2D, 0, this.internalFormat, w, h, 0, gl.RGBA, this.texType, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return tex;
+  }
+
+  private makeRenderTexture(w: number, h: number): WebGLTexture {
+    const gl = this.gl;
+    const tex = this.newTexture();
+    gl.texImage2D(gl.TEXTURE_2D, 0, this.internalFormat, w, h, 0, gl.RGBA, this.texType, null);
+    return tex;
+  }
+
+  private makeTarget(name: string, w: number, h: number): Target {
+    const gl = this.gl;
+    const tex = this.makeRenderTexture(w, h);
     const fb = gl.createFramebuffer()!;
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
@@ -432,6 +549,35 @@ export class Darkroom {
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     return { tex, fb, w, h };
+  }
+
+  private makeAccum(w: number, h: number): Accum {
+    const gl = this.gl;
+    const s0 = this.makeRenderTexture(w, h);
+    const s1 = this.makeRenderTexture(w, h);
+    const fb = gl.createFramebuffer()!;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, s0, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, s1, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error(`Darkroom: could not allocate the accumulator at ${w}x${h}.`);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { fb, s0, s1, w, h };
+  }
+
+  private freeAccum(): void {
+    if (!this.accum) return;
+    this.gl.deleteFramebuffer(this.accum.fb);
+    this.gl.deleteTexture(this.accum.s0);
+    this.gl.deleteTexture(this.accum.s1);
+    this.accum = null;
+  }
+
+  private freeNegative(): void {
+    for (const tex of this.negative) this.gl.deleteTexture(tex);
+    this.negative = [];
   }
 
   private free(name: string): void {
@@ -510,6 +656,8 @@ export class Darkroom {
     this.disposed = true;
     const gl = this.gl;
     for (const name of [...this.targets.keys()]) this.free(name);
+    this.freeAccum();
+    this.freeNegative();
     for (const prog of Object.values(this.programs)) gl.deleteProgram(prog);
     gl.deleteTexture(this.frameTex);
     gl.deleteVertexArray(this.vao);

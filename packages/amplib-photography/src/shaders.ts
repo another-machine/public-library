@@ -23,29 +23,49 @@ out vec4 outColor;
 `;
 
 /**
- * One frame into the accumulator, premultiplied by its weight and carrying that
- * weight in alpha. Under FUNC_ADD the alpha channel sums to the total weight so
- * `resolve` can normalise by it; under MAX both channels take the brightest
- * value and alpha lands at 1.
+ * One frame into the accumulator's two moments, each carrying its weight in
+ * alpha so `resolve` can normalise. S0 is the plain sum; S1 is the sum
+ * weighted by the frame's position along the burst. The trail weight is
+ * linear in that position, so ANY trail value is a linear mix of the two —
+ * which is what lets trail be a develop-time parameter instead of being
+ * burned into the accumulation. Weights arrive pre-scaled by 1/n so an 8-bit
+ * fallback accumulator stays in range; the scale cancels at resolve. Under
+ * MAX blending S1 is fed zeros and stays empty.
  */
-export const FRAG_ACCUMULATE = `${HEAD}
+export const FRAG_ACCUMULATE = `#version 300 es
+precision highp float;
+in vec2 vUv;
+layout(location = 0) out vec4 outS0;
+layout(location = 1) out vec4 outS1;
 uniform sampler2D uFrame;
-uniform float uWeight;
+uniform float uW;
+uniform float uRampW;
 uniform float uMirror;
 void main() {
   vec2 uv = vec2(uMirror > 0.5 ? 1.0 - vUv.x : vUv.x, vUv.y);
-  outColor = vec4(texture(uFrame, uv).rgb * uWeight, uWeight);
+  vec3 rgb = texture(uFrame, uv).rgb;
+  outS0 = vec4(rgb * uW, uW);
+  outS1 = vec4(rgb * uRampW, uRampW);
 }`;
 
 /**
- * Normalise the weighted sum once, up front, so the divide is not repeated in
- * every downstream shader. Doubles as the downsample for preview renders.
+ * Normalise the accumulated moments into the linear image, once, up front, so
+ * the divide is not repeated in every downstream shader. Doubles as the
+ * downsample for preview renders. The per-frame weight is A + B·ramp, so the
+ * weighted sum is A·S0 + B·S1 and the total weight is the same mix of the
+ * alphas — trail arrives here as (A, B) and never touches the accumulator.
  */
 export const FRAG_RESOLVE = `${HEAD}
-uniform sampler2D uSrc;
+uniform sampler2D uS0;
+uniform sampler2D uS1;
+uniform float uA;
+uniform float uB;
 void main() {
-  vec4 t = texture(uSrc, vUv);
-  outColor = vec4(t.rgb / max(t.a, 1e-4), 1.0);
+  vec4 s0 = texture(uS0, vUv);
+  vec4 s1 = texture(uS1, vUv);
+  vec3 sum = s0.rgb * uA + s1.rgb * uB;
+  float w = s0.a * uA + s1.a * uB;
+  outColor = vec4(sum / max(w, 1e-5), 1.0);
 }`;
 
 /** Separable 5-tap gaussian, shared by the softness and bloom blurs. */

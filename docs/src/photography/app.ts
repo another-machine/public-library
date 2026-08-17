@@ -80,7 +80,17 @@ export function example(): void {
       if (changed.includes("shutter")) {
         camera.setFrameRate(v.shutter === "slow" ? 15 : undefined).then(() => report());
       }
-      if (changed.includes("frames") || changed.includes("stack")) report();
+      if (changed.includes("frames") || changed.includes("stack")) {
+        // The negative makes the capture-time half adjustable after the fact:
+        // restack the kept burst instead of asking for another shot. Frames
+        // clamp to what was captured — more means shooting again.
+        if (developed && darkroom.negativeFrames) {
+          darkroom.restack({ frames: params.frames, stack: params.stack });
+          requestDevelop(PREVIEW_SCALE);
+          scheduleCommit();
+        }
+        report();
+      }
       if (developed && changed.some((k) => developKeys.has(String(k)))) {
         requestDevelop(PREVIEW_SCALE);
         scheduleCommit();
@@ -187,9 +197,9 @@ export function example(): void {
     try {
       await darkroom.expose(camera.video, {
         frames: params.frames,
-        trail: params.trail,
         stack: params.stack,
         mirror: camera.mirrored,
+        keepNegative: true,
         onProgress: (done, total) => {
           status.textContent = `// exposing ${done}/${total}`;
         },
@@ -255,6 +265,9 @@ export function example(): void {
         lines.push(
           `exposure ${exposure.width}×${exposure.height}, ${exposure.frames} frames, ${exposure.stack}`,
         );
+        if (darkroom.negativeFrames) {
+          lines.push(`negative ${darkroom.negativeFrames} frames held — frames/stack restack live`);
+        }
         lines.push(`develop  ${canvas.width}×${canvas.height}${scale < 1 ? " (preview)" : ""}`);
       }
       if (!darkroom.floatTargets) {

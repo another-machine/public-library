@@ -62,9 +62,11 @@
         <h2>Darkroom</h2>
         <p class="ht-type-prose u-dim">
           Assembling long exposures from many frames.
-          <code>expose</code> method captures frames a particular way and cannot
-          be undone. <code>develop</code> method has parameters that can change
-          without a reexposure.
+          <code>expose</code> method captures the burst;
+          <code>develop</code> method re-renders it live, including
+          <code>trail</code>. With <code>keepNegative</code> the burst itself
+          is held, so <code>restack</code> can change frames and stack after
+          the fact too.
         </p>
 
         <p class="signature">new Darkroom(canvas?: HTMLCanvasElement)</p>
@@ -74,6 +76,10 @@
         </p>
         <p class="signature">
           darkroom.develop(params: DevelopParams, scale?: number): void
+        </p>
+        <p class="signature">
+          darkroom.restack({ frames?: number; stack?: "mean" | "max" }):
+          Exposure
         </p>
 
         <div class="ht-arrange-sidebar">
@@ -89,16 +95,17 @@
 const darkroom = new Darkroom(canvas);
 
 await camera.start();
-// capture — burned into the shot; shoot again to change these
+// capture — only the light is unrepeatable
 await darkroom.expose(camera.video, {
   frames: <span data-value="frames">8</span>, // shutter time = frames over the camera's rate
-<span data-only="trail">  trail: <span data-value="trail">0.55</span>, // weight toward later frames — "mean" only
-</span>  stack: "<span data-value="stack">mean</span>", // "mean" spreads motion; "max" keeps light trails
+  stack: "<span data-value="stack">mean</span>", // "mean" spreads motion; "max" keeps light trails
   mirror: camera.mirrored,
+  keepNegative: true, // hold the burst — frames/stack restack() live
 });
 // post — re-renders the held exposure; free to call live
 darkroom.develop({
-  exposure: <span data-value="exposure">0.00</span>, // stops, before the shoulder
+<span data-only="trail">  trail: <span data-value="trail">0.55</span>, // -1 trails lead, 1 they follow — "mean" only
+</span>  exposure: <span data-value="exposure">0.00</span>, // stops, before the shoulder
   rolloff: <span data-value="rolloff">0.55</span>, // how far into the filmic shoulder
   halation: <span data-value="halation">0.30</span>, // light bleeding past its own edges
 <span data-only="headroom">  headroom: <span data-value="headroom">0.35</span>, // re-expands near-clipped values into the bloom

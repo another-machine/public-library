@@ -21,13 +21,12 @@ export type StackMode = "mean" | "max";
 
 /**
  * Capture-time parameters. These are burned into the accumulation as it is
- * exposed — changing any of them means taking a new exposure.
+ * exposed — changing them means a new exposure, or a `restack` when the
+ * negative was kept.
  */
 export interface ExposureParams {
   /** Frames to stack. Shutter time is this over the camera's frame rate. */
   frames: number;
-  /** 0 weights every frame alike, 1 weights the last frame 7x the first. */
-  trail: number;
   /** How overlapping frames combine. */
   stack: StackMode;
 }
@@ -37,6 +36,14 @@ export interface ExposureParams {
  * these on every call — no recapture, so they are free to drive live.
  */
 export interface DevelopParams {
+  /**
+   * Trail weighting, develop-time despite acting on the burst: the
+   * accumulator keeps the sum and the position-weighted sum, and a linear
+   * weight is a mix of the two. 0 weights every frame alike; 1 weights the
+   * last frame 7x the first, so trails follow; -1 the reverse, so trails
+   * lead. Nothing to weight under the "max" stack.
+   */
+  trail: number;
   /** Stops, applied before the shoulder. */
   exposure: number;
   /** How much of the filmic shoulder to travel toward. */
@@ -98,21 +105,22 @@ export const EXPOSURE_SCHEMA: ParamDef[] = [
     unit: "f",
     precision: 0,
   },
+];
+
+export const DEVELOP_SCHEMA: ParamDef[] = [
   {
     key: "trail",
     label: "Trail",
-    min: 0,
+    min: -1,
     max: 1,
     step: 0.01,
     value: 0.55,
+    group: "Motion",
     inert: (s) =>
       s.stack === "max"
         ? "Light trails keeps the brightest value each pixel reached, so there is no per-frame weight for this to bias."
         : null,
   },
-];
-
-export const DEVELOP_SCHEMA: ParamDef[] = [
   // ±3 stops, not ±1: a mean stack dims anything that moves — a subject
   // crossing N frames keeps 1/N of its light — and one stop cannot buy that
   // back. The shoulder is what keeps +3 from clipping.
