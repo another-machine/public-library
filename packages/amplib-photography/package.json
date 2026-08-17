@@ -1,7 +1,7 @@
 {
   "name": "@amplib/photography",
   "description": "Burst exposure and film-style development for a camera on the GPU: stack real frames into one photograph, then develop it.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
