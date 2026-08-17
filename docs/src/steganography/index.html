@@ -42,28 +42,8 @@
           payload pixel needs a paired key pixel to decode it. The image
           describes its own encoding, too: combine op, keymap, traversal, and
           border width are all written into the border, so
-          <code>decode</code> needs nothing but the image.
-        </p>
-        <p class="ht-type-small u-dim">
-          <strong>Combine</strong> pairs a payload byte with a key pixel — a
-          reversible operation, though some ops trade that reversibility for a
-          better-looking image. <strong>Keymap</strong> locates a key pixel for
-          each data pixel. <strong>Traversal</strong> is the order data pixels
-          are visited in. <strong>Fit</strong> is the odd one out: it changes
-          nothing about the encoding, only the size of canvas it lands on.
-        </p>
-        <p class="ht-type-small u-dim">
-          The canvas is sized by the payload, and the traversal decides what
-          shape the payload makes as it fills. <code>radial</code> measures
-          distance in half-widths and half-heights, so its front is an ellipse
-          inscribed in the image, not a circle drawn on top of it — the
-          boundary it declares as its own. <code>fit: "shape"</code> enlarges
-          the canvas to whatever boundary the chosen traversal declares, so a
-          radial payload ends at its ellipse (a 4/π canvas) instead of the
-          corners; a traversal that declares none fills its rectangle, and
-          "shape" means the same thing as "compact". <code>fit</code> isn't
-          written to the border — the decoder just reads the image's
-          dimensions and never needs to know how they were picked.
+          <code>decode</code> needs nothing but the image. Each option is
+          documented in the library's types.
         </p>
       </section>
 
@@ -91,11 +71,11 @@ const encoded = Stegassette.encode({
     name: "message.txt",
     data: "<span data-value="message"></span>",
   }],
-  combine: "<span data-value="combine"></span>",
-  keymap: "<span data-value="keymap"></span>",
-  traversal: "<span data-value="traversal"></span>",
-<span data-only="direction" hidden>  params: { direction: "<span data-value="direction"></span>" },
-</span><span data-only="fit" hidden>  fit: "<span data-value="fit"></span>",
+  combine: "<span data-value="combine"></span>", // how a byte merges with its key pixel
+  keymap: "<span data-value="keymap"></span>", // where each byte's key pixel lives
+  traversal: "<span data-value="traversal"></span>", // the order the payload fills pixels
+<span data-only="direction" hidden>  params: { direction: "<span data-value="direction"></span>" }, // radial: center-out or edge-in
+</span><span data-only="fit" hidden>  fit: "<span data-value="fit"></span>", // "shape" ends the payload at the ellipse, not the corners
 </span>  border: <span data-value="border"></span>,
   aspectRatio: <span data-value="aspectRatio"></span>,
 });</pre>
@@ -140,18 +120,6 @@ const message = new TextDecoder().decode(entries[0].data);
           The mimetype carries sample rate, bit depth and channel layout, so a
           decoded image can rebuild the buffer on its own.
         </p>
-        <p class="ht-type-small u-dim">
-          <strong>Layout</strong> decides how two channels share one stream —
-          which pixels carry which channel — so it shapes the reveal as much
-          as the traversal does. <code>planar</code> writes the whole left
-          channel, then the whole right, so the first half of the path is one
-          ear. <code>interleaved</code> alternates sample by sample, so both
-          ears develop together. <code>block</code> alternates in runs of
-          <code>blockSize</code> samples between the two. Mono has no channels
-          to order and ignores the setting. The reveal reads layout straight
-          off the mimetype instead of being told separately, so the overlay
-          stays in sync with playback no matter which one is picked.
-        </p>
         <p class="signature">
           Stegassette.buildAudioEntry({ channels: Float32Array[]; sampleRate:
           number; bitsPerSample?: 8 | 16 | 24; layout?: "planar" | "interleaved"
@@ -172,18 +140,18 @@ const audioEntry = Stegassette.buildAudioEntry({
   channels: audioBuffers,
   sampleRate: <span data-value="sampleRate"></span>,
   bitsPerSample: <span data-value="bitsPerSample"></span>,
-<span data-only="layout">  layout: "<span data-value="layout"></span>",
-</span><span data-only="blockSize" hidden>  blockSize: <span data-value="blockSize"></span>,
+<span data-only="layout">  layout: "<span data-value="layout"></span>", // how channels share the stream
+</span><span data-only="blockSize" hidden>  blockSize: <span data-value="blockSize"></span>, // samples per run ("block" only)
 </span>});
 const encoded = Stegassette.encode({
   source,
   entries: [audioEntry],
-  combine: "<span data-value="combine"></span>",
-  keymap: "<span data-value="keymap"></span>",
-  traversal: "<span data-value="traversal"></span>",
-<span data-only="direction" hidden>  params: { direction: "<span data-value="direction"></span>" },
-</span><span data-only="fit" hidden>  fit: "<span data-value="fit"></span>",
-</span>  channels: "<span data-value="channelPlan"></span>",
+  combine: "<span data-value="combine"></span>", // how a byte merges with its key pixel
+  keymap: "<span data-value="keymap"></span>", // where each byte's key pixel lives
+  traversal: "<span data-value="traversal"></span>", // the order the payload fills pixels
+<span data-only="direction" hidden>  params: { direction: "<span data-value="direction"></span>" }, // radial: center-out or edge-in
+</span><span data-only="fit" hidden>  fit: "<span data-value="fit"></span>", // "shape" ends the payload at the ellipse, not the corners
+</span>  channels: "<span data-value="channelPlan"></span>", // channels carrying payload; rest keep cover
   border: <span data-value="border"></span>,
   aspectRatio: <span data-value="aspectRatio"></span>,
 });
@@ -236,29 +204,11 @@ const recon = Stegassette.reconstructCover(encoded, opts);
 // recon develops on the canvas in sync with audio playback</pre>
 
         <p class="ht-type-small u-dim">
-          <strong>keymap</strong> decides where each byte's key comes from; the
-          last two options change the shape of the encode, not just its look.
-          <code>adjacent</code> through <code>rotate</code> reserve a
-          checkerboard of key pixels — half the interior — which is what lets
-          <code>reconstructCover</code> bring the picture back.
-          <code>none</code> has no key pixel at all: nothing is reserved, so
-          the image is half size, and what the reveal develops into then
-          depends entirely on the channel plan below.
-        </p>
-        <p class="ht-type-small u-dim">
-          <strong>channels</strong> is the lever that gets a picture back: any
-          subset of r/g/b, in any order. Channels left out of the plan are
-          never written, so <code>"rg"</code> leaves blue holding the original
-          cover at <em>full</em> resolution — sharper than the half-res average
-          a keyed encode reconstructs, and needs less canvas than a
-          single-channel plan like <code>"r"</code> would.
-          <code>"r"</code> keeps green and blue too, at the cost of more pixels
-          than reserving key pixels would. Only <code>"rgb"</code> leaves
-          nothing behind, the one case where the reveal empties to black.
-          Order matters as well: it decides which payload byte lands in which
-          channel, so <code>"bgr"</code> and <code>"rgb"</code> come out the
-          same size but a different color. The line under the encode reports
-          what each choice actually cost.
+          A keyed <code>keymap</code> reserves the pixels that let
+          <code>reconstructCover</code> bring the picture back; with
+          <code>keymap: "none"</code> the reveal depends entirely on which
+          channels the plan leaves untouched. The line under the encode
+          reports what each choice actually cost.
         </p>
       </section>
 

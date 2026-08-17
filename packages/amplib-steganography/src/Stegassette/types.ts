@@ -187,7 +187,19 @@ export interface EncodeOptions {
   traversal?: TraversalName;
   /** Explicitly resolved channel plan (overrides channels / pack). */
   plan?: ChannelPlan;
-  /** Channel slot shorthand, e.g. "rgb", "bgr", "r.additive+g.xor", or an array of slots / letters / { ch|channel, combine? }. */
+  /**
+   * Channel slot shorthand, e.g. "rgb", "bgr", "r.additive+g.xor", or an
+   * array of slots / letters / { ch|channel, combine? }.
+   *
+   * Any subset of r/g/b, in any order. Channels left out of the plan are
+   * never written, so a partial plan like "rg" leaves blue holding the
+   * original cover at full resolution — sharper than the half-res average a
+   * keyed encode reconstructs. Fewer slots cost more pixels: "r" keeps green
+   * and blue but spends more canvas than reserving key pixels would. Only
+   * "rgb" leaves nothing of the cover behind. Order decides which payload
+   * byte lands in which channel, so "bgr" and "rgb" come out the same size
+   * in a different color.
+   */
   channels?: string | ChannelSlotInput[];
   /** Packing mode (default "packed"). */
   pack?: PackMode;

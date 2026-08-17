@@ -9,8 +9,18 @@ export interface BuildAudioEntryParams {
   sampleRate: number;
   /** Bits per sample: 8, 16, or 24 (default 16). */
   bitsPerSample?: 8 | 16 | 24;
-  /** Multi-channel stream layout (default "planar"). */
+  /**
+   * How multiple channels share the one stream — and therefore which pixels
+   * carry which channel, so it shapes a visual reveal as much as the
+   * traversal does. "planar" writes each channel whole, one after the other,
+   * so the first half of the path is one ear; "interleaved" alternates sample
+   * by sample, so both develop together; "block" alternates in runs of
+   * `blockSize` samples. Mono has nothing to order and ignores it. Stored in
+   * the entry's mimetype, so decoding needs no separate telling.
+   * Default "planar".
+   */
   layout?: "planar" | "interleaved" | "block";
+  /** Samples per channel per run — read by the "block" layout only. */
   blockSize?: number;
   name?: string;
 }
