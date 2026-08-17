@@ -47,22 +47,27 @@
 
     <main class="doc">
       <section id="example-camera">
-        <h2>Shutter speed you do not have</h2>
+        <h2>Camera</h2>
         <p class="ht-type-prose u-dim">
-          A browser cannot set a camera's exposure time. What it can do is read
-          frames, so a long exposure is assembled rather than taken: stack eight
-          consecutive frames and the result carries eight frames of movement,
-          eight frames of light, and about a third less sensor noise. Shutter
-          time becomes a frame count over whatever rate the camera granted.
+          A camera stream with what a photograph needs: an element to sample,
+          mirroring, the granted frame rate, and shutter time in milliseconds.
         </p>
-
         <p class="signature">
           new Camera({ facingMode?: "environment" | "user"; width?: number;
           height?: number; frameRate?: number; followOrientation?: boolean; })
         </p>
-        <p class="signature">
-          new Darkroom(canvas?: HTMLCanvasElement)
+      </section>
+
+      <section id="example-darkroom">
+        <h2>Darkroom</h2>
+        <p class="ht-type-prose u-dim">
+          Assembling long exposures from many frames.
+          <code>expose</code> method captures frames a particular way and cannot
+          be undone. <code>develop</code> method has parameters that can change
+          without a reexposure.
         </p>
+
+        <p class="signature">new Darkroom(canvas?: HTMLCanvasElement)</p>
         <p class="signature">
           darkroom.expose(video: HTMLVideoElement, options: ExposeOptions):
           Promise&lt;Exposure&gt;
@@ -78,36 +83,43 @@
               <canvas data-canvas hidden></canvas>
             </div>
 
-            <pre class="code">const camera = new Camera({ facingMode: "environment" });
+            <pre
+              class="code"
+            >const camera = new Camera({ facingMode: "environment" });
 const darkroom = new Darkroom(canvas);
 
 await camera.start();
+// capture — burned into the shot; shoot again to change these
 await darkroom.expose(camera.video, {
-  frames: <span data-value="frames">8</span>,
-  trail: <span data-value="trail">0.55</span>,
-  stack: "<span data-value="stack">mean</span>",
+  frames: <span data-value="frames">8</span>, // shutter time = frames over the camera's rate
+<span data-only="trail">  trail: <span data-value="trail">0.55</span>, // weight toward later frames — "mean" only
+</span>  stack: "<span data-value="stack">mean</span>", // "mean" spreads motion; "max" keeps light trails
   mirror: camera.mirrored,
 });
-darkroom.develop(params);</pre>
+// post — re-renders the held exposure; free to call live
+darkroom.develop({
+  exposure: <span data-value="exposure">0.00</span>, // stops, before the shoulder
+  rolloff: <span data-value="rolloff">0.55</span>, // how far into the filmic shoulder
+  halation: <span data-value="halation">0.30</span>, // light bleeding past its own edges
+<span data-only="headroom">  headroom: <span data-value="headroom">0.35</span>, // re-expands near-clipped values into the bloom
+</span><span data-only="halationHue">  halationHue: <span data-value="halationHue">0.50</span>, // 0 film red-orange, 1 the source's own hue
+</span>  black: <span data-value="black">0.15</span>, // black point, after the split tone
+  softness: <span data-value="softness">0.38</span>, // travel toward a blurred copy
+  grain: <span data-value="grain">0.35</span>,
+  drift: <span data-value="drift">0.30</span>, // sub-degree rotation + chromatic aberration
+  split: <span data-value="split">0.40</span>, // strength of the shadow/highlight tone split
+<span data-only="shadowHue">  shadowHue: <span data-value="shadowHue">196</span>, // degrees
+</span><span data-only="highlightHue">  highlightHue: <span data-value="highlightHue">38</span>, // degrees
+</span>  vignette: <span data-value="vignette">0.12</span>,
+});</pre>
 
-            <pre class="code"><span data-output="status">// Enable the camera to begin.</span></pre>
+            <pre
+              class="code"
+            ><span data-output="status">// Enable the camera to begin.</span></pre>
 
-            <h3>Two ways to stack</h3>
-            <p class="ht-type-prose u-dim">
-              <em>mean</em> sums the frames by weight, so a moving subject
-              spreads its light across everywhere it went and dims accordingly.
-              <em>max</em> keeps the brightest value each pixel ever reached, so
-              a moving light holds full intensity along its whole path — the
-              difference between a blurred lamp and a light trail.
-            </p>
-
-            <h3>Parameters that know when they are inert</h3>
-            <p class="ht-type-prose u-dim">
-              <em>trail</em> weights later frames more heavily, which only means
-              something to <em>mean</em>. Under <em>max</em> there is no weight
-              for it to bias, so the schema marks it inert and the control
-              leaves. The same rule hides the halation tints when halation is
-              off, and the split hues when split is zero.
+            <p class="ht-type-small u-dim">
+              A parameter that does nothing in the current mode is marked inert
+              by the schema and its control leaves; the reasons print below.
             </p>
             <pre class="code"><span data-output="inert"></span></pre>
           </div>

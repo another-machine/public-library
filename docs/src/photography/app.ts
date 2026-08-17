@@ -19,7 +19,7 @@ const COMMIT_MS = 350;
 type FormData = Record<string, number | string>;
 
 export function example(): void {
-  const section = document.querySelector("section")!;
+  const section = document.querySelector<HTMLElement>("#example-darkroom")!;
   const form = section.querySelector("form")!;
   const video = section.querySelector<HTMLVideoElement>("[data-video]")!;
   const canvas = section.querySelector<HTMLCanvasElement>("[data-canvas]")!;

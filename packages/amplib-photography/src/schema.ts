@@ -10,8 +10,19 @@
  * same rule.
  */
 
+/**
+ * How overlapping frames combine. "mean" sums the frames by weight, so a
+ * moving subject spreads its light across everywhere it went and dims
+ * accordingly. "max" keeps the brightest value each pixel ever reached, so a
+ * moving light holds full intensity along its whole path — the difference
+ * between a blurred lamp and a light trail.
+ */
 export type StackMode = "mean" | "max";
 
+/**
+ * Capture-time parameters. These are burned into the accumulation as it is
+ * exposed — changing any of them means taking a new exposure.
+ */
 export interface ExposureParams {
   /** Frames to stack. Shutter time is this over the camera's frame rate. */
   frames: number;
@@ -21,6 +32,10 @@ export interface ExposureParams {
   stack: StackMode;
 }
 
+/**
+ * Post-processing parameters. `develop()` re-renders the held exposure with
+ * these on every call — no recapture, so they are free to drive live.
+ */
 export interface DevelopParams {
   /** Stops, applied before the shoulder. */
   exposure: number;
@@ -74,7 +89,10 @@ export const EXPOSURE_SCHEMA: ParamDef[] = [
     key: "frames",
     label: "Motion",
     min: 1,
-    max: 16,
+    // 32 at the slow 15fps rate is a two-second exposure. The accumulator is
+    // indifferent to the count — weights normalize at resolve — so the cap is
+    // capture time, not precision.
+    max: 32,
     step: 1,
     value: 8,
     unit: "f",
@@ -95,7 +113,10 @@ export const EXPOSURE_SCHEMA: ParamDef[] = [
 ];
 
 export const DEVELOP_SCHEMA: ParamDef[] = [
-  { key: "exposure", label: "Exposure", min: -1, max: 1, step: 0.01, value: 0, group: "Light" },
+  // ±3 stops, not ±1: a mean stack dims anything that moves — a subject
+  // crossing N frames keeps 1/N of its light — and one stop cannot buy that
+  // back. The shoulder is what keeps +3 from clipping.
+  { key: "exposure", label: "Exposure", min: -3, max: 3, step: 0.01, value: 0, group: "Light" },
   { key: "rolloff", label: "Rolloff", min: 0, max: 1, step: 0.01, value: 0.55, group: "Light" },
   { key: "halation", label: "Halation", min: 0, max: 1, step: 0.01, value: 0.3, group: "Light" },
   {
