@@ -62,11 +62,10 @@
         <h2>Darkroom</h2>
         <p class="ht-type-prose u-dim">
           Assembling long exposures from many frames.
-          <code>expose</code> method captures the burst;
-          <code>develop</code> method re-renders it live, including
-          <code>trail</code>. With <code>keepNegative</code> the burst itself
-          is held, so <code>restack</code> can change frames and stack after
-          the fact too.
+          <code>expose</code> method captures the burst,
+          <code>develop</code> method re-renders it live.
+          <code>keepNegative</code> optionally saves the burst, so
+          <code>restack</code> can change frames and stack after the fact.
         </p>
 
         <p class="signature">new Darkroom(canvas?: HTMLCanvasElement)</p>
@@ -114,7 +113,10 @@ darkroom.develop({
   softness: <span data-value="softness">0.38</span>, // travel toward a blurred copy
   grain: <span data-value="grain">0.35</span>,
   drift: <span data-value="drift">0.30</span>, // sub-degree rotation + chromatic aberration
-  split: <span data-value="split">0.40</span>, // strength of the shadow/highlight tone split
+  aperture: <span data-value="aperture">0.00</span>, // 0 pinhole-sharp, 1 shallowest focus
+<span data-only="focalPlane">  focalPlane: <span data-value="focalPlane">0.50</span>, // the sharp band — 0 bottom, 1 top
+</span><span data-only="ghost">  ghost: <span data-value="ghost">0.00</span>, // melt what moved; negative melts what held still
+</span>  split: <span data-value="split">0.40</span>, // strength of the shadow/highlight tone split
 <span data-only="shadowHue">  shadowHue: <span data-value="shadowHue">196</span>, // degrees
 </span><span data-only="highlightHue">  highlightHue: <span data-value="highlightHue">38</span>, // degrees
 </span>  vignette: <span data-value="vignette">0.12</span>,

@@ -23,20 +23,24 @@ out vec4 outColor;
 `;
 
 /**
- * One frame into the accumulator's two moments, each carrying its weight in
- * alpha so `resolve` can normalise. S0 is the plain sum; S1 is the sum
- * weighted by the frame's position along the burst. The trail weight is
- * linear in that position, so ANY trail value is a linear mix of the two —
- * which is what lets trail be a develop-time parameter instead of being
- * burned into the accumulation. Weights arrive pre-scaled by 1/n so an 8-bit
- * fallback accumulator stays in range; the scale cancels at resolve. Under
- * MAX blending S1 is fed zeros and stays empty.
+ * One frame into the accumulator's three moments, each carrying its weight in
+ * alpha so the reads can normalise. S0 is the plain sum; S1 is the sum
+ * weighted by the frame's position along the burst; S2 is the sum of squares.
+ * The trail weight is linear in position, so ANY trail value is a linear mix
+ * of S0 and S1 — which is what lets trail be a develop-time parameter instead
+ * of being burned into the accumulation. S2 minus the squared mean is the
+ * burst's temporal variance: a per-pixel record of what moved, read by the
+ * ghost defocus. Weights arrive pre-scaled by 1/n so an 8-bit fallback
+ * accumulator stays in range; the scale cancels on read. Under MAX blending
+ * S1 is fed zeros, and S2 degenerates to the squared max — zero variance —
+ * so both trail and ghost go quiet there on their own.
  */
 export const FRAG_ACCUMULATE = `#version 300 es
 precision highp float;
 in vec2 vUv;
 layout(location = 0) out vec4 outS0;
 layout(location = 1) out vec4 outS1;
+layout(location = 2) out vec4 outS2;
 uniform sampler2D uFrame;
 uniform float uW;
 uniform float uRampW;
@@ -46,6 +50,7 @@ void main() {
   vec3 rgb = texture(uFrame, uv).rgb;
   outS0 = vec4(rgb * uW, uW);
   outS1 = vec4(rgb * uRampW, uRampW);
+  outS2 = vec4(rgb * rgb * uW, uW);
 }`;
 
 /**
@@ -82,6 +87,24 @@ void main() {
 }`;
 
 /**
+ * The burst's own motion, as a mask: temporal standard deviation from the
+ * first and second moments, mapped through a ramp that starts above the
+ * variance floor sensor noise gives every pixel. Rendered at quarter
+ * resolution and blurred — the mask separates regions, not texels.
+ */
+export const FRAG_MOTION = `${HEAD}
+uniform sampler2D uS0;
+uniform sampler2D uS2;
+void main() {
+  vec4 s0 = texture(uS0, vUv);
+  vec4 s2 = texture(uS2, vUv);
+  vec3 mean = s0.rgb / max(s0.a, 1e-5);
+  vec3 vr = max(s2.rgb / max(s2.a, 1e-5) - mean * mean, 0.0);
+  float sd = sqrt(dot(vr, vec3(0.2126, 0.7152, 0.0722)));
+  outColor = vec4(vec3(smoothstep(0.02, 0.20, sd)), 1.0);
+}`;
+
+/**
  * Isolate what will bloom. Headroom re-expands near-clipped values above 1.0
  * first: a neon sign clips flat in an 8-bit camera frame, and without pushing
  * it back up the halation reads as a grey smear instead of a hot source. The
@@ -103,10 +126,13 @@ export const FRAG_COMPOSITE = `${HEAD}
 uniform sampler2D uLin;
 uniform sampler2D uSoftTex;
 uniform sampler2D uBloom;
+uniform sampler2D uDefocus;
+uniform sampler2D uMotion;
 uniform vec2 uRes;
 uniform float uExposure, uRolloff, uHalation, uHalationHue, uBlack;
 uniform float uSoftness, uGrain, uDrift, uSeed;
 uniform float uSplit, uShadowHue, uHighlightHue, uVignette;
+uniform float uAperture, uFocalPlane, uGhost;
 
 vec3 fetch(vec2 uv) { return texture(uLin, clamp(uv, 0.001, 0.999)).rgb; }
 float luma(vec3 c) { return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
@@ -140,6 +166,17 @@ void main() {
   // de-sharpen, undoing the phone's micro-contrast. The blur is a separable
   // pre-pass; this only decides how far toward it to travel.
   c = mix(c, texture(uSoftTex, clamp(base, 0.001, 0.999)).rgb, uSoftness * 0.78);
+
+  // depth of field, faked twice over, both travelling toward the same wide
+  // blur. Aperture defocuses by distance from a screen-space focal band —
+  // depth as geometry. Ghost defocuses by the burst's own temporal variance —
+  // depth as time: positive melts what moved, negative melts what held still
+  // and leaves the ghosts sharp.
+  float band = smoothstep(0.12, 0.85, abs(base.y - uFocalPlane) * 2.0) * uAperture;
+  float moved = texture(uMotion, base).r;
+  float gm = (uGhost >= 0.0 ? moved : 1.0 - moved) * abs(uGhost);
+  float defocus = clamp(band + gm, 0.0, 1.0);
+  c = mix(c, texture(uDefocus, clamp(base, 0.001, 0.999)).rgb, defocus * 0.9);
 
   // halation — light escaping its own edges. The bloom already carries the
   // source colour, so multiplying by the strong warm crushes it to film

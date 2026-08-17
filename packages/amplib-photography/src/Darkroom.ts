@@ -3,6 +3,7 @@ import {
   FRAG_BLUR,
   FRAG_BRIGHT,
   FRAG_COMPOSITE,
+  FRAG_MOTION,
   FRAG_RESOLVE,
   VERT,
 } from "./shaders";
@@ -38,13 +39,16 @@ interface Target {
 }
 
 /**
- * The accumulator: two moment textures behind one MRT framebuffer — s0 the
- * weighted sum of frames, s1 the same sum weighted by burst position.
+ * The accumulator: three moment textures behind one MRT framebuffer — s0 the
+ * weighted sum of frames, s1 the same sum weighted by burst position (what
+ * lets trail resolve at develop time), s2 the sum of squares (what lets the
+ * ghost defocus read the burst's motion as temporal variance).
  */
 interface Accum {
   fb: WebGLFramebuffer;
   s0: WebGLTexture;
   s1: WebGLTexture;
+  s2: WebGLTexture;
   w: number;
   h: number;
 }
@@ -124,6 +128,7 @@ export class Darkroom {
     this.programs = {
       accumulate: this.compile(FRAG_ACCUMULATE),
       resolve: this.compile(FRAG_RESOLVE),
+      motion: this.compile(FRAG_MOTION),
       blur: this.compile(FRAG_BLUR),
       bright: this.compile(FRAG_BRIGHT),
       composite: this.compile(FRAG_COMPOSITE),
@@ -405,6 +410,10 @@ export class Darkroom {
     const soft2 = this.targets.get("soft2")!;
     const bloomA = this.targets.get("bloomA")!;
     const bloomB = this.targets.get("bloomB")!;
+    const defocusA = this.targets.get("defocusA")!;
+    const defocusB = this.targets.get("defocusB")!;
+    const motionA = this.targets.get("motionA")!;
+    const motionB = this.targets.get("motionB")!;
 
     // Normalise the two accumulated moments into the linear image, and
     // downsample if this is a preview. The per-frame trail weight is linear
@@ -455,11 +464,52 @@ export class Darkroom {
       this.draw(blur, bloomA);
     }
 
+    // Depth of field's two masks read the same wide quarter-res blur. Under
+    // max there is no mean for motion to deviate from, so ghost is forced
+    // quiet the way trail is. Both passes are skipped when the params ask for
+    // nothing — the composite still samples the targets, but multiplied by 0.
+    const ghost = this.current.stack === "mean" ? params.ghost : 0;
+    if (params.aperture > 0 || ghost !== 0) {
+      // defocus: downsample-and-blur lin at quarter res, then one widening
+      // iteration — ping-pong ending in defocusA
+      const steps: Array<[Target, Target, number, number]> = [
+        [lin, defocusB, 1 / qw, 0],
+        [defocusB, defocusA, 0, 1 / qh],
+        [defocusA, defocusB, 2 / qw, 0],
+        [defocusB, defocusA, 0, 2 / qh],
+      ];
+      for (const [src, dst, dx, dy] of steps) {
+        gl.useProgram(blur);
+        this.bindTexture(blur, "uSrc", src.tex, 0);
+        gl.uniform2f(this.loc(blur, "uDir"), dx, dy);
+        this.draw(blur, dst);
+      }
+    }
+    if (ghost !== 0) {
+      // motion: temporal deviation from the moments, blurred to regions
+      const motion = this.programs.motion;
+      gl.useProgram(motion);
+      this.bindTexture(motion, "uS0", this.accum!.s0, 0);
+      this.bindTexture(motion, "uS2", this.accum!.s2, 1);
+      this.draw(motion, motionA);
+
+      gl.useProgram(blur);
+      this.bindTexture(blur, "uSrc", motionA.tex, 0);
+      gl.uniform2f(this.loc(blur, "uDir"), 1.5 / qw, 0);
+      this.draw(blur, motionB);
+      gl.useProgram(blur);
+      this.bindTexture(blur, "uSrc", motionB.tex, 0);
+      gl.uniform2f(this.loc(blur, "uDir"), 0, 1.5 / qh);
+      this.draw(blur, motionA);
+    }
+
     const comp = this.programs.composite;
     gl.useProgram(comp);
     this.bindTexture(comp, "uLin", lin.tex, 0);
     this.bindTexture(comp, "uSoftTex", soft2.tex, 1);
     this.bindTexture(comp, "uBloom", bloomA.tex, 2);
+    this.bindTexture(comp, "uDefocus", defocusA.tex, 3);
+    this.bindTexture(comp, "uMotion", motionA.tex, 4);
     gl.uniform2f(this.loc(comp, "uRes"), rw, rh);
     gl.uniform1f(this.loc(comp, "uSeed"), this.seed);
     for (const [name, value] of [
@@ -475,6 +525,9 @@ export class Darkroom {
       ["uShadowHue", params.shadowHue],
       ["uHighlightHue", params.highlightHue],
       ["uVignette", params.vignette],
+      ["uAperture", params.aperture],
+      ["uFocalPlane", params.focalPlane],
+      ["uGhost", ghost],
     ] as const) {
       gl.uniform1f(this.loc(comp, name), value);
     }
@@ -513,7 +566,7 @@ export class Darkroom {
       this.free(name);
       this.targets.set(name, this.makeTarget(name, rw, rh));
     }
-    for (const name of ["bloomA", "bloomB"]) {
+    for (const name of ["bloomA", "bloomB", "defocusA", "defocusB", "motionA", "motionB"]) {
       this.free(name);
       this.targets.set(name, this.makeTarget(name, bw, bh));
     }
@@ -555,16 +608,18 @@ export class Darkroom {
     const gl = this.gl;
     const s0 = this.makeRenderTexture(w, h);
     const s1 = this.makeRenderTexture(w, h);
+    const s2 = this.makeRenderTexture(w, h);
     const fb = gl.createFramebuffer()!;
     gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, s0, 0);
     gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, s1, 0);
-    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT2, gl.TEXTURE_2D, s2, 0);
+    gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1, gl.COLOR_ATTACHMENT2]);
     if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
       throw new Error(`Darkroom: could not allocate the accumulator at ${w}x${h}.`);
     }
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    return { fb, s0, s1, w, h };
+    return { fb, s0, s1, s2, w, h };
   }
 
   private freeAccum(): void {
@@ -572,6 +627,7 @@ export class Darkroom {
     this.gl.deleteFramebuffer(this.accum.fb);
     this.gl.deleteTexture(this.accum.s0);
     this.gl.deleteTexture(this.accum.s1);
+    this.gl.deleteTexture(this.accum.s2);
     this.accum = null;
   }
 
