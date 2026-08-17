@@ -20,9 +20,16 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
 
+    // No `noEmit: false` alongside these. There is no `extends` here, so it is
+    // already the default — and naming both keys is what TS5053 reports on.
+    //
+    // rootDir is the directory tsc already computes from `include`, written
+    // down. TS 6 stops inferring it (TS6059), and an inferred root moves the
+    // moment a file is added outside src/ — which would put dist/src/index.d.ts
+    // where package.json's "types" says dist/index.d.ts.
     "declaration": true,
     "emitDeclarationOnly": true,
-    "noEmit": false,
+    "rootDir": "src",
     "outDir": "dist"
   },
   "include": ["src/**/*.ts"]
