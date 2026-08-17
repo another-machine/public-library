@@ -48,7 +48,11 @@ export class OLAProcessor extends AudioWorkletProcessor {
   reallocateChannelsIfNeeded(inputs, outputs) {
     for (var i = 0; i < this.nbInputs; i++) {
       let nbChannels = inputs[i].length;
-      if (nbChannels != this.inputBuffers[i].length) {
+      // Never down to zero. A momentarily empty input is not a channel-count
+      // change, and reallocating to nothing throws away the buffers the
+      // overlap-add is mid-way through — silence that never recovers, because
+      // the next non-empty block starts from an empty allocation.
+      if (nbChannels && nbChannels != this.inputBuffers[i].length) {
         this.allocateInputChannels(i, nbChannels);
       }
     }
@@ -105,6 +109,20 @@ export class OLAProcessor extends AudioWorkletProcessor {
 
   /** Read next web audio block to input buffers **/
   readInputs(inputs) {
+    // An input with no channels at all, which is what WebKit hands over when
+    // nothing connected to it is currently producing. Chrome sends a channel
+    // full of zeros instead, which the next branch already handled — this one
+    // did not exist, so the processor allocated zero channels and wrote
+    // silence from then on.
+    if (!inputs[0].length) {
+      for (var i = 0; i < this.nbInputs; i++) {
+        for (var j = 0; j < this.inputBuffers[i].length; j++) {
+          this.inputBuffers[i][j].fill(0, this.blockSize);
+        }
+      }
+      return;
+    }
+
     // when playback is paused, we may stop receiving new samples
     if (inputs[0].length && inputs[0][0].length == 0) {
       for (var i = 0; i < this.nbInputs; i++) {
