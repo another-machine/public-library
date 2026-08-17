@@ -51,6 +51,11 @@ jobs:
       # back music-theory's `Note` and `Chord` instances.
       - run: npm i
         working-directory: packages/amplib-music-detection
+      # photography depends on @amplib/devices for the camera rather than
+      # calling getUserMedia itself — acquiring, enumerating and cycling a
+      # camera is already solved there, and solved once.
+      - run: npm i
+        working-directory: packages/amplib-photography
       - run: npm i
       - run: npm i
         working-directory: docs

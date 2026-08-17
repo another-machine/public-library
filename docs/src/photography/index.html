@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en" data-theme="auto">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>photography | another machine</title>
+    <style>
+      @import "../../../packages/amplib-ui/docs.css";
+    </style>
+    <style>
+      .stage {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 4 / 3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        background: var(--ht-surface-sunken, #000);
+      }
+      .stage video,
+      .stage canvas {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+        display: block;
+      }
+      .stage video[data-mirrored="true"] {
+        transform: scaleX(-1);
+      }
+      .stage [hidden] {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="masthead">
+      <h1><a href="/">@amplib</a>/<wbr />photography</h1>
+      <div class="ht-arrange-row">
+        <a
+          href="https://github.com/another-machine/public-library/tree/main/packages/amplib-photography"
+          >GitHub &#8599;</a
+        >
+      </div>
+    </header>
+
+    <main class="doc">
+      <section id="example-camera">
+        <h2>Shutter speed you do not have</h2>
+        <p class="ht-type-prose u-dim">
+          A browser cannot set a camera's exposure time. What it can do is read
+          frames, so a long exposure is assembled rather than taken: stack eight
+          consecutive frames and the result carries eight frames of movement,
+          eight frames of light, and about a third less sensor noise. Shutter
+          time becomes a frame count over whatever rate the camera granted.
+        </p>
+
+        <p class="signature">
+          new Camera({ facingMode?: "environment" | "user"; width?: number;
+          height?: number; frameRate?: number; followOrientation?: boolean; })
+        </p>
+        <p class="signature">
+          new Darkroom(canvas?: HTMLCanvasElement)
+        </p>
+        <p class="signature">
+          darkroom.expose(video: HTMLVideoElement, options: ExposeOptions):
+          Promise&lt;Exposure&gt;
+        </p>
+        <p class="signature">
+          darkroom.develop(params: DevelopParams, scale?: number): void
+        </p>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <div class="stage">
+              <video data-video playsinline muted></video>
+              <canvas data-canvas hidden></canvas>
+            </div>
+
+            <pre class="code">const camera = new Camera({ facingMode: "environment" });
+const darkroom = new Darkroom(canvas);
+
+await camera.start();
+await darkroom.expose(camera.video, {
+  frames: <span data-value="frames">8</span>,
+  trail: <span data-value="trail">0.55</span>,
+  stack: "<span data-value="stack">mean</span>",
+  mirror: camera.mirrored,
+});
+darkroom.develop(params);</pre>
+
+            <pre class="code"><span data-output="status">// Enable the camera to begin.</span></pre>
+
+            <h3>Two ways to stack</h3>
+            <p class="ht-type-prose u-dim">
+              <em>mean</em> sums the frames by weight, so a moving subject
+              spreads its light across everywhere it went and dims accordingly.
+              <em>max</em> keeps the brightest value each pixel ever reached, so
+              a moving light holds full intensity along its whole path — the
+              difference between a blurred lamp and a light trail.
+            </p>
+
+            <h3>Parameters that know when they are inert</h3>
+            <p class="ht-type-prose u-dim">
+              <em>trail</em> weights later frames more heavily, which only means
+              something to <em>mean</em>. Under <em>max</em> there is no weight
+              for it to bias, so the schema marks it inert and the control
+              leaves. The same rule hides the halation tints when halation is
+              off, and the split hues when split is zero.
+            </p>
+            <pre class="code"><span data-output="inert"></span></pre>
+          </div>
+
+          <form class="fieldset-stack"></form>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { example } from "./app.ts";
+      example();
+    </script>
+  </body>
+</html>

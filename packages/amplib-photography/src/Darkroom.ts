@@ -1,0 +1,518 @@
+import {
+  FRAG_ACCUMULATE,
+  FRAG_BLUR,
+  FRAG_BRIGHT,
+  FRAG_COMPOSITE,
+  FRAG_RESOLVE,
+  VERT,
+} from "./shaders";
+import type { DevelopParams, ExposureParams } from "./schema";
+
+export interface ExposeOptions extends ExposureParams {
+  /** Flip horizontally, for a front-facing camera the user sees mirrored. */
+  mirror?: boolean;
+  /** Called after each frame lands. */
+  onProgress?: (stacked: number, total: number) => void;
+  signal?: AbortSignal;
+}
+
+export interface Exposure {
+  width: number;
+  height: number;
+  /** Frames actually stacked. */
+  frames: number;
+  stack: "mean" | "max";
+}
+
+interface Target {
+  tex: WebGLTexture;
+  fb: WebGLFramebuffer;
+  w: number;
+  h: number;
+}
+
+function abortError(message: string): Error {
+  const e = new Error(message);
+  e.name = "AbortError";
+  return e;
+}
+
+/**
+ * Exposing and developing share one WebGL2 context, because they must: the
+ * accumulation stays on the GPU as a float texture and the develop chain reads
+ * it directly. Handing it back as pixels between the two halves would cost a
+ * readback per shot and throw away everything above 1.0 that the halation needs.
+ *
+ * ```ts
+ * const darkroom = new Darkroom();
+ * await darkroom.expose(video, { frames: 8, trail: 0.55, stack: "mean" });
+ * darkroom.develop(params);
+ * const blob = await darkroom.toBlob();
+ * ```
+ */
+export class Darkroom {
+  readonly canvas: HTMLCanvasElement;
+  readonly gl: WebGL2RenderingContext;
+  /** False when EXT_color_buffer_float is missing; highlights then clip at 1.0. */
+  readonly floatTargets: boolean;
+
+  private programs: Record<string, WebGLProgram> = {};
+  private uniforms = new Map<WebGLProgram, Map<string, WebGLUniformLocation>>();
+  private vao: WebGLVertexArrayObject;
+  private frameTex: WebGLTexture;
+  private targets = new Map<string, Target>();
+  private internalFormat: number;
+  private texType: number;
+
+  /** Exposure resolution — the accumulator's size. */
+  private w = 0;
+  private h = 0;
+  /** Current develop resolution. */
+  private rw = 0;
+  private rh = 0;
+  private seed = 0;
+  private current: Exposure | null = null;
+  private lastParams: DevelopParams | null = null;
+  private lastScale = 1;
+  private busy = false;
+  private disposed = false;
+
+  constructor(canvas: HTMLCanvasElement = document.createElement("canvas")) {
+    this.canvas = canvas;
+    const gl = canvas.getContext("webgl2", {
+      // toBlob and toDataURL read the drawing buffer after the frame it was
+      // drawn in, which is only defined with this on.
+      preserveDrawingBuffer: true,
+      alpha: false,
+      antialias: false,
+    });
+    if (!gl) throw new Error("Darkroom: WebGL2 is not available.");
+    this.gl = gl;
+
+    this.floatTargets = !!gl.getExtension("EXT_color_buffer_float");
+    this.internalFormat = this.floatTargets ? gl.RGBA16F : gl.RGBA8;
+    this.texType = this.floatTargets ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE;
+
+    this.vao = gl.createVertexArray()!;
+    gl.bindVertexArray(this.vao);
+
+    this.programs = {
+      accumulate: this.compile(FRAG_ACCUMULATE),
+      resolve: this.compile(FRAG_RESOLVE),
+      blur: this.compile(FRAG_BLUR),
+      bright: this.compile(FRAG_BRIGHT),
+      composite: this.compile(FRAG_COMPOSITE),
+    };
+
+    this.frameTex = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, this.frameTex);
+    for (const [k, v] of [
+      [gl.TEXTURE_MIN_FILTER, gl.LINEAR],
+      [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
+      [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],
+      [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE],
+    ] as const) {
+      gl.texParameteri(gl.TEXTURE_2D, k, v);
+    }
+  }
+
+  /** The exposure currently held, or null before the first one. */
+  get exposure(): Exposure | null {
+    return this.current;
+  }
+
+  // ── exposing ───────────────────────────────────────────────────────────────
+
+  /**
+   * Stack frames straight off a playing video.
+   *
+   * Rejects with an `AbortError` rather than returning a torn image if the
+   * source changes size mid-burst (a device turn, which would stitch two
+   * orientations together), if the signal aborts, or if the page is hidden —
+   * a backgrounded tab stops producing frames, and stacking the same stale one
+   * eight times looks like a photograph rather than a failure.
+   */
+  async expose(video: HTMLVideoElement, options: ExposeOptions): Promise<Exposure> {
+    if (this.busy) throw new Error("Darkroom: an exposure is already running.");
+    if (!video.videoWidth) throw new Error("Darkroom: the video has no frames yet.");
+
+    this.busy = true;
+    try {
+      const total = Math.max(1, Math.round(options.frames));
+      const weights = this.weightsFor(total, options);
+      this.beginAccumulation(video.videoWidth, video.videoHeight, options);
+
+      const track = (video.srcObject as MediaStream | null)?.getVideoTracks?.()[0];
+      for (let i = 0; i < total; i++) {
+        await this.nextFrame(video);
+        if (options.signal?.aborted) throw abortError("Exposure aborted.");
+        if (video.videoWidth !== this.w || video.videoHeight !== this.h) {
+          throw abortError("The camera changed orientation mid-exposure.");
+        }
+        if (typeof document !== "undefined" && document.hidden) {
+          throw abortError("The page was hidden mid-exposure.");
+        }
+        if (track && track.readyState !== "live") {
+          throw abortError("The camera stream ended mid-exposure.");
+        }
+        this.stackFrame(video, weights[i], options);
+        options.onProgress?.(i + 1, total);
+      }
+
+      return this.endAccumulation(total, options);
+    } finally {
+      this.endBlend();
+      this.busy = false;
+    }
+  }
+
+  /**
+   * Stack an array of already-decoded frames. The same accumulation as
+   * `expose`, without the wait on a live source — a burst of stills, or frames
+   * pulled from a decoded video.
+   */
+  exposeFrames(frames: TexImageSource[], options: ExposeOptions): Exposure {
+    if (!frames.length) throw new Error("Darkroom: no frames to stack.");
+    const size = this.sizeOf(frames[0]);
+    const weights = this.weightsFor(frames.length, options);
+    this.beginAccumulation(size.width, size.height, options);
+    try {
+      frames.forEach((frame, i) => {
+        this.stackFrame(frame, weights[i], options);
+        options.onProgress?.(i + 1, frames.length);
+      });
+      return this.endAccumulation(frames.length, options);
+    } finally {
+      this.endBlend();
+    }
+  }
+
+  /**
+   * Later frames weighted more heavily, so a moving subject leaves a trail that
+   * reads as direction rather than a symmetric smear. Under `max` every frame
+   * carries full weight — the brightest value wins, and a weight would have
+   * nothing to bias.
+   */
+  private weightsFor(count: number, options: ExposureParams): number[] {
+    if (options.stack === "max") return new Array(count).fill(1);
+    const raw = Array.from({ length: count }, (_, i) =>
+      1 + options.trail * 6 * (count > 1 ? i / (count - 1) : 1),
+    );
+    const total = raw.reduce((a, b) => a + b, 0);
+    return raw.map((w) => w / total);
+  }
+
+  private beginAccumulation(width: number, height: number, options: ExposeOptions): void {
+    const gl = this.gl;
+    if (width !== this.w || height !== this.h) {
+      this.w = width;
+      this.h = height;
+      this.free("accum");
+      this.targets.set("accum", this.makeTarget("accum", width, height));
+      // Develop targets were sized against the old exposure.
+      this.rw = this.rh = 0;
+    }
+
+    const accum = this.targets.get("accum")!;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, accum.fb);
+    gl.viewport(0, 0, this.w, this.h);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE);
+    // `mean` sums weighted frames, which also cuts sensor noise by about
+    // sqrt(N). `max` keeps the brightest value each pixel ever reached, so a
+    // moving light holds full intensity instead of being divided by N.
+    gl.blendEquation(options.stack === "max" ? gl.MAX : gl.FUNC_ADD);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+  }
+
+  private stackFrame(frame: TexImageSource, weight: number, options: ExposeOptions): void {
+    const gl = this.gl;
+    const prog = this.programs.accumulate;
+    gl.bindTexture(gl.TEXTURE_2D, this.frameTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, frame);
+    gl.useProgram(prog);
+    this.bindTexture(prog, "uFrame", this.frameTex, 0);
+    gl.uniform1f(this.loc(prog, "uWeight"), weight);
+    gl.uniform1f(this.loc(prog, "uMirror"), options.mirror ? 1 : 0);
+    this.draw(prog, this.targets.get("accum")!);
+  }
+
+  private endAccumulation(frames: number, options: ExposeOptions): Exposure {
+    this.seed = Math.random() * 1000;
+    this.current = {
+      width: this.w,
+      height: this.h,
+      frames,
+      stack: options.stack,
+    };
+    return this.current;
+  }
+
+  private endBlend(): void {
+    const gl = this.gl;
+    gl.disable(gl.BLEND);
+    gl.blendEquation(gl.FUNC_ADD);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
+  }
+
+  /**
+   * requestVideoFrameCallback is the accurate clock, but a stalled stream never
+   * fires it and an unraced await would hang the burst with no way back. Racing
+   * it against a couple of frame intervals degrades a stall into duplicated
+   * frames, which the checks in `expose` then catch.
+   */
+  private nextFrame(video: HTMLVideoElement): Promise<void> {
+    return new Promise((resolve) => {
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        resolve();
+      };
+      const rate = video.srcObject
+        ? ((video.srcObject as MediaStream).getVideoTracks()[0]?.getSettings().frameRate ?? 30)
+        : 30;
+      const timer = setTimeout(finish, Math.max(34, Math.round(2000 / Math.max(rate, 1))));
+      if (typeof video.requestVideoFrameCallback === "function") {
+        video.requestVideoFrameCallback(() => {
+          clearTimeout(timer);
+          finish();
+        });
+      }
+    });
+  }
+
+  // ── developing ─────────────────────────────────────────────────────────────
+
+  /**
+   * Render the held exposure to the canvas.
+   *
+   * `scale` below 1 renders the whole chain smaller rather than a cheaper
+   * approximation of it — every kernel is a fraction of the image, so a 0.5
+   * render is the same photograph at half size. That is what makes it usable
+   * as a live preview while a control is being dragged.
+   */
+  develop(params: DevelopParams, scale = 1): void {
+    if (this.disposed) throw new Error("Darkroom: disposed.");
+    if (!this.current) throw new Error("Darkroom: nothing has been exposed yet.");
+    const gl = this.gl;
+
+    const rw = Math.max(1, Math.round(this.w * scale));
+    const rh = Math.max(1, Math.round(this.h * scale));
+    this.allocDevelopTargets(rw, rh);
+    this.lastParams = params;
+    this.lastScale = scale;
+
+    const lin = this.targets.get("lin")!;
+    const soft1 = this.targets.get("soft1")!;
+    const soft2 = this.targets.get("soft2")!;
+    const bloomA = this.targets.get("bloomA")!;
+    const bloomB = this.targets.get("bloomB")!;
+
+    // normalise the weighted sum, and downsample if this is a preview
+    const resolve = this.programs.resolve;
+    gl.useProgram(resolve);
+    this.bindTexture(resolve, "uSrc", this.targets.get("accum")!.tex, 0);
+    this.draw(resolve, lin);
+
+    // softness: separable, radius as a fraction of the image
+    const blur = this.programs.blur;
+    const softRadius = (1 + params.softness * 2.6) / this.w;
+    gl.useProgram(blur);
+    this.bindTexture(blur, "uSrc", lin.tex, 0);
+    gl.uniform2f(this.loc(blur, "uDir"), softRadius, 0);
+    this.draw(blur, soft1);
+
+    gl.useProgram(blur);
+    this.bindTexture(blur, "uSrc", soft1.tex, 0);
+    gl.uniform2f(this.loc(blur, "uDir"), 0, (softRadius * this.w) / this.h);
+    this.draw(blur, soft2);
+
+    // bloom: bright pass then two widening separable iterations
+    const bright = this.programs.bright;
+    gl.useProgram(bright);
+    this.bindTexture(bright, "uSrc", lin.tex, 0);
+    gl.uniform1f(this.loc(bright, "uHeadroom"), params.headroom);
+    this.draw(bright, bloomA);
+
+    const qw = Math.max(1, this.w >> 2);
+    const qh = Math.max(1, this.h >> 2);
+    for (let i = 1; i <= 2; i++) {
+      gl.useProgram(blur);
+      this.bindTexture(blur, "uSrc", bloomA.tex, 0);
+      gl.uniform2f(this.loc(blur, "uDir"), i / qw, 0);
+      this.draw(blur, bloomB);
+
+      gl.useProgram(blur);
+      this.bindTexture(blur, "uSrc", bloomB.tex, 0);
+      gl.uniform2f(this.loc(blur, "uDir"), 0, i / qh);
+      this.draw(blur, bloomA);
+    }
+
+    const comp = this.programs.composite;
+    gl.useProgram(comp);
+    this.bindTexture(comp, "uLin", lin.tex, 0);
+    this.bindTexture(comp, "uSoftTex", soft2.tex, 1);
+    this.bindTexture(comp, "uBloom", bloomA.tex, 2);
+    gl.uniform2f(this.loc(comp, "uRes"), rw, rh);
+    gl.uniform1f(this.loc(comp, "uSeed"), this.seed);
+    for (const [name, value] of [
+      ["uExposure", params.exposure],
+      ["uRolloff", params.rolloff],
+      ["uHalation", params.halation],
+      ["uHalationHue", params.halationHue],
+      ["uBlack", params.black],
+      ["uSoftness", params.softness],
+      ["uGrain", params.grain],
+      ["uDrift", params.drift],
+      ["uSplit", params.split],
+      ["uShadowHue", params.shadowHue],
+      ["uHighlightHue", params.highlightHue],
+      ["uVignette", params.vignette],
+    ] as const) {
+      gl.uniform1f(this.loc(comp, name), value);
+    }
+    this.draw(comp, null, rw, rh);
+  }
+
+  /**
+   * Both encoders re-develop at full resolution first if the last render was a
+   * preview — saving the half-size version is never what was meant.
+   */
+  toDataURL(type = "image/jpeg", quality = 0.94): string {
+    this.ensureFullResolution();
+    return this.canvas.toDataURL(type, quality);
+  }
+
+  toBlob(type = "image/jpeg", quality = 0.94): Promise<Blob | null> {
+    this.ensureFullResolution();
+    return new Promise((resolve) => this.canvas.toBlob(resolve, type, quality));
+  }
+
+  private ensureFullResolution(): void {
+    if (this.lastScale !== 1 && this.lastParams) this.develop(this.lastParams, 1);
+  }
+
+  // ── plumbing ───────────────────────────────────────────────────────────────
+
+  private allocDevelopTargets(rw: number, rh: number): void {
+    if (rw === this.rw && rh === this.rh) return;
+    this.rw = rw;
+    this.rh = rh;
+    this.canvas.width = rw;
+    this.canvas.height = rh;
+    const bw = Math.max(1, rw >> 2);
+    const bh = Math.max(1, rh >> 2);
+    for (const name of ["lin", "soft1", "soft2"]) {
+      this.free(name);
+      this.targets.set(name, this.makeTarget(name, rw, rh));
+    }
+    for (const name of ["bloomA", "bloomB"]) {
+      this.free(name);
+      this.targets.set(name, this.makeTarget(name, bw, bh));
+    }
+  }
+
+  private makeTarget(name: string, w: number, h: number): Target {
+    const gl = this.gl;
+    const tex = gl.createTexture()!;
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, this.internalFormat, w, h, 0, gl.RGBA, this.texType, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const fb = gl.createFramebuffer()!;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+    if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error(`Darkroom: could not allocate the "${name}" target at ${w}x${h}.`);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { tex, fb, w, h };
+  }
+
+  private free(name: string): void {
+    const t = this.targets.get(name);
+    if (!t) return;
+    this.gl.deleteFramebuffer(t.fb);
+    this.gl.deleteTexture(t.tex);
+    this.targets.delete(name);
+  }
+
+  private draw(prog: WebGLProgram, target: Target | null, w?: number, h?: number): void {
+    const gl = this.gl;
+    gl.bindVertexArray(this.vao);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target ? target.fb : null);
+    gl.viewport(0, 0, target ? target.w : w!, target ? target.h : h!);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+  }
+
+  private compile(fragSource: string): WebGLProgram {
+    const gl = this.gl;
+    const prog = gl.createProgram()!;
+    for (const [type, source] of [
+      [gl.VERTEX_SHADER, VERT],
+      [gl.FRAGMENT_SHADER, fragSource],
+    ] as const) {
+      const shader = gl.createShader(type)!;
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        throw new Error(`Darkroom: shader failed to compile.\n${gl.getShaderInfoLog(shader)}`);
+      }
+      gl.attachShader(prog, shader);
+      gl.deleteShader(shader);
+    }
+    gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      throw new Error(`Darkroom: program failed to link.\n${gl.getProgramInfoLog(prog)}`);
+    }
+    this.uniforms.set(prog, new Map());
+    return prog;
+  }
+
+  /** getUniformLocation is a string lookup into the driver; cache it. */
+  private loc(prog: WebGLProgram, name: string): WebGLUniformLocation | null {
+    const cache = this.uniforms.get(prog)!;
+    if (!cache.has(name)) {
+      const found = this.gl.getUniformLocation(prog, name);
+      if (found) cache.set(name, found);
+      else return null;
+    }
+    return cache.get(name)!;
+  }
+
+  private bindTexture(
+    prog: WebGLProgram,
+    name: string,
+    tex: WebGLTexture,
+    unit: number,
+  ): void {
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE0 + unit);
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.uniform1i(this.loc(prog, name), unit);
+  }
+
+  private sizeOf(frame: TexImageSource): { width: number; height: number } {
+    const any = frame as unknown as Record<string, number>;
+    const width = any.videoWidth || any.naturalWidth || any.width || 0;
+    const height = any.videoHeight || any.naturalHeight || any.height || 0;
+    if (!width || !height) throw new Error("Darkroom: could not measure the frame.");
+    return { width, height };
+  }
+
+  dispose(): void {
+    if (this.disposed) return;
+    this.disposed = true;
+    const gl = this.gl;
+    for (const name of [...this.targets.keys()]) this.free(name);
+    for (const prog of Object.values(this.programs)) gl.deleteProgram(prog);
+    gl.deleteTexture(this.frameTex);
+    gl.deleteVertexArray(this.vao);
+    this.current = null;
+  }
+}

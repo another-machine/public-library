@@ -1,0 +1,41 @@
+{
+  "name": "@amplib/photography",
+  "description": "Burst exposure and film-style development for a camera on the GPU: stack real frames into one photograph, then develop it.",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://amplib.app/photography",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/another-machine/public-library.git",
+    "directory": "packages/amplib-photography"
+  },
+  "tsup": {
+    "entry": [
+      "src/index.ts"
+    ],
+    "clean": true,
+    "dts": true,
+    "format": "esm",
+    "minify": false,
+    "sourcemap": true,
+    "splitting": false
+  },
+  "scripts": {
+    "build": "tsup",
+    "watch": "tsup --watch",
+    "prepack": "npm run build"
+  },
+  "dependencies": {
+    "@amplib/devices": "^0.2.0"
+  },
+  "author": "Another Machine",
+  "license": "Apache-2.0",
+  "type": "module"
+}
