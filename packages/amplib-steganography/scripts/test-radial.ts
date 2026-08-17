@@ -1,10 +1,11 @@
 /**
- * test-radial.ts — the radial traversal and the "circle" fit.
+ * test-radial.ts — the radial traversal and the "shape" fit.
  *
- * Two features that only make sense together: `radial` measures distance in
- * half-widths and half-heights, so its prefixes are the ellipse inscribed in
- * the canvas; `fit: "circle"` sizes the canvas so the payload ends at that
- * ellipse instead of reaching the corners.
+ * `radial` measures distance in half-widths and half-heights, so its prefixes
+ * are the ellipse inscribed in the canvas — the boundary it declares in
+ * TRAVERSAL_SHAPE. `fit: "shape"` sizes the canvas so the payload ends at the
+ * traversal's declared boundary instead of reaching the corners; for a
+ * traversal that declares none, it means the same thing as "compact".
  *
  * The assertions that matter most are the boring ones at the top. `center-out`,
  * the plain spiral and a default (`compact`) encode all have images in the wild
@@ -17,8 +18,10 @@
 
 import {
   buildDescriptor,
+  compactFit,
   decodeImageData,
   ellipseDataPixelCount,
+  ellipseFit,
   ellipseRadius2,
   encodeImageData,
   getPathIndices,
@@ -30,6 +33,7 @@ import {
 } from "../src/Stegassette/index";
 import type {
   Entry,
+  FitFn,
   FitMode,
   StegaImageData,
   TraversalName,
@@ -147,10 +151,10 @@ for (const [dataPx, aspect, B, keyless, IW, IH] of [
   [10000, 1, 1, true, 100, 100],
 ] as Array<[number, number, number, boolean, number, number]>) {
   const d = interiorDims(dataPx, aspect, B, keyless);
-  const dExplicit = interiorDims(dataPx, aspect, B, keyless, "compact");
+  const dExplicit = interiorDims(dataPx, aspect, B, keyless, compactFit);
   check(`compact interiorDims(${dataPx}, ${aspect.toFixed(3)}, ${B}, ${keyless})`,
     d.IW === IW && d.IH === IH, `${d.IW}x${d.IH}`);
-  check(`an explicit "compact" is the default`,
+  check(`an explicit compactFit is the default`,
     d.IW === dExplicit.IW && d.IH === dExplicit.IH);
 }
 
@@ -183,7 +187,7 @@ for (const [dataPx, aspect, B, keyless, IW, IH] of [
 
   // Direction owns the ORDER, not the footprint. The ellipse is a prefix of
   // both paths, holding the same pixels; only "in" walks it backwards. Reversing
-  // the whole path instead would start a circle-fit payload in the corners.
+  // the whole path instead would start a shape-fit payload in the corners.
   const k = ellipseDataPixelCount(W, H, true);
   check("the ellipse is a prefix of the radial path",
     out.slice(0, k).every((v) => ellipseRadius2(v % W, (v / W) | 0, W, H) <= 1) &&
@@ -288,7 +292,7 @@ check("the ellipse holds about π/4 of the rectangle",
   Math.abs(ellipseDataPixelCount(400, 400) / ((400 * 400) / 2) - Math.PI / 4) < 0.01,
   String(ellipseDataPixelCount(400, 400) / ((400 * 400) / 2)));
 
-// ── circle fit ─────────────────────────────────────────────────────────────
+// ── shape fit ──────────────────────────────────────────────────────────────
 
 /**
  * Walk an encoded image the way its own decoder would, and report where the
@@ -322,7 +326,7 @@ for (const [aspect, label] of [
         aspectRatio: aspect,
         border: 1,
       };
-      const enc = encodeImageData({ ...args, fit: "circle" });
+      const enc = encodeImageData({ ...args, fit: "shape" });
       const compact = encodeImageData(args);
       const tag = `${label}/${keymap}/${direction}/${bytes}B`;
 
@@ -332,7 +336,7 @@ for (const [aspect, label] of [
       // a circle costs nothing in shape, not that either fit is exact.
       const err = (i: StegaImageData) => Math.abs(i.width / i.height - aspect) / aspect;
       const rounding = 1.5 / Math.min(enc.width, enc.height);
-      check(`circle fit keeps the ${tag} aspect ratio`,
+      check(`shape fit keeps the ${tag} aspect ratio`,
         err(enc) <= Math.max(err(compact), rounding),
         `${enc.width}x${enc.height} (${err(enc) * 100}%) vs compact ${compact.width}x${compact.height} (${err(compact) * 100}%)`);
       check(`${label} stays ${label} (${keymap}/${bytes}B)`,
@@ -352,21 +356,21 @@ for (const [aspect, label] of [
         `${e.used} of ${e.capacity} (${(((e.capacity - e.used) / e.capacity) * 100).toFixed(2)}% spare)`);
 
       const { entries: back } = decodeImageData({ source: enc });
-      check(`the ${tag} circle-fit payload round-trips`,
+      check(`the ${tag} shape-fit payload round-trips`,
         back.length === 1 && sameList(back[0].data, payload(bytes)));
     }
 
 {
-  // The corners are the whole cost of the mode: a circle canvas has ~4/π the
+  // The corners are the whole cost of the mode: a shape canvas has ~4/π the
   // area of the compact one holding the same payload.
   const args = {
     source: cover(300, 300), entries: entriesOf(9000),
     traversal: "radial" as const, aspectRatio: 1, border: 1,
   };
   const compact = encodeImageData(args);
-  const circle = encodeImageData({ ...args, fit: "circle" });
-  const ratio = (circle.width * circle.height) / (compact.width * compact.height);
-  check("a circle canvas is about 4/π the area of a compact one",
+  const shaped = encodeImageData({ ...args, fit: "shape" });
+  const ratio = (shaped.width * shaped.height) / (compact.width * compact.height);
+  check("a radial shape canvas is about 4/π the area of a compact one",
     Math.abs(ratio - 4 / Math.PI) < 0.05, ratio.toFixed(4));
 }
 
@@ -374,7 +378,7 @@ for (const [aspect, label] of [
   // A payload smaller than the header is sized by the header, not the data, in
   // either fit — the branch that would otherwise hand encodeContainer a canvas
   // whose border ring cannot hold its own header.
-  for (const fit of ["compact", "circle"] as FitMode[])
+  for (const fit of ["compact", "shape"] as FitMode[])
     for (const border of [1, 0.1]) {
       const enc = encodeImageData({
         source: cover(64, 64), entries: entriesOf(1),
@@ -384,10 +388,99 @@ for (const [aspect, label] of [
       check(`a 1-byte ${fit} payload at border ${border} round-trips`,
         back.length === 1 && back[0].data.length === 1 && back[0].data[0] === payload(1)[0],
         `${enc.width}x${enc.height} B=${opts.borderWidth}`);
-      if (fit === "circle")
-        check(`a 1-byte circle payload still lands inside the ellipse`,
+      if (fit === "shape")
+        check(`a 1-byte shape payload still lands inside the ellipse`,
           payloadExtent(enc).maxR2 <= 1);
     }
+}
+
+// ── "shape" is the traversal's own boundary ────────────────────────────────
+//
+// A caller never names a shape — "shape" reads the traversal's TRAVERSAL_SHAPE
+// entry, so there is no mismatched pairing to reject. For every traversal that
+// declares no boundary, the natural shape is the rectangle itself and "shape"
+// is byte-identical to "compact".
+
+for (const traversal of TRAVERSAL_NAMES.filter((t) => t !== "radial")) {
+  const args = {
+    source: cover(48, 48), entries: entriesOf(600), traversal, border: 1,
+    ...(traversal === "fisher-yates" ? { seed: 7 } : {}),
+  };
+  const byShape = encodeImageData({ ...args, fit: "shape" });
+  const byCompact = encodeImageData({ ...args, fit: "compact" });
+  check(`fit: "shape" with ${traversal} is byte-identical to compact`,
+    byShape.width === byCompact.width && byShape.height === byCompact.height &&
+      sameList(byShape.data, byCompact.data));
+}
+
+for (const direction of ["out", "in"] as const) {
+  const enc = encodeImageData({
+    source: cover(64, 64), entries: entriesOf(2000),
+    traversal: "radial", params: { direction }, fit: "shape",
+    aspectRatio: 1, border: 1,
+  });
+  check(`fit: "shape" with radial direction "${direction}" fills the ellipse`,
+    payloadExtent(enc).maxR2 <= 1);
+}
+
+// ── custom FitFn ─────────────────────────────────────────────────────────────
+//
+// fit accepts any capacity function, not just the preset names. All spellings
+// of the same capacity size identically — resolveFit translates the words to
+// functions once, and the sizing math only ever sees the function. What a
+// custom shape looks like against a given traversal is the caller's to judge;
+// nothing is policed.
+
+for (const border of [1, 0.1]) {
+  const args = {
+    source: cover(64, 64), entries: entriesOf(2000),
+    traversal: "radial" as const, aspectRatio: 1, border,
+  };
+  const byName = encodeImageData({ ...args, fit: "shape" });
+  const byFn = encodeImageData({ ...args, fit: ellipseFit });
+  // border 0.1 exercises the fractional-border path, which once measured the
+  // named and function spellings against different area estimates.
+  check(`fit: ellipseFit matches fit: "shape" at border ${border}`,
+    byName.width === byFn.width && byName.height === byFn.height &&
+      sameList(byName.data, byFn.data),
+    `${byName.width}x${byName.height} vs ${byFn.width}x${byFn.height}`);
+}
+
+{
+  // The ellipse against a rectangle-filling traversal: nothing stops at that
+  // boundary, so the payload just gets a 4/π canvas and fills it corner to
+  // corner as far as it reaches — a deliberate look, available on request.
+  const args = {
+    source: cover(64, 64), entries: entriesOf(2000),
+    traversal: "raster" as const, aspectRatio: 1, border: 1,
+  };
+  const enc = encodeImageData({ ...args, fit: ellipseFit });
+  const compact = encodeImageData(args);
+  const ratio = (enc.width * enc.height) / (compact.width * compact.height);
+  check("fit: ellipseFit with raster oversizes by ~4/π, by request",
+    Math.abs(ratio - 4 / Math.PI) < 0.1, ratio.toFixed(4));
+  const { entries: back } = decodeImageData({ source: enc });
+  check("an ellipse-sized raster encode still round-trips",
+    back.length === 1 && sameList(back[0].data, payload(2000)));
+}
+
+{
+  // A shape the library has never seen: half of whatever the rectangle holds.
+  // With raster that is a payload band across the top of an untouched cover.
+  const halfFit: FitFn = (W, H) => Math.floor((W * H) / 2);
+  const args = {
+    source: cover(64, 64), entries: entriesOf(3000),
+    traversal: "raster" as const, keymap: "none" as const, aspectRatio: 1, border: 1,
+  };
+  const enc = encodeImageData({ ...args, fit: halfFit });
+  const compact = encodeImageData(args);
+  const ratio = (enc.width * enc.height) / (compact.width * compact.height);
+  check("a custom FitFn drives canvas size (halfFit ~doubles the area)",
+    Math.abs(ratio - 2) < 0.15, ratio.toFixed(4));
+
+  const { entries: back } = decodeImageData({ source: enc });
+  check("a custom-FitFn encode still round-trips",
+    back.length === 1 && sameList(back[0].data, payload(3000)));
 }
 
 // ── descriptor round trips ─────────────────────────────────────────────────
@@ -461,4 +554,4 @@ if (failures.length) {
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log(`${pass} passed, 0 failed — radial and circle fit hold.`);
+console.log(`${pass} passed, 0 failed — radial and the shape fit hold.`);

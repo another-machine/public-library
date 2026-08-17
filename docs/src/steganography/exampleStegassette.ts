@@ -28,8 +28,8 @@ type FormData = {
   traversal: string;
   /** radial only — which end of the path the audio starts from. */
   direction: "out" | "in";
-  /** Canvas sizing. "circle" pairs with radial: the payload ends at an ellipse. */
-  fit: "compact" | "circle";
+  /** Canvas sizing. "shape" ends the payload at the traversal's own boundary. */
+  fit: "compact" | "shape";
   /** Which color channels carry payload — the rest keep the cover. */
   channelPlan: "rgb" | "rg" | "r";
   bitsPerSample: "8" | "16" | "24";
@@ -343,7 +343,6 @@ export default async function example() {
           "boustrophedon",
           "spiral",
           "radial",
-          "center-out",
           "polar",
           "bayer",
           "hilbert",
@@ -353,7 +352,7 @@ export default async function example() {
         value: "raster",
         name: "traversal",
       },
-      // Radial reads this; the rest ignore it. With "circle" below, "out" plays
+      // Radial reads this; the rest ignore it. With "shape" below, "out" plays
       // the audio outward from the center and "in" collapses inward.
       direction: {
         type: "select",
@@ -365,12 +364,12 @@ export default async function example() {
         hidden: true,
       },
       // A sizing option, not an encoding one — it never reaches the header.
-      // "circle" buys the corners back: the canvas grows by 4/π so the payload
-      // ends at the ellipse inscribed in it, which is exactly the shape a
-      // radial traversal fills.
+      // "shape" buys the corners back: the canvas grows so the payload ends at
+      // the boundary the traversal itself declares — for radial, the inscribed
+      // ellipse, a 4/π canvas.
       fit: {
         type: "select",
-        options: ["compact", "circle"],
+        options: ["compact", "shape"],
         value: "compact",
         name: "fit",
         hidden: true,
@@ -471,16 +470,18 @@ export default async function example() {
     stopPlayback();
     revealState = null;
 
-    // Hide the controls that would be inert, and drop them from the encode with
-    // the same condition so the code block keeps matching the call. `direction`
-    // and `fit` are the radial traversal's — any other traversal fills its
-    // canvas corner to corner, however large it is made. `layout` orders two
-    // channels against each other, so mono has nothing for it to order, and
-    // `blockSize` is only read by the block layout.
+    // Hide the controls that would be inert. `direction` is the one param
+    // radial reads. `fit: "shape"` sizes the canvas to the traversal's
+    // declared boundary (TRAVERSAL_SHAPE) — a traversal that declares none
+    // treats it as "compact", so the control only shows where it changes
+    // anything. `layout` orders two channels against each other, so mono has
+    // nothing for it to order, and `blockSize` is only read by the block
+    // layout.
     const radial = data.traversal === "radial";
+    const shaped = data.traversal in Stegassette.TRAVERSAL_SHAPE;
     const stereo = data.channels === "2";
     setFieldHidden("direction", !radial);
-    setFieldHidden("fit", !radial);
+    setFieldHidden("fit", !shaped);
     setFieldHidden("layout", !stereo);
     setFieldHidden("blockSize", !stereo || data.layout !== "block");
 
@@ -557,7 +558,9 @@ export default async function example() {
         keymap: data.keymap as Stegassette.KeymapName,
         traversal: data.traversal as Stegassette.TraversalName,
         params: radial ? { direction: data.direction } : undefined,
-        fit: radial ? data.fit : "compact",
+        // Dropped alongside its hidden code line: the sample then shows a call
+        // with no fit, and this call means the same thing.
+        fit: shaped ? data.fit : undefined,
         channels: data.channelPlan,
         border: data.border,
         aspectRatio: parseAspect(data.aspectRatio) ?? undefined,

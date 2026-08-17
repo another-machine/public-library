@@ -56,11 +56,26 @@ export type TraversalName =
   | "radial";
 
 /**
+ * How many data pixels an IW×IH interior holds under some shape constraint —
+ * `keyless` because a reserved key checkerboard halves the count. The same
+ * signature as `dataPixelCount`/`ellipseDataPixelCount`, so either can serve
+ * as one directly.
+ */
+export type FitFn = (W: number, H: number, keyless: boolean) => number;
+
+/**
  * Canvas sizing strategy — an encode-time option only, never stored in the
  * header. The decoder reads the dimensions off the image itself, so it has no
  * reason to know which strategy produced them.
+ *
+ * "compact" is the tight rectangle. "shape" sizes the canvas to the chosen
+ * traversal's own declared boundary (see TRAVERSAL_SHAPE) — the inscribed
+ * ellipse for radial, and simply the rectangle again for any traversal that
+ * declares none, so no fit/traversal pairing is ever invalid. A FitFn is a
+ * caller-supplied capacity function — headroom, partial fills, or a composed
+ * shape — and what the spare pixels look like is the caller's to judge.
  */
-export type FitMode = "compact" | "circle";
+export type FitMode = "compact" | "shape" | FitFn;
 
 /** Packing mode for the channel plan. */
 export type PackMode = "packed" | "aligned" | "mono";
@@ -189,13 +204,17 @@ export interface EncodeOptions {
    * Canvas sizing strategy (default "compact").
    *
    *   "compact" — the smallest canvas that holds the payload.
-   *   "circle"  — enlarge the canvas so the payload occupies the inscribed
-   *               circle/ellipse instead of reaching the corners.
+   *   "shape"   — enlarge the canvas so the payload occupies the traversal's
+   *               own natural boundary instead of reaching the corners.
+   *   FitFn     — a custom capacity function; the canvas is sized so the
+   *               payload fits whatever it counts.
    *
-   * "circle" keeps the requested aspect ratio, so it only produces a literal
-   * circle on a 1:1 canvas; a 16:9 canvas gets a horizontal ellipse. It is
-   * meant for `traversal: "radial"` with `direction: "out"`, whose prefixes are
-   * exactly that ellipse — any other traversal simply receives a larger canvas.
+   * "shape" only differs from "compact" for a traversal that declares a
+   * boundary (see TRAVERSAL_SHAPE) — today radial, whose prefixes stop at the
+   * inscribed ellipse in either `direction`. The requested aspect ratio is
+   * kept, so radial only yields a literal circle on a 1:1 canvas; 16:9 gets a
+   * horizontal ellipse. For every other traversal the natural boundary is the
+   * rectangle itself, and "shape" means the same thing as "compact".
    */
   fit?: FitMode;
   /**

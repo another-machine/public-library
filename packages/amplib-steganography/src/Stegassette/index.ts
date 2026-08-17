@@ -17,6 +17,7 @@ export type {
   DecodedEntry,
   EncodeOptions,
   Entry,
+  FitFn,
   FitMode,
   KeymapName,
   PackMode,
@@ -60,7 +61,13 @@ export {
 export type { KeyFieldFn, LocatingKeymapName } from "./keymap";
 
 // ---- traversals ----------------------------------------------
-export { TRAVERSAL_NAMES, getPath, getPathIndices } from "./traversal";
+export {
+  TRAVERSAL_NAMES,
+  TRAVERSAL_SHAPE,
+  ellipseFit,
+  getPath,
+  getPathIndices,
+} from "./traversal";
 
 // ---- channel plan --------------------------------------------
 export {
@@ -107,9 +114,11 @@ export {
 // ---- image geometry ------------------------------------------
 export {
   autoScaleImg,
+  compactFit,
   cropImg,
   interiorDims,
   resolveBorderWidth,
+  resolveFit,
   scaleImg,
 } from "./geometry";
 
@@ -167,7 +176,7 @@ import { isKeylessKeymap, resolveKeymapName } from "./keymap";
 // NOTE the argument order differs from the lab's steg-core.js, which takes
 // (entries, srcImg, keyImg, opts) — here opts comes third.
 export { encodeContainer, decodeContainer };
-import { autoScaleImg, resolveBorderWidth } from "./geometry";
+import { autoScaleImg, resolveBorderWidth, resolveFit } from "./geometry";
 import { normalizeChannelPlan, isDefaultPlan, serializeChannelPlan } from "./channelPlan";
 import { containerInteriorBytes, entryTableSize } from "./entries";
 import { packStgcHeader } from "./header";
@@ -256,6 +265,9 @@ export function encodeImageData({
   fit = "compact",
   ...opts
 }: EncodeImageDataOptions): StegaImageData {
+  // The preset words resolve to a capacity function here, once — the sizing
+  // math below only ever sees the function.
+  const fitFn = resolveFit(fit, opts.traversal);
   const src = new Img(source.width, source.height, source.data);
 
   // Resolve channel plan now so we know bytesPerPixel and pad for sizing
@@ -274,7 +286,7 @@ export function encodeImageData({
   const aspect = aspectRatio ?? src.width / src.height;
   const totalBytes = containerInteriorBytes(entries) + plan.pad;
   const dataPx = Math.ceil(totalBytes / plan.bytesPerPixel);
-  let B = resolveBorderWidth(border, dataPx, aspect, keyless, fit);
+  let B = resolveBorderWidth(border, dataPx, aspect, keyless, fitFn);
 
   // Merge traversal/keymap params for header-length estimation
   const params: TraversalParams = {
@@ -289,11 +301,11 @@ export function encodeImageData({
 
   // The canvas is sized by the payload alone; when the border ring cannot
   // hold the header, thicken the border instead of growing the image.
-  let scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless, fit);
+  let scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless, fitFn);
   while (ringPixelCount(scaled.width, scaled.height, B) < headerPx) {
     if (B > 255) throw new Error("STGC header does not fit any border");
     B += 1;
-    scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless, fit);
+    scaled = autoScaleImg(src, totalBytes, B, aspectRatio ?? null, plan.bytesPerPixel, 1, keyless, fitFn);
   }
 
   return encodeContainer(entries, scaled, { ...opts, borderWidth: B, plan }, scaled);

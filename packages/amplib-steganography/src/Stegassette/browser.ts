@@ -12,7 +12,7 @@ import { createCanvasAndContext } from "../utilities";
 import { Img } from "./Img";
 import { encodeContainer, decodeContainer } from "./container";
 import { isKeylessKeymap, resolveKeymapName } from "./keymap";
-import { autoScaleImg, resolveBorderWidth } from "./geometry";
+import { autoScaleImg, resolveBorderWidth, resolveFit } from "./geometry";
 import { normalizeChannelPlan, isDefaultPlan, serializeChannelPlan } from "./channelPlan";
 import { containerInteriorBytes, entryTableSize } from "./entries";
 import { packStgcHeader } from "./header";
@@ -113,6 +113,9 @@ export function encode({
   fit = "compact",
   ...opts
 }: BrowserEncodeOptions): HTMLCanvasElement {
+  // The preset words resolve to a capacity function here, once — the sizing
+  // math below only ever sees the function.
+  const fitFn = resolveFit(fit, opts.traversal);
   const src =
     source instanceof Img
       ? source
@@ -136,7 +139,7 @@ export function encode({
   const aspect = aspectRatio ?? src.width / src.height;
   const totalBytes = containerInteriorBytes(entries) + plan.pad;
   const dataPx = Math.ceil(totalBytes / plan.bytesPerPixel);
-  let B = resolveBorderWidth(border, dataPx, aspect, keyless, fit);
+  let B = resolveBorderWidth(border, dataPx, aspect, keyless, fitFn);
 
   const params: TraversalParams = {
     ...(opts.params || {}),
@@ -158,7 +161,7 @@ export function encode({
     plan.bytesPerPixel,
     1,
     keyless,
-    fit
+    fitFn
   );
   while (ringPixelCount(scaled.width, scaled.height, B) < headerPx) {
     if (B > 255) throw new Error("STGC header does not fit any border");
@@ -171,7 +174,7 @@ export function encode({
       plan.bytesPerPixel,
       1,
       keyless,
-      fit
+      fitFn
     );
   }
 

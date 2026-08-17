@@ -1,5 +1,10 @@
-import { dataPixelCount, ellipseRadius2, isDataPixel } from "./Img";
-import type { TraversalName, TraversalParams } from "./types";
+import {
+  dataPixelCount,
+  ellipseDataPixelCount,
+  ellipseRadius2,
+  isDataPixel,
+} from "./Img";
+import type { FitFn, TraversalName, TraversalParams } from "./types";
 
 type FilterFn = (x: number, y: number) => boolean;
 
@@ -149,7 +154,7 @@ function centerOutPath(
  *
  * `direction: "in"` reverses **only the pixels inside the inscribed ellipse**,
  * and leaves the corners where they were, at the tail. Reversing the whole path
- * instead would start the payload in the corners, and a `fit: "circle"` canvas
+ * instead would start the payload in the corners, and a `fit: "shape"` canvas
  * — sized so the payload is exactly that ellipse — would come out as a frame
  * with an elliptical hole rather than the oval it was sized for. The footprint
  * is the direction's to keep; only the order through it is the direction's to
@@ -179,6 +184,15 @@ function radialPath(
   }
   return Uint32Array.from(arr);
 }
+
+/**
+ * The radial traversal's natural boundary: how many data pixels the inscribed
+ * ellipse holds. Its prefixes stop exactly there in either `direction`, which
+ * is what makes it radial's TRAVERSAL_SHAPE entry. Exported for callers
+ * composing their own FitFn on top of it.
+ */
+export const ellipseFit: FitFn = (W, H, keyless) =>
+  ellipseDataPixelCount(W, H, keyless);
 
 function hilbertPath(
   W: number,
@@ -272,6 +286,23 @@ export const TRAVERSAL_NAMES: readonly TraversalName[] = [
   // that ever stores an index into this list depends on it holding.
   "radial",
 ];
+
+/**
+ * The natural fill boundary each traversal declares, if it has one that is
+ * not the plain rectangle. `fit: "shape"` sizes the canvas to the entry here;
+ * a traversal with no entry fills its rectangle, so "shape" for it means the
+ * same thing as "compact". This is what makes shape/traversal mismatches
+ * unrepresentable: a caller never names a shape, only asks for the
+ * traversal's own.
+ *
+ * Only prefix boundaries belong here: an entry must count exactly the pixels
+ * the traversal visits first, so a payload sized to it ends at that boundary.
+ * (`center-out`'s prefixes are true circles and could be declared, but it is
+ * kept only so old decodes still work — not as something to encode with.)
+ */
+export const TRAVERSAL_SHAPE: Partial<Record<TraversalName, FitFn>> = {
+  radial: ellipseFit,
+};
 
 /**
  * Returns a Uint32Array of interior-local linear indices (v = y*W + x),

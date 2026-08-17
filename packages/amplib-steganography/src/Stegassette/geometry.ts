@@ -1,5 +1,54 @@
-import { Img, dataPixelCount, ellipseDataPixelCount } from "./Img";
-import type { FitMode } from "./types";
+import { Img, dataPixelCount } from "./Img";
+import { TRAVERSAL_SHAPE } from "./traversal";
+import type { FitFn, FitMode, TraversalName } from "./types";
+
+/**
+ * The rectangle fit: every interior pixel, or its data-pixel checkerboard.
+ * This is what "compact" resolves to, and what "shape" falls back to for a
+ * traversal that declares no boundary of its own — a rectangle-filling
+ * traversal's natural shape IS the rectangle.
+ */
+export const compactFit: FitFn = (W, H, keyless) =>
+  keyless ? W * H : dataPixelCount(W, H);
+
+/**
+ * Resolve a FitMode to the capacity function it names. This is the only place
+ * the preset words mean anything — everything downstream takes the FitFn and
+ * never knows which spelling produced it, so every spelling of the same
+ * function sizes identically. "shape" reads the traversal's own declared
+ * boundary (see TRAVERSAL_SHAPE), which is why no fit/traversal pairing can
+ * be invalid: a caller never names a shape, only asks for the traversal's.
+ */
+export function resolveFit(
+  fit: FitMode,
+  traversal: TraversalName = "raster"
+): FitFn {
+  if (fit === "compact") return compactFit;
+  if (fit === "shape") return TRAVERSAL_SHAPE[traversal] ?? compactFit;
+  return fit;
+}
+
+/**
+ * How much larger than compact a shaped canvas needs to be, measured rather
+ * than known: probe the FitFn at compact-sized dims and take the shortfall
+ * ratio. For the ellipse this lands on ~4/π without the number appearing
+ * anywhere; for a custom FitFn it seeds the solver equally well, instead of
+ * growing pixel-by-pixel from the compact estimate. Only ever a starting
+ * point — the caller's growth/shrink loops still verify by counting.
+ */
+function areaFactor(
+  fitFn: FitFn,
+  dataPx: number,
+  aspect: number,
+  keyless: boolean
+): number {
+  if (fitFn === compactFit) return 1;
+  const density = keyless ? 1 : 2;
+  const H = Math.max(2, Math.round(Math.sqrt((density * dataPx) / aspect)));
+  const W = Math.max(2, Math.round(aspect * H));
+  const f = dataPx / fitFn(W, H, keyless);
+  return Number.isFinite(f) && f > 0 ? f : 1;
+}
 
 /** Bilinear scale of an Img to newW × newH. */
 export function scaleImg(img: Img, newW: number, newH: number): Img {
@@ -44,14 +93,6 @@ export function cropImg(
 }
 
 /**
- * The area of an ellipse is π/4 of the rectangle it is inscribed in, so a
- * canvas whose payload has to fit inside that ellipse needs 4/π as much area.
- * Only ever a starting point: the pixel grid, the reserved key checkerboard and
- * the border all shift the true count, so `interiorDims` verifies by counting.
- */
-const CIRCLE_AREA_FACTOR = 4 / Math.PI;
-
-/**
  * Compute the interior dimensions (IW × IH) that will hold `dataPx` data
  * pixels AND result in a full canvas (interior + B-px border) with the given
  * aspect ratio.
@@ -59,33 +100,28 @@ const CIRCLE_AREA_FACTOR = 4 / Math.PI;
  * Solving the full-canvas aspect means a large border does not stretch the
  * cover image. B=0 gives a plain aspect-fit.
  *
- * `fit: "circle"` requires the payload to fit inside the interior's inscribed
- * ellipse rather than its full rectangle. The aspect ratio is untouched — the
- * requirement is raised and the same solver answers it — so a landscape canvas
- * stays landscape and gets a horizontal ellipse.
+ * A non-compact fit requires the payload to fit inside some shape smaller
+ * than the full rectangle — whatever `fitFn` counts. The aspect ratio is
+ * untouched — the requirement is raised and the same solver answers it — so a
+ * landscape canvas stays landscape and its shape follows suit.
  */
 export function interiorDims(
   dataPx: number,
   aspect: number,
   B = 0,
   keyless = false,
-  fit: FitMode = "compact"
+  fitFn: FitFn = compactFit
 ): { IW: number; IH: number } {
   // The interior holds `density × IW × IH` data pixels: half under a keyed
   // encode, where a checkerboard is reserved for key pixels, and all of them
   // when the key is generated from position. This factor is the whole size
   // difference between the two modes.
   const density = keyless ? 1 : 2;
-  const capacity =
-    fit === "circle"
-      ? (W: number, H: number) => ellipseDataPixelCount(W, H, keyless)
-      : keyless
-        ? (W: number, H: number) => W * H
-        : dataPixelCount;
+  const capacity = (W: number, H: number) => fitFn(W, H, keyless);
   // What the quadratic solves for; the growth loop below still measures the
-  // real count against `dataPx`.
-  const estimate =
-    fit === "circle" ? Math.ceil(dataPx * CIRCLE_AREA_FACTOR) : dataPx;
+  // real count against `dataPx`. The probed area factor seeds the solve near
+  // the answer whatever shape the fit counts.
+  const estimate = Math.ceil(dataPx * areaFactor(fitFn, dataPx, aspect, keyless));
   // Solve aspect·h² − 2B(aspect+1)·h + (4B² − density·estimate) = 0 for full height h = IH+2B
   const qb = -2 * B * (aspect + 1);
   const qc = 4 * B * B - density * estimate;
@@ -100,12 +136,13 @@ export function interiorDims(
     if (dW <= dH) IW++;
     else IH++;
   }
-  // …then hand back whatever the estimate overshot, by the same rule. Only the
-  // circle fit does this, so compact geometry stays byte-identical. Spare
-  // capacity is invisible under a compact fit but not under a circle one: it is
-  // the gap between the payload and the ellipse it was sized for — an unwritten
-  // ring at the rim going outward, and a hole at the center coming inward.
-  if (fit === "circle")
+  // …then hand back whatever the estimate overshot, by the same rule. Skipped
+  // for the rectangle fit, so that geometry stays byte-identical to before
+  // this loop existed. Spare capacity is invisible under a rectangle fit but
+  // not under a shaped one: it is the gap between the payload and the shape
+  // it was sized for — an unwritten ring at the rim going outward, and a hole
+  // at the center coming inward.
+  if (fitFn !== compactFit)
     for (;;) {
       const canW = IW > 2 && capacity(IW - 1, IH) >= dataPx;
       const canH = IH > 2 && capacity(IW, IH - 1) >= dataPx;
@@ -126,20 +163,20 @@ export function interiorDims(
  *   0 < spec < 1    → fraction of the final image width
  *
  * The fractional form predicts the final width from the payload, so it takes
- * `fit` too: a "circle" canvas is 4/π larger in area, and a border measured
- * against the compact width would come out visibly thin.
+ * the fit too: a shaped canvas is larger in area (4/π for the ellipse), and a
+ * border measured against the compact width would come out visibly thin.
  */
 export function resolveBorderWidth(
   spec: number,
   dataPx: number,
   aspect: number,
   keyless = false,
-  fit: FitMode = "compact"
+  fitFn: FitFn = compactFit
 ): number {
   const f = Number(spec) || 0;
   if (f > 0 && f < 1) {
     const ff = Math.min(f, 0.45, 0.45 / aspect);
-    const px = fit === "circle" ? dataPx * CIRCLE_AREA_FACTOR : dataPx;
+    const px = dataPx * areaFactor(fitFn, dataPx, aspect, keyless);
     const fullW = Math.sqrt(
       ((keyless ? 1 : 2) * px) / ((1 - 2 * ff) * (1 / aspect - 2 * ff)),
     );
@@ -158,8 +195,8 @@ export function resolveBorderWidth(
  * @param aspectOverride  If provided, overrides the source aspect ratio.
  * @param bytesPerPixel  Channel plan density (default 3 = packed r,g,b).
  * @param minFullWidth  Minimum full canvas width in pixels (e.g. STGC header length).
- * @param fit          "circle" sizes the interior so the payload fits inside its
- *                     inscribed ellipse; "compact" (default) fills the rectangle.
+ * @param fitFn        Capacity function the payload must fit inside — the
+ *                     rectangle by default; see resolveFit.
  */
 export function autoScaleImg(
   img: Img,
@@ -169,11 +206,11 @@ export function autoScaleImg(
   bytesPerPixel = 3,
   minFullWidth = 1,
   keyless = false,
-  fit: FitMode = "compact"
+  fitFn: FitFn = compactFit
 ): Img {
   const dataPx = Math.ceil(totalBytes / bytesPerPixel);
   const aspect = aspectOverride != null ? aspectOverride : img.width / img.height;
-  let { IW, IH } = interiorDims(dataPx, aspect, B, keyless, fit);
+  let { IW, IH } = interiorDims(dataPx, aspect, B, keyless, fitFn);
   // Clamp to ensure the full canvas is at least minFullWidth wide (e.g. for the STGC header).
   const minIW = Math.max(2, minFullWidth - 2 * B);
   if (IW < minIW) IW = minIW;

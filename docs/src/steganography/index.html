@@ -37,40 +37,39 @@
     <main class="doc">
       <section id="intro">
         <p class="ht-type-prose u-dim">
-          <strong>Stegassette</strong> encodes payloads in image pixels using
-          the STGC format. An encoded image can carry text,
-          audio, or arbitrary bytes. For every pixel carrying information, another pixel is required to decode it.
-          The image also describes its encoding: the combine op, keymap,
-          traversal and border width are written into the border, so
+          <strong>Stegassette</strong> encodes payloads — text, audio, or
+          arbitrary bytes — into image pixels using the STGC format. Every
+          payload pixel needs a paired key pixel to decode it. The image
+          describes its own encoding, too: combine op, keymap, traversal, and
+          border width are all written into the border, so
           <code>decode</code> needs nothing but the image.
         </p>
         <p class="ht-type-small u-dim">
-          <strong>Combine</strong> is the reversible operation that pairs a payload
-          byte with a key pixel. Some ops trade reversible fidelity for visual results.
-          <strong>Keymap</strong> locates a key pixel for each data pixel.
-          <strong>Traversal</strong> is the order
-          data pixels are visited.
-          <strong>Fit</strong> is the one option that changes nothing about the
-          encoding, only the size of the canvas it lands on.
+          <strong>Combine</strong> pairs a payload byte with a key pixel — a
+          reversible operation, though some ops trade that reversibility for a
+          better-looking image. <strong>Keymap</strong> locates a key pixel for
+          each data pixel. <strong>Traversal</strong> is the order data pixels
+          are visited in. <strong>Fit</strong> is the odd one out: it changes
+          nothing about the encoding, only the size of canvas it lands on.
         </p>
         <p class="ht-type-small u-dim">
-          The canvas is sized by the payload, so a traversal decides what shape
-          the payload makes as it fills. <code>radial</code> measures distance in
-          half-widths and half-heights, so its front is the ellipse inscribed in
-          the image rather than a circle drawn on it — pair it with
-          <code>fit: "circle"</code>, which enlarges the canvas by 4/π so the
-          payload ends at that ellipse instead of reaching the corners.
-          <code>fit</code> is not written to the border: the decoder reads the
-          dimensions off the image, so it never needs to know how they were
-          chosen.
+          The canvas is sized by the payload, and the traversal decides what
+          shape the payload makes as it fills. <code>radial</code> measures
+          distance in half-widths and half-heights, so its front is an ellipse
+          inscribed in the image, not a circle drawn on top of it — the
+          boundary it declares as its own. <code>fit: "shape"</code> enlarges
+          the canvas to whatever boundary the chosen traversal declares, so a
+          radial payload ends at its ellipse (a 4/π canvas) instead of the
+          corners; a traversal that declares none fills its rectangle, and
+          "shape" means the same thing as "compact". <code>fit</code> isn't
+          written to the border — the decoder just reads the image's
+          dimensions and never needs to know how they were picked.
         </p>
       </section>
 
       <section id="example-stegassette-text">
         <h2>Stegassette</h2>
-        <p class="ht-type-prose u-dim">
-          Encoding a basic text entry.
-        </p>
+        <p class="ht-type-prose u-dim">Encoding a basic text entry.</p>
         <p class="signature">
           Stegassette.encode({ source: HTMLImageElement | HTMLCanvasElement;
           entries: Entry[]; combine?: CombineName; keymap?: KeymapName;
@@ -80,7 +79,9 @@
 
         <div class="ht-arrange-sidebar">
           <div class="ht-arrange-stack">
-            <pre class="code">const source = await <a href="#load-image-from-image-url">loadImageFromImageUrl</a>({
+            <pre
+              class="code"
+            >const source = await <a href="#load-image-from-image-url">loadImageFromImageUrl</a>({
   url: "./example.jpg"
 });
 const encoded = Stegassette.encode({
@@ -120,13 +121,15 @@ const encoded = Stegassette.encode({
           Stegassette.decode({ source: HTMLImageElement | HTMLCanvasElement |
           StegaImageData }): { entries: DecodedEntry[]; opts: StgcOpts }
         </p>
-        <pre class="code">const { entries, opts } = Stegassette.decode({ source: encoded });
+        <pre
+          class="code"
+        >const { entries, opts } = Stegassette.decode({ source: encoded });
 const message = new TextDecoder().decode(entries[0].data);
 <span data-output="decode-text"></span></pre>
 
         <p class="ht-type-small u-dim">
-          The STGC header is in the border ring, so small images might be widened until the header fits rather than the canvas being
-          grown to suit it.
+          The STGC header lives in the border ring, so a small image is
+          widened until the header fits, not grown all over to make room.
         </p>
       </section>
 
@@ -138,17 +141,16 @@ const message = new TextDecoder().decode(entries[0].data);
           decoded image can rebuild the buffer on its own.
         </p>
         <p class="ht-type-small u-dim">
-          <strong>Layout</strong> is how two channels share one stream, and it
-          decides which pixels carry which channel — so it shapes what the
-          reveal develops as much as the traversal does.
-          <code>planar</code> writes all of the left channel and then all of the
-          right, so the first half of the path is one ear.
-          <code>interleaved</code> alternates sample by sample, so both ears
-          develop together. <code>block</code> alternates in runs of
-          <code>blockSize</code> samples per channel, between the two. Mono has
-          no order to choose and ignores it. The reveal reads the layout back
-          out of the mimetype rather than being told, which is why the overlay
-          stays in sync with playback whichever one is picked.
+          <strong>Layout</strong> decides how two channels share one stream —
+          which pixels carry which channel — so it shapes the reveal as much
+          as the traversal does. <code>planar</code> writes the whole left
+          channel, then the whole right, so the first half of the path is one
+          ear. <code>interleaved</code> alternates sample by sample, so both
+          ears develop together. <code>block</code> alternates in runs of
+          <code>blockSize</code> samples between the two. Mono has no channels
+          to order and ignores the setting. The reveal reads layout straight
+          off the mimetype instead of being told separately, so the overlay
+          stays in sync with playback no matter which one is picked.
         </p>
         <p class="signature">
           Stegassette.buildAudioEntry({ channels: Float32Array[]; sampleRate:
@@ -158,7 +160,9 @@ const message = new TextDecoder().decode(entries[0].data);
 
         <div class="ht-arrange-sidebar">
           <div class="ht-arrange-stack">
-            <pre class="code">const audioBuffers = await <a href="#load-audio-buffers-from-audio-url">loadAudioBuffersFromAudioUrl</a>({
+            <pre
+              class="code"
+            >const audioBuffers = await <a href="#load-audio-buffers-from-audio-url">loadAudioBuffersFromAudioUrl</a>({
   url: "./example.mp3",
   audioContext,
   channels: <span data-value="channels"></span>,
@@ -223,45 +227,49 @@ const encoded = Stegassette.encode({
           Float32Array[]; sampleRate: number; bitsPerSample: 8 | 16 | 24;
           layout: "planar" | "interleaved" | "block"; blockSize: number; }
         </p>
-        <pre class="code">const { entries, opts } = Stegassette.decode({ source: encoded });
+        <pre
+          class="code"
+        >const { entries, opts } = Stegassette.decode({ source: encoded });
 <span data-output="decode-opts">// opts: { combine, keymap, traversal } recovered from STGC header</span>
 const { channels, sampleRate } = Stegassette.parseAudioEntry(entries[0]);
 const recon = Stegassette.reconstructCover(encoded, opts);
 // recon develops on the canvas in sync with audio playback</pre>
 
         <p class="ht-type-small u-dim">
-          <strong>keymap</strong> decides where each byte's key comes from, and
-          the last two options change the shape of the encode rather than just
-          its look. <code>adjacent</code> through <code>rotate</code> reserve a
+          <strong>keymap</strong> decides where each byte's key comes from; the
+          last two options change the shape of the encode, not just its look.
+          <code>adjacent</code> through <code>rotate</code> reserve a
           checkerboard of key pixels — half the interior — which is what lets
           <code>reconstructCover</code> bring the picture back.
-          <code>none</code> has no key pixel at all, so nothing is reserved:
-          the image is half the size. What the reveal develops into then depends
-          entirely on the channel plan below.
+          <code>none</code> has no key pixel at all: nothing is reserved, so
+          the image is half size, and what the reveal develops into then
+          depends entirely on the channel plan below.
         </p>
         <p class="ht-type-small u-dim">
-          <strong>channels</strong> is the lever that gets a picture back, and
-          it takes any subset of r/g/b in any order. Channels outside the plan
-          are never written, so <code>"rg"</code> leaves blue holding the
-          original cover at <em>full</em> resolution — better than the half-res
-          averaging a keyed encode reconstructs, and still smaller than one.
-          <code>"r"</code> keeps green and blue, and costs more pixels than
-          reserving key pixels would. Only <code>"rgb"</code> leaves nothing,
-          and that is the one case where the reveal empties to black.
-          Order matters too: it decides which payload byte lands in which
-          channel, so <code>"bgr"</code> and <code>"rgb"</code> are the same
-          size and a different color. The line under the encode reports what
-          each choice actually cost.
+          <strong>channels</strong> is the lever that gets a picture back: any
+          subset of r/g/b, in any order. Channels left out of the plan are
+          never written, so <code>"rg"</code> leaves blue holding the original
+          cover at <em>full</em> resolution — sharper than the half-res average
+          a keyed encode reconstructs, and needs less canvas than a
+          single-channel plan like <code>"r"</code> would.
+          <code>"r"</code> keeps green and blue too, at the cost of more pixels
+          than reserving key pixels would. Only <code>"rgb"</code> leaves
+          nothing behind, the one case where the reveal empties to black.
+          Order matters as well: it decides which payload byte lands in which
+          channel, so <code>"bgr"</code> and <code>"rgb"</code> come out the
+          same size but a different color. The line under the encode reports
+          what each choice actually cost.
         </p>
       </section>
 
       <section id="example-audio-in-pixels">
         <h2>Audio in pixels</h2>
         <p class="ht-type-small u-dim">
-          The encode below is just a demonstration. The pixels
-          <em>are</em> the actual payload: a black cover under <code>xor</code> leaves
-          every key channel at zero, and <code>a ^ 0 === a</code>, so each
-          channel holds one raw PCM byte verbatim.
+          This encode is a demonstration, but the pixels
+          <em>are</em> the actual payload: a black cover under
+          <code>xor</code> leaves every key channel at zero, and
+          <code>a ^ 0 === a</code>, so each channel holds one raw PCM byte
+          verbatim.
         </p>
 
         <audio src="./example-mono-24bit-48khz-765731.wav"></audio>
@@ -284,7 +292,8 @@ const recon = Stegassette.reconstructCover(encoded, opts);
               <canvas id="viz-waveform-64"></canvas>
               <canvas id="viz-lines-64"></canvas>
               <figcaption class="frame__caption">
-                <strong><span data-value="bitsPerSample">24</span>-bit</strong> |
+                <strong><span data-value="bitsPerSample">24</span>-bit</strong>
+                |
                 <strong><span data-value="pixels">64</span> colors</strong>
                 with red, green, and blue channels separated above |
                 <strong
@@ -384,9 +393,11 @@ killLoop();</pre>
           async loadImageFromImageUrl({ url: string }):
           Promise&lt;HTMLImageElement>
         </p>
-        <pre class="code">const source = await loadImageFromImageUrl({
+        <pre class="code">
+const source = await loadImageFromImageUrl({
   url: "./example.jpg"
-});</pre>
+});</pre
+        >
 
         <h3 id="load-audio-buffers-from-audio-url">
           loadAudioBuffersFromAudioUrl
@@ -399,13 +410,15 @@ killLoop();</pre>
           AudioContext; channels: 1 | 2; sampleRate?: number; }):
           Promise&lt;Float32Array[]>
         </p>
-        <pre class="code">const audioContext = new AudioContext();
+        <pre class="code">
+const audioContext = new AudioContext();
 const audioBuffers = await loadAudioBuffersFromAudioUrl({
   url: "./example.mp3",
   audioContext,
   channels: 2,
   sampleRate: audioContext.sampleRate,
-});</pre>
+});</pre
+        >
 
         <h3 id="play-decoded-audio-buffers">playDecodedAudioBuffers</h3>
         <p class="ht-type-prose u-dim">Play decoded audio buffers</p>
@@ -414,12 +427,14 @@ const audioBuffers = await loadAudioBuffersFromAudioUrl({
           audioContext: AudioContext; sampleRate?: number; }):
           Promise&lt;AudioBufferSourceNode>
         </p>
-        <pre class="code">const source = await playDecodedAudioBuffers({
+        <pre class="code">
+const source = await playDecodedAudioBuffers({
   audioBuffers,
   audioContext,
   sampleRate: audioContext.sampleRate,
 });
-source.stop();</pre>
+source.stop();</pre
+        >
 
         <h3 id="create-drop-reader">createDropReader</h3>
         <p class="ht-type-prose u-dim">
@@ -431,7 +446,8 @@ source.stop();</pre>
           string) => void; onDragEnter?: () => void; onDragLeave?: () => void;
           onDrop?: () => void; types?: (AudioType | ImageType)[]; }): void
         </p>
-        <pre class="code">const element = document.body;
+        <pre class="code">
+const element = document.body;
 createDropReader({
   element,
   onSuccess: (image) => element.appendChild(image),
@@ -440,7 +456,8 @@ createDropReader({
   onDragLeave: () => element.classList.remove("droppable"),
   onDrop: () => element.classList.remove("droppable"),
   types: ["image/*"]
-});</pre>
+});</pre
+        >
 
         <h3 id="create-file-reader">createFileReader</h3>
         <p class="ht-type-prose u-dim">Turn an HTML input into a file input</p>
@@ -451,7 +468,8 @@ createDropReader({
           void; onFailure?: (message: string) => void; types?: (AudioType |
           ImageType | VideoType | "*/*")[]; }): void
         </p>
-        <pre class="code">const element = document.createElement("input");
+        <pre class="code">
+const element = document.createElement("input");
 createFileReader({
   element,
   onSuccess: (image) => document.body.appendChild(image),
@@ -466,7 +484,8 @@ createFileReader({
     console.log(`Loaded ${fileName} (${mimeType}): ${data.length} bytes`);
   },
   types: ["*/*"]
-});</pre>
+});</pre
+        >
 
         <h3 id="read-file-as-bytes">readFileAsBytes</h3>
         <p class="ht-type-prose u-dim">Read a file as binary bytes</p>
@@ -474,26 +493,30 @@ createFileReader({
           readFileAsBytes({ file: File }): Promise&lt;{ data: Uint8Array;
           mimeType: string; fileName: string }>
         </p>
-        <pre class="code">const input = document.createElement("input");
+        <pre class="code">
+const input = document.createElement("input");
 input.type = "file";
 input.onchange = async () => {
   const file = input.files[0];
   const { data, mimeType, fileName } = await readFileAsBytes({ file });
   console.log(`Read ${fileName} (${mimeType}): ${data.length} bytes`);
-};</pre>
+};</pre
+        >
 
         <h3 id="bytes-to-blob-url">bytesToBlobUrl</h3>
         <p class="ht-type-prose u-dim">Convert binary data to a Blob URL</p>
         <p class="signature">
           bytesToBlobUrl({ data: Uint8Array; mimeType: string }): string
         </p>
-        <pre class="code">const url = bytesToBlobUrl({ data: myBytes, mimeType: "image/png" });
+        <pre class="code">
+const url = bytesToBlobUrl({ data: myBytes, mimeType: "image/png" });
 const img = document.createElement("img");
 img.src = url;
 document.body.appendChild(img);
 
 // Remember to revoke when done
-URL.revokeObjectURL(url);</pre>
+URL.revokeObjectURL(url);</pre
+        >
 
         <h3 id="download-bytes">downloadBytes</h3>
         <p class="ht-type-prose u-dim">Download binary data as a file</p>
@@ -501,11 +524,13 @@ URL.revokeObjectURL(url);</pre>
           downloadBytes({ data: Uint8Array; mimeType: string; fileName: string
           }): void
         </p>
-        <pre class="code">downloadBytes({
+        <pre class="code">
+downloadBytes({
   data: myBytes,
   mimeType: "application/pdf",
   fileName: "document.pdf"
-});</pre>
+});</pre
+        >
       </section>
     </main>
 

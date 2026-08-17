@@ -16,7 +16,7 @@ type FormData = {
   keymap: string;
   traversal: string;
   direction: "out" | "in";
-  fit: "compact" | "circle";
+  fit: "compact" | "shape";
   border: number;
   aspectRatio: AspectOption;
 };
@@ -65,10 +65,15 @@ export default async function example({
       traversal: {
         name: "traversal",
         type: "select",
-        options: [...Stegassette.TRAVERSAL_NAMES],
+        // center-out is omitted: it's superseded by radial and kept in the
+        // package only so old decodes still work, not as something to encode
+        // with.
+        options: Stegassette.TRAVERSAL_NAMES.filter(
+          (name) => name !== "center-out"
+        ),
         value: "raster",
       },
-      // Only "radial" reads this. The other nine ignore it, and the descriptor
+      // Only "radial" reads this. The other eight ignore it, and the descriptor
       // only carries it for radial, so leaving it set costs nothing.
       direction: {
         name: "direction",
@@ -79,13 +84,14 @@ export default async function example({
         // paint matches rather than flashing a control that is about to go.
         hidden: true,
       },
-      // Sizing, not encoding: "circle" enlarges the canvas by 4/π so a radial
-      // payload ends at the inscribed ellipse instead of the corners. It is not
-      // in the header — the decoder reads the dimensions off the image.
+      // Sizing, not encoding: "shape" enlarges the canvas so the payload ends
+      // at the traversal's own declared boundary — radial's inscribed ellipse,
+      // a 4/π canvas — instead of the corners. It is not in the header — the
+      // decoder reads the dimensions off the image.
       fit: {
         name: "fit",
         type: "select",
-        options: ["compact", "circle"],
+        options: ["compact", "shape"],
         value: "compact",
         hidden: true,
       },
@@ -107,14 +113,15 @@ export default async function example({
   function run(data: FormData) {
     if (!source.naturalWidth) return;
 
-    // Both of these belong to the radial traversal: `direction` is the only
-    // param it reads, and `fit: "circle"` sizes the canvas to the ellipse the
-    // radial path fills. Any other traversal would take a bigger canvas and
-    // still fill it corner to corner, so the controls are hidden and the encode
-    // falls back to compact rather than leaving an inert knob on screen.
+    // `direction` is the one param radial reads, so the control follows it.
+    // `fit: "shape"` sizes the canvas to the traversal's declared boundary
+    // (TRAVERSAL_SHAPE) — for a traversal that declares none it means the
+    // same thing as compact, so the control only shows where it changes
+    // anything.
     const radial = data.traversal === "radial";
+    const shaped = data.traversal in Stegassette.TRAVERSAL_SHAPE;
     setFieldHidden("direction", !radial);
-    setFieldHidden("fit", !radial);
+    setFieldHidden("fit", !shaped);
 
     // A keyless keymap has no key pixel, so the combines that stash bits there
     // would throw. Fall back to xor and say so, rather than showing an error
@@ -150,7 +157,9 @@ export default async function example({
         keymap: data.keymap as Stegassette.KeymapName,
         traversal: data.traversal as Stegassette.TraversalName,
         params: radial ? { direction: data.direction } : undefined,
-        fit: radial ? data.fit : "compact",
+        // Dropped alongside its hidden code line: the sample then shows a call
+        // with no fit, and this call means the same thing.
+        fit: shaped ? data.fit : undefined,
         border: data.border,
         aspectRatio: parseAspect(data.aspectRatio),
       });
