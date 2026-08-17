@@ -34,6 +34,7 @@ import {
   KEYMAP_NAMES,
   PACK_NAMES,
   TRAVERSAL_NAMES,
+  isKeylessKeymap,
   normalizeChannelPlan,
 } from "./Stegassette/index";
 
@@ -67,6 +68,9 @@ const DEFAULTS = {
   seed: null, // fisher-yates
   angleA: 1, // angle traversal
   angleB: 1,
+  direction: "out", // radial traversal: out (center first) | in
+  rotation: "cw", // spiral traversal: cw | ccw
+  fit: "compact", // compact | shape (the traversal's own boundary)
   kx: 0, // offset keymap
   ky: 0,
   // channel plan
@@ -89,6 +93,9 @@ const ENUMS = {
   dir: ["fwd", "rev"],
   mode: ["relabel", "resample"],
   layout: ["planar", "interleaved", "block"],
+  direction: ["out", "in"],
+  rotation: ["cw", "ccw"],
+  fit: ["compact", "shape"],
   bits: [8, 16, 24],
   mosaic: ["cols", "rows", "2x2", "3x3", "4x4"],
 };
@@ -209,6 +216,12 @@ function resolveConfig(job = {}) {
   } else if (j.traversal === "angle") {
     params.a = j.angleA;
     params.b = j.angleB;
+  } else if (j.traversal === "radial") {
+    // The descriptor treats absence as "out", so only the non-default travels.
+    if (j.direction === "in") params.direction = "in";
+  } else if (j.traversal === "spiral") {
+    // Likewise: a clockwise spiral omits the key.
+    if (j.rotation === "ccw") params.rotation = "ccw";
   }
   if (j.keymap === "offset") {
     params.kx = j.kx | 0;
@@ -231,6 +244,7 @@ function resolveConfig(job = {}) {
     borderWidth,
     borderFraction,
     params,
+    fit: j.fit === "shape" ? "shape" : "compact",
     pack: j.pack === "aligned" ? "aligned" : j.pack === "mono" ? "mono" : "packed",
     channels: j.channels || null,
     bytesPerSample,
@@ -273,6 +287,9 @@ function validateConfig(job = {}) {
   inEnum("dir", ENUMS.dir);
   inEnum("mode", ENUMS.mode);
   inEnum("layout", ENUMS.layout);
+  inEnum("direction", ENUMS.direction);
+  inEnum("rotation", ENUMS.rotation);
+  inEnum("fit", ENUMS.fit);
   if (job.bits != null && !ENUMS.bits.includes(parseInt(job.bits)))
     warn.push(`bits=${job.bits} is not one of: ${ENUMS.bits.join(", ")}`);
   // channel-plan combines
@@ -458,14 +475,16 @@ function jobBytesPerPixel(job, spec) {
 
 // Payload-byte ceiling per chunk, or null when the spec sets no budget.
 // A pixel budget converts through the data/key checkerboard: only half the
-// output pixels carry payload, each holding `bytesPerPixel` of it.
+// output pixels carry payload — all of them under a keyless keymap — each
+// holding `bytesPerPixel` of it.
 function splitByteBudget(spec, ctx) {
   if (spec.maxBytes != null) return Math.max(1, Number(spec.maxBytes) || 0);
   if (spec.maxPixels != null) {
     const bpp = ctx.bytesPerPixel || 3;
     const reserve = Math.max(0, Number(spec.reserveBytes) || 0);
     const px = Math.max(2, Number(spec.maxPixels) || 0);
-    return Math.max(1, Math.floor((px / 2) * bpp) - reserve);
+    const density = ctx.keyless ? 1 : 2;
+    return Math.max(1, Math.floor((px / density) * bpp) - reserve);
   }
   return null;
 }
@@ -530,7 +549,11 @@ function expandJob(job = {}, ctx = {}) {
   const spec = splitSpec(job);
   if (!spec) return [job];
 
-  const c = { bytesPerPixel: jobBytesPerPixel(job, spec), ...ctx };
+  const c = {
+    bytesPerPixel: jobBytesPerPixel(job, spec),
+    keyless: isKeylessKeymap(job.keymap || DEFAULTS.keymap),
+    ...ctx,
+  };
   const windows = planChunks(spec, c);
   const parts = Array.isArray(spec.parts) ? spec.parts : [];
   const images = Array.isArray(spec.images) ? spec.images : [];
