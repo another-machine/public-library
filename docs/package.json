@@ -1,7 +1,7 @@
 {
   "name": "amplib-docs",
   "version": "1.0.0",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "scripts": {
     "start": "parcel src/*.html src/**/*.html --no-cache",
     "build": "parcel build src/*.html src/**/*.html --no-cache --no-scope-hoist"

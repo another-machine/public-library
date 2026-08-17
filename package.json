@@ -7,7 +7,7 @@
     "url": "git+https://github.com/another-machine/public-library.git"
   },
   "author": "Another Machine",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "serve": "python3 -m http.server 8989",
