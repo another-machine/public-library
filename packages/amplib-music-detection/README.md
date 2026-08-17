@@ -20,16 +20,30 @@ function loop() {
 
 ## Modules
 
-| Module       | Description                                                                           |
-| ------------ | ------------------------------------------------------------------------------------- |
-| `DetectTone` | Per-semitone presence over C2–B6, folded to pitch classes, plus the most likely chord  |
-| `DetectBPM`  | Beat detection from low-band energy, live or over a rendered buffer                    |
+| Module       | Description                                                                          |
+| ------------ | ------------------------------------------------------------------------------------ |
+| `DetectTone` | Per-semitone presence over C2–B6, folded to pitch classes, plus the most likely chord |
+| `DetectBPM`  | Beat detection from low-band energy, frame by frame off a live `AnalyserNode`         |
+| `analyze`    | Tempo, beat count and key from raw PCM — no Web Audio, so it runs in Node too         |
 
 `DetectTone.tick()` returns `tones` — one entry per semitone it tracks, each an
 `@amplib/music-theory` `Note` plus a `prominence` — and `notes`, the same
 energy folded to twelve pitch classes, most prominent first, with `label` and
-`guess` for the chord. `analyzeKey(buffer)` answers the same question offline,
-for a whole track at once.
+`guess` for the chord. `DetectTone.analyzeKey(buffer)` answers the same
+question offline, for a whole track at once.
+
+**`analyzeKey` and `detectKey` are not the same question.** `analyzeKey` names
+the chord it hears, from note prominence. `detectKey` names a tonic and a mode,
+by scoring a chromagram against key profiles — the thing you would print on a
+record sleeve. A track can sit on an F# minor chord for eight bars and be in A
+major.
+
+`analyze` needs no `AudioContext` at all: pass it channel data and a sample
+rate. `detectTempo` autocorrelates an onset envelope, `detectLoopBeats` reports
+how many beats a loop-length file holds, `detectKey` returns a root, a mode and
+a confidence, and `chromagram` and `onsetEnvelope` are exposed for anything
+building on top. `DetectBPM.analyzeBPM` now defers to `detectTempo`, so a
+buffer gets one answer regardless of which one you reach for.
 
 ## Design
 

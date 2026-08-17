@@ -1,3 +1,13 @@
+import { detectTempo, toMono } from "./analyze";
+
+/**
+ * Live beat detection off an `AnalyserNode`: low-band energy crossing a
+ * threshold, intervals between crossings, mean interval as tempo. It answers
+ * frame by frame while audio is playing, which is the one thing offline
+ * analysis cannot do.
+ *
+ * For a buffer you already hold, `analyzeBPM` defers to `detectTempo`.
+ */
 export class DetectBPM {
   audioContext: AudioContext;
   analyser: AnalyserNode;
@@ -141,126 +151,30 @@ export class DetectBPM {
   }
 
   /**
-   * Analyze an audio buffer to estimate BPM
-   * @param buffer AudioBuffer to analyze
-   * @returns Promise resolving to the estimated BPM
+   * Estimate the tempo of a buffer you already hold.
+   *
+   * This used to look for peaks in raw amplitude and average the gaps between
+   * them, which finds a kick drum and nothing else: sustained material has no
+   * amplitude peaks to find, so it returned 0. It also rendered the buffer
+   * through an OfflineAudioContext first, which reproduced the same samples.
+   *
+   * `detectTempo` autocorrelates an onset envelope instead — "how well does
+   * the onset pattern line up with itself this far along" is a question
+   * sustained material can answer. Two differences to expect: the result is
+   * fractional rather than rounded to a whole bpm, and tempo is
+   * octave-ambiguous, so check `alternatives` from `detectTempo` directly if
+   * half or double time matters.
+   *
+   * Still a Promise so existing callers keep working; nothing here awaits.
    */
   async analyzeBPM(buffer: AudioBuffer): Promise<number> {
-    try {
-      // Create an offline audio context for analysis
-      const offlineCtx = new OfflineAudioContext(
-        buffer.numberOfChannels,
-        buffer.length,
-        buffer.sampleRate
-      );
-
-      // Create buffer source
-      const source = offlineCtx.createBufferSource();
-      source.buffer = buffer;
-
-      // Create analyzer
-      const analyser = offlineCtx.createAnalyser();
-      analyser.fftSize = this.analyser.fftSize;
-
-      // Connect
-      source.connect(analyser);
-      analyser.connect(offlineCtx.destination);
-
-      // Start
-      source.start(0);
-
-      // Render buffer
-      const renderedBuffer = await offlineCtx.startRendering();
-
-      // Process the rendered buffer for BPM detection
-      const peaks = this.findPeaks(renderedBuffer);
-      const intervals = this.getIntervals(peaks, renderedBuffer.sampleRate);
-
-      return this.calculateBPM(intervals);
-    } catch (e) {
-      console.error("Error analyzing BPM:", e);
-      return 0;
-    }
-  }
-
-  /**
-   * Find peaks in audio data that likely represent beats
-   * @param buffer Rendered audio buffer
-   * @returns Array of sample indices where peaks occur
-   */
-  private findPeaks(buffer: AudioBuffer): number[] {
-    const data = buffer.getChannelData(0);
-    const peaks: number[] = [];
-    const sampleRate = buffer.sampleRate;
-
-    // Calculate minimum distance between peaks (in samples)
-    const minPeakDistance = Math.floor((sampleRate * 60) / this.maxBPM / 2);
-
-    let lastPeakIndex = -minPeakDistance;
-    const threshold = this.calculateDynamicThreshold(data);
-
-    // Process in chunks to handle large files efficiently
-    const chunkSize = 16384;
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunkEnd = Math.min(i + chunkSize, data.length);
-
-      // Find local maxima in this chunk
-      for (let j = i; j < chunkEnd; j++) {
-        if (data[j] > threshold && j - lastPeakIndex >= minPeakDistance) {
-          // Check if this is a local maximum
-          if (j > 0 && j < data.length - 1) {
-            if (data[j] > data[j - 1] && data[j] >= data[j + 1]) {
-              peaks.push(j);
-              lastPeakIndex = j;
-            }
-          }
-        }
-      }
-    }
-
-    return peaks;
-  }
-
-  /**
-   * Calculate a dynamic threshold based on the audio data
-   * @param data Audio data
-   * @returns Threshold value
-   */
-  private calculateDynamicThreshold(data: Float32Array): number {
-    // Take a sample of the data for efficiency
-    const sampleSize = Math.min(10000, data.length);
-    const step = Math.floor(data.length / sampleSize);
-
-    let sum = 0;
-    let max = 0;
-
-    for (let i = 0; i < data.length; i += step) {
-      const absValue = Math.abs(data[i]);
-      sum += absValue;
-      max = Math.max(max, absValue);
-    }
-
-    const avgAmplitude = sum / (data.length / step);
-
-    // Dynamic threshold is between the average and max amplitude
-    return avgAmplitude + (max - avgAmplitude) * this.threshold;
-  }
-
-  /**
-   * Convert peak indices to time intervals
-   * @param peaks Array of sample indices where peaks occur
-   * @param sampleRate Sample rate of the audio
-   * @returns Array of time intervals between consecutive peaks
-   */
-  private getIntervals(peaks: number[], sampleRate: number): number[] {
-    const intervals: number[] = [];
-
-    for (let i = 1; i < peaks.length; i++) {
-      const interval = (peaks[i] - peaks[i - 1]) / sampleRate;
-      intervals.push(interval);
-    }
-
-    return intervals;
+    const channels: Float32Array[] = [];
+    for (let c = 0; c < buffer.numberOfChannels; c++)
+      channels.push(buffer.getChannelData(c));
+    return detectTempo(toMono(channels), buffer.sampleRate, {
+      minBPM: this.minBPM,
+      maxBPM: this.maxBPM,
+    }).bpm;
   }
 
   /**

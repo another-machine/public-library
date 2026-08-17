@@ -2,10 +2,7 @@
 import { createForm } from "../createForm";
 import { UserMediaStream } from "../../../packages/amplib-devices/src";
 import { Note } from "../../../packages/amplib-music-theory/src";
-import {
-  DetectTone,
-  DetectBPM,
-} from "../../../packages/amplib-music-detection/src";
+import { DetectTone } from "../../../packages/amplib-music-detection/src";
 
 type FormData = {};
 
