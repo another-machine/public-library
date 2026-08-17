@@ -13,12 +13,13 @@ const params = defaultParams();
 await camera.start(); // prompts for the camera
 await darkroom.expose(camera.video, {
   frames: 8, // ≈267ms at 30fps
-  trail: 0.55,
   stack: "mean",
   mirror: camera.mirrored,
+  keepNegative: true, // hold the burst so frames/stack can restack
 });
 
-darkroom.develop(params);
+darkroom.develop(params); // params include trail — develop-time, not capture
+darkroom.restack({ frames: 4 }); // the shutter closing earlier, after the fact
 const blob = await darkroom.toBlob();
 ```
 
@@ -48,6 +49,20 @@ weight, so a moving subject spreads its light over everywhere it went and dims
 in proportion — motion blur. `max` keeps the brightest value each pixel ever
 reached, so a moving light holds full intensity along its entire path — a light
 trail. Neither is a post-process of the other.
+
+**Trail is a develop parameter, because the math allows it.** The trail weight
+is linear in a frame's position along the burst, so the accumulator keeps two
+moments — the weighted sum and the position-weighted sum — and any trail value
+is a per-pixel mix of the two at resolve time. Nothing about the trail is
+burned into the capture: it drags live like every other develop slider, and
+the negative range is free — `-1` makes trails lead instead of follow, a
+mirrored ramp the burned-in weighting could never express.
+
+**The negative is optional, because it costs real memory.** With
+`keepNegative: true` the burst itself stays on the GPU — 4 bytes per pixel per
+frame — and `restack({ frames?, stack? })` re-accumulates from it: fewer
+frames is the shutter closing earlier, and `mean`/`max` swap on the same
+light. Only the light is unrepeatable. The next expose frees it.
 
 **Exposing and developing share one GL context, because they must.** The
 accumulation stays on the GPU as a float texture and the develop chain samples
@@ -104,7 +119,7 @@ not coming from a live camera — bracketed stills, or frames pulled out of a
 decoded video.
 
 ```ts
-darkroom.exposeFrames([img1, img2, img3], { frames: 3, trail: 0, stack: "max" });
+darkroom.exposeFrames([img1, img2, img3], { frames: 3, stack: "max" });
 ```
 
 ## Requirements
