@@ -52,14 +52,17 @@
     "watch": "tsup --watch",
     "test:parity": "npm run build && node scripts/test-parity.mjs",
     "test:radial": "esbuild scripts/test-radial.ts --bundle --platform=node --format=esm --outfile=.tmp/radial.mjs --log-level=warning && node .tmp/radial.mjs",
+    "measure": "esbuild scripts/phase0-measure.ts --bundle --platform=node --format=esm --outfile=.tmp/phase0.mjs --external:jpeg-js --log-level=warning && node .tmp/phase0.mjs",
     "build:types": "tsup --dts-only",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "verify": "esbuild scripts/phase1-verify.ts --bundle --platform=node --format=esm --outfile=.tmp/verify.mjs --external:jpeg-js --log-level=warning && node .tmp/verify.mjs"
   },
   "optionalDependencies": {
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
-    "@types/pngjs": "^6.0.5"
+    "@types/pngjs": "^6.0.5",
+    "jpeg-js": "^0.4.4"
   },
   "author": "Another Machine",
   "license": "Apache-2.0",

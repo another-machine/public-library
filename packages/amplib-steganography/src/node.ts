@@ -26,6 +26,7 @@ import type { StegaImageData } from "./Stegassette/types";
 
 // Re-export the entire pure Stegassette core so consumers get one import
 export * as Stegassette from "./Stegassette/index";
+export * as Stegaprint from "./Stegaprint/index";
 
 // WAV I/O lives on the Node entry only — the browser has decodeAudioData.
 export { decodeWav, encodeWav } from "./wav";

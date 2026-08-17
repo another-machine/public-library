@@ -45,6 +45,12 @@
           <code>decode</code> needs nothing but the image. Each option is
           documented in the library's types.
         </p>
+        <p class="ht-type-small u-dim">
+          STGC needs pixels back exactly as written, so it does not survive a
+          JPEG re-save. <a href="#example-stegaprint">Stegaprint</a> is a
+          prototype sibling format for that channel — same idea, different
+          substrate, about 160× less capacity.
+        </p>
       </section>
 
       <section id="example-stegassette-text">
@@ -276,6 +282,101 @@ const recon = Stegassette.reconstructCover(encoded, opts);
 
           <form class="fieldset-stack"></form>
         </div>
+      </section>
+
+      <!-- Prototype. Phases 0-1 of the format are built and measured; the
+           carrier set and Δ in the header come from measurement rather than
+           from the standard quantization tables, which turned out not to
+           predict a real encoder. See packages/amplib-steganography/Stegaprint.md -->
+      <section id="example-stegaprint">
+        <h2>Stegaprint <span class="u-dim">— prototype</span></h2>
+        <p class="ht-type-prose u-dim">
+          Everything above assumes pixels come back exactly as written, so a
+          single JPEG re-save destroys it — not gradually, but completely.
+          <strong>Stegaprint</strong> is the sibling format for that channel. It
+          carries payload in the low-frequency DCT coefficients of each 8×8
+          block, where an 8×8 quantizer cannot reach it, and it wears its header
+          as a visible border rather than hiding it in an alpha channel JPEG does
+          not have.
+        </p>
+        <p class="ht-type-small u-dim">
+          The picture below goes through a real
+          <code>canvas.toBlob("image/jpeg")</code> at the quality you choose,
+          decoded back, and read again. Both formats encode the same message into
+          the same picture and take the same trip. Costs roughly 160× the
+          capacity of STGC, which is why the canvas is mostly border for a short
+          message.
+        </p>
+        <p class="signature">
+          Stegaprint.encode({ source: HTMLImageElement | HTMLCanvasElement;
+          entries: PrintEntry[]; keymap?: KeymapName; ecc?: "none" | "light" |
+          "full"; traversal?: TraversalName; width?: number; height?: number; }):
+          HTMLCanvasElement
+        </p>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">const encoded = Stegaprint.encode({
+  source,
+  entries: [{
+    type: Stegaprint.EntryType.Text,
+    name: "message.txt",
+    data: new TextEncoder().encode("<span data-value="message"></span>"),
+  }],
+  keymap: "<span data-value="keymap"></span>",
+  ecc: "<span data-value="ecc"></span>",
+});
+<span data-output="capacity"></span></pre>
+
+            <div class="ht-arrange-grid">
+              <figure class="frame u-pixelated">
+                <figcaption class="frame__caption">encoded</figcaption>
+                <div data-figure="print"></div>
+              </figure>
+              <figure class="frame u-pixelated">
+                <figcaption class="frame__caption">through JPEG</figcaption>
+                <div data-figure="jpeg"></div>
+              </figure>
+            </div>
+
+            <img class="ht-media-raw" src="./example.jpg" hidden />
+          </div>
+
+          <form class="fieldset-stack"></form>
+        </div>
+
+        <p class="signature">
+          Stegaprint.jpegRoundTrip(canvas: HTMLCanvasElement, quality?: number,
+          passes?: number): Promise&lt;{ canvas: HTMLCanvasElement; bytes:
+          number[] }&gt;
+        </p>
+        <pre class="code">const { canvas } = await Stegaprint.jpegRoundTrip(
+  encoded,
+  <span data-value="quality"></span> / 100,
+  <span data-value="passes"></span>,
+);
+const { entries, header, registered } = Stegaprint.decode({ source: canvas });
+<span data-output="stegaprint"></span></pre>
+
+        <h3>The same message, the same JPEG, through Stegassette</h3>
+        <p class="ht-type-prose u-dim">
+          For contrast. STGC does not degrade here, it disappears: the header
+          rides the border alpha channel, JPEG has no alpha, and the traversal
+          and keymap are gone with it before a single payload byte is even read.
+        </p>
+        <pre class="code">const cassette = Stegassette.encode({ source, entries: [/* same message */] });
+const { canvas } = await Stegaprint.jpegRoundTrip(cassette, <span data-value="quality"></span> / 100);
+Stegassette.decode({ source: canvas });
+<span data-output="compare"></span></pre>
+
+        <p class="ht-type-small u-dim">
+          Below the declared quality floor of 75 the errors begin, and they begin
+          as <em>damage</em> rather than as failure — the record table is
+          fixed-width and its lengths are counted in blocks, so a corrupted field
+          corrupts itself instead of relocating every field after it. Set
+          <code>ecc</code> to <code>none</code> to watch that happen at the
+          payload level too.
+        </p>
       </section>
 
       <section id="stega-animator">

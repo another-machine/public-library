@@ -14,7 +14,15 @@ separately — text, audio, and arbitrary bytes are all just entries.
 | Module         | Description                                                                                                                                                                            |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Stegassette`  | Multi-payload STGC format: audio + arbitrary entries, self-describing alpha header, 11 combine ops, 10 traversals, 6 keymaps. See [Stegassette.md](./Stegassette.md) for format details. |
+| `Stegaprint`   | STGP format: survives JPEG re-encoding. Block-DCT carriers, a visible fiducial border, ~160× less capacity. Phases 0–1 built. See [Stegaprint.md](./Stegaprint.md).                     |
 | `StegaAnimator`| Animates an encoded image on a canvas                                                                                                                                                  |
+
+`Stegassette` assumes pixels come back exactly as written, so a JPEG re-save
+destroys it — not gradually, but completely: the header lives in an alpha channel
+JPEG does not have, and every combine op encodes payload at the one spatial
+frequency an 8×8 quantizer discards first. `Stegaprint` is the sibling format for
+that channel. Pick by whether the image will be re-encoded, and expect to trade
+roughly 160× the capacity for it.
 
 The pre-STGC modules — `Stega64`, `StegaCassette`, `StegaBinary`, `StegaKey`,
 and `StegaMetadata` — were removed in 1.0. Their consumers were already gone:
@@ -65,6 +73,39 @@ const canvas = Stegassette.encode({
 
 const { entries } = Stegassette.decode({ source: canvas });
 const message = new TextDecoder().decode(entries[0].data);
+```
+
+### Stegaprint
+
+Same shape, different substrate. Entries carry a type enum rather than a mimetype
+string (fixed-width records are why the format needs no error correction on its
+own structure), and the canvas is sized by the payload unless you force it.
+
+```typescript
+import { Stegaprint } from "@amplib/steganography";
+
+const image = Stegaprint.encode({
+  source: img,
+  entries: [
+    { type: Stegaprint.EntryType.Text, name: "message.txt", data: "Hello world" },
+  ],
+});
+// image is StegaImageData — encode it to JPEG yourself (canvas.toBlob, sharp, …)
+
+const { entries, header, registered } = Stegaprint.decode(jpegDecodedPixels);
+const message = new TextDecoder().decode(entries[0].data);
+```
+
+`registered` reports whether the corner marks read; `entries[i].crcOk` reports
+whether a payload still matches its recorded checksum. Neither causes a decode to
+fail — a damaged payload is a legitimate outcome, and the caller decides.
+
+To target a fixed output size (video frames, or replacing an existing asset), ask
+what fits first:
+
+```typescript
+const { bytes } = Stegaprint.capacity(1920, 1080);   // ~19 KB
+Stegaprint.encode({ source: img, entries, width: 1920, height: 1080 });
 ```
 
 ### Node.js (read/write PNG files)
