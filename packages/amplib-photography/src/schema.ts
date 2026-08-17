@@ -66,13 +66,6 @@ export interface DevelopParams {
   aperture: number;
   /** Where the sharp band sits: 0 the bottom of the frame, 1 the top. */
   focalPlane: number;
-  /**
-   * Depth of field as time: defocus by the burst's own temporal variance.
-   * Positive melts what moved and keeps the still scene sharp; negative
-   * melts what held still and leaves the ghosts sharp. Nothing to measure
-   * under "max" or from a single frame.
-   */
-  ghost: number;
   grain: number;
   /** Sub-degree rotation plus radial chromatic aberration. */
   drift: number;
@@ -182,21 +175,6 @@ export const DEVELOP_SCHEMA: ParamDef[] = [
       s.aperture > 0
         ? null
         : "Positions the sharp band, and the aperture is closed — nothing is defocused.",
-  },
-  {
-    key: "ghost",
-    label: "Ghosts",
-    min: -1,
-    max: 1,
-    step: 0.01,
-    value: 0,
-    group: "Focus",
-    inert: (s) =>
-      s.stack === "max"
-        ? "Light trails keeps brightest values, so the burst's motion leaves no variance to read."
-        : s.frames < 2
-          ? "One frame holds no motion to measure."
-          : null,
   },
 
   { key: "split", label: "Split", min: 0, max: 1, step: 0.01, value: 0.4, group: "Colour" },
