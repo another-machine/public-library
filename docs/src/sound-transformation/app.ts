@@ -1,6 +1,9 @@
 // @ts-ignore
 import processor from "worklet:../../../packages/amplib-sound-transformation/src/processors/PhaseVocoderProcessor";
-import { SoundTransformation } from "../../../packages/amplib-sound-transformation/src";
+import {
+  SoundTransformation,
+  detectBPM,
+} from "../../../packages/amplib-sound-transformation/src";
 import { createForm } from "../createForm";
 
 type FormData = {
@@ -73,6 +76,9 @@ async function example() {
       await transformation.initialize({
         audioBuffer: source,
         processorJSPath: processor,
+        // Detection is its own import now — a caller that already knows the
+        // tempo (from metadata, say) passes it here and never loads this.
+        bpm: await detectBPM(audioBuffer),
       });
       settings.bpm = transformation.bpm;
       setValue("bpm", transformation.bpm);

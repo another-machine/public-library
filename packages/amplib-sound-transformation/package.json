@@ -8,17 +8,6 @@
     "type": "git",
     "url": "git+https://github.com/another-machine/public-library.git"
   },
-  "tsup": {
-    "entry": [
-      "src/index.ts"
-    ],
-    "clean": true,
-    "dts": false,
-    "format": "esm",
-    "minify": false,
-    "sourcemap": true,
-    "splitting": false
-  },
   "scripts": {
     "build": "tsup",
     "watch": "tsup --watch"

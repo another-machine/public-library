@@ -1,6 +1,20 @@
-import { analyze } from "web-audio-beat-detector";
-
-const SEMITONE_STEP = Math.pow(2, 1 / 12); // ≈ 1.059463
+export interface SoundTransformationInitializeParams {
+  audioBuffer: AudioBufferSourceNode;
+  /**
+   * The source's own tempo, in BPM. Required: `adjustSpeedToBPM` is a ratio
+   * against it, so there is nothing to compute a ratio from without it.
+   * Detection is a separate import — see `detectBPM`.
+   */
+  bpm: number;
+  processorJSPath?: string;
+  processorScriptTag?: HTMLScriptElement;
+  /**
+   * Where the transformed signal goes. Defaults to the context destination,
+   * which suits one sound played alone. Mixing several means passing a
+   * per-voice gain node and connecting that yourself.
+   */
+  destination?: AudioNode;
+}
 
 export class SoundTransformation {
   audioContext: AudioContext;
@@ -9,6 +23,7 @@ export class SoundTransformation {
   pitchFactor = 1.0;
   speedFactor = 1.0;
   bpm: number = 0;
+  private destination: AudioNode | null = null;
 
   constructor({ audioContext }: { audioContext: AudioContext }) {
     this.audioContext = audioContext;
@@ -19,17 +34,14 @@ export class SoundTransformation {
     processorJSPath,
     processorScriptTag,
     bpm,
-  }: {
-    audioBuffer: AudioBufferSourceNode;
-    processorJSPath?: string;
-    processorScriptTag?: HTMLScriptElement;
-    bpm?: number;
-  }) {
-    if (bpm) {
-      this.bpm = bpm;
-    } else {
-      this.bpm = await analyze(audioBuffer.buffer as AudioBuffer);
+    destination,
+  }: SoundTransformationInitializeParams) {
+    if (!bpm) {
+      throw new Error(
+        "SoundTransformation.initialize requires bpm — use detectBPM(buffer) if you do not have one"
+      );
     }
+    this.bpm = bpm;
     this.audioBuffer = audioBuffer;
     if (processorScriptTag) {
       const workletCode = processorScriptTag.textContent || "";
@@ -45,47 +57,75 @@ export class SoundTransformation {
       this.audioContext,
       "phase-vocoder-processor"
     );
+    this.destination = destination ?? this.audioContext.destination;
     this.audioBuffer.connect(this.phaseVocoderNode);
-    this.phaseVocoderNode.connect(this.audioContext.destination);
+    this.phaseVocoderNode.connect(this.destination);
   }
 
-  adjustSpeedToBPM(npm: number) {
+  /** The node carrying the transformed signal, once initialized. */
+  get output(): AudioNode | null {
+    return this.phaseVocoderNode;
+  }
+
+  /**
+   * `when` schedules the change at a context time instead of applying it now.
+   *
+   * Immediate writes land on the next render quantum, which is up to 2.9 ms
+   * away and not the same instant the caller thinks it happened. One voice
+   * does not care. Several voices held against a clock do: the clock moves at
+   * the caller's instant and the audio at the quantum boundary, and the gap
+   * is charged to every change.
+   */
+  adjustSpeedToBPM(npm: number, when?: number) {
     const speedRatio = npm / this.bpm;
-    this.updateSpeed(speedRatio);
+    this.updateSpeed(speedRatio, when);
     return this.speedFactor;
   }
 
-  adjustPitchBySemitones(semitones = 1) {
-    let pitchFactor = 1.0;
-    if (semitones > 0) {
-      while (semitones > 0) {
-        pitchFactor *= SEMITONE_STEP;
-        semitones--;
-      }
-    } else {
-      while (semitones < 0) {
-        pitchFactor /= SEMITONE_STEP;
-        semitones++;
-      }
-    }
-    this.updatePitch(pitchFactor);
+  /**
+   * Semitones, and fractions of one. 3.5 is three and a half semitones, not
+   * four: this multiplied by a step per whole semitone in a loop, so 3.5 ran
+   * the loop four times and any fractional part was silently rounded up.
+   * Repeated multiplication also drifted — twelve steps landed near 1.9999997
+   * rather than 2.
+   */
+  adjustPitchBySemitones(semitones = 1, when?: number) {
+    this.updatePitch(Math.pow(2, semitones / 12), when);
     return this.pitchFactor;
   }
 
-  private updateSpeed(speed: number) {
+  /**
+   * Release the graph. The source node is the caller's — stop it first if it
+   * is still running.
+   */
+  dispose() {
+    this.audioBuffer?.disconnect();
+    this.phaseVocoderNode?.disconnect();
+    this.phaseVocoderNode = null;
+    this.audioBuffer = null;
+    this.destination = null;
+  }
+
+  private updateSpeed(speed: number, when?: number) {
     const pitchFactorParam =
       this.phaseVocoderNode?.parameters.get("pitchFactor")!;
     this.speedFactor = speed;
-    if (this.audioBuffer) {
-      this.audioBuffer.playbackRate.value = speed;
+    const compensated = (this.pitchFactor * 1) / this.speedFactor;
+    if (when == null) {
+      if (this.audioBuffer) this.audioBuffer.playbackRate.value = speed;
+      pitchFactorParam.value = compensated;
+      return;
     }
-    pitchFactorParam.value = (this.pitchFactor * 1) / this.speedFactor;
+    this.audioBuffer?.playbackRate.setValueAtTime(speed, when);
+    pitchFactorParam.setValueAtTime(compensated, when);
   }
 
-  private updatePitch(pitch: number) {
+  private updatePitch(pitch: number, when?: number) {
     const pitchFactorParam =
       this.phaseVocoderNode?.parameters.get("pitchFactor")!;
     this.pitchFactor = pitch;
-    pitchFactorParam.value = (this.pitchFactor * 1) / this.speedFactor;
+    const compensated = (this.pitchFactor * 1) / this.speedFactor;
+    if (when == null) pitchFactorParam.value = compensated;
+    else pitchFactorParam.setValueAtTime(compensated, when);
   }
 }
