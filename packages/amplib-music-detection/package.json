@@ -1,7 +1,7 @@
 {
   "name": "@amplib/music-detection",
   "description": "Real time detection of chromatic notes and combinations of notes from a device microphone.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
