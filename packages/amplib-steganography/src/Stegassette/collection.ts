@@ -28,7 +28,14 @@ import { containerInteriorBytes } from "./entries";
 import { autoScaleImg, cropImg, resolveBorderWidth } from "./geometry";
 import { encodeContainer } from "./container";
 import { stgcHeaderWidth } from "./index";
-import type { CombineName, Entry, KeymapName, StegaImageData, TraversalName } from "./types";
+import type {
+  CombineName,
+  Entry,
+  KeymapName,
+  StegaImageData,
+  TraversalName,
+  TraversalParams,
+} from "./types";
 
 /**
  * Steg settings a collection encodes with by default.
@@ -42,6 +49,11 @@ export interface CollectionSteg {
   keymap: KeymapName;
   /** Fractional borders resolve against the data-pixel count — see resolveBorderWidth. */
   border: number;
+  /**
+   * Traversal params — e.g. `{ direction: "in" }` for radial, `{ rotation:
+   * "ccw" }` for spiral. Omit for a traversal's default order.
+   */
+  params?: TraversalParams;
 }
 
 export const COLLECTION_STEG: CollectionSteg = {
@@ -201,7 +213,7 @@ export function encodeStegassette(
     combine: steg.combine,
     keymap: steg.keymap || ("adjacent" as KeymapName),
     traversal: steg.traversal,
-    params: {},
+    params: steg.params ?? {},
   };
 
   // The width the header alone needs; a small payload would otherwise size the

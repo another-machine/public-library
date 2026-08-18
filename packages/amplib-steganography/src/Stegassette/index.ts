@@ -64,6 +64,7 @@ export type { KeyFieldFn, LocatingKeymapName } from "./keymap";
 export {
   TRAVERSAL_NAMES,
   TRAVERSAL_SHAPE,
+  TRAVERSAL_LEGACY,
   ellipseFit,
   getPath,
   getPathIndices,

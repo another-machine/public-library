@@ -305,6 +305,17 @@ export const TRAVERSAL_SHAPE: Partial<Record<TraversalName, FitFn>> = {
 };
 
 /**
+ * Traversals kept only so their old encodes still decode — not offered as an
+ * encode-time choice. Today just `center-out`, superseded by `radial`: see
+ * TraversalName's doc for why. A caller building an encode-time menu from
+ * TRAVERSAL_NAMES should filter these out; TRAVERSAL_NAMES itself keeps every
+ * name, legacy included, because decode still has to recognize them all.
+ */
+export const TRAVERSAL_LEGACY: Partial<Record<TraversalName, true>> = {
+  "center-out": true,
+};
+
+/**
  * Returns a Uint32Array of interior-local linear indices (v = y*W + x),
  * filtered to data pixels.
  *
