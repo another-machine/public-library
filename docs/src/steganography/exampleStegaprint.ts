@@ -1,4 +1,4 @@
-import { Stegaprint, Stegassette } from "../../../packages/amplib-steganography/src";
+import { Stegaprint } from "../../../packages/amplib-steganography/src";
 import { createForm } from "../createForm";
 
 const ECC_OPTIONS = ["light", "none", "full"] as const;
@@ -19,13 +19,12 @@ type FormData = {
 };
 
 /**
- * The demonstration is the comparison, not the encode.
+ * Encode, push the canvas through a real canvas.toBlob("image/jpeg") at the
+ * chosen quality and pass count, decode what comes back, and report the header
+ * the border gave up along with it.
  *
- * Stegaprint surviving a JPEG round trip is only interesting next to Stegassette
- * not surviving one — and Stegassette does not fail gradually here, it fails
- * completely, because its header lives in an alpha channel JPEG does not have.
- * Both formats encode the same message into the same picture and both go through
- * the same real canvas.toBlob("image/jpeg").
+ * The JPEG round trip is the whole point: an encoded image that never passes
+ * through a real encoder has been prepared, not tested.
  */
 export default async function example() {
   const section = document.getElementById("example-stegaprint")!;
@@ -39,7 +38,6 @@ export default async function example() {
     .querySelector<HTMLElement>("figcaption")!;
   const form = section.querySelector("form")!;
   const out = section.querySelector<HTMLElement>('[data-output="stegaprint"]')!;
-  const compare = section.querySelector<HTMLElement>('[data-output="compare"]')!;
   const capacityOut = section.querySelector<HTMLElement>('[data-output="capacity"]')!;
   const headerBody = section.querySelector<HTMLElement>(
     '[data-output="header-table"] tbody'
@@ -226,34 +224,5 @@ export default async function example() {
       out.innerText = `// decode failed — ${err}`;
       showHeader([["error", String(err)]]);
     }
-
-    // ---- the same message, the same picture, the lossless format
-    let cassetteLine: string;
-    try {
-      const cassette = Stegassette.encode({
-        source,
-        entries: [{ mimetype: "text/plain", name: "message.txt", data: data.message }],
-      });
-      const { canvas: cassetteJpeg } = await Stegaprint.jpegRoundTrip(
-        cassette,
-        data.quality / 100,
-        data.passes
-      );
-      if (mine !== generation) return;
-      try {
-        const { entries: got } = Stegassette.decode({ source: cassetteJpeg });
-        const recovered = new TextDecoder().decode(got[0]?.data ?? new Uint8Array());
-        cassetteLine =
-          recovered === data.message
-            ? `// recovered exactly — unexpected; STGC is not built for this channel`
-            : `// decoded, but the bytes are wrong: ${JSON.stringify(recovered.slice(0, 48))}`;
-      } catch (err) {
-        cassetteLine = `// ${err}`;
-      }
-    } catch (err) {
-      cassetteLine = `// encode failed — ${err}`;
-    }
-    if (mine !== generation) return;
-    compare.innerText = cassetteLine;
   }
 }

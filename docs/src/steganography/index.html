@@ -369,36 +369,6 @@ const { entries, header, registered } = Stegaprint.decode({ source: canvas });
             <tbody></tbody>
           </table>
         </details>
-
-        <p class="ht-type-small u-dim">
-          Below the declared quality floor of 75 the errors begin, and they begin
-          as <em>damage</em> rather than as failure — the record table is
-          fixed-width and its lengths are counted in chunks, so a corrupted field
-          corrupts itself instead of relocating every field after it. Set
-          <code>ecc</code> to <code>none</code> and drop the quality to watch that
-          reach the payload too.
-        </p>
-        <p class="ht-type-small u-dim">
-          <code>repeat</code> is why the low qualities hold up. The canvas has a
-          floor — the header ring needs about 960 blocks however short the
-          message — so a small payload would otherwise leave most of the interior
-          untouched. Whole copies fill the space instead and are majority-voted
-          on decode, which costs nothing that was being used.
-        </p>
-
-        <h3>The same message through Stegassette</h3>
-        <p class="ht-type-prose u-dim">
-          A control, so the comparison is run rather than asserted: the same text
-          encoded with STGC, sent through the same JPEG, and read back. It does
-          not come back damaged — it does not come back at all. STGC keeps its
-          header in the border alpha channel, JPEG has no alpha, and the
-          traversal and keymap are gone with it before a single payload byte is
-          reached.
-        </p>
-        <pre class="code">const cassette = Stegassette.encode({ source, entries: [/* same message */] });
-const { canvas } = await Stegaprint.jpegRoundTrip(cassette, <span data-value="quality"></span> / 100);
-Stegassette.decode({ source: canvas });
-<span data-output="compare"></span></pre>
       </section>
 
       <section id="stega-animator">
