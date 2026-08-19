@@ -194,16 +194,9 @@ export default async function example() {
       const recovered = entry
         ? new TextDecoder().decode(entry.data).replace(/\0+$/, "")
         : "";
-      const exact = recovered === data.message;
-      out.innerText = [
-        `// corner marks ${registered ? "registered" : "DID NOT register"}` +
-          `, payload crc ${entry?.crcOk ? "ok" : "mismatch"}` +
-          `, encoded in ${encodeMs}ms`,
-        exact
-          ? "// recovered exactly"
-          : "// did not round-trip — the payload is damaged, not absent",
-        JSON.stringify(recovered),
-      ].join("\n");
+      // Just the value. Whether it round-tripped is visible in the string
+      // itself, and the rest of the decode state is in the header table below.
+      out.innerText = JSON.stringify(recovered);
 
       showHeader([
         ["magic / version", `STGP v${header.version}`],
@@ -219,6 +212,8 @@ export default async function example() {
         ["entries", String(header.entryCount)],
         ["symbols", `${header.symbolCount} × ${header.repeat} copies`],
         ["corner marks", registered ? "registered" : "not found"],
+        ["payload crc", entry?.crcOk ? "ok" : "mismatch"],
+        ["encode time", `${encodeMs}ms`],
       ]);
     } catch (err) {
       out.innerText = `// decode failed — ${err}`;

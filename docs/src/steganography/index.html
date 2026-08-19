@@ -48,8 +48,7 @@
         <p class="ht-type-small u-dim">
           STGC needs pixels back exactly as written, so it does not survive a
           JPEG re-save. <a href="#example-stegaprint">Stegaprint</a> is a
-          prototype sibling format for that channel — same idea, different
-          substrate, about 160× less capacity.
+          prototype format for JPEG, with about 160× less capacity.
         </p>
       </section>
 
@@ -291,20 +290,17 @@ const recon = Stegassette.reconstructCover(encoded, opts);
       <section id="example-stegaprint">
         <h2>Stegaprint <span class="u-dim">— prototype</span></h2>
         <p class="ht-type-prose u-dim">
-          Everything above assumes pixels come back exactly as written, so a
-          single JPEG re-save destroys it — not gradually, but completely.
-          <strong>Stegaprint</strong> is the sibling format for that channel. It
-          carries payload in the low-frequency DCT coefficients of each 8×8
-          block, where an 8×8 quantizer cannot reach it, and it wears its header
-          as a visible border rather than hiding it in an alpha channel JPEG does
-          not have.
+          Stegaprint encodes payloads that survive JPEG compression. Payload
+          bytes are written into the low-frequency DCT coefficients of each 8×8
+          block. The header is a visible border of black and white blocks, since
+          JPEG has no alpha channel to carry it.
         </p>
         <p class="ht-type-small u-dim">
-          The picture below goes through a real
-          <code>canvas.toBlob("image/jpeg")</code> at the quality you choose,
-          decoded back, and read again. The border is the header and nothing
-          else — all 40 bytes of it, written three times. Every byte of payload
-          is in the interior, spread across the blocks by the traversal.
+          The image below is encoded, passed through
+          <code>canvas.toBlob("image/jpeg")</code> at the selected quality,
+          decoded, and read back. The border carries the 40-byte header. The
+          interior carries the payload. Capacity is about 19 KB per megapixel,
+          roughly 160× less than STGC.
         </p>
         <p class="signature">
           Stegaprint.encode({ source: HTMLImageElement | HTMLCanvasElement;
