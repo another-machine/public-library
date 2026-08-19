@@ -17,12 +17,11 @@ separately — text, audio, and arbitrary bytes are all just entries.
 | `Stegaprint`   | STGP format: survives JPEG re-encoding. Block-DCT carriers, a visible fiducial border, ~160× less capacity. Phases 0–1 built. See [Stegaprint.md](./Stegaprint.md).                     |
 | `StegaAnimator`| Animates an encoded image on a canvas                                                                                                                                                  |
 
-`Stegassette` assumes pixels come back exactly as written, so a JPEG re-save
-destroys it — not gradually, but completely: the header lives in an alpha channel
-JPEG does not have, and every combine op encodes payload at the one spatial
-frequency an 8×8 quantizer discards first. `Stegaprint` is the sibling format for
-that channel. Pick by whether the image will be re-encoded, and expect to trade
-roughly 160× the capacity for it.
+`Stegassette` needs pixels back exactly as written, so it does not survive a
+JPEG re-save: its header is in an alpha channel JPEG does not have, and the
+combine ops encode payload at the spatial frequency an 8×8 quantizer discards
+first. Use `Stegaprint` when the image will be re-encoded, at roughly 160× less
+capacity.
 
 The pre-STGC modules — `Stega64`, `StegaCassette`, `StegaBinary`, `StegaKey`,
 and `StegaMetadata` — were removed in 1.0. Their consumers were already gone:
@@ -77,9 +76,10 @@ const message = new TextDecoder().decode(entries[0].data);
 
 ### Stegaprint
 
-Same shape, different substrate. Entries carry a type enum rather than a mimetype
-string (fixed-width records are why the format needs no error correction on its
-own structure), and the canvas is sized by the payload unless you force it.
+Entries carry a type enum rather than a mimetype string, and lengths are counted
+in 16-byte chunks — fixed-width records are why the format needs no error
+correction on its own structure. The canvas is sized by the payload unless you
+force it.
 
 ```typescript
 import { Stegaprint } from "@amplib/steganography";
