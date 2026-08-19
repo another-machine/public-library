@@ -38,7 +38,6 @@ export default async function example() {
     .querySelector<HTMLElement>("figcaption")!;
   const form = section.querySelector("form")!;
   const out = section.querySelector<HTMLElement>('[data-output="stegaprint"]')!;
-  const capacityOut = section.querySelector<HTMLElement>('[data-output="capacity"]')!;
   const headerBody = section.querySelector<HTMLElement>(
     '[data-output="header-table"] tbody'
   )!;
@@ -163,15 +162,6 @@ export default async function example() {
 
     printSlot.querySelector("canvas")?.remove();
     printSlot.appendChild(encoded);
-
-    const cap = Stegaprint.capacityFor(encoded.width, encoded.height, {
-      modulate: data.modulate as "qim" | "pair",
-      keymap: data.keymap as Stegaprint.StgpHeader["keymap"],
-      ecc: data.ecc as "light" | "none" | "full",
-    });
-    capacityOut.innerText =
-      `// ${encoded.width}×${encoded.height}px, border ${cap.border} blocks — ` +
-      `holds ${(cap.bytes / 1024).toFixed(1)}KB, carrying ${data.message.length}B`;
 
     // The actual JPEG. Everything above this line is preparation.
     const { canvas: jpeged, bytes } = await Stegaprint.jpegRoundTrip(
