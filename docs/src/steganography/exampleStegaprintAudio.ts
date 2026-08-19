@@ -5,7 +5,13 @@ import {
 } from "../../../packages/amplib-steganography/src";
 import { createForm } from "../createForm";
 
-const RATE_OPTIONS = ["2000", "4000", "8000", "11025"] as const;
+/**
+ * No 2000 here, though the format handles it and §3.1's cheapest 30 seconds
+ * assumes it: OfflineAudioContext, which the resampling helper uses, refuses any
+ * rate below 3000. That is a Web Audio limit rather than a Stegaprint one — the
+ * same clip resamples and round-trips fine at 2 kHz outside the browser.
+ */
+const RATE_OPTIONS = ["4000", "8000", "11025"] as const;
 const BITS_OPTIONS = ["4", "8", "16"] as const;
 
 type FormData = {
@@ -59,13 +65,13 @@ export default async function example() {
         name: "sampleRate",
         type: "select",
         options: [...RATE_OPTIONS],
-        value: "8000",
+        value: "4000",
       },
       bitsPerSample: {
         name: "bitsPerSample",
         type: "select",
         options: [...BITS_OPTIONS],
-        value: "8",
+        value: "4",
       },
       // "full" rather than the library default of "light", because this demo
       // runs against the browser's own JPEG encoder and the Δ profile was
@@ -81,7 +87,11 @@ export default async function example() {
       },
       // Capped at 6: eight seconds of 8-bit 8 kHz is a 1900px canvas and the
       // encode is already seconds of main-thread DCT at that size.
-      seconds: { name: "seconds", type: "range", value: 2, min: 1, max: 5, step: 1 },
+      // Defaults to the whole 30 seconds at the cheap end of the ladder, which
+      // is the claim worth showing on load: half a minute of audio out of a
+      // JPEG. 4 kHz 4-bit puts that in 10 megapixels and under three seconds of
+      // encoding; 8 kHz 8-bit would want 40 and is refused below.
+      seconds: { name: "seconds", type: "range", value: 30, min: 1, max: 30, step: 1 },
       quality: { name: "quality", type: "range", value: 75, min: 40, max: 95, step: 5 },
     },
     onInput: run,
@@ -101,6 +111,39 @@ export default async function example() {
 
   sourceImg.onload = () => run(values);
   if (sourceImg.complete && sourceImg.naturalWidth) run(values);
+
+/**
+ * Pixels this demo will encode before it refuses.
+ *
+ * Encoding is main-thread DCT over every block, measured at roughly 0.7s per
+ * megapixel here, and the planes are Float64 — a 40-megapixel canvas is about a
+ * gigabyte of them plus the copies the convergence loop makes. Thirty seconds of
+ * 8 kHz 8-bit at ecc "full" asks for exactly that, so the combination is refused
+ * with the arithmetic rather than attempted and hung.
+ */
+  const PIXEL_BUDGET = 12_000_000;
+  /** Rough encode cost, from measuring this page: ~0.7s per megapixel. */
+  const SECONDS_PER_MPX = 0.7;
+
+  /**
+   * Smallest canvas at the source's aspect whose capacity holds `bytes`.
+   *
+   * Sizing runs the other way inside encode — the payload picks the canvas — so
+   * this reproduces the answer ahead of time to decide whether to start at all.
+   */
+  function canvasFor(bytes: number, ecc: string, aspect: number) {
+    let h = 256;
+    for (let i = 0; i < 200; i++) {
+      const w = Math.round(h * aspect);
+      if (
+        Stegaprint.capacity(w, h, { ecc: ecc as "none" | "light" | "full" })
+          .bytes >= bytes + 64
+      )
+        return { w, h, mpx: (w * h) / 1e6 };
+      h = Math.round(h * 1.08);
+    }
+    return null;
+  }
 
   function fillValues(data: FormData) {
     for (const [key, value] of Object.entries(data)) {
@@ -151,6 +194,21 @@ export default async function example() {
     });
 
     const t0 = performance.now();
+    const aspect = sourceImg.naturalWidth / sourceImg.naturalHeight;
+    const est = canvasFor(entry.data.length, data.ecc, aspect);
+    if (!est || est.mpx > PIXEL_BUDGET / 1e6) {
+      caption.innerText = "too large to encode here";
+      out.innerText = [
+        `// ${data.seconds}s at ${rate}Hz ${bits}-bit is ` +
+          `${(entry.data.length / 1024).toFixed(0)}KB, which needs ` +
+          `${est ? est.mpx.toFixed(1) + " megapixels" : "more than this demo will size"} at ecc ${data.ecc}`,
+        `// past the ${PIXEL_BUDGET / 1e6} megapixel budget this page encodes on the main thread.`,
+        `// lower the rate or the depth, or drop ecc to "light" — that is the trade,`,
+        `// not a limit of the format: duration is bought with fidelity.`,
+      ].join("\n");
+      return;
+    }
+
     const encoded = Stegaprint.encode({
       source: sourceImg,
       entries: [entry],

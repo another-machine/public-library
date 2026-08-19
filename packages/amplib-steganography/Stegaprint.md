@@ -638,18 +638,49 @@ From the TODO: *"stronger resistance to jpg and scaling."* These are separable
 problems and should be separately scheduled. JPEG at constant dimensions is
 achievable and reliable. Rescaling is genuinely hard.
 
-The block grid is the whole difficulty. After a resize the 8×8 lattice no longer
-aligns to anything, and after a crop its origin has moved. Recovery needs:
+This section assumed the block grid was the whole difficulty — that after a
+resize the 8×8 lattice no longer aligns to anything, and recovery was a matter of
+finding it again:
 
-1. **Detect** the four fiducial corners by correlation (requires `header:
-   "fiducial"`).
+1. **Detect** the four fiducial corners by correlation.
 2. **Fit** an affine transform from the detected corners to the header's declared
    original dimensions.
 3. **Resample** back to original pixel dimensions with a good kernel.
 4. *Then* extract blocks.
 
-Realistic target: survives downscale to ~50% and modest crops. Not: rotation,
-perspective, heavy crops. Say so plainly in the docs.
+**Measured, that plan does not work, and the reason is not registration.** A
+rescaled image fails as predicted — the header will not even read, because its
+cells are no longer 8×8 (`not a STGP image` at 90%, 75% and 50%). But undo the
+scale first, back to the exact original dimensions, which is the best any affine
+fit could ever achieve, and the header reads, the corner marks register, and the
+payload is still gone:
+
+| downscale, then restored to original size | payload recovered |
+| ----------------------------------------- | ----------------- |
+| 90% → 688px | 1570 of 3360 bytes wrong |
+| 75% → 688px | 1046 of 3360 bytes wrong |
+| 50% → 688px | 2701 of 3360 bytes wrong |
+
+So steps 1–3 could be built perfectly and still hand step 4 noise. Resampling
+does not merely move the carriers, it destroys them — and the reason is the
+carrier set itself. Phase 0 chose mid-frequency AC coefficients (zig-zag
+2,3,4,6,7,8,12) because they survive JPEG requantization. Downsampling is a
+low-pass filter, and those are precisely the coefficients a low-pass removes.
+
+The tension is exact and worth stating plainly, because it was invisible from
+either measurement alone:
+
+- **DC survives resampling** — a block mean is roughly what a downscale computes
+  — **but is the worst carrier under chained JPEG** (§2.3: 20.75% through Q75×3,
+  because JPEG codes DC differentially and the errors accumulate along the scan).
+- **Mid AC survives JPEG** and is erased by resampling.
+
+Surviving a rescale therefore is not a detector to add, it is a **different
+carrier set**, and probably a different block size — a mode the encoder selects
+and the header declares, trading JPEG-chain robustness for scale robustness,
+because the measurements say you cannot have both from one carrier set. That is
+a larger piece of work than "fit an affine transform", and the honest version of
+this section is that phase 3 has not been designed yet, only misjudged.
 
 Everything before this phase should assume **dimensions are preserved**, and the
 encoder should round output dimensions to a multiple of 16 so the block grid is
@@ -902,9 +933,12 @@ the full modulation-op table, plane plans, adaptive masking, payload ECC levels,
 Gray-coded audio symbols, bit-plane carrier assignment, declared-intent encoding,
 the covert header as an alternative.
 
-**Phase 3 — geometry.** Affine fit from the phase-1 corner marks, resampling,
-rescale and crop tolerance. Separately schedulable; phase 2 is a complete useful
-format without it.
+**Phase 3 — geometry.** Not designed. The affine-fit plan was measured and does
+not work: undoing a rescale perfectly still loses a third to four fifths of the
+payload, because the carriers phase 0 chose for JPEG robustness are the ones
+resampling removes (§8). Surviving a rescale means a second carrier set and a
+mode to select it, not a detector to bolt on. Separately schedulable; phase 2 is
+a complete useful format without it.
 
 **Phase 4 — surface.** Docs page at `amplib.app/steganography` alongside
 Stegassette, lab UI, and the hybrid pointer entry (§3.3) wired to stega.now.

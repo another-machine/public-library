@@ -375,9 +375,12 @@ const { entries, header, registered } = Stegaprint.decode({ source: canvas });
           is what came out of the JPEG.
         </p>
         <p class="ht-type-small u-dim">
-          Capacity sets the length. At about 19 KB per megapixel, one second of
-          8-bit 8 kHz mono costs 8 KB, so the canvas grows with the clip — rate
-          and depth are the dial that trades fidelity for duration.
+          Capacity sets the length. One second of 8-bit 8 kHz mono costs 8 KB
+          and the canvas grows with the clip, so 30 seconds is a question of what
+          fidelity you spend it at: 4 kHz 4-bit fits in 3.4 megapixels, 8 kHz
+          8-bit needs 13.7. Past 12 megapixels this page declines to encode and
+          says so rather than freezing — the arithmetic, not a limit of the
+          format.
         </p>
         <p class="signature">
           Stegaprint.buildAudioEntry({ channels: Float32Array[]; sampleRate:
