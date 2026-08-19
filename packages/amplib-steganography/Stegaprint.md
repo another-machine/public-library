@@ -547,6 +547,21 @@ then changes the length by some number of blocks: the payload comes out short
 (audio ends early) or long (a burst of noise at the tail). Both are degradation. A
 4-byte byte-count gives a 2 GB slice attempt instead.
 
+**2b. Never clamp a length on the way *in*.** Clamping is right on decode and
+wrong on encode, and the record originally did both: `chunkCount` was a uint16,
+so `Math.min(0xffff, …)` silently truncated any payload over 65535 chunks —
+exactly 1 MiB. The loss was invisible in the worst way. The record claimed the
+shorter length, the CRC was computed over the shorter payload, `crcOk` came back
+true, and decode returned a byte-perfect prefix of a file that had been quietly
+cut in half. It surfaced only on a 1.1 MB payload, where the first wrong byte
+landed at 1,048,560 — not the scatter of a noisy channel but a hard cliff at
+65535 × 16. The count is 32-bit now and an oversized entry is refused.
+
+**2c. Store the padding count.** Lengths in chunks cost the exact byte length: a
+binary payload comes back with up to CHUNK−1 trailing zeros indistinguishable
+from content, which is fine for text and not fine for a file. One byte in the
+record holds the padding, so the payload is returned exactly.
+
 **3. Clamp on parse.** Any length exceeding the remaining stream clamps to what is
 left. Never throw, never return empty. One line, and it converts a whole class of
 catastrophes into truncations.

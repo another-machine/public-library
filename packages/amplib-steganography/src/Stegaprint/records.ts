@@ -25,6 +25,16 @@ export const RECORD_SIZE = 32;
  */
 export const CHUNK = 16;
 
+/**
+ * Largest chunk count a record can address (uint32).
+ *
+ * Bounded on purpose — §7.2 wants lengths that cannot express nonsense — but
+ * bounded far above any real payload rather than at 1 MiB. Decode still clamps
+ * to what the stream actually holds, so a corrupted count truncates one entry
+ * instead of throwing.
+ */
+export const MAX_CHUNKS = 0xffffffff;
+
 /** Payload type registry — replaces the variable-length mimetype string. */
 export enum EntryType {
   Binary = 0,
@@ -45,7 +55,7 @@ const MIME: Record<number, string> = {
   [EntryType.Png]: "image/png",
 };
 
-const NAME_BYTES = 20;
+const NAME_BYTES = 18;
 
 /** Audio format, packed into the record's 4 param bytes. */
 export interface AudioParams {
@@ -69,6 +79,8 @@ export interface DecodedRecord {
   mimetype: string;
   name: string;
   chunkCount: number;
+  /** Zero-padding bytes in the final chunk; `data` already excludes them. */
+  pad: number;
   audio?: AudioParams;
   /** CRC-32 of the payload as written. Diagnostic only — see `crcOk`. */
   crc: number;
@@ -112,36 +124,58 @@ function writeRecord(
   crc: number
 ): void {
   const v = new DataView(out.buffer, out.byteOffset + at, RECORD_SIZE);
+  const chunks = chunksFor(e.data.length);
+  // Never clamp a length. A uint16 chunk count silently truncated anything over
+  // 65535 chunks — exactly 1 MiB — and the loss was invisible: the record
+  // claimed the shorter length, the CRC was computed over the shorter payload,
+  // and decode returned a byte-perfect prefix of a file that was quietly cut in
+  // half. Refusing is the only honest option, and the count is now 32-bit so the
+  // ceiling is 64 GiB rather than 1 MiB.
+  if (chunks > MAX_CHUNKS)
+    throw new Error(
+      `entry "${e.name || ""}" is ${e.data.length} bytes; the record can address ` +
+        `${MAX_CHUNKS * CHUNK} (${MAX_CHUNKS} chunks of ${CHUNK})`
+    );
   v.setUint8(0, e.type & 0xff);
   v.setUint8(1, 0); // flags, reserved
-  v.setUint16(2, Math.min(0xffff, chunksFor(e.data.length)), true);
+  v.setUint32(2, chunks, true);
   if (e.type === EntryType.Audio && e.audio) {
-    v.setUint8(4, (BITS_CODE[e.audio.bits] & 0x0f) | ((e.audio.channels & 0x0f) << 4));
-    v.setUint16(5, Math.min(0xffff, e.audio.rate), true);
-    v.setUint8(7, 0);
+    v.setUint8(6, (BITS_CODE[e.audio.bits] & 0x0f) | ((e.audio.channels & 0x0f) << 4));
+    v.setUint16(7, Math.min(0xffff, e.audio.rate), true);
   } else {
-    v.setUint32(4, 0, true);
+    v.setUint8(6, 0);
+    v.setUint16(7, 0, true);
   }
+  // Bytes of zero padding in the final chunk. Lengths are counted in chunks so
+  // that a corrupted one degrades instead of relocating the stream (§7.2), and
+  // the cost is that the exact byte length is otherwise unrecoverable: a binary
+  // payload comes back with up to CHUNK-1 trailing zeros that are
+  // indistinguishable from content. One byte buys the exact length back without
+  // reintroducing an unbounded length field.
+  v.setUint8(9, (chunkBytes(chunks) - e.data.length) & 0xff);
   const name = new TextEncoder().encode(e.name || "").subarray(0, NAME_BYTES);
-  out.set(name, at + 8);
-  for (let i = name.length; i < NAME_BYTES; i++) out[at + 8 + i] = 0;
+  out.set(name, at + 10);
+  for (let i = name.length; i < NAME_BYTES; i++) out[at + 10 + i] = 0;
   v.setUint32(28, crc >>> 0, true);
 }
 
 function readRecord(buf: Uint8Array, at: number): DecodedRecord {
   const v = new DataView(buf.buffer, buf.byteOffset + at, RECORD_SIZE);
   const type = v.getUint8(0) as EntryType;
-  const chunkCount = v.getUint16(2, true);
+  const chunkCount = v.getUint32(2, true);
   let audio: AudioParams | undefined;
   if (type === EntryType.Audio) {
-    const b = v.getUint8(4);
+    const b = v.getUint8(6);
     audio = {
       bits: CODE_BITS[b & 0x0f] ?? 8,
       channels: Math.max(1, (b >> 4) & 0x0f),
-      rate: v.getUint16(5, true) || 8000,
+      rate: v.getUint16(7, true) || 8000,
     };
   }
-  const raw = buf.subarray(at + 8, at + 8 + NAME_BYTES);
+  // Clamped: a corrupted pad byte must not make a payload longer than its own
+  // chunks, nor negative.
+  const pad = Math.min(CHUNK - 1, v.getUint8(9));
+  const raw = buf.subarray(at + 10, at + 10 + NAME_BYTES);
   let end = raw.indexOf(0);
   if (end < 0) end = NAME_BYTES;
   const name = new TextDecoder().decode(raw.subarray(0, end));
@@ -150,6 +184,7 @@ function readRecord(buf: Uint8Array, at: number): DecodedRecord {
     mimetype: "",
     name,
     chunkCount,
+    pad,
     audio,
     crc: v.getUint32(28, true),
   };
@@ -206,8 +241,12 @@ export function parseStream(
     const want = chunkBytes(rec.chunkCount);
     const avail = Math.max(0, stream.length - at);
     const take = Math.min(want, avail);
-    const data = stream.subarray(at, at + take);
-    out.push({ ...rec, data, crcOk: take === want && crc32(data) === rec.crc });
+    const padded = stream.subarray(at, at + take);
+    // The CRC was taken over the padded chunk as written, so it is checked
+    // against that; the caller gets the payload with the padding removed.
+    const crcOk = take === want && crc32(padded) === rec.crc;
+    const data = padded.subarray(0, Math.max(0, take - rec.pad));
+    out.push({ ...rec, data, crcOk });
     at += take;
   }
   return out;
