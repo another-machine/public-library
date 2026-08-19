@@ -285,9 +285,9 @@ const recon = Stegassette.reconstructCover(encoded, opts);
       </section>
 
       <!-- Prototype. Phases 0-1 of the format are built and measured; the
-           carrier set and Δ in the header come from measurement rather than
-           from the standard quantization tables, which turned out not to
-           predict a real encoder. See packages/amplib-steganography/Stegaprint.md -->
+           carrier set and Δ come from measurement rather than from the standard
+           quantization tables, which turned out not to predict a real encoder.
+           See packages/amplib-steganography/Stegaprint.md -->
       <section id="example-stegaprint">
         <h2>Stegaprint <span class="u-dim">— prototype</span></h2>
         <p class="ht-type-prose u-dim">
@@ -302,15 +302,15 @@ const recon = Stegassette.reconstructCover(encoded, opts);
         <p class="ht-type-small u-dim">
           The picture below goes through a real
           <code>canvas.toBlob("image/jpeg")</code> at the quality you choose,
-          decoded back, and read again. Both formats encode the same message into
-          the same picture and take the same trip. Costs roughly 160× the
-          capacity of STGC, which is why the canvas is mostly border for a short
-          message.
+          decoded back, and read again. The border is the header and nothing
+          else — all 40 bytes of it, written three times. Every byte of payload
+          is in the interior, spread across the blocks by the traversal.
         </p>
         <p class="signature">
           Stegaprint.encode({ source: HTMLImageElement | HTMLCanvasElement;
-          entries: PrintEntry[]; keymap?: KeymapName; ecc?: "none" | "light" |
-          "full"; traversal?: TraversalName; width?: number; height?: number; }):
+          entries: PrintEntry[]; modulate?: "qim" | "pair"; keymap?: KeymapName;
+          traversal?: TraversalName; ecc?: "none" | "light" | "full"; repeat?:
+          number | "auto"; width?: number; height?: number; }):
           HTMLCanvasElement
         </p>
 
@@ -323,7 +323,9 @@ const recon = Stegassette.reconstructCover(encoded, opts);
     name: "message.txt",
     data: new TextEncoder().encode("<span data-value="message"></span>"),
   }],
+  modulate: "<span data-value="modulate"></span>",
   keymap: "<span data-value="keymap"></span>",
+  traversal: "<span data-value="traversal"></span>",
   ecc: "<span data-value="ecc"></span>",
 });
 <span data-output="capacity"></span></pre>
@@ -358,25 +360,45 @@ const recon = Stegassette.reconstructCover(encoded, opts);
 const { entries, header, registered } = Stegaprint.decode({ source: canvas });
 <span data-output="stegaprint"></span></pre>
 
-        <h3>The same message, the same JPEG, through Stegassette</h3>
+        <!-- The header is the whole self-describing surface, so it is worth
+             being able to read rather than paraphrase. Every field below is
+             recovered from the border of the JPEG above. -->
+        <details>
+          <summary>header</summary>
+          <table data-output="header-table">
+            <tbody></tbody>
+          </table>
+        </details>
+
+        <p class="ht-type-small u-dim">
+          Below the declared quality floor of 75 the errors begin, and they begin
+          as <em>damage</em> rather than as failure — the record table is
+          fixed-width and its lengths are counted in chunks, so a corrupted field
+          corrupts itself instead of relocating every field after it. Set
+          <code>ecc</code> to <code>none</code> and drop the quality to watch that
+          reach the payload too.
+        </p>
+        <p class="ht-type-small u-dim">
+          <code>repeat</code> is why the low qualities hold up. The canvas has a
+          floor — the header ring needs about 960 blocks however short the
+          message — so a small payload would otherwise leave most of the interior
+          untouched. Whole copies fill the space instead and are majority-voted
+          on decode, which costs nothing that was being used.
+        </p>
+
+        <h3>The same message through Stegassette</h3>
         <p class="ht-type-prose u-dim">
-          For contrast. STGC does not degrade here, it disappears: the header
-          rides the border alpha channel, JPEG has no alpha, and the traversal
-          and keymap are gone with it before a single payload byte is even read.
+          A control, so the comparison is run rather than asserted: the same text
+          encoded with STGC, sent through the same JPEG, and read back. It does
+          not come back damaged — it does not come back at all. STGC keeps its
+          header in the border alpha channel, JPEG has no alpha, and the
+          traversal and keymap are gone with it before a single payload byte is
+          reached.
         </p>
         <pre class="code">const cassette = Stegassette.encode({ source, entries: [/* same message */] });
 const { canvas } = await Stegaprint.jpegRoundTrip(cassette, <span data-value="quality"></span> / 100);
 Stegassette.decode({ source: canvas });
 <span data-output="compare"></span></pre>
-
-        <p class="ht-type-small u-dim">
-          Below the declared quality floor of 75 the errors begin, and they begin
-          as <em>damage</em> rather than as failure — the record table is
-          fixed-width and its lengths are counted in blocks, so a corrupted field
-          corrupts itself instead of relocating every field after it. Set
-          <code>ecc</code> to <code>none</code> to watch that happen at the
-          payload level too.
-        </p>
       </section>
 
       <section id="stega-animator">

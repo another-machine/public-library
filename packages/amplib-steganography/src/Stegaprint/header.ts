@@ -64,6 +64,15 @@ export interface StgpHeader {
   /** Length of the coded symbol stream, in symbols. */
   symbolCount: number;
   seed: number;
+  /**
+   * How many whole copies of the symbol stream the interior holds.
+   *
+   * The canvas has a floor (the header ring needs ~960 cells however small the
+   * payload), so a short payload leaves most of the interior untouched — 90% of
+   * it at 780 bytes. Copies fill that space and are majority-voted on decode.
+   * 1 means written once.
+   */
+  repeat: number;
 }
 
 /**
@@ -86,7 +95,8 @@ export interface StgpHeader {
  * 25      entryCount
  * 26..29  symbolCount  uint32le
  * 30..33  seed         uint32le
- * 34..35  reserved
+ * 34      repeat (whole copies of the symbol stream, >= 1)
+ * 35      reserved
  * 36..39  crc32 of bytes 0..35
  * ```
  */
@@ -109,6 +119,7 @@ export function packHeader(h: StgpHeader): Uint8Array {
   b[25] = h.entryCount & 0xff;
   v.setUint32(26, h.symbolCount >>> 0, true);
   v.setUint32(30, h.seed >>> 0, true);
+  b[34] = Math.max(1, Math.min(255, h.repeat | 0));
   v.setUint32(36, crc32(b.subarray(0, 36)), true);
   return b;
 }
@@ -144,5 +155,7 @@ export function unpackHeader(b: Uint8Array): StgpHeader {
     entryCount: b[25],
     symbolCount: v.getUint32(26, true),
     seed: v.getUint32(30, true),
+    // Images written before repeat existed have 0 here; they were written once.
+    repeat: Math.max(1, b[34]),
   };
 }

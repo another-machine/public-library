@@ -183,7 +183,8 @@ raw bytes      ≈ W·H / 73     (keyed)      W·H / 37  (keyless)
 at ecc "light" ≈ W·H / 97     (keyed)      W·H / 49  (keyless)
 ```
 
-**≈ 9 KB per megapixel keyed, ≈ 19 KB keyless**, at the default `light` ECC.
+**≈ 19 KB per megapixel at the defaults**, which are keyless — see below. A
+keyed layout halves that to ≈ 9 KB and is only needed by `pair`.
 Against Stegassette's ≈ 1.5 MB per megapixel that is roughly **160× less**.
 
 Measured against the built format (`npm run verify` §4), with the predictions
@@ -367,7 +368,8 @@ equivalent STGC default, and each difference is deliberate:
 | header format | ASCII descriptor | **fixed-width binary** | §6.3 — no parse state |
 | traversal | `raster` | **`bayer`** | §7.4 — interleaves bursts, free |
 | modulation / combine | `xor` | **`qim`** | §5.1 — `pair` is built but unmeasured; see §12 |
-| keymap | `adjacent` | **`adjacent`** (blocks) | keyed, so `pair` has a reference |
+| keymap | `adjacent` | **follows the op** | keyless for `qim`, `adjacent` for `pair` — see below |
+| repeat | — | **`auto`** | §7.5 — spare interior becomes redundancy |
 | planes / channels | `rgb` packed | **`y` only** | §2.4 — chroma is a bad trade |
 | carriers | all 3 channels | **DC + 6 AC** | §2.3 — DC is the most robust of all |
 | alphabet | 8-bit bytes | **M=4, Gray** | §2.2, §9.1 — visibility is free |
@@ -375,8 +377,18 @@ equivalent STGC default, and each difference is deliberate:
 | entry table | variable-length | **fixed 32 B records** | §7.2 |
 | lengths | bytes | **blocks** | §7.2 |
 
+The keymap default deserves its own note, because an earlier draft got it wrong.
+It was fixed at `adjacent` on the reasoning that a keyed checkerboard is what
+makes the cover recoverable — true, and irrelevant to the op that actually
+ships. `qim` never reads a key. Defaulting it to a keyed layout reserved half
+the interior for reference blocks nothing consults, halving capacity to buy
+nothing at all: the same 8 KB payload lands at 688×696 keyless against 952×960
+keyed. The default now follows the modulation op, and `pair` with a keyless
+keymap is refused rather than silently degraded.
+
 The aesthetic settings all remain reachable — `ecc: "none"`, `header: "covert"`,
-chroma planes, `qim` — they are simply no longer what you get by not choosing.
+chroma planes, a keyed layout — they are simply no longer what you get by not
+choosing.
 
 ### 5.4 Declared-intent encoding
 
@@ -568,6 +580,40 @@ The `bayer` traversal already does this for free: every prefix of its path is a
 uniform sample of the plane. **Make it the default traversal**, not `raster`.
 `fisher-yates` is the seeded alternative. This is the cheapest robustness in the
 whole document — a default change, no new code.
+
+---
+
+### 7.5 Spare interior becomes redundancy
+
+The canvas has a floor: the header ring needs about 960 blocks however short the
+message (§6.1). So a small payload does not fill the canvas it paid for — at 780
+bytes only **10% of interior blocks carry anything**, and the rest are written
+back exactly as they were found. Measured, a 40-byte payload touches 1%.
+
+That is a lot of paid-for surface doing nothing, and the fix is to write the
+payload again. `repeat` fills whatever the interior has spare with whole copies
+of the symbol stream, majority-voted position by position on decode. Voting on
+*symbols* rather than bits is what makes it work: a corrupted carrier moves a
+symbol to an adjacent QIM bin, so wrong answers scatter across the alphabet while
+the right one repeats.
+
+It costs nothing that was being used, and it collapses exactly the cases §7.3
+said needed error correction:
+
+| payload | copies | `85→75→60` | `Q40` |
+| ------- | ------ | ---------- | ----- |
+| 400 B | 1 | 3 bad bytes | 9 bad bytes |
+| 400 B | 19 (auto) | **0** | **0** |
+| 2000 B | 1 | 8 bad bytes | 71 bad bytes |
+| 2000 B | 4 (auto) | **0** | **0** |
+
+Q40 is two full steps below the declared floor and it now round-trips clean. The
+declared floor is about what a *full* canvas survives; anything short of full
+buys margin beyond it for free.
+
+Note what this does not do: it cannot help a payload that fills the canvas, which
+is why the ECC levels in §7.3 stay. The two are complements — `ecc` protects a
+full canvas, `repeat` spends an empty one.
 
 ---
 
@@ -803,6 +849,18 @@ return a ring shallower than the 3-block corner marks, so the marks painted over
 live interior data. It cost a handful of bytes on an otherwise perfect lossless
 round trip and was invisible at every canvas the payload-driven sizing happened
 to choose. Fixed by flooring the border at `CORNER`.
+
+Two things surfaced only after the docs demo made the format visible, and both
+were defaults quietly costing something:
+
+1. **The default keymap contradicted the default op.** `qim` ships as the
+   modulation op and never reads a key, but the keymap defaulted to `adjacent`,
+   which holds back half the interior as key blocks. Capacity doubled by
+   deleting an assumption (§5.3).
+2. **Most of the interior was empty.** A 780-byte payload touched 10% of its
+   blocks. `repeat` now fills the rest with copies and majority-votes them,
+   which takes the two weak cases — the mixed `85→75→60` chain and `Q40` — from
+   3–71 bad bytes to zero (§7.5).
 
 Phase 1 also gained something not in the plan: `encode({ width, height })` to
 force an exact canvas, and `capacity(w, h)` to ask what fits. The default is

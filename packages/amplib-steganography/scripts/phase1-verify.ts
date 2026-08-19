@@ -201,7 +201,10 @@ function main() {
   console.log("  size      keyed (pred)     keyless (pred)");
   for (const [size, [pk, pl]] of Object.entries(PREDICTED)) {
     const n = Number(size);
-    const keyed = capacity(n, n).bytes / 1024;
+    // Explicit keymaps on both: the default now follows the modulation op and
+    // is keyless for qim, so an omitted keymap would read the keyless number
+    // into the keyed column and quietly report them as equal.
+    const keyed = capacity(n, n, { keymap: "adjacent" }).bytes / 1024;
     const keyless = capacity(n, n, { keymap: "none" }).bytes / 1024;
     console.log(
       `  ${size.padStart(4)}²  ` +
@@ -212,7 +215,7 @@ function main() {
 
   // ---- fill the interior, to prove the capacity number is real
   console.log("\n## 5. Full-capacity round trip at 1024²\n");
-  const cap = capacity(1024, 1024);
+  const cap = capacity(1024, 1024, { keymap: "none" });
   for (const frac of [0.5, 0.9, 1.0]) {
     const want = Math.floor((cap.bytes - 64) * frac);
     const bigPayload = new TextEncoder().encode(makeText(want));
@@ -259,6 +262,8 @@ function main() {
     ["traversal=fisher-yates", { traversal: "fisher-yates", seed: 12345 }],
     ["keymap=mirror-x", { keymap: "mirror-x" }],
     ["M=2", { M: 2 }],
+    ["repeat=1 (no fill)", { repeat: 1 }],
+    ["keymap=adjacent (keyed)", { keymap: "adjacent" }],
   ];
   for (const [label, extra] of VARIANTS) {
     try {
@@ -270,7 +275,8 @@ function main() {
       check(
         label,
         okLossless && okJpeg,
-        `${e.width}×${e.height}  lossless ${okLossless ? "ok" : "BAD"}, Q75 ${okJpeg ? "ok" : "BAD"}`
+        `${e.width}×${e.height} r${decode(e).header.repeat}  ` +
+          `lossless ${okLossless ? "ok" : "BAD"}, Q75 ${okJpeg ? "ok" : "BAD"}`
       );
     } catch (err) {
       check(label, false, err instanceof Error ? err.message : String(err));

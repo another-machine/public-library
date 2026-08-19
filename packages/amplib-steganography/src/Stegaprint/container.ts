@@ -80,6 +80,13 @@ export interface EncodeOptions {
   aspectRatio?: number;
   seed?: number;
   /**
+   * Whole copies of the payload to write into the interior.
+   *
+   * "auto" (the default) fills whatever the canvas has spare. A number pins it;
+   * 1 writes the payload once and leaves the rest of the interior untouched.
+   */
+  repeat?: number | "auto";
+  /**
    * Force an exact output size instead of sizing the canvas to the payload.
    *
    * By default the canvas is chosen to fit the payload, which is what a still
@@ -104,12 +111,26 @@ export interface DecodeResult {
 
 const DEFAULTS = {
   traversal: "bayer" as TraversalName,
-  keymap: "adjacent" as KeymapName,
   modulate: "qim" as ModulateName,
   ecc: "light" as EccLevel,
   M: 4,
   qualityFloor: 75,
 };
+
+/**
+ * The default keymap follows the modulation op, because only one of them wants
+ * a key.
+ *
+ * `pair` encodes the difference between a data block and a key block, so it
+ * needs the checkerboard that holds key blocks back. `qim` never reads a key
+ * at all — and defaulting it to a keyed layout anyway reserved half the
+ * interior for reference blocks nothing consults, halving capacity to buy
+ * nothing. Measured: the same 8 KB payload lands at 688×696 keyless against
+ * 952×960 keyed.
+ */
+function defaultKeymap(modulate: ModulateName): KeymapName {
+  return modulate === "pair" ? "adjacent" : "none";
+}
 
 /** Interior block coordinates of every data cell, in traversal order. */
 function dataPath(
@@ -362,6 +383,8 @@ function buildPlan(h: {
 
 export interface CapacityOptions {
   keymap?: KeymapName;
+  /** Only affects the default keymap, which follows it — see `defaultKeymap`. */
+  modulate?: ModulateName;
   ecc?: EccLevel;
   M?: number;
   carriers?: number[];
@@ -391,7 +414,8 @@ export function capacity(
   height: number,
   opts: CapacityOptions = {}
 ): Capacity {
-  const keymap = opts.keymap ?? DEFAULTS.keymap;
+  const modulate = opts.modulate ?? DEFAULTS.modulate;
+  const keymap = opts.keymap ?? defaultKeymap(modulate);
   const ecc = opts.ecc ?? DEFAULTS.ecc;
   const M = opts.M ?? DEFAULTS.M;
   const carriers = opts.carriers ?? DEFAULT_CARRIERS;
@@ -414,8 +438,19 @@ export function capacity(
 
 export function encode(opts: EncodeOptions): StegaImageData {
   const traversal = opts.traversal ?? DEFAULTS.traversal;
-  const keymap = resolveKeymapName({ keymap: opts.keymap ?? DEFAULTS.keymap });
   const modulate = opts.modulate ?? DEFAULTS.modulate;
+  const keymap = resolveKeymapName({
+    keymap: opts.keymap ?? defaultKeymap(modulate),
+  });
+  // `pair` reads a key block; a keyless layout has none, so the difference it
+  // encodes would be against a block that is also the data block. Refuse rather
+  // than silently degrading to qim — the header would say "pair" either way.
+  if (modulate === "pair" && isKeylessKeymap(keymap))
+    throw new Error(
+      `modulate "pair" needs a key block and keymap "${keymap}" provides none; ` +
+        `use a locating keymap (adjacent, poles, mirror-x, mirror-y, offset, rotate) ` +
+        `or modulate "qim"`
+    );
   const ecc = opts.ecc ?? DEFAULTS.ecc;
   const M = opts.M ?? DEFAULTS.M;
   const carriers = opts.carriers ?? DEFAULT_CARRIERS;
@@ -443,7 +478,8 @@ export function encode(opts: EncodeOptions): StegaImageData {
   // ---- payload → coded bits → symbols
   const stream = buildStream(opts.entries, crc32);
   const codedBits = encodePayload(stream, ecc);
-  const symbols = bitsToSymbols(codedBits, M);
+  let symbols = bitsToSymbols(codedBits, M);
+  const oneCopy = symbols.length;
 
   const plan = buildPlan({
     carriers: [...carriers], M, modulate, keymap, traversal,
@@ -451,6 +487,25 @@ export function encode(opts: EncodeOptions): StegaImageData {
   });
 
   const slots = plan.path.length * carriers.length;
+
+  // Spend the leftover interior on redundancy rather than leaving it blank.
+  // The canvas has a floor set by the header ring, so a short payload otherwise
+  // touches a small fraction of the blocks it paid for — 10% at 780 bytes. Whole
+  // copies are majority-voted on decode, which is free robustness in exactly the
+  // case that needs it (a mixed-quality re-encode chain).
+  const maxRepeat = symbols.length ? Math.floor(slots / symbols.length) : 1;
+  const repeat = Math.max(
+    1,
+    Math.min(255, opts.repeat === "auto" || opts.repeat == null
+      ? maxRepeat
+      : opts.repeat)
+  );
+  if (repeat > 1) {
+    const filled = new Uint8Array(symbols.length * repeat);
+    for (let r = 0; r < repeat; r++) filled.set(symbols, r * symbols.length);
+    symbols = filled;
+  }
+
   if (symbols.length > slots)
     throw new Error(
       `payload needs ${symbols.length} symbols, ${BW * N}×${BH * N} interior ` +
@@ -476,10 +531,42 @@ export function encode(opts: EncodeOptions): StegaImageData {
       ecc,
       qualityFloor: opts.qualityFloor ?? DEFAULTS.qualityFloor,
       entryCount: opts.entries.length,
-      symbolCount: symbols.length,
+      symbolCount: oneCopy,
       seed,
+      repeat,
     })
   );
+  return out;
+}
+
+/**
+ * Majority-vote `repeat` copies of a symbol stream, position by position.
+ *
+ * Voting on symbols rather than on bits is what makes this worth doing: a
+ * corrupted carrier moves a symbol to an adjacent QIM bin, so the wrong answers
+ * scatter across the alphabet while the right one repeats. A tie falls back to
+ * the first copy, which is no worse than not having voted.
+ */
+function voteSymbols(
+  raw: Uint8Array,
+  length: number,
+  repeat: number,
+  M: number
+): Uint8Array {
+  const out = new Uint8Array(length);
+  const tally = new Uint16Array(M);
+  for (let i = 0; i < length; i++) {
+    tally.fill(0);
+    for (let r = 0; r < repeat; r++) {
+      const v = raw[r * length + i];
+      if (v < M) tally[v]++;
+    }
+    let best = raw[i] < M ? raw[i] : 0;
+    let bestN = tally[best];
+    for (let v = 0; v < M; v++)
+      if (tally[v] > bestN) { bestN = tally[v]; best = v; }
+    out[i] = best;
+  }
   return out;
 }
 
@@ -515,7 +602,14 @@ export function decode(source: StegaImageData): DecodeResult {
     params,
   });
 
-  const symbols = readInterior(planes.y, source.width, header.symbolCount, plan);
+  const repeat = Math.max(1, header.repeat);
+  const raw = readInterior(
+    planes.y,
+    source.width,
+    header.symbolCount * repeat,
+    plan
+  );
+  const symbols = repeat > 1 ? voteSymbols(raw, header.symbolCount, repeat, header.M) : raw;
   const bits = symbolsToBits(
     symbols,
     header.M,
