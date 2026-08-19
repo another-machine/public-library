@@ -16,6 +16,20 @@
  * (jpeg-js) against one synthetic cover, which is enough to build phase 1 on
  * and not enough to be final — §12 phase 0 calls for three encoders. Re-running
  * the rig against another encoder should update this table, not the callers.
+ *
+ * A second encoder has since been sampled, though not through the rig: the
+ * browser's own `canvas.toBlob("image/jpeg", 0.75)` is **harsher than jpeg-js
+ * at the same nominal quality**. With no redundancy to hide behind — a payload
+ * filling its canvas, so `repeat` is 1 — 8-bit audio came back with 3 samples
+ * in 24000 wrong, where jpeg-js at q75 gives none. `ecc: "full"` takes it to
+ * zero.
+ *
+ * So DEFAULT_SAFETY is under-provisioned for Chrome, and the two mechanisms
+ * that cover for it are the ones already here: `repeat` when the canvas has
+ * slack, `ecc` when it does not. Raising the safety factor instead would cost
+ * every image capacity to fix a case only some encoders present — worth
+ * deciding once the rig measures Chrome rather than inferring it from one
+ * payload.
  */
 
 /**

@@ -56,6 +56,9 @@ export {
 export { qimDecode, qimEncode, pairDecode, pairEncode, toGray, fromGray } from "./modulate";
 export type { ModulateName } from "./modulate";
 
+export { buildAudioEntry, bytesPerSecond, parseAudioEntry } from "./audio";
+export type { AudioBits, BuildAudioEntryParams, ParsedAudioEntry } from "./audio";
+
 export { crc32 } from "./ecc";
 export type { EccLevel } from "./ecc";
 

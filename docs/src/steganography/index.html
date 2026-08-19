@@ -366,6 +366,61 @@ const { entries, header, registered } = Stegaprint.decode({ source: canvas });
         </details>
       </section>
 
+      <section id="example-stegaprint-audio">
+        <h2>Audio through a JPEG</h2>
+        <p class="ht-type-prose u-dim">
+          The same <code>example.mp3</code> as the Stegassette demo above,
+          resampled and encoded as an audio entry, then passed through
+          <code>canvas.toBlob("image/jpeg")</code> and decoded back. What plays
+          is what came out of the JPEG.
+        </p>
+        <p class="ht-type-small u-dim">
+          Capacity sets the length. At about 19 KB per megapixel, one second of
+          8-bit 8 kHz mono costs 8 KB, so the canvas grows with the clip — rate
+          and depth are the dial that trades fidelity for duration.
+        </p>
+        <p class="signature">
+          Stegaprint.buildAudioEntry({ channels: Float32Array[]; sampleRate:
+          number; bitsPerSample?: 4 | 8 | 16 | 24; name?: string; }): PrintEntry
+        </p>
+
+        <div class="ht-arrange-sidebar">
+          <div class="ht-arrange-stack">
+            <pre class="code">const channels = await <a href="#load-audio-buffers-from-audio-url">loadAudioBuffersFromAudioUrl</a>({
+  url: "./example.mp3",
+  audioContext,
+  channels: 1,
+  sampleRate: <span data-value="sampleRate"></span>,
+});
+const encoded = Stegaprint.encode({
+  source,
+  entries: [Stegaprint.buildAudioEntry({
+    channels: [channels[0].slice(0, <span data-value="sampleRate"></span> * <span data-value="seconds"></span>)],
+    sampleRate: <span data-value="sampleRate"></span>,
+    bitsPerSample: <span data-value="bitsPerSample"></span>,
+  })],
+  ecc: "<span data-value="ecc"></span>",
+});
+const { canvas } = await Stegaprint.jpegRoundTrip(encoded, <span data-value="quality"></span> / 100);
+const { entries } = Stegaprint.decode({ source: canvas });
+const audio = Stegaprint.parseAudioEntry(entries[0]);
+<span data-output="audio"></span></pre>
+
+            <figure class="frame u-pixelated">
+              <figcaption class="frame__caption" data-caption="audio">
+                encoding…
+              </figcaption>
+              <div data-figure="audio"></div>
+            </figure>
+
+            <img class="ht-media-raw" src="./lovetakesmiles.jpg" hidden />
+            <audio src="./example.mp3" hidden></audio>
+          </div>
+
+          <form class="fieldset-stack"></form>
+        </div>
+      </section>
+
       <section id="stega-animator">
         <h2>StegaAnimator</h2>
         <p class="ht-type-prose u-dim">

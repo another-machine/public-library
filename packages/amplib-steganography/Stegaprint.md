@@ -836,8 +836,17 @@ Three findings changed the design:
    wrong: each carrier's inverse DCT perturbs every other coefficient in the same
    block, so the convergence loop has to satisfy all of them at once.
 
-Still outstanding from this phase: two more encoders (only jpeg-js so far), the
-**still-as-video** channel (§13.1), and **M=8** (§2.2).
+One more encoder has since been sampled, though not through the rig. The
+browser's own `canvas.toBlob("image/jpeg", 0.75)` is **harsher than jpeg-js at
+the same nominal quality**: with a payload filling its canvas, so no `repeat`
+redundancy, 8-bit audio came back with 3 samples in 24000 wrong where jpeg-js
+gives none. `ecc: "full"` takes it to zero. Nominal quality numbers are not
+comparable across encoders — the §2.1 argument arriving as a measurement rather
+than a prediction.
+
+Still outstanding from this phase: Chrome and one other encoder run through the
+rig properly rather than sampled, the **still-as-video** channel (§13.1), and
+**M=8** (§2.2).
 
 **Phase 1 — core, at the robust defaults. ✅ `npm run verify`**
 
