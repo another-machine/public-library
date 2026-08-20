@@ -50,6 +50,18 @@ function asClamped(data: Uint8Array | Uint8ClampedArray): Uint8ClampedArray {
     : new Uint8ClampedArray(data.buffer, data.byteOffset, data.byteLength);
 }
 
+/**
+ * Surfaces past this long-edge size display through a downscaled copy.
+ *
+ * CSS-scaling a full-resolution canvas leaves the shrink to the compositor's
+ * sampler, which reads a couple of texels per screen pixel. Against per-pixel
+ * payload noise that is aliasing: nearest-neighbor phases the checkerboard
+ * into blocks, bilinear into blobs, and both patterns shift with zoom and
+ * devicePixelRatio. A stepped-halving downscale averages every source pixel
+ * (a box filter), so the noise reads as uniform grain at every zoom.
+ */
+const MAX_DISPLAY = 2048;
+
 export class RevealSurface {
   /** Wrapper div holding the stacked base and overlay canvases. */
   readonly element: HTMLDivElement;
@@ -71,6 +83,16 @@ export class RevealSurface {
   private IH: number;
   /** True when the encode generates its key from position (no key pixels). */
   private keyless: boolean;
+  /** Which channels the encode wrote (all three under a full plan). */
+  private carried: boolean[];
+  /** True for channel-plan encodes: some channels were never written. */
+  private partial: boolean;
+  /** Base pixels at full resolution, held only when `partial` needs them. */
+  private basePx: Uint8ClampedArray | null = null;
+  /** Downscaled display copies; null when the surface shows at full size. */
+  private dispBase: HTMLCanvasElement | null = null;
+  private dispOverlay: HTMLCanvasElement | null = null;
+  private pyramid: HTMLCanvasElement[] = [];
 
   // Bounding box of pixels touched since the last flush, so a frame only
   // re-uploads the region that actually changed.
@@ -129,13 +151,75 @@ export class RevealSurface {
     baseCtx.imageSmoothingEnabled = true;
     baseCtx.drawImage(small, 0, 0, W, H);
 
+    // A channel-plan encode wrote only some channels; the others still hold
+    // the original cover at full resolution. Revealing those pixels must
+    // rewrite the carried channels from the base rather than alpha-swap the
+    // whole pixel, which would trade untouched full-resolution channels for
+    // the reconstruction's upscale. Full plans keep the cheap alpha path.
+    const chCombine: (string | null)[] = [null, null, null];
+    const slots =
+      opts.plan?.slots ??
+      [0, 1, 2].map((c) => ({ ch: c, combine: opts.combine }));
+    for (const s of slots) chCombine[s.ch] = s.combine;
+    this.carried = chCombine.map((c) => c != null);
+    this.partial = this.carried.includes(false);
+    if (this.partial) this.basePx = baseCtx.getImageData(0, 0, W, H).data;
+
     // Overlay layer: the encoded image, erased as it is read.
     this.overlayCtx = this.overlayCanvas.getContext("2d")!;
     this.encoded = new Uint8ClampedArray(img.data);
     this.overlayData = new ImageData(new Uint8ClampedArray(this.encoded), W, H);
     this.px = this.overlayData.data;
 
+    // Large surfaces stay offscreen and display through box-filtered copies
+    // (see MAX_DISPLAY). The base copy is made once here; the overlay copy is
+    // refreshed by every flush.
+    const scale = Math.min(1, MAX_DISPLAY / Math.max(W, H));
+    if (scale < 1) {
+      const DW = Math.max(1, Math.round(W * scale));
+      const DH = Math.max(1, Math.round(H * scale));
+      this.dispBase = canvas(DW, DH);
+      this.dispBase.className = "base";
+      this.dispOverlay = canvas(DW, DH);
+      this.dispOverlay.className = "overlay";
+      this.element.textContent = "";
+      this.element.append(this.dispBase, this.dispOverlay);
+      let pw = W;
+      let ph = H;
+      while (Math.max(pw, ph) / 2 > Math.max(DW, DH)) {
+        pw = Math.ceil(pw / 2);
+        ph = Math.ceil(ph / 2);
+        this.pyramid.push(canvas(pw, ph));
+      }
+      this.downscaleInto(this.baseCanvas, this.dispBase);
+    }
+
     this.reset();
+  }
+
+  /**
+   * Stepped-halving downscale: each step averages 2x2, so the chain
+   * approximates a box filter instead of sparse-sampling the noise.
+   */
+  private downscaleInto(src: HTMLCanvasElement, dst: HTMLCanvasElement): void {
+    let cur: HTMLCanvasElement = src;
+    let cw = src.width;
+    let ch = src.height;
+    for (const mid of this.pyramid) {
+      const ctx = mid.getContext("2d")!;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.clearRect(0, 0, mid.width, mid.height);
+      ctx.drawImage(cur, 0, 0, cw, ch, 0, 0, mid.width, mid.height);
+      cur = mid;
+      cw = mid.width;
+      ch = mid.height;
+    }
+    const ctx = dst.getContext("2d")!;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.clearRect(0, 0, dst.width, dst.height);
+    ctx.drawImage(cur, 0, 0, cw, ch, 0, 0, dst.width, dst.height);
   }
 
   /** Restore the fully-encoded overlay, with the border ring cleared so the reconstruction rings it. */
@@ -155,6 +239,7 @@ export class RevealSurface {
       }
     }
     this.overlayCtx.putImageData(this.overlayData, 0, 0);
+    if (this.dispOverlay) this.downscaleInto(this.overlayCanvas, this.dispOverlay);
     this.dx0 = this.dy0 = 0;
     this.dx1 = this.dy1 = -1;
   }
@@ -177,15 +262,28 @@ export class RevealSurface {
    * Both, because a data pixel and its key are a pair: clearing only the data
    * pixels would develop a checkerboard of the image rather than the image.
    */
+  /**
+   * Reveal one pixel. A full encode swaps the whole pixel to the base via
+   * alpha; a channel-plan encode rewrites only the carried channels so the
+   * untouched channels keep the full-resolution original.
+   */
+  private clearPx(x: number, y: number): void {
+    const o = (y * this.width + x) * 4;
+    if (this.partial) {
+      const base = this.basePx!;
+      for (let c = 0; c < 3; c++) if (this.carried[c]) this.px[o + c] = base[o + c];
+    } else {
+      this.px[o + 3] = 0;
+    }
+    this.touch(x, y);
+  }
+
   clearAt(pathIndex: number): void {
-    const { IW, IH, B, width: W, opts } = this;
+    const { IW, IH, B, opts } = this;
     const v = this.pathIdx[pathIndex];
     const lx = v % IW;
     const ly = (v / IW) | 0;
-    const x = lx + B;
-    const y = ly + B;
-    this.px[(y * W + x) * 4 + 3] = 0;
-    this.touch(x, y);
+    this.clearPx(lx + B, ly + B);
     // Keyless has no partner to clear — every interior pixel is a data pixel,
     // so the checkerboard this pairing exists to avoid cannot arise.
     if (this.keyless) return;
@@ -196,10 +294,7 @@ export class RevealSurface {
       IH,
       opts.params ?? {}
     );
-    const kx = klx + B;
-    const ky = kly + B;
-    this.px[(ky * W + kx) * 4 + 3] = 0;
-    this.touch(kx, ky);
+    this.clearPx(klx + B, kly + B);
   }
 
   /** Erase a half-open range of traversal positions. */
@@ -220,6 +315,7 @@ export class RevealSurface {
       this.dx1 - this.dx0 + 1,
       this.dy1 - this.dy0 + 1
     );
+    if (this.dispOverlay) this.downscaleInto(this.overlayCanvas, this.dispOverlay);
     this.dx0 = this.dy0 = 0;
     this.dx1 = this.dy1 = -1;
   }
