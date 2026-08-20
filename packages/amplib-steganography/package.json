@@ -1,7 +1,7 @@
 {
   "name": "@amplib/steganography",
   "description": "Encoding data into images and decoding it back. The Stegassette (STGC) format carries audio and arbitrary entries in one PNG.",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
