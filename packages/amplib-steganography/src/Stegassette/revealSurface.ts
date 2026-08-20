@@ -65,6 +65,10 @@ const MAX_DISPLAY = 2048;
 export class RevealSurface {
   /** Wrapper div holding the stacked base and overlay canvases. */
   readonly element: HTMLDivElement;
+  /**
+   * The two canvases actually stacked in `element`. On a downscaled surface
+   * these are the display copies, not the full-resolution originals.
+   */
   readonly baseCanvas: HTMLCanvasElement;
   readonly overlayCanvas: HTMLCanvasElement;
   readonly width: number;
@@ -74,7 +78,11 @@ export class RevealSurface {
   readonly bytesPerPixel: number;
   readonly opts: StgcOpts;
 
-  private overlayCtx: CanvasRenderingContext2D;
+  /** Full-resolution overlay canvas; null when the first halving runs in JS. */
+  private fullOverlay: HTMLCanvasElement | null = null;
+  private overlayCtx: CanvasRenderingContext2D | null = null;
+  /** Full-resolution base canvas; null when only the display copy reads it. */
+  private fullBase: HTMLCanvasElement | null = null;
   private encoded: Uint8ClampedArray;
   private overlayData: ImageData;
   private px: Uint8ClampedArray;
@@ -93,6 +101,25 @@ export class RevealSurface {
   private dispBase: HTMLCanvasElement | null = null;
   private dispOverlay: HTMLCanvasElement | null = null;
   private pyramid: HTMLCanvasElement[] = [];
+  /** Half-resolution overlay copy, filled by `halveInto`. */
+  private mip: HTMLCanvasElement | null = null;
+  private mipCtx: CanvasRenderingContext2D | null = null;
+  private mipData: ImageData | null = null;
+  private mipW = 0;
+  private mipH = 0;
+  /**
+   * Half-resolution blocks touched since the last flush.
+   *
+   * The touched bounding box is the wrong unit of work for the mip: a keymap
+   * that throws key pixels across the image makes almost every frame's box
+   * almost the whole image, while the pixels that actually changed number in
+   * the thousands. Uploading a big box is cheap (the browser does it), but
+   * re-averaging one is not, so the blocks are listed instead of bounded.
+   */
+  private dirty: Uint32Array | null = null;
+  private dirtyLen = 0;
+  /** Too many blocks to list — re-average the whole box instead. */
+  private dirtyAll = false;
 
   // Bounding box of pixels touched since the last flush, so a frame only
   // re-uploads the region that actually changed.
@@ -124,32 +151,6 @@ export class RevealSurface {
 
     this.element = document.createElement("div");
     this.element.className = className;
-    this.baseCanvas = canvas(W, H);
-    this.baseCanvas.className = "base";
-    this.overlayCanvas = canvas(W, H);
-    this.overlayCanvas.className = "overlay";
-    this.element.append(this.baseCanvas, this.overlayCanvas);
-
-    // Base layer: whatever of the cover can be recovered, smoothly upscaled
-    // when it comes back at half resolution (which key-preserving combines
-    // allow). One path for every mode, because "how much survives" is a
-    // property of the encode that reconstructCover already answers:
-    //
-    //   keyed              → the cover, at half resolution
-    //   keyless, full plan → the border ring, interior blank (reveals to black)
-    //   keyless, partial   → the channels left out of the plan, at FULL
-    //                        resolution, since they were never written
-    //
-    // A blanket keyless fill lived here and was wrong for the third case: it
-    // painted over real cover that no combine had ever touched.
-    const baseCtx = this.baseCanvas.getContext("2d")!;
-    const recon = reconstructCover(img, opts);
-    const small = canvas(recon.width, recon.height);
-    small
-      .getContext("2d")!
-      .putImageData(new ImageData(asClamped(recon.data), recon.width, recon.height), 0, 0);
-    baseCtx.imageSmoothingEnabled = true;
-    baseCtx.drawImage(small, 0, 0, W, H);
 
     // A channel-plan encode wrote only some channels; the others still hold
     // the original cover at full resolution. Revealing those pixels must
@@ -163,35 +164,114 @@ export class RevealSurface {
     for (const s of slots) chCombine[s.ch] = s.combine;
     this.carried = chCombine.map((c) => c != null);
     this.partial = this.carried.includes(false);
-    if (this.partial) this.basePx = baseCtx.getImageData(0, 0, W, H).data;
+
+    // Large surfaces stay offscreen and display through box-filtered copies
+    // (see MAX_DISPLAY). Neither full-resolution canvas is on screen then, and
+    // on a 65-megapixel stegassette the pair costs half a gigabyte, so each is
+    // allocated only where something still reads it:
+    //
+    //   base    — read per pixel for the life of a channel-plan reveal; read
+    //             once otherwise, to fill the display copy
+    //   overlay — a putImageData target that only feeds the downscale chain,
+    //             whose first halving `halveInto` can do in JS instead
+    //
+    // A surface just past MAX_DISPLAY has no halving step to replace, so it
+    // keeps the overlay canvas and the direct upload.
+    const scale = Math.min(1, MAX_DISPLAY / Math.max(W, H));
+    const DW = scale < 1 ? Math.max(1, Math.round(W * scale)) : W;
+    const DH = scale < 1 ? Math.max(1, Math.round(H * scale)) : H;
+    const halveInJs = scale < 1 && Math.max(W, H) / 2 > Math.max(DW, DH);
+    const needFullBase = scale === 1 || this.partial;
 
     // Overlay layer: the encoded image, erased as it is read.
-    this.overlayCtx = this.overlayCanvas.getContext("2d")!;
     this.encoded = new Uint8ClampedArray(img.data);
     this.overlayData = new ImageData(new Uint8ClampedArray(this.encoded), W, H);
     this.px = this.overlayData.data;
+    if (halveInJs) {
+      this.mipW = Math.ceil(W / 2);
+      this.mipH = Math.ceil(H / 2);
+      this.mip = canvas(this.mipW, this.mipH);
+      this.mipCtx = this.mip.getContext("2d")!;
+      this.mipData = new ImageData(this.mipW, this.mipH);
+      // A frame of playback dirties a few thousand blocks. Past a million,
+      // listing them costs more than walking the box.
+      this.dirty = new Uint32Array(Math.min(1 << 20, this.mipW * this.mipH));
+    } else {
+      this.fullOverlay = canvas(W, H);
+      this.fullOverlay.className = "overlay";
+      this.overlayCtx = this.fullOverlay.getContext("2d")!;
+    }
 
-    // Large surfaces stay offscreen and display through box-filtered copies
-    // (see MAX_DISPLAY). The base copy is made once here; the overlay copy is
-    // refreshed by every flush.
-    const scale = Math.min(1, MAX_DISPLAY / Math.max(W, H));
+    // Base layer: whatever of the cover can be recovered, smoothly upscaled
+    // when it comes back at half resolution (which key-preserving combines
+    // allow). One path for every mode, because "how much survives" is a
+    // property of the encode that reconstructCover already answers:
+    //
+    //   keyed              → the cover, at half resolution
+    //   keyless, full plan → the border ring, interior blank (reveals to black)
+    //   keyless, partial   → the channels left out of the plan, at FULL
+    //                        resolution, since they were never written
+    //
+    // A blanket keyless fill lived here and was wrong for the third case: it
+    // painted over real cover that no combine had ever touched.
+    const recon = reconstructCover(img, opts);
+    const small = canvas(recon.width, recon.height);
+    small
+      .getContext("2d")!
+      .putImageData(new ImageData(asClamped(recon.data), recon.width, recon.height), 0, 0);
+    let baseSrc: HTMLCanvasElement = small;
+    if (needFullBase) {
+      this.fullBase = canvas(W, H);
+      this.fullBase.className = "base";
+      const baseCtx = this.fullBase.getContext("2d")!;
+      baseCtx.imageSmoothingEnabled = true;
+      baseCtx.drawImage(small, 0, 0, W, H);
+      if (this.partial) this.basePx = baseCtx.getImageData(0, 0, W, H).data;
+      baseSrc = this.fullBase;
+    }
+
     if (scale < 1) {
-      const DW = Math.max(1, Math.round(W * scale));
-      const DH = Math.max(1, Math.round(H * scale));
       this.dispBase = canvas(DW, DH);
       this.dispBase.className = "base";
       this.dispOverlay = canvas(DW, DH);
       this.dispOverlay.className = "overlay";
-      this.element.textContent = "";
-      this.element.append(this.dispBase, this.dispOverlay);
-      let pw = W;
-      let ph = H;
+      // The chain starts wherever the overlay copy starts: at the mip when the
+      // first halving runs in JS, at full resolution otherwise.
+      let pw = halveInJs ? this.mipW : W;
+      let ph = halveInJs ? this.mipH : H;
       while (Math.max(pw, ph) / 2 > Math.max(DW, DH)) {
         pw = Math.ceil(pw / 2);
         ph = Math.ceil(ph / 2);
         this.pyramid.push(canvas(pw, ph));
       }
-      this.downscaleInto(this.baseCanvas, this.dispBase);
+    }
+    this.baseCanvas = this.dispBase ?? this.fullBase!;
+    this.overlayCanvas = this.dispOverlay ?? this.fullOverlay!;
+    this.element.append(this.baseCanvas, this.overlayCanvas);
+
+    // The base copy is made once, here; the overlay copy is refreshed by every
+    // flush. Both take the same chain, so both layers carry the same filter.
+    // The base borrows the mip as scratch, which is free — no reveal has been
+    // written into it yet.
+    if (this.dispBase) {
+      if (this.mipCtx) {
+        this.mipCtx.imageSmoothingEnabled = true;
+        this.mipCtx.imageSmoothingQuality = "high";
+        this.mipCtx.drawImage(
+          baseSrc,
+          0,
+          0,
+          baseSrc.width,
+          baseSrc.height,
+          0,
+          0,
+          this.mipW,
+          this.mipH
+        );
+        this.downscaleInto(this.mip!, this.dispBase);
+      } else {
+        this.downscaleInto(baseSrc, this.dispBase);
+      }
     }
 
     this.reset();
@@ -238,13 +318,119 @@ export class RevealSurface {
         }
       }
     }
-    this.overlayCtx.putImageData(this.overlayData, 0, 0);
-    if (this.dispOverlay) this.downscaleInto(this.overlayCanvas, this.dispOverlay);
+    // `px.set` above went around touch(), so nothing is listed and everything
+    // changed.
+    this.dirtyAll = true;
+    this.upload(0, 0, W - 1, H - 1);
     this.dx0 = this.dy0 = 0;
     this.dx1 = this.dy1 = -1;
   }
 
+  /** Push one box of `px` through to whatever the element shows. */
+  private upload(x0: number, y0: number, x1: number, y1: number): void {
+    if (this.mipCtx) {
+      const mx0 = x0 >> 1;
+      const my0 = y0 >> 1;
+      const mx1 = Math.min(this.mipW - 1, x1 >> 1);
+      const my1 = Math.min(this.mipH - 1, y1 >> 1);
+      if (this.dirtyAll) {
+        for (let my = my0; my <= my1; my++)
+          for (let mx = mx0; mx <= mx1; mx++) this.halveAt(mx, my);
+      } else {
+        const d = this.dirty!;
+        const mipW = this.mipW;
+        for (let i = 0; i < this.dirtyLen; i++) {
+          const mo = d[i];
+          const my = (mo / mipW) | 0;
+          this.halveAt(mo - my * mipW, my);
+        }
+      }
+      this.dirtyLen = 0;
+      this.dirtyAll = false;
+      this.mipCtx.putImageData(
+        this.mipData!,
+        0,
+        0,
+        mx0,
+        my0,
+        mx1 - mx0 + 1,
+        my1 - my0 + 1
+      );
+      this.downscaleInto(this.mip!, this.dispOverlay!);
+      return;
+    }
+    this.overlayCtx!.putImageData(
+      this.overlayData,
+      0,
+      0,
+      x0,
+      y0,
+      x1 - x0 + 1,
+      y1 - y0 + 1
+    );
+    if (this.dispOverlay) this.downscaleInto(this.fullOverlay!, this.dispOverlay);
+  }
+
+  /**
+   * Average one 2x2 block of `px` into the half-resolution mip. This is the
+   * same first halving the drawImage chain used to do, done where the pixels
+   * already live — which is what lets the full-resolution overlay canvas go.
+   *
+   * Alpha is premultiplied on the way in. A revealed pixel keeps the encoded
+   * colour it carried and only drops to alpha 0, so a plain average would let
+   * it tint the block with noise it is no longer showing.
+   */
+  private halveAt(mx: number, my: number): void {
+    const { width: W, height: H, px } = this;
+    const rx0 = mx << 1;
+    const ry0 = my << 1;
+    // An odd edge has no second row or column to pair with; the lone pixel
+    // counts twice, which averages to itself.
+    const rx1 = rx0 + 1 < W ? rx0 + 1 : rx0;
+    const row0 = ry0 * W;
+    const row1 = (ry0 + 1 < H ? ry0 + 1 : ry0) * W;
+    const oA = (row0 + rx0) * 4;
+    const oB = (row0 + rx1) * 4;
+    const oC = (row1 + rx0) * 4;
+    const oD = (row1 + rx1) * 4;
+    let al = px[oA + 3];
+    let a = al;
+    let r = px[oA] * al;
+    let g = px[oA + 1] * al;
+    let b = px[oA + 2] * al;
+    al = px[oB + 3];
+    a += al;
+    r += px[oB] * al;
+    g += px[oB + 1] * al;
+    b += px[oB + 2] * al;
+    al = px[oC + 3];
+    a += al;
+    r += px[oC] * al;
+    g += px[oC + 1] * al;
+    b += px[oC + 2] * al;
+    al = px[oD + 3];
+    a += al;
+    r += px[oD] * al;
+    g += px[oD + 1] * al;
+    b += px[oD + 2] * al;
+    const mp = this.mipData!.data;
+    const mo = (my * this.mipW + mx) * 4;
+    if (a > 0) {
+      mp[mo] = r / a;
+      mp[mo + 1] = g / a;
+      mp[mo + 2] = b / a;
+    } else {
+      mp[mo] = mp[mo + 1] = mp[mo + 2] = 0;
+    }
+    mp[mo + 3] = a >> 2;
+  }
+
   private touch(x: number, y: number): void {
+    if (this.dirty !== null) {
+      if (this.dirtyLen < this.dirty.length)
+        this.dirty[this.dirtyLen++] = (y >> 1) * this.mipW + (x >> 1);
+      else this.dirtyAll = true;
+    }
     if (this.dx1 < this.dx0) {
       this.dx0 = this.dx1 = x;
       this.dy0 = this.dy1 = y;
@@ -306,16 +492,7 @@ export class RevealSurface {
   /** Upload the touched region. Cheap when nothing changed. */
   flush(): void {
     if (this.dx1 < this.dx0) return;
-    this.overlayCtx.putImageData(
-      this.overlayData,
-      0,
-      0,
-      this.dx0,
-      this.dy0,
-      this.dx1 - this.dx0 + 1,
-      this.dy1 - this.dy0 + 1
-    );
-    if (this.dispOverlay) this.downscaleInto(this.overlayCanvas, this.dispOverlay);
+    this.upload(this.dx0, this.dy0, this.dx1, this.dy1);
     this.dx0 = this.dy0 = 0;
     this.dx1 = this.dy1 = -1;
   }
