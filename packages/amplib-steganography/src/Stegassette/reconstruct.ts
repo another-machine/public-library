@@ -62,22 +62,30 @@ export function reconstructCover(
   // for a channel that carries payload — blank those rather than return a
   // plausible-looking interpolation of noise.
   //
-  // Only those, though. A partial channel plan (say `channels: "r"`) leaves the
-  // channels outside the plan completely untouched, so G and B still hold the
-  // original cover at FULL resolution — better than the half-res reconstruction
-  // a keyed encode can offer. Blanking them would throw away the one real
-  // picture such an encode has.
+  // Only those, though — in both dimensions. A partial channel plan (say
+  // `channels: "r"`) leaves the channels outside the plan completely untouched,
+  // so G and B still hold the original cover at FULL resolution — better than
+  // the half-res reconstruction a keyed encode can offer. And the stream only
+  // reaches interiorByteLength along the traversal: pixels past that (the
+  // corners of a `fit: "shape"` radial encode, or any slack) were never
+  // written, so their carrying channels are still real cover too. Blanking the
+  // whole interior rectangle turned a circular payload into a square hole.
   if (isKeylessKeymap(opts.keymap)) {
     const out = new Uint8ClampedArray(px.length);
     out.set(px);
     const carries = chCombine.map((c) => c != null);
     if (carries.some(Boolean)) {
-      for (let y = B; y < H - B; y++)
-        for (let x = B; x < W - B; x++) {
-          const o = (y * W + x) * 4;
-          for (let c = 0; c < 3; c++) if (carries[c]) out[o + c] = 0;
-          out[o + 3] = 255;
-        }
+      const pathIdx = getPathIndices(IW, IH, opts.traversal, opts.params, true);
+      const bpp = opts.plan?.bytesPerPixel ?? 3;
+      const nEnc = opts.interiorByteLength
+        ? Math.min(pathIdx.length, Math.ceil(opts.interiorByteLength / bpp))
+        : pathIdx.length;
+      for (let pi = 0; pi < nEnc; pi++) {
+        const v = pathIdx[pi];
+        const o = (((v / IW) | 0) + B) * W * 4 + ((v % IW) + B) * 4;
+        for (let c = 0; c < 3; c++) if (carries[c]) out[o + c] = 0;
+        out[o + 3] = 255;
+      }
     }
     return { data: out, width: W, height: H };
   }
